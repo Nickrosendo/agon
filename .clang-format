@@ -1,0 +1,4 @@
+BasedOnStyle: LLVM
+IndentWidth: 4
+BreakBeforeBraces: Linux   # function braces on their own line, if/for braces on the same line
+ColumnLimit: 80
