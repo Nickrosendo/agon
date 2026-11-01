@@ -28,6 +28,9 @@ typedef struct {
  * index with an int, or when memory runs out; nothing is left allocated
  * then. On success the world must later be given to world_free. */
 bool world_init(World *w, int width, int height);
+/* Puts every layer back to its starting value (occupant -1, the rest 0)
+ * without reallocating, so a new world can reuse the memory. */
+void world_clear(World *w);
 /* Frees every layer and sets the pointers to NULL; safe to call twice. */
 void world_free(World *w);
 int world_idx(const World *w, int x, int y); /* wraps both axes */

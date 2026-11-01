@@ -2,6 +2,7 @@
 
 #include <limits.h> /* INT_MAX */
 #include <stdlib.h>
+#include <string.h> /* memset */
 
 void world_free(World *w)
 {
@@ -57,10 +58,26 @@ bool world_init(World *w, int width, int height)
         return false;
     }
 
+    world_clear(w);
+    return true;
+}
+
+void world_clear(World *w)
+{
+    size_t n = (size_t)w->w * (size_t)w->h;
+    /* memset fills bytes. Every byte 0 means 0 for these integer and
+     * float layers; it could not fill occupant with -1 per element in
+     * general, so occupant gets a loop. */
+    memset(w->terrain, 0, n * sizeof(uint8_t));
+    memset(w->fertility, 0, n * sizeof(float));
+    memset(w->veg, 0, n * sizeof(uint8_t));
+    memset(w->veg_next, 0, n * sizeof(uint8_t));
+    memset(w->veg_rule, 0, n * sizeof(uint8_t));
+    memset(w->carrion, 0, n * sizeof(float));
+    memset(w->carrion_level, 0, n * sizeof(float));
     for (size_t i = 0; i < n; i++) {
         w->occupant[i] = -1;
     }
-    return true;
 }
 
 int world_idx(const World *w, int x, int y)

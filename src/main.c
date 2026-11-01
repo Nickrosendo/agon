@@ -1,17 +1,16 @@
 #include <errno.h>
-#include <inttypes.h> /* PRIx64: the printf format for a uint64_t */
+#include <inttypes.h> /* PRIx64, PRIu64: printf formats for uint64_t */
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h> /* strtoull */
-#include <string.h> /* memset, strcmp */
+#include <string.h> /* strcmp */
 #include <time.h>   /* clock_gettime, nanosleep, struct timespec (POSIX) */
 
 #include "render.h"
 #include "rng.h"
 #include "settings.h"
+#include "sim.h"
 #include "term.h"
-#include "terrain.h"
-#include "world.h"
 
 #define FRAMES_PER_SECOND 30
 #define NANOSECONDS_PER_SECOND 1000000000L
@@ -21,73 +20,10 @@
 #define MIN_COLS 20
 #define MIN_ROWS 6
 
-/* Generations per second for each speed step; + and - move along it. */
+/* Ticks per second for each speed step; + and - move along it. */
 static const int SPEEDS[] = {1, 2, 5, 10, 15, 30, 60, 120};
 #define SPEED_COUNT ((int)(sizeof(SPEEDS) / sizeof(SPEEDS[0])))
-#define DEFAULT_SPEED 3 /* 10 generations per second */
-
-/* One soil cell in this many starts alive. */
-#define LIFE_START_ONE_IN 4
-
-/*
- * Life on the vegetation layer, a stand-in until real vegetation arrives
- * in lesson 4: Conway's rules, but only soil cells can be alive.
- */
-static void life_seed(World *w, Rng *r)
-{
-    for (int i = 0; i < w->w * w->h; i++) {
-        int alive = w->terrain[i] == TERRAIN_SOIL &&
-                    rng_below(r, LIFE_START_ONE_IN) == 0;
-        w->veg[i] = alive ? 1 : 0;
-    }
-}
-
-static int count_neighbours(const World *w, int x, int y)
-{
-    int count = 0;
-    for (int dy = -1; dy <= 1; dy++) {
-        for (int dx = -1; dx <= 1; dx++) {
-            if (dx != 0 || dy != 0) {
-                count += w->veg[world_idx(w, x + dx, y + dy)];
-            }
-        }
-    }
-    return count;
-}
-
-static void life_step(World *w)
-{
-    for (int y = 0; y < w->h; y++) {
-        for (int x = 0; x < w->w; x++) {
-            int i = world_idx(w, x, y);
-            int n = count_neighbours(w, x, y);
-            int alive;
-            if (w->terrain[i] != TERRAIN_SOIL) {
-                alive = 0;
-            } else if (w->veg[i]) {
-                alive = n == 2 || n == 3;
-            } else {
-                alive = n == 3;
-            }
-            w->veg_next[i] = alive ? 1 : 0;
-        }
-    }
-    /* Swap the two layer pointers inside the struct. w is a pointer, so
-     * this changes the caller's World, not a copy of it. */
-    uint8_t *old = w->veg;
-    w->veg = w->veg_next;
-    w->veg_next = old;
-}
-
-/* Everything in a world follows from its seed: terrain, fertility and the
- * starting cells. The world's memory is reused, never reallocated. */
-static void build_world(World *w, uint64_t seed, const Settings *s)
-{
-    Rng r;
-    rng_seed(&r, seed);
-    terrain_generate(w, &r, s);
-    life_seed(w, &r);
-}
+#define DEFAULT_SPEED 3 /* 10 ticks per second */
 
 /* A seed for when none is given: the current time, mixed. */
 static uint64_t seed_from_clock(void)
@@ -171,16 +107,15 @@ static void sleep_until(int64_t deadline)
     nanosleep(&pause, NULL);
 }
 
-static void draw_title(int cols, uint64_t seed, long generation, int speed,
-                       int paused)
+static void draw_title(int cols, const Sim *sim, int speed, int paused)
 {
     char text[160];
     /* PRIx64 expands to the right printf letters for a uint64_t on this
      * platform ("lx" here); writing %llx would be wrong on some systems.
      * Adjacent string literals are joined into one by the compiler. */
     snprintf(text, sizeof(text),
-             " agon | seed 0x%" PRIx64 " | generation %ld | %d/s%s", seed,
-             generation, SPEEDS[speed], paused ? " paused" : "");
+             " agon | seed 0x%" PRIx64 " | tick %" PRIu64 " | %d/s%s",
+             sim->seed, sim->tick, SPEEDS[speed], paused ? " paused" : "");
     render_text(0, 0, text, cols);
 }
 
@@ -210,27 +145,27 @@ int main(int argc, char **argv)
     int world_w = cols < MIN_COLS ? MIN_COLS : cols;
     int world_h = 2 * ((rows < MIN_ROWS ? MIN_ROWS : rows) - 2);
 
-    World world;
-    if (!world_init(&world, world_w, world_h)) {
+    /* The Sim struct lives on main's stack; the world's layers it points
+     * to live on the heap until sim_free. */
+    Sim sim;
+    if (!sim_init(&sim, &settings, seed, world_w, world_h)) {
         term_close(); /* so the message lands on the normal screen */
         fprintf(stderr, "agon: out of memory\n");
         return 1;
     }
-    build_world(&world, seed, &settings);
 
     /* New seeds for r come from their own generator, so pressing r gives
      * the same series of worlds after the same starting seed. */
     Rng seed_source;
     rng_seed(&seed_source, seed);
 
-    long generation = 0;
     int speed = DEFAULT_SPEED;
     int paused = 0;
     int running = 1;
     int need_clear = 1;
-    /* Generations owed, in thirtieths: each frame adds the speed, and
-     * every 30 owed pays for one generation. Keeps whole numbers only. */
-    int generations_due = 0;
+    /* Ticks owed, in thirtieths: each frame adds the speed, and every 30
+     * owed pays for one tick. Keeps whole numbers only. */
+    int ticks_due = 0;
     int64_t next_frame = now_ns();
 
     while (running) {
@@ -250,31 +185,29 @@ int main(int argc, char **argv)
             } else if (key == '-' && speed > 0) {
                 speed--;
             } else if (key == 'r') {
-                seed = rng_next(&seed_source);
-                build_world(&world, seed, &settings);
-                generation = 0;
+                sim_reseed(&sim, rng_next(&seed_source));
             }
         }
 
         if (!paused) {
-            generations_due += SPEEDS[speed];
-            while (generations_due >= FRAMES_PER_SECOND) {
-                life_step(&world);
-                generation++;
-                generations_due -= FRAMES_PER_SECOND;
+            ticks_due += SPEEDS[speed];
+            while (ticks_due >= FRAMES_PER_SECOND) {
+                sim_step(&sim);
+                ticks_due -= FRAMES_PER_SECOND;
             }
         }
 
         term_begin();
         if (need_clear) {
             term_clear();
+            render_invalidate(); /* the screen is blank: redraw it all */
             need_clear = 0;
         }
         if (cols < MIN_COLS || rows < MIN_ROWS) {
             render_too_small(cols, rows, MIN_COLS, MIN_ROWS);
         } else {
-            draw_title(cols, seed, generation, speed, paused);
-            render_world(&world, 0, 1, cols, rows - 2);
+            draw_title(cols, &sim, speed, paused);
+            render_world(&sim, 0, 1, cols, rows - 2);
             render_text(0, rows - 1,
                         " space pause | +/- speed | r new seed | q quit",
                         cols);
@@ -290,6 +223,6 @@ int main(int argc, char **argv)
     }
 
     term_close();
-    world_free(&world);
+    sim_free(&sim);
     return 0;
 }

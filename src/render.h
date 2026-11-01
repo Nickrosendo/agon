@@ -5,13 +5,17 @@
 #ifndef AGON_RENDER_H
 #define AGON_RENDER_H
 
-#include "world.h"
+#include "sim.h"
 
-/* Draws the world's top left corner into the screen area that starts at
- * (col0, row0) and is cols by rows characters. Each character shows two
- * cells, one above the other. If the area is larger than the world, the
- * rest is left untouched. */
-void render_world(const World *w, int col0, int row0, int cols, int rows);
+/* Draws the top left corner of the simulation's world into the screen
+ * area that starts at (col0, row0) and is cols by rows characters. Each
+ * character shows two cells, one above the other. If the area is larger
+ * than the world, the rest is left untouched. */
+void render_world(const Sim *s, int col0, int row0, int cols, int rows);
+
+/* Forget what render_world drew last, so the next call redraws every
+ * cell. Call after the screen was cleared or resized. */
+void render_invalidate(void);
 
 /* ASCII text at (col, row), cut or padded with spaces to exactly
  * max_cols characters. */

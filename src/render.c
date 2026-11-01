@@ -13,6 +13,11 @@
 /* How many soil colours, from dry to rich. */
 #define SOIL_SHADES 6
 
+/* The largest screen area whose last drawing is remembered. Cells beyond
+ * it are simply redrawn every frame. */
+#define MEMORY_COLS 512
+#define MEMORY_ROWS 256
+
 typedef struct {
     uint8_t r, g, b;
 } Colour;
@@ -21,9 +26,19 @@ static const Colour WATER = {34, 66, 112};
 static const Colour ROCK = {112, 112, 118};
 static const Colour SOIL_DRY = {132, 110, 78};
 static const Colour SOIL_RICH = {70, 56, 38};
-static const Colour PLANT = {104, 184, 88};
+static const Colour PLANT = {58, 150, 62};
 static const Colour TEXT = {150, 155, 165};
 static const Colour TEXT_BACKGROUND = {14, 17, 23};
+
+/*
+ * What render_world last drew in each character cell: the top and bottom
+ * colours packed into one number, with bit 48 set to mark "drawn". A
+ * cell whose colours have not changed since the last frame is skipped,
+ * so a calm world sends only a few bytes per frame instead of a full
+ * screen. A static array: 1 MiB set aside for the whole run, zeroed at
+ * start-up (zero means "never drawn"), never allocated or freed.
+ */
+static uint64_t last_drawn[MEMORY_ROWS][MEMORY_COLS];
 
 /* A struct is compared field by field; C has no == for structs. */
 static int same_colour(Colour a, Colour b)
@@ -48,37 +63,80 @@ static Colour mix(Colour a, Colour b, float t)
     return c;
 }
 
-static Colour cell_colour(const World *w, int i)
+static Colour soil_colour(float fertility)
 {
-    if (w->veg[i] > 0) {
-        return PLANT;
-    }
-    if (w->terrain[i] == TERRAIN_WATER) {
-        return WATER;
-    }
-    if (w->terrain[i] == TERRAIN_ROCK) {
-        return ROCK;
-    }
     /* Fertility in a few steps rather than a smooth blend: neighbouring
      * cells then often share a colour, and term skips repeating a colour,
      * which keeps the frame small. Converting the float to int drops the
      * fraction. */
-    int shade = (int)(w->fertility[i] * (float)SOIL_SHADES);
+    int shade = (int)(fertility * (float)SOIL_SHADES);
     if (shade > SOIL_SHADES - 1) {
         shade = SOIL_SHADES - 1; /* fertility exactly 1.0 */
     }
     return mix(SOIL_DRY, SOIL_RICH, (float)shade / (float)(SOIL_SHADES - 1));
 }
 
-void render_world(const World *w, int col0, int row0, int cols, int rows)
+static Colour cell_colour(const World *w, int i)
 {
+    if (w->terrain[i] == TERRAIN_WATER) {
+        return WATER;
+    }
+    if (w->terrain[i] == TERRAIN_ROCK) {
+        return ROCK;
+    }
+    Colour soil = soil_colour(w->fertility[i]);
+    if (w->veg[i] == 0) {
+        return soil;
+    }
+    /* Four shades of green over the soil: density 1 is 40 % of the way
+     * from the soil colour to full green, density VEG_MAX is all green. */
+    float t = (float)(w->veg[i] + 1) / (float)(VEG_MAX + 1);
+    return mix(soil, PLANT, t);
+}
+
+static uint64_t pack(Colour top, Colour bottom)
+{
+    /* The casts widen each byte to 64 bits before shifting; shifting a
+     * value past the width of its type is undefined behaviour. */
+    uint64_t t = ((uint64_t)top.r << 16) | ((uint64_t)top.g << 8) | top.b;
+    uint64_t b =
+        ((uint64_t)bottom.r << 16) | ((uint64_t)bottom.g << 8) | bottom.b;
+    return (1ULL << 48) | (t << 24) | b;
+}
+
+void render_invalidate(void)
+{
+    /* memset with sizeof works here because last_drawn is a real array
+     * in this file, not a pointer: sizeof gives all 1 MiB. */
+    memset(last_drawn, 0, sizeof(last_drawn));
+}
+
+void render_world(const Sim *s, int col0, int row0, int cols, int rows)
+{
+    const World *w = &s->world;
     int view_cols = cols < w->w ? cols : w->w;
     int view_rows = rows < w->h / 2 ? rows : w->h / 2;
     for (int row = 0; row < view_rows; row++) {
-        term_move(col0, row0 + row);
+        /* The cursor is only moved when a cell is skipped: after a
+         * character is drawn, the terminal moves it one column right by
+         * itself. */
+        int cursor_in_place = 0;
         for (int x = 0; x < view_cols; x++) {
             Colour top = cell_colour(w, world_idx(w, x, 2 * row));
             Colour bottom = cell_colour(w, world_idx(w, x, 2 * row + 1));
+            uint64_t packed = pack(top, bottom);
+            int remembered = row < MEMORY_ROWS && x < MEMORY_COLS;
+            if (remembered && last_drawn[row][x] == packed) {
+                cursor_in_place = 0;
+                continue;
+            }
+            if (remembered) {
+                last_drawn[row][x] = packed;
+            }
+            if (!cursor_in_place) {
+                term_move(col0 + x, row0 + row);
+                cursor_in_place = 1;
+            }
             if (same_colour(top, bottom)) {
                 /* A space in the background colour looks the same and is
                  * 1 byte instead of 3. */

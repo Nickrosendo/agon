@@ -10,6 +10,11 @@ Settings settings_default(void)
         .noise_scale = 48.0f,
         .noise_octaves = 4,
         .fertility_scale = 24.0f,
+        .veg_birth_lo = 3,
+        .veg_birth_hi = 4,
+        .veg_crowd_max = 3,
+        .veg_seed_chance = 0.0002f,
+        .veg_start_chance = 0.03f,
     };
     return s;
 }
