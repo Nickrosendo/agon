@@ -1,5 +1,7 @@
 #include "test.h"
 
+#include <string.h> /* memcpy */
+
 #include "flora.h"
 #include "rng.h"
 #include "settings.h"
@@ -24,6 +26,8 @@ static Settings rule(int birth_lo, int birth_hi, int crowd_max)
     s.veg_birth_hi = birth_hi;
     s.veg_crowd_max = crowd_max;
     s.veg_seed_chance = 0.0f;
+    /* Out of reach: these tests are about the neighbour rule alone. */
+    s.veg_capacity = 1000.0f;
     return s;
 }
 
@@ -149,6 +153,114 @@ static void test_barren_world_stays_empty(void)
     world_free(&w);
 }
 
+/* Fills every soil cell around (cx, cy) within the reach, except the
+ * centre, with the given density. */
+static void ring(World *w, int cx, int cy, int reach, uint8_t density)
+{
+    for (int dy = -reach; dy <= reach; dy++) {
+        for (int dx = -reach; dx <= reach; dx++) {
+            if (dx != 0 || dy != 0) {
+                w->veg[world_idx(w, cx + dx, cy + dy)] = density;
+            }
+        }
+    }
+}
+
+static void test_capacity_blocks_sprouting(void)
+{
+    /* Reach 2: 24 cells around the centre. All at density 1 gives
+     * m = 24. The centre has 8 planted touching neighbours, so the birth
+     * range 1..8 would let it sprout, but capacity 20 * fertility 1 is
+     * below 24. */
+    World w;
+    make_world(&w, 11, 11);
+    Settings s = rule(1, 8, 8);
+    s.veg_reach = 2;
+    s.veg_capacity = 20.0f;
+    Rng r;
+    rng_seed(&r, 6);
+    ring(&w, 5, 5, 2, 1);
+    flora_step(&w, &r, &s);
+    CHECK(veg_at(&w, 5, 5) == 0);
+
+    /* Same neighbourhood with room to spare: it sprouts. */
+    world_free(&w);
+    make_world(&w, 11, 11);
+    s.veg_capacity = 30.0f;
+    ring(&w, 5, 5, 2, 1);
+    flora_step(&w, &r, &s);
+    CHECK(veg_at(&w, 5, 5) == 1);
+    world_free(&w);
+}
+
+static void test_capacity_scales_with_fertility(void)
+{
+    /* m = 24 again, capacity 40: room at fertility 1 (limit 40), none at
+     * fertility 0.5 (limit 20). The neighbourhood fertility does not
+     * matter, only the cell's own. */
+    World w;
+    make_world(&w, 11, 11);
+    Settings s = rule(1, 8, 8);
+    s.veg_reach = 2;
+    s.veg_capacity = 40.0f;
+    Rng r;
+    rng_seed(&r, 7);
+    ring(&w, 5, 5, 2, 1);
+    w.fertility[world_idx(&w, 5, 5)] = 0.5f;
+    /* Fertility 0.5 also halves the chance to sprout, so try several
+     * steps on a fresh copy each time: it must never sprout. */
+    int ever_sprouted = 0;
+    for (int i = 0; i < 20; i++) {
+        uint8_t saved[121];
+        memcpy(saved, w.veg, sizeof(saved));
+        flora_step(&w, &r, &s);
+        if (veg_at(&w, 5, 5) != 0) {
+            ever_sprouted = 1;
+        }
+        memcpy(w.veg, saved, sizeof(saved));
+    }
+    CHECK(!ever_sprouted);
+    world_free(&w);
+}
+
+static void test_over_capacity_shrinks(void)
+{
+    /* A planted centre with room among its touching neighbours (crowd
+     * limit 8) but m = 24 * 2 = 48 above capacity 30: it thins by one per
+     * step instead of growing. */
+    World w;
+    make_world(&w, 11, 11);
+    Settings s = rule(9, 9, 8);
+    s.veg_reach = 2;
+    s.veg_capacity = 30.0f;
+    Rng r;
+    rng_seed(&r, 8);
+    ring(&w, 5, 5, 2, 2);
+    w.veg[world_idx(&w, 5, 5)] = 3;
+    flora_step(&w, &r, &s);
+    CHECK(veg_at(&w, 5, 5) == 2);
+    world_free(&w);
+}
+
+static void test_tiny_world_is_safe(void)
+{
+    /* A 2 by 2 world with a reach of 3, larger than the world: without
+     * the clamp in flora_step this reads outside the layer, and the
+     * memory checker stops the test with a heap-buffer-overflow report. */
+    World w;
+    make_world(&w, 2, 2);
+    Settings s = rule(1, 8, 8);
+    s.veg_reach = 3;
+    Rng r;
+    rng_seed(&r, 9);
+    w.veg[0] = 1;
+    for (int i = 0; i < 10; i++) {
+        flora_step(&w, &r, &s);
+    }
+    CHECK(w.veg[0] <= VEG_MAX);
+    world_free(&w);
+}
+
 int main(void)
 {
     test_line_of_three();
@@ -156,5 +268,9 @@ int main(void)
     test_crowded_cell_shrinks();
     test_water_and_rock_stay_bare();
     test_barren_world_stays_empty();
+    test_capacity_blocks_sprouting();
+    test_capacity_scales_with_fertility();
+    test_over_capacity_shrinks();
+    test_tiny_world_is_safe();
     TEST_SUMMARY();
 }

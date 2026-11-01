@@ -15,6 +15,8 @@ Settings settings_default(void)
         .veg_crowd_max = 3,
         .veg_seed_chance = 0.0002f,
         .veg_start_chance = 0.03f,
+        .veg_reach = 2,
+        .veg_capacity = 50.0f,
     };
     return s;
 }
