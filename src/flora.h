@@ -24,6 +24,12 @@ void carrion_add(World *w, int idx, float energy, float level);
  * cleared to exactly 0. */
 void carrion_step(World *w, const Settings *s);
 
+/* One tick of scent: spreads to the four neighbours, fades, and is fed
+ * by the carrion on each cell (see Settings). Reads scent, writes
+ * scent_next, then swaps the two, as flora_step does with vegetation:
+ * every cell must see its neighbours' scent from before this tick. */
+void scent_step(World *w, const Settings *s);
+
 /* Below this, carrion counts as gone. Without a cut-off, decay by a
  * fraction would never reach 0: x * 0.99 stays above 0 for thousands of
  * ticks, down to the smallest float. */

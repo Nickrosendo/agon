@@ -87,10 +87,10 @@ int pool_spawn(Pool *p, World *w, int x, int y);
 void pool_kill(Pool *p, World *w, int idx, const Settings *s);
 
 /* Fills *out with what creature idx senses: its energy, age, size and
- * diet; and along each of its three rays (ahead, left, right) the
- * vegetation in the first cell, the closeness of the nearest carrion
- * within sight, and the nearest creature within sight: its closeness,
- * its size relative to the viewer and its kinship. A ray stops at rock. */
+ * meat digestion gene; and along each of its three rays (ahead, left,
+ * right) the vegetation and the scent of carrion in the first cell, and
+ * the nearest creature within sight: its closeness, its size relative to
+ * the viewer and its kinship. A ray stops at rock. */
 void creature_sense(const World *w, const Pool *p, int idx,
                     const Settings *s, Senses *out);
 /* Carries out one tick of action a for creature idx. Returns the slot of
@@ -110,6 +110,10 @@ float creature_speed(const Creature *c, const Settings *s);
 int creature_sight(const Creature *c, const Settings *s);
 /* Energy one tick of life costs this creature. */
 float creature_upkeep_cost(const Creature *c, const Settings *s);
+
+/* True for a creature that digests meat better than plants. Only
+ * hunters attack, and only plant-eaters are attacked. */
+bool creature_is_hunter(const Creature *c);
 
 /* Chance that an attacker of size a hits a target of size t:
  * a^k / (a^k + t^k). Equal sizes give 0.5; larger k makes size matter

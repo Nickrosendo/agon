@@ -436,6 +436,33 @@ static void test_carrion_disappears(void)
     world_free(&w);
 }
 
+static void test_scent_spreads_and_fades(void)
+{
+    World w;
+    make_world(&w, 21, 21);
+    Settings s = settings_default();
+    int source = world_idx(&w, 10, 10);
+    carrion_add(&w, source, 50.0f, 2.0f);
+    for (int t = 0; t < 50; t++) {
+        scent_step(&w, &s);
+    }
+    float at = w.scent[source];
+    float one = w.scent[world_idx(&w, 11, 10)];
+    float three = w.scent[world_idx(&w, 13, 10)];
+    CHECK(at > one && one > three && three > 0.0f);
+    /* The same in every direction. */
+    CHECK(fabsf(w.scent[world_idx(&w, 9, 10)] - one) < 1e-5f);
+    CHECK(fabsf(w.scent[world_idx(&w, 10, 11)] - one) < 1e-5f);
+
+    /* With the carrion gone, the scent fades away. */
+    w.carrion[source] = 0.0f;
+    for (int t = 0; t < 3000; t++) {
+        scent_step(&w, &s);
+    }
+    CHECK(w.scent[source] == 0.0f);
+    world_free(&w);
+}
+
 int main(void)
 {
     test_line_of_three();
@@ -455,5 +482,6 @@ int main(void)
     test_carrion_merges();
     test_carrion_rots_into_soil();
     test_carrion_disappears();
+    test_scent_spreads_and_fades();
     TEST_SUMMARY();
 }

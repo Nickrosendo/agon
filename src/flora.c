@@ -147,6 +147,34 @@ void carrion_step(World *w, const Settings *s)
     }
 }
 
+void scent_step(World *w, const Settings *s)
+{
+    for (int y = 0; y < w->h; y++) {
+        int up = wrap_near(y - 1, w->h) * w->w;
+        int down = wrap_near(y + 1, w->h) * w->w;
+        int row = y * w->w;
+        for (int x = 0; x < w->w; x++) {
+            int left = wrap_near(x - 1, w->w);
+            int right = wrap_near(x + 1, w->w);
+            float around = (w->scent[up + x] + w->scent[down + x] +
+                            w->scent[row + left] + w->scent[row + right]) /
+                           4.0f;
+            int i = row + x;
+            float mixed = (1.0f - s->scent_spread) * w->scent[i] +
+                          s->scent_spread * around;
+            float next = (1.0f - s->scent_decay) * mixed +
+                         s->scent_emit * w->carrion[i];
+            /* The same reason as CARRION_MIN: fading by a fraction never
+             * reaches 0 on its own, and tiny values are slow to compute
+             * with. */
+            w->scent_next[i] = next < CARRION_MIN * 0.01f ? 0.0f : next;
+        }
+    }
+    float *old = w->scent;
+    w->scent = w->scent_next;
+    w->scent_next = old;
+}
+
 void flora_step(World *w, Rng *r, const Settings *s)
 {
     /* wrap_near needs the reach to be no larger than the world; a tiny

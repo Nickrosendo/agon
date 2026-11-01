@@ -12,9 +12,10 @@
  * sight, bites can attack, deaths leave carrion that rots, the carrion
  * layers and the new creature fields are hashed, and the start and the
  * floor went up to 150 creatures; then the digest floor; then separate
- * plant and meat digestion genes.
+ * plant and meat digestion genes; then scent, and a bite that looks all
+ * round and lets hunters hunt.
  */
-#define SEED_7_AFTER_500 0x0b702287d6d5202cULL
+#define SEED_7_AFTER_500 0xba254d13a252dcceULL
 
 static void test_same_seed_same_checksum(void)
 {

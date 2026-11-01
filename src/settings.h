@@ -103,11 +103,14 @@ typedef struct {
     float speed_upkeep;
     float sight_upkeep;      /* per cell of sight */
 
-    /* Food. A bite attacks a creature ahead; otherwise it eats carrion or
-     * vegetation ahead, whichever gives more. Energy gained is what was
-     * taken times the efficiency for that food: digest_floor + (1 -
-     * digest_floor) * gene, with GENE_PLANT or GENE_MEAT. Digesting costs
-     * upkeep every tick: digest_upkeep * (plant + meat)^2. The square
+    /* Food. A bite looks at the eight cells around the creature and eats
+     * the food that gives it the most energy; a hunter (meat gene above
+     * plant gene) with no carrion around attacks a neighbouring
+     * plant-eater instead (see act_bite in creature.c). Energy gained
+     * is what was taken times the efficiency for that food: digest_floor
+     * + (1 - digest_floor) * gene, with GENE_PLANT or GENE_MEAT.
+     * Digesting costs upkeep every tick: digest_upkeep * (plant +
+     * meat)^2. The square
      * makes a generalist (both genes 1) pay four times what a specialist
      * (one gene 1) pays, while a little of the second food costs a
      * specialist almost nothing at first, so a plant-eater can drift
@@ -133,6 +136,16 @@ typedef struct {
     float carrion_decay;
     float carrion_to_fertility;
     float fertility_max;
+
+    /* Scent. Each tick a cell's scent becomes (1 - scent_decay) times
+     * [(1 - scent_spread) * its own + scent_spread * the average of its
+     * four neighbours'], plus scent_emit * its carrion. So scent is
+     * strongest on the carrion and fades with distance, over roughly
+     * sqrt(scent_spread / scent_decay) cells; a creature can follow it
+     * from far beyond its sight. */
+    float scent_emit;
+    float scent_spread;
+    float scent_decay;
 } Settings;
 
 Settings settings_default(void);

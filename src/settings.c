@@ -57,6 +57,9 @@ Settings settings_default(void)
         .carrion_decay = 0.01f,
         .carrion_to_fertility = 0.002f,
         .fertility_max = 1.0f,
+        .scent_emit = 0.05f,
+        .scent_spread = 0.5f,
+        .scent_decay = 0.02f,
     };
     return s;
 }

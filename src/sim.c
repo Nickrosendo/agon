@@ -189,6 +189,7 @@ void sim_step(Sim *s)
 {
     flora_step(&s->world, &s->rng, &s->set);
     carrion_step(&s->world, &s->set);
+    scent_step(&s->world, &s->set);
     creatures_act(s);
     accounting(s);
     restock(s);
@@ -270,6 +271,7 @@ uint64_t sim_checksum(const Sim *s)
     hash = fnv1a(hash, w->veg_wither, n * sizeof(uint8_t));
     hash = fnv1a(hash, w->carrion, n * sizeof(float));
     hash = fnv1a(hash, w->carrion_level, n * sizeof(float));
+    hash = fnv1a(hash, w->scent, n * sizeof(float));
     hash = fnv1a(hash, w->occupant, n * sizeof(int32_t));
     hash = fnv1a(hash, &s->pool.count, sizeof(s->pool.count));
     hash = fnv1a(hash, &s->pool.next_id, sizeof(s->pool.next_id));

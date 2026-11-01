@@ -168,8 +168,13 @@ static void test_bite(void)
     CHECK(w.veg[world_idx(&w, 3, 2)] == 2);
     CHECK(fabsf(p.items[i].energy - (10.0f + s.bite_veg_energy)) < 1e-6f);
 
-    /* Biting bare ground gains nothing. */
-    creature_act(&w, &p, i, (Action){ACT_TURN_RIGHT, 1}, &s, &r);
+    /* A plant beside the creature, not ahead, is eaten just the same. */
+    w.veg[world_idx(&w, 3, 2)] = 0;
+    w.veg[world_idx(&w, 2, 4)] = 1; /* behind, to the left */
+    creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
+    CHECK(w.veg[world_idx(&w, 2, 4)] == 0);
+
+    /* With nothing to eat around, a bite gains nothing. */
     float before = p.items[i].energy;
     creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
     CHECK(p.items[i].energy == before);
@@ -387,6 +392,9 @@ static void test_attacks_hit_half_the_time(void)
     CHECK(pool_init(&p, 2));
     int a = spawn(&p, &w, 3, 3);
     int t = spawn(&p, &w, 3, 2); /* right ahead, the same size */
+    /* Only hunters attack: the attacker digests meat better than plants. */
+    p.items[a].genome.g[GENE_MEAT] = 1.0f;
+    p.items[a].genome.g[GENE_PLANT] = 0.0f;
     p.items[a].energy = 1e6f;
     int hits = 0, misses_checked = 0;
     for (int k = 0; k < 10000; k++) {
@@ -408,6 +416,93 @@ static void test_attacks_hit_half_the_time(void)
     }
     CHECK(hits >= 4800 && hits <= 5200);
     CHECK(misses_checked == 10);
+    pool_free(&p);
+    world_free(&w);
+}
+
+/* Two creatures side by side, the first heading north with the second
+ * ahead of it, on an 8 by 8 world of bare soil. */
+static void two_neighbours(World *w, Pool *p, int *a, int *t)
+{
+    make_world(w, 8, 8);
+    CHECK(pool_init(p, 2));
+    *a = spawn(p, w, 3, 3);
+    *t = spawn(p, w, 3, 2);
+    p->items[*a].energy = 100.0f;
+    p->items[*t].energy = 100.0f;
+}
+
+static void make_hunter(Creature *c)
+{
+    c->genome.g[GENE_MEAT] = 1.0f;
+    c->genome.g[GENE_PLANT] = 0.0f;
+}
+
+static void test_who_attacks(void)
+{
+    Settings s = settings_default();
+    Rng r;
+    rng_seed(&r, 3);
+    World w;
+    Pool p;
+    int a, t;
+
+    /* A plant-eater never attacks: its bite does nothing here. */
+    two_neighbours(&w, &p, &a, &t);
+    for (int k = 0; k < 20; k++) {
+        creature_act(&w, &p, a, (Action){ACT_BITE, 1}, &s, &r);
+    }
+    CHECK(p.items[t].energy == 100.0f);
+    CHECK(p.items[a].energy == 100.0f);
+    pool_free(&p);
+    world_free(&w);
+
+    /* A hunter with no carrion around attacks the plant-eater. */
+    two_neighbours(&w, &p, &a, &t);
+    make_hunter(&p.items[a]);
+    for (int k = 0; k < 20; k++) {
+        creature_act(&w, &p, a, (Action){ACT_BITE, 1}, &s, &r);
+    }
+    CHECK(p.items[t].energy < 100.0f);
+    pool_free(&p);
+    world_free(&w);
+
+    /* With carrion beside it, the hunter eats that instead. */
+    two_neighbours(&w, &p, &a, &t);
+    make_hunter(&p.items[a]);
+    int beside = world_idx(&w, 4, 3); /* east */
+    carrion_add(&w, beside, 20.0f, 2.0f);
+    creature_act(&w, &p, a, (Action){ACT_BITE, 1}, &s, &r);
+    CHECK(p.items[t].energy == 100.0f);
+    CHECK(w.carrion[beside] < 20.0f);
+    pool_free(&p);
+    world_free(&w);
+
+    /* Hunters leave each other alone. */
+    two_neighbours(&w, &p, &a, &t);
+    make_hunter(&p.items[a]);
+    make_hunter(&p.items[t]);
+    for (int k = 0; k < 20; k++) {
+        creature_act(&w, &p, a, (Action){ACT_BITE, 1}, &s, &r);
+    }
+    CHECK(p.items[t].energy == 100.0f);
+    pool_free(&p);
+    world_free(&w);
+}
+
+static void test_food_under_a_creature(void)
+{
+    Settings s = settings_default();
+    Rng r;
+    rng_seed(&r, 3);
+    World w;
+    Pool p;
+    int a, t;
+    two_neighbours(&w, &p, &a, &t);
+    w.veg[world_idx(&w, 3, 2)] = 3; /* under t: covered */
+    creature_act(&w, &p, a, (Action){ACT_BITE, 1}, &s, &r);
+    CHECK(w.veg[world_idx(&w, 3, 2)] == 3);
+    CHECK(p.items[a].energy == 100.0f);
     pool_free(&p);
     world_free(&w);
 }
@@ -459,11 +554,17 @@ static void test_ray_sees_creature(void)
           genome_kinship(&p.items[i].genome, &p.items[j].genome));
     /* Nothing to the sides. */
     CHECK(in.v[SENSE_RAYS + RAY_LEFT * RAY_VALUES + RAY_NEAR] == 0.0f);
-    /* Carrion three cells to the left (west), past nothing: 0.5. */
-    carrion_add(&w, world_idx(&w, 2, 8), 4.0f, 2.0f);
+    /* Carrion three cells to the left (west). After its scent has
+     * spread for a while, the left ray smells more than the right. */
+    carrion_add(&w, world_idx(&w, 2, 8), 40.0f, 2.0f);
+    for (int t = 0; t < 30; t++) {
+        scent_step(&w, &s);
+    }
     creature_sense(&w, &p, i, &s, &in);
-    CHECK(near(in.v[SENSE_RAYS + RAY_LEFT * RAY_VALUES + RAY_CARRION], 0.5f));
-    CHECK(in.v[SENSE_RAYS + RAY_RIGHT * RAY_VALUES + RAY_CARRION] == 0.0f);
+    float left = in.v[SENSE_RAYS + RAY_LEFT * RAY_VALUES + RAY_CARRION];
+    float right = in.v[SENSE_RAYS + RAY_RIGHT * RAY_VALUES + RAY_CARRION];
+    CHECK(left > 0.0f && left < 1.0f);
+    CHECK(left > right);
     pool_free(&p);
     world_free(&w);
 }
@@ -521,6 +622,8 @@ static void test_killed_creature_leaves_carrion(void)
     int a = spawn(&sim.pool, &sim.world, 4, 6);
     int t = spawn(&sim.pool, &sim.world, 4, 5); /* ahead of a */
     sim.pool.items[a].genome.g[GENE_SIZE] = 1.0f; /* size 1.5 */
+    sim.pool.items[a].genome.g[GENE_MEAT] = 1.0f; /* a hunter */
+    sim.pool.items[a].genome.g[GENE_PLANT] = 0.0f;
     sim.pool.items[t].genome.g[GENE_SIZE] = 0.0f; /* size 0.5 */
     sim.pool.items[a].energy = 100.0f;
     sim.pool.items[t].energy = 1.0f; /* one hit is enough */
@@ -667,6 +770,8 @@ int main(void)
     test_bite_carrion();
     test_attack_chance();
     test_attacks_hit_half_the_time();
+    test_who_attacks();
+    test_food_under_a_creature();
     test_slow_creature();
     test_ray_sees_creature();
     test_ray_limits();

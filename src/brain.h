@@ -15,8 +15,8 @@
 /* The three directions a creature looks in, relative to its heading. */
 enum { RAY_AHEAD, RAY_LEFT, RAY_RIGHT, RAY_COUNT };
 
-/* What each ray reports: the vegetation in the first cell, the closeness
- * of the nearest carrion and of the nearest creature (1 next to the
+/* What each ray reports: the vegetation and the scent of carrion in the
+ * first cell, the closeness of the nearest creature (1 next to the
  * viewer, falling with distance, 0 for none in sight), that creature's
  * size relative to the viewer's, and its kinship. */
 enum { RAY_VEG, RAY_CARRION, RAY_NEAR, RAY_RELSIZE, RAY_KIN, RAY_VALUES };
@@ -39,7 +39,7 @@ enum {
     ACT_TURN_LEFT,
     ACT_TURN_RIGHT,
     ACT_MOVE,
-    ACT_BITE,
+    ACT_BITE, /* eat the best food around, or hunt (creature.c) */
     ACT_SPLIT,
     ACT_COUNT
 };

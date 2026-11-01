@@ -22,6 +22,7 @@ typedef struct {
     uint8_t *veg_rule;       /* lesson 9: packed thresholds per cell */
     float *carrion;          /* energy lying on the cell */
     float *carrion_level;    /* food-chain level of that carrion */
+    float *scent, *scent_next; /* smell of carrion, spreading from it */
     int32_t *occupant;       /* creature index, or -1 */
 } World;
 

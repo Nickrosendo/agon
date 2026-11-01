@@ -188,40 +188,34 @@ void creature_ate(Creature *c, float energy, float source_level)
     c->eaten = total;
 }
 
-/* What one ray sees, written into its RAY_VALUES slots of out. The first
- * cell gives the vegetation. Then the ray walks up to sight cells,
- * stopping at rock, and reports the nearest creature (its closeness,
- * relative size and kinship) and, separately, the closeness of the
- * nearest carrion: a creature in the way hides no carrion behind it. */
+/* What one ray senses, written into its RAY_VALUES slots of out. The
+ * first cell gives the vegetation and the scent of carrion. Then the ray
+ * walks up to sight cells, stopping at rock, and reports the nearest
+ * creature: its closeness, relative size and kinship. */
 static void sense_ray(const World *w, const Pool *p, const Creature *c,
                       uint8_t heading, const Settings *s, float *out)
 {
     int first = cell_towards(w, c->x, c->y, heading);
     out[RAY_VEG] = (float)w->veg[first] / (float)VEG_MAX;
+    /* The scent on that first cell, squashed into 0..1: half at one
+     * bite's worth. The three rays together say which way it grows. */
+    float scent = w->scent[first];
+    out[RAY_CARRION] = scent / (scent + s->bite_meat_energy);
 
     int sight = creature_sight(c, s);
-    bool creature_found = false, carrion_found = false;
     for (int d = 1; d <= sight; d++) {
         int cell = world_idx(w, c->x + d * STEP_X[heading],
                              c->y + d * STEP_Y[heading]);
         if (w->terrain[cell] == TERRAIN_ROCK) {
             return; /* rock blocks the view; water does not */
         }
-        float closeness = 1.0f - (float)(d - 1) / (float)sight;
-        if (!carrion_found && w->carrion[cell] > 0.0f) {
-            out[RAY_CARRION] = closeness;
-            carrion_found = true;
-        }
-        if (!creature_found && w->occupant[cell] >= 0) {
+        if (w->occupant[cell] >= 0) {
             const Creature *seen = &p->items[w->occupant[cell]];
             float a = creature_size(c, s);
             float t = creature_size(seen, s);
-            out[RAY_NEAR] = closeness;
+            out[RAY_NEAR] = 1.0f - (float)(d - 1) / (float)sight;
             out[RAY_RELSIZE] = t / (a + t);
             out[RAY_KIN] = genome_kinship(&c->genome, &seen->genome);
-            creature_found = true;
-        }
-        if (creature_found && carrion_found) {
             return;
         }
     }
@@ -337,30 +331,77 @@ static void eat_plant(World *w, Creature *c, int ahead, const Settings *s)
     creature_ate(c, gain, 1.0f); /* plants are level 1 */
 }
 
-/* A bite at whatever is ahead: a creature is attacked. Otherwise the
- * bite eats carrion or vegetation; on a cell with both, whichever gives
- * this creature more energy (carrion on a tie). Biting an empty cell does
- * nothing. */
-static void act_bite(World *w, Pool *p, Creature *c, const Settings *s,
-                     Rng *r)
+bool creature_is_hunter(const Creature *c)
 {
-    int ahead = cell_towards(w, c->x, c->y, c->heading);
-    if (w->occupant[ahead] >= 0) {
-        attack(c, &p->items[w->occupant[ahead]], s, r);
-        return;
-    }
-    bool has_carrion = w->carrion[ahead] > 0.0f;
-    bool has_plant = w->veg[ahead] > 0;
-    if (has_carrion && has_plant) {
-        if (plant_gain(c, s) > meat_gain(c, carrion_take(w, ahead, s), s)) {
-            eat_plant(w, c, ahead, s);
-        } else {
-            eat_carrion(w, c, ahead, s);
+    return c->genome.g[GENE_MEAT] > c->genome.g[GENE_PLANT];
+}
+
+/* A bite looks at the eight cells around the creature, starting with the
+ * one ahead and going clockwise; on a tie, the first one seen wins.
+ *
+ * Food on a cell holding a creature is covered by it and is not eaten.
+ * Among the free cells, the bite takes the food (plants or carrion) that
+ * gives this creature the most energy, carrion first on a tie; a bite
+ * that would gain nothing does nothing.
+ *
+ * A hunter (meat gene above plant gene) with no carrion on any of the
+ * eight cells attacks instead: the neighbouring plant-eater it is most
+ * likely to hit. Plant-eaters never attack. */
+static void act_bite(World *w, Pool *p, int idx, const Settings *s, Rng *r)
+{
+    Creature *c = &p->items[idx];
+    bool hunter = creature_is_hunter(c);
+    float my_size = creature_size(c, s);
+    int food_cell = -1;
+    bool food_is_carrion = false;
+    float best_gain = 0.0f;
+    bool carrion_near = false;
+    int prey = -1;
+    float best_chance = 0.0f;
+
+    /* AROUND_ is clockwise from north, two steps per heading. */
+    int start = 2 * c->heading;
+    for (int k = 0; k < 8; k++) {
+        int dir = (start + k) % 8;
+        int cell = world_idx(w, c->x + AROUND_X[dir], c->y + AROUND_Y[dir]);
+        int other = w->occupant[cell];
+        if (other >= 0) {
+            const Creature *o = &p->items[other];
+            if (hunter && !creature_is_hunter(o) && o->energy > 0.0f) {
+                float chance = attack_chance(my_size, creature_size(o, s),
+                                             s->attack_steepness);
+                if (chance > best_chance) {
+                    best_chance = chance;
+                    prey = other;
+                }
+            }
+            continue; /* the food under a creature is covered */
         }
-    } else if (has_carrion) {
-        eat_carrion(w, c, ahead, s);
-    } else if (has_plant) {
-        eat_plant(w, c, ahead, s);
+        if (w->carrion[cell] > 0.0f) {
+            carrion_near = true;
+            float gain = meat_gain(c, carrion_take(w, cell, s), s);
+            if (gain > best_gain) {
+                best_gain = gain;
+                food_cell = cell;
+                food_is_carrion = true;
+            }
+        }
+        if (w->veg[cell] > 0) {
+            float gain = plant_gain(c, s);
+            if (gain > best_gain) {
+                best_gain = gain;
+                food_cell = cell;
+                food_is_carrion = false;
+            }
+        }
+    }
+
+    if (hunter && !carrion_near && prey >= 0) {
+        attack(c, &p->items[prey], s, r);
+    } else if (food_cell >= 0 && food_is_carrion) {
+        eat_carrion(w, c, food_cell, s);
+    } else if (food_cell >= 0) {
+        eat_plant(w, c, food_cell, s);
     }
 }
 
@@ -420,7 +461,7 @@ int creature_act(World *w, Pool *p, int idx, Action a, const Settings *s,
         act_move(w, c, idx, s);
         break;
     case ACT_BITE:
-        act_bite(w, p, c, s, r);
+        act_bite(w, p, idx, s, r);
         break;
     case ACT_SPLIT:
         return act_split(w, p, idx, s, r);
