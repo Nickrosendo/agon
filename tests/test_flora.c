@@ -198,6 +198,54 @@ static void test_capacity_blocks_sprouting(void)
     world_free(&w);
 }
 
+/* How many cells of the world carry any vegetation. */
+static int planted_cells(const World *w)
+{
+    int count = 0;
+    for (int i = 0; i < w->w * w->h; i++) {
+        if (w->veg[i] > 0) {
+            count++;
+        }
+    }
+    return count;
+}
+
+static void test_planted_cells_cap(void)
+{
+    /* Eight planted cells around (5, 5). With birth range 1..8 the centre
+     * and the cells around the ring would all sprout. */
+    World w;
+    Settings s = rule(1, 8, 8);
+    Rng r;
+    rng_seed(&r, 6);
+
+    /* A cap of 8 is already reached: nothing sprouts, and the eight
+     * plants stay. */
+    make_world(&w, 11, 11);
+    s.veg_max_cells = 8;
+    ring(&w, 5, 5, 1, 1);
+    flora_step(&w, &r, &s);
+    CHECK(planted_cells(&w) == 8);
+    world_free(&w);
+
+    /* A cap of 9 is not reached at the start of the tick, so sprouting
+     * goes ahead; the count is taken once per tick, so it can overshoot. */
+    make_world(&w, 11, 11);
+    s.veg_max_cells = 9;
+    ring(&w, 5, 5, 1, 1);
+    flora_step(&w, &r, &s);
+    CHECK(planted_cells(&w) > 9);
+    world_free(&w);
+
+    /* 0 means no cap. */
+    make_world(&w, 11, 11);
+    s.veg_max_cells = 0;
+    ring(&w, 5, 5, 1, 1);
+    flora_step(&w, &r, &s);
+    CHECK(planted_cells(&w) > 8);
+    world_free(&w);
+}
+
 static void test_capacity_scales_with_fertility(void)
 {
     /* m = 24 again, capacity 40: room at fertility 1 (limit 40), none at
@@ -471,6 +519,7 @@ int main(void)
     test_water_and_rock_stay_bare();
     test_barren_world_stays_empty();
     test_capacity_blocks_sprouting();
+    test_planted_cells_cap();
     test_capacity_scales_with_fertility();
     test_over_capacity_shrinks();
     test_tiny_world_is_safe();

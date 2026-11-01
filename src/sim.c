@@ -150,6 +150,7 @@ static void creatures_act(Sim *s)
         }
     }
     shuffle(s->turns, n, &s->rng);
+    pool_count_plant_eaters(&s->pool);
     for (int k = 0; k < n; k++) {
         const Creature *c = &s->pool.items[s->turns[k].idx];
         /* Children born this tick are not in the list. A slot that holds

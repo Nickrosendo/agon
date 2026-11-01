@@ -66,6 +66,10 @@ typedef struct {
     int capacity, count; /* count: how many are alive */
     int32_t free_head;
     uint32_t next_id;
+    /* Plant-eaters alive as counted by pool_count_plant_eaters, plus
+     * those born by splitting since. Deaths are not taken off until the
+     * next count. */
+    int plant_eaters;
 } Pool;
 
 /* Allocates capacity empty slots. False for a capacity below 1 or when
@@ -74,6 +78,10 @@ bool pool_init(Pool *p, int capacity);
 /* Empties every slot and starts ids from 0 again, without reallocating.
  * Does not touch any world: clear the world's occupant layer too. */
 void pool_clear(Pool *p);
+/* Counts the living plant-eaters into p->plant_eaters. The simulation
+ * calls it once per tick, before anyone acts; a split checks the count
+ * against max_plant_eaters and adds its child to it. */
+void pool_count_plant_eaters(Pool *p);
 /* Frees the slots and empties *p; safe to call twice. */
 void pool_free(Pool *p);
 /* Places a new creature at (x, y), heading north, with energy 0, age 0

@@ -22,6 +22,11 @@ Settings settings_default(void)
         .veg_mature_age = 60,
         .veg_wither_chance = 0.02f,
         .veg_wither_ticks = 20,
+        /* Off: in a quick check (five seeds, 20,000 ticks, 200 by 100) a
+         * cap of 1,500 or even 2,500 cells left only the floor's random
+         * newcomers alive. Old plants nobody eats hold the cap's places,
+         * and the grazed cells beside the creatures cannot sprout again. */
+        .veg_max_cells = 0,
         .pool_capacity = 4000,
         .start_creatures = 150,
         .min_creatures = 150,
@@ -36,6 +41,8 @@ Settings settings_default(void)
         .split_share = 0.5f,
         .sense_age_half = 200.0f,
         .max_age = 1500,
+        /* Hunters survived on all five seeds of a quick check with it. */
+        .max_plant_eaters = 500,
         .mutation_rate = 0.05f,
         .mutation_spread = 0.05f,
         .weight_limit = 4.0f,

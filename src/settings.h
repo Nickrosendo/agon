@@ -47,6 +47,10 @@ typedef struct {
     int veg_mature_age;       /* ticks before a plant can start withering */
     float veg_wither_chance;  /* chance per tick, once mature */
     int veg_wither_ticks;     /* how long withering lasts */
+    /* A cap on the planted area: while at least veg_max_cells cells carry
+     * plants, no empty cell sprouts. Counted once at the start of each
+     * tick, so one tick of sprouting can overshoot it. 0: no cap. */
+    int veg_max_cells;
 
     /* Creatures. Energy is the only currency: every tick costs
      * upkeep_base, a move costs move_cost more (even a blocked one), and
@@ -76,6 +80,10 @@ typedef struct {
      * eats the plant ahead can live for ever; once the pool is full
      * nobody is born, and selection stops. */
     int max_age;
+    /* A plant-eater cannot split while max_plant_eaters plant-eaters are
+     * alive (see pool_count_plant_eaters). Hunters are limited only by
+     * the pool's capacity. 0: no cap. */
+    int max_plant_eaters;
 
     /* Inheritance. A child's genome is its parent's with each value, with
      * probability mutation_rate, moved by a normal step whose spread is

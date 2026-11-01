@@ -42,6 +42,18 @@ void pool_clear(Pool *p)
     p->free_head = 0;
     p->count = 0;
     p->next_id = 0;
+    p->plant_eaters = 0;
+}
+
+void pool_count_plant_eaters(Pool *p)
+{
+    int n = 0;
+    for (int i = 0; i < p->capacity; i++) {
+        if (p->items[i].alive && !creature_is_hunter(&p->items[i])) {
+            n++;
+        }
+    }
+    p->plant_eaters = n;
 }
 
 void pool_free(Pool *p)
@@ -444,6 +456,10 @@ static int act_split(World *w, Pool *p, int idx, const Settings *s, Rng *r)
     if (parent->energy < split_needs(parent, s)) {
         return -1;
     }
+    if (s->max_plant_eaters > 0 && !creature_is_hunter(parent) &&
+        p->plant_eaters >= s->max_plant_eaters) {
+        return -1; /* too many plant-eaters already */
+    }
     int start = (int)rng_below(r, 8);
     for (int k = 0; k < 8; k++) {
         int dir = (start + k) % 8;
@@ -465,6 +481,10 @@ static int act_split(World *w, Pool *p, int idx, const Settings *s, Rng *r)
         /* Pointers to the two genomes, not copies: the function writes
          * the child's in place, reading the parent's. */
         genome_copy_mutated(&child->genome, &parent->genome, r, s);
+        /* Read after the mutation: a child can differ from its parent. */
+        if (!creature_is_hunter(child)) {
+            p->plant_eaters++;
+        }
         return child_idx;
     }
     return -1;

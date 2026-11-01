@@ -175,6 +175,18 @@ void scent_step(World *w, const Settings *s)
     w->scent_next = old;
 }
 
+/* How many cells carry any vegetation. */
+static int count_planted(const World *w)
+{
+    int count = 0;
+    for (int i = 0; i < w->w * w->h; i++) {
+        if (w->veg[i] > 0) {
+            count++;
+        }
+    }
+    return count;
+}
+
 void flora_step(World *w, Rng *r, const Settings *s)
 {
     /* wrap_near needs the reach to be no larger than the world; a tiny
@@ -188,6 +200,9 @@ void flora_step(World *w, Rng *r, const Settings *s)
         reach = w->h;
     }
     int limit = wither_limit(s);
+    /* Counted once, before any cell changes: the cap then treats every
+     * cell alike, wherever it sits in the row order. */
+    bool full = s->veg_max_cells > 0 && count_planted(w) >= s->veg_max_cells;
     for (int y = 0; y < w->h; y++) {
         for (int x = 0; x < w->w; x++) {
             int i = world_idx(w, x, y);
@@ -226,6 +241,10 @@ void flora_step(World *w, Rng *r, const Settings *s)
                 }
             }
 
+            if (w->veg[i] == 0 && full) {
+                w->veg_next[i] = 0; /* the planted area is at its cap */
+                continue;
+            }
             int n = planted_neighbours(w, x, y);
             int mass = plant_mass(w, x, y, reach);
             uint8_t next = next_density(w->veg[i], n, mass, w->fertility[i],

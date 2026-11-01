@@ -37,6 +37,13 @@ static int spawn(Pool *p, World *w, int x, int y)
     return idx;
 }
 
+/* Turns a creature from spawn into a hunter: meat digestion above plant. */
+static void make_hunter(Creature *c)
+{
+    c->genome.g[GENE_MEAT] = 1.0f;
+    c->genome.g[GENE_PLANT] = 0.0f;
+}
+
 static void test_pool_slots_and_ids(void)
 {
     World w;
@@ -217,6 +224,46 @@ static void test_split(void)
     int count = p.count;
     CHECK(creature_act(&w, &p, i, (Action){ACT_SPLIT, 1}, &s, &r) == -1);
     CHECK(p.count == count);
+    pool_free(&p);
+    world_free(&w);
+}
+
+static void test_plant_eater_cap(void)
+{
+    World w;
+    make_world(&w, 8, 8);
+    Settings s = settings_default();
+    Rng r;
+    rng_seed(&r, 1);
+    Pool p;
+    CHECK(pool_init(&p, 6));
+    int a = spawn(&p, &w, 1, 1); /* plant-eaters, far enough apart */
+    int b = spawn(&p, &w, 5, 5);
+    p.items[a].energy = 100.0f;
+    p.items[b].energy = 100.0f;
+    pool_count_plant_eaters(&p);
+    CHECK(p.plant_eaters == 2);
+
+    /* Two alive and a cap of 2: no split. */
+    s.max_plant_eaters = 2;
+    CHECK(creature_act(&w, &p, a, (Action){ACT_SPLIT, 1}, &s, &r) == -1);
+    CHECK(p.count == 2);
+
+    /* A cap of 3: one split, which the count follows at once, so the
+     * second plant-eater cannot split in the same tick. */
+    s.max_plant_eaters = 3;
+    CHECK(creature_act(&w, &p, a, (Action){ACT_SPLIT, 1}, &s, &r) >= 0);
+    CHECK(p.plant_eaters == 3);
+    CHECK(creature_act(&w, &p, b, (Action){ACT_SPLIT, 1}, &s, &r) == -1);
+
+    /* Hunters are not capped. */
+    make_hunter(&p.items[b]);
+    CHECK(creature_act(&w, &p, b, (Action){ACT_SPLIT, 1}, &s, &r) >= 0);
+
+    /* 0 means no cap. */
+    s.max_plant_eaters = 0;
+    p.items[a].energy = 100.0f;
+    CHECK(creature_act(&w, &p, a, (Action){ACT_SPLIT, 1}, &s, &r) >= 0);
     pool_free(&p);
     world_free(&w);
 }
@@ -430,12 +477,6 @@ static void two_neighbours(World *w, Pool *p, int *a, int *t)
     *t = spawn(p, w, 3, 2);
     p->items[*a].energy = 100.0f;
     p->items[*t].energy = 100.0f;
-}
-
-static void make_hunter(Creature *c)
-{
-    c->genome.g[GENE_MEAT] = 1.0f;
-    c->genome.g[GENE_PLANT] = 0.0f;
 }
 
 static void test_who_attacks(void)
@@ -840,6 +881,7 @@ int main(void)
     test_turns();
     test_bite();
     test_split();
+    test_plant_eater_cap();
     test_split_needs_room();
     test_sense();
     test_level();
