@@ -12,6 +12,7 @@
 #include "creature.h"
 #include "rng.h"
 #include "settings.h"
+#include "stats.h"
 #include "world.h"
 
 /* One creature's place in the shuffled order of a tick: its slot and the
@@ -25,7 +26,8 @@ typedef struct {
 /*
  * A Sim owns its world, its creature pool and its brain: the structs sit
  * inside the Sim (not behind pointers), and the memory they point to is
- * freed by sim_free. Statistics join in lesson 8.
+ * freed by sim_free. stats is the latest sample (see stats.h), taken every
+ * stats_every ticks.
  */
 typedef struct {
     Settings set; /* a copy, so the caller's Settings can go away */
@@ -33,6 +35,8 @@ typedef struct {
     Pool pool;
     Brain brain;
     Turn *turns;  /* pool capacity entries, reused every tick */
+    Stats stats;
+    uint32_t *scratch; /* pool capacity entries, for stats_sample */
     Rng rng;
     uint64_t seed, tick;
 } Sim;

@@ -72,6 +72,10 @@ Settings settings_default(void)
         .scent_emit = 0.05f,
         .scent_spread = 0.5f,
         .scent_decay = 0.02f,
+        /* 64 samples * 25 ticks = 1,600 ticks on the graphs: longer than
+         * a creature's whole life (max_age 1,500), so a rise and fall of
+         * hunters fits on screen. */
+        .stats_every = 25,
     };
     return s;
 }

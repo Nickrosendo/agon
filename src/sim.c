@@ -55,6 +55,11 @@ static int place_creature(Sim *s)
     return -1;
 }
 
+static void sample(Sim *s)
+{
+    stats_sample(&s->stats, &s->world, &s->pool, s->tick, s->scratch);
+}
+
 bool sim_init(Sim *s, const Settings *set, uint64_t seed, int w, int h)
 {
     /* Everything zero first: sim_free can then clean up after a failure
@@ -68,7 +73,8 @@ bool sim_init(Sim *s, const Settings *set, uint64_t seed, int w, int h)
         return false;
     }
     s->turns = malloc((size_t)set->pool_capacity * sizeof(*s->turns));
-    if (s->turns == NULL || !sim_reseed(s, seed)) {
+    s->scratch = malloc((size_t)set->pool_capacity * sizeof(*s->scratch));
+    if (s->turns == NULL || s->scratch == NULL || !sim_reseed(s, seed)) {
         sim_free(s);
         return false;
     }
@@ -94,6 +100,10 @@ bool sim_reseed(Sim *s, uint64_t seed)
     for (int i = 0; i < s->set.start_creatures; i++) {
         place_creature(s);
     }
+    /* A first sample at tick 0, so the panel has numbers from the start,
+     * and fresh histories for the new world. */
+    stats_clear(&s->stats);
+    sample(s);
     return true;
 }
 
@@ -195,6 +205,9 @@ void sim_step(Sim *s)
     accounting(s);
     restock(s);
     s->tick++;
+    if (s->set.stats_every > 0 && s->tick % (uint64_t)s->set.stats_every == 0) {
+        sample(s);
+    }
 }
 
 void sim_free(Sim *s)
@@ -202,6 +215,8 @@ void sim_free(Sim *s)
     brain_close(&s->brain);
     free(s->turns);
     s->turns = NULL;
+    free(s->scratch);
+    s->scratch = NULL;
     pool_free(&s->pool);
     world_free(&s->world);
 }

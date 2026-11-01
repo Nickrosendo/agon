@@ -165,6 +165,11 @@ typedef struct {
     float scent_emit;
     float scent_spread;
     float scent_decay;
+
+    /* Statistics: a sample every stats_every ticks (0: only when a world
+     * is built). The panel's graphs show the last HISTORY samples (see
+     * stats.h), so they span HISTORY * stats_every ticks. */
+    int stats_every;
 } Settings;
 
 Settings settings_default(void);
