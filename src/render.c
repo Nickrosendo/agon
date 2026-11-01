@@ -37,6 +37,17 @@ static const Colour TEXT = {150, 155, 165};
 static const Colour TEXT_BACKGROUND = {14, 17, 23};
 
 /*
+ * The legend's colours, in RENDER_SWATCH_ order. Pointers, not copies:
+ * an initialiser outside a function must be a constant expression, and
+ * in C (unlike C++) the value of a const variable is not one, so
+ * {WATER, ROCK, ...} would not compile here. The address of a static
+ * variable is a constant.
+ */
+static const Colour *const SWATCHES[RENDER_SWATCH_COUNT] = {
+    &WATER, &ROCK, &SOIL_DRY, &SOIL_RICH, &PLANT, &WITHERED, &CREATURE,
+};
+
+/*
  * What render_world last drew in each character cell: the top and bottom
  * colours packed into one number, with bit 48 set to mark "drawn". A
  * cell whose colours have not changed since the last frame is skipped,
@@ -204,6 +215,17 @@ void render_text(int col, int row, const char *text, int max_cols)
     term_fg(TEXT.r, TEXT.g, TEXT.b);
     term_bg(TEXT_BACKGROUND.r, TEXT_BACKGROUND.g, TEXT_BACKGROUND.b);
     term_put(line);
+}
+
+void render_swatch(int col, int row, int swatch)
+{
+    if (swatch < 0 || swatch >= RENDER_SWATCH_COUNT) {
+        return; /* indexing SWATCHES with it would read out of bounds */
+    }
+    const Colour *c = SWATCHES[swatch];
+    term_move(col, row);
+    term_bg(c->r, c->g, c->b);
+    term_put(" ");
 }
 
 void render_too_small(int cols, int rows, int min_cols, int min_rows)

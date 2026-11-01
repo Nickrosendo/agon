@@ -6,6 +6,7 @@
 #include <string.h> /* strcmp */
 #include <time.h>   /* clock_gettime, nanosleep, struct timespec (POSIX) */
 
+#include "panel.h"
 #include "render.h"
 #include "rng.h"
 #include "settings.h"
@@ -145,6 +146,9 @@ int main(int argc, char **argv)
      * much of it is visible. Two cells per character row; the top row is
      * the title line and the bottom row the help line. */
     int world_w = cols < MIN_COLS ? MIN_COLS : cols;
+    if (cols >= MIN_COLS + PANEL_COLS) {
+        world_w = cols - PANEL_COLS; /* the panel takes the right side */
+    }
     int world_h = 2 * ((rows < MIN_ROWS ? MIN_ROWS : rows) - 2);
 
     /* The Sim struct lives on main's stack; the world's layers it points
@@ -215,7 +219,14 @@ int main(int argc, char **argv)
             render_too_small(cols, rows, MIN_COLS, MIN_ROWS);
         } else {
             draw_title(cols, &sim, speed, paused);
-            render_world(&sim, 0, 1, cols, rows - 2);
+            /* The panel only when the world keeps its minimum width
+             * beside it: on a narrow window the panel goes first. */
+            int world_cols = cols;
+            if (cols >= MIN_COLS + PANEL_COLS) {
+                world_cols = cols - PANEL_COLS;
+                panel_draw(&sim, world_cols, 1, rows - 2);
+            }
+            render_world(&sim, 0, 1, world_cols, rows - 2);
             render_text(0, rows - 1,
                         " space pause | +/- speed | r new seed | q quit",
                         cols);
