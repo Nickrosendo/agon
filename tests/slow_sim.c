@@ -1,0 +1,57 @@
+/*
+ * Slow tests: too long for every "make test", run by "make test-slow".
+ * Built like the other tests, checkers included, which is most of why
+ * they are slow: AddressSanitizer checks every memory access.
+ */
+#include "test.h"
+
+#include <math.h>    /* isfinite */
+#include <stdbool.h>
+
+#include "settings.h"
+#include "sim.h"
+
+/* True when the creature's energy and every value of its genome is an
+ * ordinary number: not infinity and not NaN. */
+static bool creature_finite(const Creature *c)
+{
+    if (!isfinite(c->energy)) {
+        return false;
+    }
+    for (int i = 0; i < GENOME_LEN; i++) {
+        if (!isfinite(c->genome.g[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+
+static void test_long_run_stays_finite(void)
+{
+    /* 200,000 ticks is well over a hundred generations at the default
+     * max_age. Mutations add up over that many generations, and a NaN,
+     * once in a genome, would be inherited by every descendant. */
+    Settings set = settings_default();
+    Sim s;
+    CHECK(sim_init(&s, &set, 7, 64, 32));
+    for (int i = 0; i < 200000; i++) {
+        sim_step(&s);
+    }
+    int bad = 0;
+    for (int i = 0; i < s.pool.capacity; i++) {
+        if (s.pool.items[i].alive && !creature_finite(&s.pool.items[i])) {
+            bad++;
+        }
+    }
+    CHECK(bad == 0);
+    CHECK(s.pool.count > 0);
+    printf("seed 7 after 200000 steps: %d alive, %u born in all\n",
+           s.pool.count, (unsigned)s.pool.next_id);
+    sim_free(&s);
+}
+
+int main(void)
+{
+    test_long_run_stays_finite();
+    TEST_SUMMARY();
+}

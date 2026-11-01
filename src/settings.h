@@ -66,6 +66,22 @@ typedef struct {
     float split_threshold;
     float split_share;       /* 0..1 */
     float sense_age_half;    /* the age sensed as 0.5 */
+    /* Old age: a creature dies on reaching max_age ticks, whatever its
+     * energy (0 turns this off). Without it, a creature that sits and
+     * eats the plant ahead can live for ever; once the pool is full
+     * nobody is born, and selection stops. */
+    int max_age;
+
+    /* Inheritance. A child's genome is its parent's with each value, with
+     * probability mutation_rate, moved by a normal step whose spread is
+     * mutation_spread times that value's range (1 for a trait, twice
+     * weight_limit for a weight). Weights stay within plus or minus
+     * weight_limit; a new random genome draws them with spread
+     * weight_start_spread. */
+    float mutation_rate;
+    float mutation_spread;
+    float weight_limit;
+    float weight_start_spread;
 } Settings;
 
 Settings settings_default(void);

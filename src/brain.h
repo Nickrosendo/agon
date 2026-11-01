@@ -55,9 +55,9 @@ typedef struct {
 } Action;
 
 /* An incomplete type: the compiler learns that a struct Genome exists,
- * but not what is inside it (genome.h, lesson 6, says). Code may pass
- * Genome pointers around but cannot look inside or make a Genome. Until
- * lesson 6 every brain is given NULL. */
+ * but not what is inside it (genome.h says). A file that includes only
+ * this header may pass Genome pointers around but cannot look inside or
+ * make a Genome; brain_net.c includes genome.h as well, and can. */
 typedef struct Genome Genome;
 
 typedef struct Brain Brain;
@@ -87,9 +87,11 @@ struct Brain {
     void (*on_death)(Brain *b, uint32_t id);
 };
 
-/* The random walker, defined in brain_random.c. Templates: name and
- * functions filled in, state NULL. brain_open copies one and creates it. */
+/* The built-in brains. Templates: name and functions filled in, state
+ * NULL. brain_open copies one and creates it. The random walker is in
+ * brain_random.c, the neural network in brain_net.c. */
 extern const Brain BRAIN_RANDOM;
+extern const Brain BRAIN_NET;
 
 /* Finds the brain called name among the registered templates, copies it
  * into *b and creates it with the given seed. False for an unknown name

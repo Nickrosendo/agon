@@ -2,6 +2,8 @@
 
 #include "brain.h"
 #include "brain_script.h"
+#include "genome.h"
+#include "rng.h"
 #include "settings.h"
 
 static void test_open_by_name(void)
@@ -84,6 +86,71 @@ static void test_script_plays_back(void)
     brain_close(&b);
 }
 
+/* A genome with every value 0: no trait, no weight, so every output of
+ * the network is 0. Built as a compound literal, which zeroes it all. */
+static Genome zero_genome(void)
+{
+    return (Genome){0};
+}
+
+static void test_net_bias_decides(void)
+{
+    Settings set = settings_default();
+    Brain b;
+    CHECK(brain_open(&b, "net", &set, 1));
+    Genome g = zero_genome();
+    /* Only the move output's bias is set: it wins whatever the senses. */
+    g.g[net_out_weight(ACT_MOVE, NET_HIDDEN)] = 3.0f;
+    Rng r;
+    rng_seed(&r, 9);
+    int not_move = 0;
+    for (int k = 0; k < 1000; k++) {
+        Senses in;
+        for (int i = 0; i < SENSE_COUNT; i++) {
+            in.v[i] = rng_unit(&r);
+        }
+        Action a = {0};
+        if (!b.decide(&b, 1, &g, &in, &a) || a.kind != ACT_MOVE ||
+            a.hold < 1) {
+            not_move++;
+        }
+    }
+    CHECK(not_move == 0);
+    brain_close(&b);
+}
+
+static void test_net_sees_vegetation(void)
+{
+    Settings set = settings_default();
+    Brain b;
+    CHECK(brain_open(&b, "net", &set, 1));
+    /* One path only: the vegetation ahead into hidden value 0, and hidden
+     * value 0 into the bite output. */
+    Genome g = zero_genome();
+    int veg_ahead = SENSE_RAYS + RAY_AHEAD * RAY_VALUES + RAY_VEG;
+    g.g[net_hidden_weight(0, veg_ahead)] = 2.0f;
+    g.g[net_out_weight(ACT_BITE, 0)] = 2.0f;
+
+    Senses in = {0};
+    Action a = {0};
+    in.v[veg_ahead] = 1.0f;
+    CHECK(b.decide(&b, 1, &g, &in, &a) && a.kind == ACT_BITE);
+    in.v[veg_ahead] = 0.0f;
+    CHECK(b.decide(&b, 1, &g, &in, &a) && a.kind != ACT_BITE);
+    brain_close(&b);
+}
+
+static void test_net_needs_a_genome(void)
+{
+    Settings set = settings_default();
+    Brain b;
+    CHECK(brain_open(&b, "net", &set, 1));
+    Senses in = {0};
+    Action a = {0};
+    CHECK(!b.decide(&b, 1, NULL, &in, &a)); /* no genome: not ready */
+    brain_close(&b);
+}
+
 int main(void)
 {
     /* The scripted brain is not built in; registering it is the only
@@ -93,5 +160,8 @@ int main(void)
     test_random_always_ready();
     test_random_same_seed_same_actions();
     test_script_plays_back();
+    test_net_bias_decides();
+    test_net_sees_vegetation();
+    test_net_needs_a_genome();
     TEST_SUMMARY();
 }

@@ -8,11 +8,13 @@
 /*
  * The registry: pointers to brain templates, looked up by name. A static
  * array outside any function exists for the whole run. Its initialiser
- * may use &BRAIN_RANDOM because the address of a global is known before
- * the program starts; the rest of the array is filled with NULL.
+ * may use &BRAIN_RANDOM and &BRAIN_NET because the address of a global
+ * is known before the program starts; the rest of the array is filled
+ * with NULL.
  */
-static const Brain *registry[BRAIN_REGISTRY_MAX] = {&BRAIN_RANDOM};
-static int registry_count = 1;
+static const Brain *registry[BRAIN_REGISTRY_MAX] = {&BRAIN_RANDOM,
+                                                    &BRAIN_NET};
+static int registry_count = 2;
 
 bool brain_register(const Brain *tmpl)
 {

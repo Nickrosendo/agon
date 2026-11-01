@@ -26,8 +26,9 @@ static void plant_start(World *w, Rng *r, const Settings *s)
 }
 
 /* Places one creature on a random free soil cell with the starting
- * energy and a random heading, and tells the brain. Returns its slot, or
- * -1 if the pool is full or no free cell turned up. */
+ * energy, a random heading and a random genome, and tells the brain.
+ * Returns its slot, or -1 if the pool is full or no free cell turned
+ * up. */
 static int place_creature(Sim *s)
 {
     if (s->pool.count >= s->pool.capacity) {
@@ -44,7 +45,10 @@ static int place_creature(Sim *s)
             Creature *c = &s->pool.items[idx];
             c->energy = s->set.energy_start;
             c->heading = (uint8_t)rng_below(&s->rng, HEADING_COUNT);
-            s->brain.on_birth(&s->brain, c->id, NULL);
+            /* A placed creature has no parent: a random genome, and the
+             * lineage pool_spawn gave it (its own id) starts a new line. */
+            genome_random(&c->genome, &s->rng, &s->set);
+            s->brain.on_birth(&s->brain, c->id, &c->genome);
             return idx;
         }
     }
@@ -116,7 +120,7 @@ static void take_turn(Sim *s, int idx)
         Senses in;
         Action a;
         creature_sense(&s->world, &s->pool, idx, &s->set, &in);
-        bool ready = s->brain.decide(&s->brain, c->id, NULL, &in, &a);
+        bool ready = s->brain.decide(&s->brain, c->id, &c->genome, &in, &a);
         /* The brain is not trusted: an unknown kind counts as resting,
          * like a brain that is not ready. */
         if (!ready || a.kind >= ACT_COUNT) {
@@ -129,7 +133,8 @@ static void take_turn(Sim *s, int idx)
     int child = creature_act(&s->world, &s->pool, idx, c->current, &s->set,
                              &s->rng);
     if (child >= 0) {
-        s->brain.on_birth(&s->brain, s->pool.items[child].id, NULL);
+        const Creature *born = &s->pool.items[child];
+        s->brain.on_birth(&s->brain, born->id, &born->genome);
     }
 }
 
@@ -216,7 +221,8 @@ static uint64_t fnv1a(uint64_t hash, const void *data, size_t len)
 
 /* One living creature, field by field: Creature has 9 bytes of padding
  * (3 after alive, 3 after heading, 1 inside Action between kind and
- * hold, 2 at the end), so its raw bytes are not safe to hash. */
+ * hold, 2 after hold_left, so the genome's floats start at a multiple of
+ * 4), so its raw bytes are not safe to hash. */
 static uint64_t hash_creature(uint64_t hash, const Creature *c)
 {
     hash = fnv1a(hash, &c->id, sizeof(c->id));
@@ -229,6 +235,10 @@ static uint64_t hash_creature(uint64_t hash, const Creature *c)
     hash = fnv1a(hash, &c->current.kind, sizeof(c->current.kind));
     hash = fnv1a(hash, &c->current.hold, sizeof(c->current.hold));
     hash = fnv1a(hash, &c->hold_left, sizeof(c->hold_left));
+    /* sizeof of an array that is a struct field is the whole array,
+     * GENOME_LEN * sizeof(float): it has not decayed to a pointer here,
+     * as an array passed to a function would. */
+    hash = fnv1a(hash, c->genome.g, sizeof(c->genome.g));
     return hash;
 }
 

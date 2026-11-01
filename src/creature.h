@@ -10,6 +10,7 @@
 #include <stdint.h>
 
 #include "brain.h"
+#include "genome.h"
 #include "rng.h"
 #include "settings.h"
 #include "world.h"
@@ -30,6 +31,10 @@ typedef struct {
     uint32_t age;       /* ticks lived */
     Action current;     /* what the brain last said */
     uint16_t hold_left; /* ticks of current still to do */
+    /* Stored inside the creature, not behind a pointer: GENOME_LEN floats
+     * (668 bytes) in every slot, allocated with the pool and never freed
+     * on its own. */
+    Genome genome;
 } Creature;
 
 /*
@@ -54,9 +59,10 @@ bool pool_init(Pool *p, int capacity);
 void pool_clear(Pool *p);
 /* Frees the slots and empties *p; safe to call twice. */
 void pool_free(Pool *p);
-/* Places a new creature at (x, y), heading north, with energy 0 and age
- * 0. Returns its slot index, or -1 when the pool is full or the cell is
- * not free soil; nothing changes then. The caller sets the energy. */
+/* Places a new creature at (x, y), heading north, with energy 0, age 0
+ * and an all-zero genome. Returns its slot index, or -1 when the pool is
+ * full or the cell is not free soil; nothing changes then. The caller
+ * sets the energy and the genome. */
 int pool_spawn(Pool *p, World *w, int x, int y);
 /* Removes the creature in slot idx from the world and frees the slot.
  * Does nothing to a slot that is already free. */
@@ -67,11 +73,13 @@ void pool_kill(Pool *p, World *w, int idx, const Settings *s);
 void creature_sense(const World *w, const Pool *p, int idx,
                     const Settings *s, Senses *out);
 /* Carries out one tick of action a for creature idx. Returns the slot of
- * a child born by splitting, or -1 when none was. */
+ * a child born by splitting, or -1 when none was. A child inherits its
+ * parent's lineage and a mutated copy of its genome. */
 int creature_act(World *w, Pool *p, int idx, Action a, const Settings *s,
                  Rng *r);
 /* Charges one tick of upkeep and ages the creature by one tick. Returns
- * false when its energy is gone: it must then be killed. */
+ * false when its energy is gone or it has reached max_age: it must then
+ * be killed. */
 bool creature_upkeep(Creature *c, const Settings *s);
 
 #endif

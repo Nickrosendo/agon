@@ -3,6 +3,7 @@
 #include <stdio.h>  /* snprintf */
 #include <string.h> /* memcpy, memset, strlen */
 
+#include "genome.h"
 #include "term.h"
 
 /* The upper half block, U+2580, as its three UTF-8 bytes. The top half of
@@ -32,7 +33,11 @@ static const Colour SOIL_DRY = {132, 110, 78};
 static const Colour SOIL_RICH = {70, 56, 38};
 static const Colour PLANT = {58, 150, 62};
 static const Colour WITHERED = {196, 168, 84}; /* dry straw */
+/* The legend's creature colour. On the map each creature is coloured by
+ * the hue in its genome instead, light enough to stand out from the
+ * terrain. */
 static const Colour CREATURE = {250, 236, 210}; /* warm white */
+#define CREATURE_SATURATION 0.55f /* 0 white .. 1 full colour */
 static const Colour TEXT = {150, 155, 165};
 static const Colour TEXT_BACKGROUND = {14, 17, 23};
 
@@ -108,11 +113,45 @@ static int wither_shade(int wither, int ticks)
     return (wither * WITHER_SHADES + ticks - 1) / ticks;
 }
 
-static Colour cell_colour(const World *w, const Settings *set, int i)
+/*
+ * A colour from a hue (0..1 round the colour wheel: 0 red, 1/3 green, 2/3
+ * blue, back to red at 1), at full brightness and the given saturation.
+ * The wheel has six sectors; in each, one channel is full, one is at its
+ * lowest and the third climbs or falls between them.
+ */
+static Colour hue_colour(float hue, float saturation)
 {
-    /* A creature hides whatever is under it. */
+    float h6 = hue * 6.0f;
+    int sector = (int)h6; /* drops the fraction: 0..5 for hue in 0..1 */
+    float f = h6 - (float)sector;
+    float lo = 1.0f - saturation;
+    float rise = lo + saturation * f;
+    float fall = 1.0f - saturation * f;
+    float r, g, b;
+    switch (sector) {
+    case 0: r = 1.0f; g = rise; b = lo; break;
+    case 1: r = fall; g = 1.0f; b = lo; break;
+    case 2: r = lo; g = 1.0f; b = rise; break;
+    case 3: r = lo; g = fall; b = 1.0f; break;
+    case 4: r = rise; g = lo; b = 1.0f; break;
+    default: r = 1.0f; g = lo; b = fall; break; /* 5, or hue exactly 1 */
+    }
+    /* Each channel is in 0..1, so * 255 + 0.5 stays inside the range a
+     * uint8_t can hold and the conversion is safe. */
+    Colour c = {(uint8_t)(r * 255.0f + 0.5f), (uint8_t)(g * 255.0f + 0.5f),
+                (uint8_t)(b * 255.0f + 0.5f)};
+    return c;
+}
+
+static Colour cell_colour(const Sim *s, int i)
+{
+    const World *w = &s->world;
+    const Settings *set = &s->set;
+    /* A creature hides whatever is under it. occupant holds its slot in
+     * the pool, so its genome is one lookup away. */
     if (w->occupant[i] >= 0) {
-        return CREATURE;
+        const Creature *c = &s->pool.items[w->occupant[i]];
+        return hue_colour(c->genome.g[GENE_HUE], CREATURE_SATURATION);
     }
     if (w->terrain[i] == TERRAIN_WATER) {
         return WATER;
@@ -164,9 +203,8 @@ void render_world(const Sim *s, int col0, int row0, int cols, int rows)
          * itself. */
         int cursor_in_place = 0;
         for (int x = 0; x < view_cols; x++) {
-            Colour top = cell_colour(w, &s->set, world_idx(w, x, 2 * row));
-            Colour bottom =
-                cell_colour(w, &s->set, world_idx(w, x, 2 * row + 1));
+            Colour top = cell_colour(s, world_idx(w, x, 2 * row));
+            Colour bottom = cell_colour(s, world_idx(w, x, 2 * row + 1));
             uint64_t packed = pack(top, bottom);
             int remembered = row < MEMORY_ROWS && x < MEMORY_COLS;
             if (remembered && last_drawn[row][x] == packed) {

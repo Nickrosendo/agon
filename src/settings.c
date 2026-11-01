@@ -27,14 +27,19 @@ Settings settings_default(void)
         .min_creatures = 10,
         /* A char array inside a struct can be initialised from a string
          * literal: the characters are copied in and the rest is zero. */
-        .brain_name = "random",
+        .brain_name = "net",
         .energy_start = 20.0f,
-        .upkeep_base = 0.15f,
+        .upkeep_base = 0.3f,
         .move_cost = 0.3f,
         .bite_veg_energy = 5.0f,
         .split_threshold = 30.0f,
         .split_share = 0.5f,
         .sense_age_half = 200.0f,
+        .max_age = 1500,
+        .mutation_rate = 0.05f,
+        .mutation_spread = 0.05f,
+        .weight_limit = 4.0f,
+        .weight_start_spread = 1.0f,
     };
     return s;
 }

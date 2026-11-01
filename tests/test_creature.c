@@ -171,6 +171,7 @@ static void test_split(void)
     int i = pool_spawn(&p, &w, 3, 3);
     float before = s.split_threshold + 10.0f;
     p.items[i].energy = before;
+    genome_random(&p.items[i].genome, &r, &s);
     int child = creature_act(&w, &p, i, (Action){ACT_SPLIT, 1}, &s, &r);
     CHECK(child >= 0 && child != i);
     CHECK(p.count == 2);
@@ -179,6 +180,11 @@ static void test_split(void)
     float total = p.items[i].energy + p.items[child].energy;
     CHECK(fabsf(total - before) < 1e-4f);
     CHECK(p.items[child].lineage == p.items[i].lineage);
+    /* The child's genome is a close but not exact copy. */
+    const Genome *pg = &p.items[i].genome;
+    const Genome *cg = &p.items[child].genome;
+    CHECK(genome_kinship(pg, cg) > 0.9f);
+    CHECK(genome_kinship(pg, cg) < 1.0f);
     /* The child is on one of the eight neighbouring cells. */
     int dx = p.items[child].x - 3;
     int dy = p.items[child].y - 3;
@@ -276,6 +282,20 @@ static void test_starved_creature_dies(void)
     sim_free(&sim);
 }
 
+static void test_old_age(void)
+{
+    Settings s = settings_default();
+    s.max_age = 100;
+    Creature c = {.alive = true, .energy = 1000.0f, .age = 98};
+    CHECK(creature_upkeep(&c, &s));  /* turns 99 */
+    CHECK(!creature_upkeep(&c, &s)); /* turns 100: dies, energy or not */
+    CHECK(c.energy > 0.0f);
+
+    s.max_age = 0; /* no limit */
+    c.age = 1000000;
+    CHECK(creature_upkeep(&c, &s));
+}
+
 static void test_hold_then_rest(void)
 {
     Sim sim;
@@ -329,6 +349,7 @@ static void test_full_pool_runs(void)
      * full, every birth must be refused without harm. The checkers in the
      * test build report any out-of-bounds access. */
     Settings set = settings_default();
+    snprintf(set.brain_name, sizeof(set.brain_name), "random");
     set.pool_capacity = 8;
     set.start_creatures = 8;
     set.min_creatures = 8;
@@ -368,6 +389,7 @@ int main(void)
     test_split_needs_room();
     test_sense();
     test_starved_creature_dies();
+    test_old_age();
     test_hold_then_rest();
     test_floor_restocks();
     test_full_pool_runs();

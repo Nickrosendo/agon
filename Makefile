@@ -25,6 +25,9 @@ LIB_OBJ = $(filter-out $(OUT)/main.o, $(OBJ))
 
 TEST_SRC = $(wildcard tests/test_*.c)
 TEST_BIN = $(TEST_SRC:tests/%.c=$(OUT)/tests/%)
+# Tests too slow for every run: built the same way, run by test-slow.
+SLOW_SRC = $(wildcard tests/slow_*.c)
+SLOW_BIN = $(SLOW_SRC:tests/%.c=$(OUT)/tests/%)
 # Code only the tests use, linked into every test program: the scripted
 # brain. The program itself never contains it.
 TEST_SUPPORT_OBJ = $(OUT)/tests/brain_script.o
@@ -52,7 +55,8 @@ $(OUT)/tests/%: tests/%.c $(LIB_OBJ) $(TEST_SUPPORT_OBJ) | $(OUT)/tests
 	$(CC) $(CFLAGS) -Isrc -MMD -MP $< $(LIB_OBJ) $(TEST_SUPPORT_OBJ) \
 		-o $@ $(LDLIBS)
 
--include $(OBJ:.o=.d) $(TEST_BIN:=.d) $(TEST_SUPPORT_OBJ:.o=.d)
+-include $(OBJ:.o=.d) $(TEST_BIN:=.d) $(SLOW_BIN:=.d) \
+	$(TEST_SUPPORT_OBJ:.o=.d)
 
 $(OUT) $(OUT)/tests:
 	mkdir -p $@
@@ -66,7 +70,15 @@ run-tests: $(TEST_BIN)
 	for t in $(TEST_BIN); do ./$$t || failed=1; done; \
 	exit $$failed
 
+test-slow:
+	$(MAKE) MODE=test run-slow-tests
+
+run-slow-tests: $(SLOW_BIN)
+	@failed=0; \
+	for t in $(SLOW_BIN); do ./$$t || failed=1; done; \
+	exit $$failed
+
 clean:
 	rm -rf build
 
-.PHONY: all release test run-tests clean
+.PHONY: all release test run-tests test-slow run-slow-tests clean

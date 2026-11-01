@@ -194,6 +194,9 @@ static int act_split(World *w, Pool *p, int idx, const Settings *s, Rng *r)
         parent->energy -= share;
         child->lineage = parent->lineage;
         child->heading = (uint8_t)rng_below(r, HEADING_COUNT);
+        /* Pointers to the two genomes, not copies: the function writes
+         * the child's in place, reading the parent's. */
+        genome_copy_mutated(&child->genome, &parent->genome, r, s);
         return child_idx;
     }
     return -1;
@@ -229,6 +232,12 @@ bool creature_upkeep(Creature *c, const Settings *s)
     c->energy -= s->upkeep_base;
     if (c->age < UINT32_MAX) {
         c->age++;
+    }
+    /* max_age is an int and age a uint32_t: comparing them directly would
+     * convert the int to unsigned (a negative one to a huge number), which
+     * -Wextra warns about. Checking > 0 first makes the cast safe. */
+    if (s->max_age > 0 && c->age >= (uint32_t)s->max_age) {
+        return false;
     }
     return c->energy > 0.0f;
 }
