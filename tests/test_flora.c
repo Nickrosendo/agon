@@ -29,6 +29,9 @@ static Settings rule(int birth_lo, int birth_hi, int crowd_max)
     /* Out of reach: these tests are about the neighbour rule alone. */
     s.veg_capacity = 1000.0f;
     s.veg_wither_chance = 0.0f; /* plants never wither */
+    /* Sprouting and growth always happen when the rule allows them. */
+    s.veg_sprout_rate = 1.0f;
+    s.veg_grow_chance = 1.0f;
     return s;
 }
 
@@ -327,6 +330,61 @@ static void test_sprout_starts_young(void)
     world_free(&w);
 }
 
+static void test_growth_follows_its_chance(void)
+{
+    /* 4,096 lone-ish plants at density 1 with nothing to stop them
+     * growing (crowd limit 8, capacity out of reach): after one step the
+     * share that grew should be close to veg_grow_chance. */
+    World w;
+    make_world(&w, 64, 64);
+    Settings s = rule(9, 9, 8);
+    s.veg_grow_chance = 0.25f;
+    Rng r;
+    rng_seed(&r, 13);
+    for (int i = 0; i < w.w * w.h; i++) {
+        w.veg[i] = 1;
+    }
+    flora_step(&w, &r, &s);
+    int grown = 0;
+    for (int i = 0; i < w.w * w.h; i++) {
+        grown += w.veg[i] == 2;
+    }
+    double share = (double)grown / (w.w * w.h);
+    CHECK(share > 0.22 && share < 0.28);
+
+    /* A chance of 0: nothing ever thickens. */
+    s.veg_grow_chance = 0.0f;
+    for (int step = 0; step < 50; step++) {
+        flora_step(&w, &r, &s);
+    }
+    int above_two = 0;
+    for (int i = 0; i < w.w * w.h; i++) {
+        above_two += w.veg[i] > 2;
+    }
+    CHECK(above_two == 0);
+    world_free(&w);
+}
+
+static void test_sprouting_follows_its_rate(void)
+{
+    /* Birth range 0..8 puts every empty cell in range, fertility 1 and
+     * rate 0.25: about a quarter of an empty world sprouts in one step. */
+    World w;
+    make_world(&w, 64, 64);
+    Settings s = rule(0, 8, 8);
+    s.veg_sprout_rate = 0.25f;
+    Rng r;
+    rng_seed(&r, 14);
+    flora_step(&w, &r, &s);
+    int sprouted = 0;
+    for (int i = 0; i < w.w * w.h; i++) {
+        sprouted += w.veg[i] > 0;
+    }
+    double share = (double)sprouted / (w.w * w.h);
+    CHECK(share > 0.22 && share < 0.28);
+    world_free(&w);
+}
+
 int main(void)
 {
     test_line_of_three();
@@ -341,5 +399,7 @@ int main(void)
     test_plant_withers_then_disappears();
     test_no_wither_chance_lives_on();
     test_sprout_starts_young();
+    test_growth_follows_its_chance();
+    test_sprouting_follows_its_rate();
     TEST_SUMMARY();
 }

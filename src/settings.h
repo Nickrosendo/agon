@@ -16,9 +16,10 @@ typedef struct {
 
     /* Vegetation. n is how many of a soil cell's eight neighbours carry
      * plants. Empty with veg_birth_lo <= n <= veg_birth_hi: sprouts with
-     * probability fertility. Empty otherwise: sprouts with probability
-     * veg_seed_chance * fertility. Planted: grows by 1 while
-     * n <= veg_crowd_max, shrinks by 1 above it.
+     * probability fertility * veg_sprout_rate. Empty otherwise: sprouts
+     * with probability veg_seed_chance * fertility. Planted: while
+     * n <= veg_crowd_max, grows by 1 with probability veg_grow_chance;
+     * above it, shrinks by 1.
      *
      * Local carrying capacity: m is the total density of every cell within
      * veg_reach steps (the cell itself left out), and the cell's capacity
@@ -34,6 +35,8 @@ typedef struct {
     int veg_birth_lo;
     int veg_birth_hi;
     int veg_crowd_max;
+    float veg_sprout_rate;  /* scales the chance to sprout beside plants */
+    float veg_grow_chance;  /* chance per tick that a plant thickens */
     float veg_seed_chance;
     float veg_start_chance; /* chance a soil cell starts planted */
     int veg_reach;          /* radius of the neighbourhood for m */

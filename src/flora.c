@@ -52,8 +52,10 @@ static int plant_mass(const World *w, int x, int y, int reach)
     return mass - w->veg[y * w->w + x];
 }
 
+/* draw decides sprouting, grow_draw decides growth; both are in 0..1. */
 static uint8_t next_density(uint8_t density, int n, int mass,
-                            float fertility, float draw, const Settings *s)
+                            float fertility, float draw, float grow_draw,
+                            const Settings *s)
 {
     /* The int mass is converted to float for the comparison; it is at most
      * a few hundred, so the conversion is exact. */
@@ -64,7 +66,7 @@ static uint8_t next_density(uint8_t density, int n, int mass,
             return 0;
         }
         float chance = (n >= s->veg_birth_lo && n <= s->veg_birth_hi)
-                           ? fertility
+                           ? fertility * s->veg_sprout_rate
                            : s->veg_seed_chance * fertility;
         /* draw is in 0..1 (never 1), so a chance of 1 always sprouts and
          * a chance of 0 never does. */
@@ -77,6 +79,9 @@ static uint8_t next_density(uint8_t density, int n, int mass,
         return density; /* exactly at capacity: hold */
     }
     if (n <= s->veg_crowd_max) {
+        if (grow_draw >= s->veg_grow_chance) {
+            return density; /* room to grow, but not this tick */
+        }
         /* density is promoted to int for the + 1; the cast back to
          * uint8_t is safe because the result is at most VEG_MAX. */
         return density < VEG_MAX ? (uint8_t)(density + 1) : VEG_MAX;
@@ -128,14 +133,18 @@ void flora_step(World *w, Rng *r, const Settings *s)
                 w->veg_next[i] = 0;
                 continue;
             }
-            /* Exactly one draw for every soil cell, whichever branch uses
-             * it: empty cells use it to sprout, healthy mature plants to
-             * start withering. The draws then happen in the same order on
-             * every run, which is what keeps two runs with the same seed
-             * identical. It is a separate statement on purpose: inside a
-             * larger expression, C does not say in which order the parts
-             * are evaluated. */
+            /* Exactly two draws for every soil cell, whichever branch
+             * uses them: the first to sprout (empty cells) or to start
+             * withering (healthy mature plants), the second to grow. The
+             * draws then happen in the same order on every run, which is
+             * what keeps two runs with the same seed identical. They are
+             * separate statements on purpose: inside a larger
+             * expression, C does not say in which order the parts are
+             * evaluated. One draw used for two decisions would tie them
+             * together: a plant that just missed withering would also
+             * be more likely to grow. */
             float draw = rng_unit(r);
+            float grow_draw = rng_unit(r);
 
             if (w->veg[i] > 0 && w->veg_wither[i] > 0) {
                 w->veg_next[i] = wither_on(w, i, limit);
@@ -157,8 +166,8 @@ void flora_step(World *w, Rng *r, const Settings *s)
 
             int n = planted_neighbours(w, x, y);
             int mass = plant_mass(w, x, y, reach);
-            uint8_t next =
-                next_density(w->veg[i], n, mass, w->fertility[i], draw, s);
+            uint8_t next = next_density(w->veg[i], n, mass, w->fertility[i],
+                                        draw, grow_draw, s);
             if (w->veg[i] == 0 || next == 0) {
                 /* Bare now, or just sprouted: a fresh start. */
                 w->veg_age[i] = 0;
