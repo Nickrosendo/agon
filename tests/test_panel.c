@@ -38,38 +38,84 @@ static void test_format_count_small_buffer(void)
     CHECK(one[0] == '\0');
 }
 
-static void test_counts(void)
-{
-    Settings set = settings_default();
-    snprintf(set.brain_name, sizeof(set.brain_name), "script");
-    set.start_creatures = 0;
-    set.min_creatures = 0;
-    set.veg_start_chance = 0.0f;
-    Sim sim;
-    CHECK(sim_init(&sim, &set, 7, 16, 16));
-    for (int i = 0; i < 16 * 16; i++) {
-        sim.world.terrain[i] = TERRAIN_SOIL;
-    }
-    sim.world.veg[3] = 1;
-    sim.world.veg[4] = VEG_MAX;
-    sim.world.veg[5] = 2;
-    sim.world.veg_wither[5] = 4;
-    sim.world.veg_wither[6] = 9; /* bare: not counted as withering */
-    CHECK(pool_spawn(&sim.pool, &sim.world, 8, 8) >= 0);
-    int hunter = pool_spawn(&sim.pool, &sim.world, 9, 8);
-    CHECK(hunter >= 0);
-    if (hunter >= 0) {
-        sim.pool.items[hunter].level = PANEL_MEAT_LEVEL; /* counts as meat */
-    }
-    sim.world.carrion[20] = 3.0f;
+/* The eight block heights as UTF-8, lowest first: U+2581 to U+2588, each
+ * three bytes, of which only the last differs. */
+static const char *const BLOCK[8] = {
+    "\xE2\x96\x81", "\xE2\x96\x82", "\xE2\x96\x83", "\xE2\x96\x84",
+    "\xE2\x96\x85", "\xE2\x96\x86", "\xE2\x96\x87", "\xE2\x96\x88",
+};
 
-    PanelCounts c = panel_count(&sim);
-    CHECK(c.creatures == 2);
-    CHECK(c.plants == 3);
-    CHECK(c.withering == 1);
-    CHECK(c.plant_eaters == 1 && c.meat_eaters == 1);
-    CHECK(c.carrion == 1);
-    sim_free(&sim);
+static void test_sparkline_empty(void)
+{
+    History h = {0};
+    char out[128];
+    panel_sparkline(out, sizeof(out), &h, 16);
+    CHECK(strcmp(out, "                ") == 0); /* 16 spaces */
+}
+
+static void test_sparkline_newest_on_the_right(void)
+{
+    /* 16 columns over 64 samples: 4 samples per column. Four samples
+     * fill only the rightmost column; the tallest block, since it is the
+     * largest value shown. */
+    History h = {0};
+    for (int i = 0; i < 4; i++) {
+        history_add(&h, 8);
+    }
+    char out[128];
+    panel_sparkline(out, sizeof(out), &h, 16);
+    char expected[128];
+    snprintf(expected, sizeof(expected), "%15s%s", "", BLOCK[7]);
+    CHECK(strcmp(out, expected) == 0);
+}
+
+static void test_sparkline_ramp(void)
+{
+    /* Values 0 .. 63: column c averages 4c .. 4c + 3, which is 4c + 1 in
+     * whole numbers. The lowest column (1 of 61) gets the lowest block,
+     * the highest the tallest. 16 characters of 3 bytes each. */
+    History h = {0};
+    for (int i = 0; i < HISTORY; i++) {
+        history_add(&h, i);
+    }
+    char out[128];
+    panel_sparkline(out, sizeof(out), &h, 16);
+    CHECK(strlen(out) == 16 * 3);
+    CHECK(strncmp(out, BLOCK[0], 3) == 0);
+    CHECK(strcmp(out + 15 * 3, BLOCK[7]) == 0);
+}
+
+static void test_sparkline_zero_is_blank(void)
+{
+    /* A column whose samples are all 0 (nobody of that kind alive) is a
+     * space, not the lowest block. */
+    History h = {0};
+    for (int i = 0; i < 4; i++) {
+        history_add(&h, 5);
+    }
+    for (int i = 0; i < 4; i++) {
+        history_add(&h, 0);
+    }
+    char out[128];
+    panel_sparkline(out, sizeof(out), &h, 16);
+    char expected[128];
+    snprintf(expected, sizeof(expected), "%14s%s ", "", BLOCK[7]);
+    CHECK(strcmp(out, expected) == 0);
+}
+
+static void test_sparkline_small_buffer(void)
+{
+    /* Room for two whole blocks and the '\0', not for half a third. */
+    History h = {0};
+    for (int i = 0; i < HISTORY; i++) {
+        history_add(&h, 9);
+    }
+    char out[8];
+    panel_sparkline(out, sizeof(out), &h, 16);
+    CHECK(strlen(out) == 6);
+    char tiny[1];
+    panel_sparkline(tiny, sizeof(tiny), &h, 16);
+    CHECK(tiny[0] == '\0');
 }
 
 /* A Sim with no creatures, no plants and soil everywhere, for placing
@@ -138,7 +184,11 @@ int main(void)
     CHECK(brain_register(&BRAIN_SCRIPT));
     test_format_count();
     test_format_count_small_buffer();
-    test_counts();
+    test_sparkline_empty();
+    test_sparkline_newest_on_the_right();
+    test_sparkline_ramp();
+    test_sparkline_zero_is_blank();
+    test_sparkline_small_buffer();
     test_colour_groups();
     test_band_names();
     TEST_SUMMARY();

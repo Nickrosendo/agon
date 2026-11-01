@@ -1,8 +1,7 @@
 /*
- * panel: the column on the right of the world. For now a legend of the
- * map's colours (the creatures' two most common colours included) and
- * the current population; lesson 8 adds history
- * graphs, the food chain and inspect mode.
+ * panel: the column on the right of the world. The population from the
+ * latest statistics sample, with history graphs, the food chain, a
+ * legend of the map's colours and the commonest family colours.
  */
 #ifndef AGON_PANEL_H
 #define AGON_PANEL_H
@@ -13,23 +12,6 @@
 
 /* How many screen columns the panel takes. */
 #define PANEL_COLS 20
-
-typedef struct {
-    int creatures;
-    int plants;    /* cells with any vegetation */
-    int withering; /* of those, how many are withering */
-    int plant_eaters; /* creatures below PANEL_MEAT_LEVEL */
-    int meat_eaters;  /* creatures at or above it */
-    int carrion;      /* cells with carrion on them */
-} PanelCounts;
-
-/* The food-chain level from which the panel counts a creature as a
- * meat-eater: half way from a pure plant-eater (2) to a pure eater of
- * plant-eaters (3), so more than half its food was meat. */
-#define PANEL_MEAT_LEVEL 2.5f
-
-/* Counts what the panel shows, straight from the world and the pool. */
-PanelCounts panel_count(const Sim *s);
 
 /* How many bands the hue wheel is cut into when counting colours. */
 #define PANEL_HUE_BANDS 12
@@ -60,6 +42,20 @@ const char *panel_band_name(int band);
  * of size bytes. Always ends out with '\0', cutting the text short if it
  * does not fit; does nothing when size is 0. */
 void panel_format_count(char *out, size_t size, long n);
+
+/* How many screen columns a history graph takes. Each column shows the
+ * average of HISTORY / PANEL_GRAPH_COLS samples. */
+#define PANEL_GRAPH_COLS 16
+
+/* Writes a graph of the history h, cols characters wide, into out (a
+ * buffer of size bytes) as UTF-8: the newest samples on the right, each
+ * column the average of HISTORY / cols samples, drawn as one of eight
+ * block heights scaled to the largest column. A column with no samples
+ * yet, or whose average is 0, is a space. Each block takes 3 bytes, so
+ * out needs 3 * cols + 1 bytes; with less, it holds as many whole
+ * characters as fit. Always ends out with '\0' (unless size is 0). cols
+ * must divide HISTORY. */
+void panel_sparkline(char *out, size_t size, const History *h, int cols);
 
 /* Draws the panel in the screen area starting at (col, row0), PANEL_COLS
  * wide and rows tall. Lines that do not fit are left out. */

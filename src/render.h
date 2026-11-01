@@ -21,6 +21,11 @@ void render_invalidate(void);
  * max_cols characters. */
 void render_text(int col, int row, const char *text, int max_cols);
 
+/* UTF-8 text at (col, row) in the text colours, written as it is: no
+ * cutting or padding, since its width on screen is not its length in
+ * bytes. The caller makes sure it fits. */
+void render_utf8(int col, int row, const char *text);
+
 /* The colours a legend can show, as used on the map. */
 enum {
     RENDER_SWATCH_WATER,

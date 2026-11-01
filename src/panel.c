@@ -11,36 +11,6 @@
  * wide. */
 #define SWATCH_INDENT 3
 
-PanelCounts panel_count(const Sim *s)
-{
-    const World *w = &s->world;
-    PanelCounts c = {0};
-    c.creatures = s->pool.count;
-    for (int i = 0; i < s->pool.capacity; i++) {
-        const Creature *cr = &s->pool.items[i];
-        if (!cr->alive) {
-            continue;
-        }
-        if (cr->level >= PANEL_MEAT_LEVEL) {
-            c.meat_eaters++;
-        } else {
-            c.plant_eaters++;
-        }
-    }
-    for (int i = 0; i < w->w * w->h; i++) {
-        if (w->carrion[i] > 0.0f) {
-            c.carrion++;
-        }
-        if (w->veg[i] > 0) {
-            c.plants++;
-            if (w->veg_wither[i] > 0) {
-                c.withering++;
-            }
-        }
-    }
-    return c;
-}
-
 /* The band a hue falls in. A hue is below 1, but clamping costs nothing
  * and keeps a stray 1.0 from indexing one past the end of the arrays. */
 static int hue_band(float hue)
@@ -135,6 +105,77 @@ void panel_format_count(char *out, size_t size, long n)
     out[o] = '\0';
 }
 
+/* The eight block heights, U+2581 (lowest) to U+2588 (full). In UTF-8
+ * each is the three bytes E2 96 xx, with xx running from 81 to 88. */
+#define BLOCK_BYTES 3
+static const char BLOCK_LEAD[2] = {'\xE2', '\x96'};
+#define BLOCK_LOWEST 0x81
+
+/* The average of the samples column c of cols covers, newest column on
+ * the right; -1 when none of them exists yet. */
+static int column_average(const History *h, int c, int cols)
+{
+    int per = HISTORY / cols;
+    int end = h->len - (cols - 1 - c) * per; /* one past the last */
+    int start = end - per;
+    if (start < 0) {
+        start = 0;
+    }
+    if (end <= 0) {
+        return -1;
+    }
+    long sum = 0;
+    for (int k = start; k < end; k++) {
+        sum += history_at(h, k);
+    }
+    return (int)(sum / (end - start));
+}
+
+void panel_sparkline(char *out, size_t size, const History *h, int cols)
+{
+    if (size == 0) {
+        return;
+    }
+    out[0] = '\0';
+    /* A graph has at most one column per sample, so HISTORY entries are
+     * always enough. cols is checked first: avg[cols] past the end would
+     * not be caught by the compiler. */
+    if (cols < 1 || cols > HISTORY) {
+        return;
+    }
+    int avg[HISTORY];
+    int max = 0;
+    for (int c = 0; c < cols; c++) {
+        avg[c] = column_average(h, c, cols);
+        if (avg[c] > max) {
+            max = avg[c];
+        }
+    }
+    size_t o = 0;
+    for (int c = 0; c < cols; c++) {
+        if (avg[c] <= 0) {
+            if (o + 1 >= size) {
+                break;
+            }
+            out[o] = ' ';
+            o++;
+            continue;
+        }
+        /* 0..7, rounded: the largest column (avg == max) gets 7. avg > 0
+         * here, so max > 0 and the division is safe. */
+        int height = (avg[c] * 7 + max / 2) / max;
+        if (o + BLOCK_BYTES >= size) {
+            break; /* never write part of a character */
+        }
+        out[o] = BLOCK_LEAD[0];
+        out[o + 1] = BLOCK_LEAD[1];
+        /* char may be signed: build the byte as an int, then convert. */
+        out[o + 2] = (char)(BLOCK_LOWEST + height);
+        o += BLOCK_BYTES;
+    }
+    out[o] = '\0';
+}
+
 /* What a line's colour cell shows: a RENDER_SWATCH_ value, or one of
  * these. */
 #define HUE_SWATCH -2   /* the creature colour given by the line's hue */
@@ -142,13 +183,15 @@ void panel_format_count(char *out, size_t size, long n)
 
 /* One line of the panel: two colour cells, a label and a count (-1 for
  * none). A line whose first swatch is NO_SWATCH is a heading or blank
- * line: just the label, from the first column. */
+ * line: just the label, from the first column. A line with a graph shows
+ * only that history's graph. */
 typedef struct {
     int swatch, swatch2;
     float hue, hue2; /* for HUE_SWATCH cells */
     float meat;      /* for HUE_SWATCH cells: 0 plant-eater .. 1 meat */
     const char *label;
     long count;
+    const History *graph; /* NULL for an ordinary line */
 } PanelLine;
 
 static void draw_cell(int swatch, float hue, float meat, int col, int row)
@@ -168,6 +211,17 @@ static void draw_line(const PanelLine *line, int col, int row)
      * anyway, and gcc's -Wformat-truncation checks that snprintf can
      * never be forced to cut a count short. */
     char text[32];
+    if (line->graph != NULL) {
+        /* 3 bytes per block, so 16 columns take up to 48 bytes: the
+         * byte length of UTF-8 text is not its width on screen. */
+        char graph[3 * PANEL_GRAPH_COLS + 1];
+        panel_sparkline(graph, sizeof(graph), line->graph, PANEL_GRAPH_COLS);
+        render_text(col, row, "", SWATCH_INDENT);
+        render_utf8(col + SWATCH_INDENT, row, graph);
+        render_text(col + SWATCH_INDENT + PANEL_GRAPH_COLS, row, "",
+                    PANEL_COLS - SWATCH_INDENT - PANEL_GRAPH_COLS);
+        return;
+    }
     if (line->swatch == NO_SWATCH) {
         render_text(col, row, line->label, PANEL_COLS);
         return;
@@ -193,6 +247,21 @@ static void draw_line(const PanelLine *line, int col, int row)
 static PanelLine heading(const char *label)
 {
     return (PanelLine){.swatch = NO_SWATCH, .label = label, .count = -1};
+}
+
+/* A history graph. */
+static PanelLine graph_line(const History *h)
+{
+    return (PanelLine){.swatch = NO_SWATCH, .label = "", .count = -1,
+                       .graph = h};
+}
+
+/* A label and a count with no colour cells. */
+static PanelLine count_line(const char *label, long count)
+{
+    return (PanelLine){
+        .swatch = BLANK_SWATCH, .swatch2 = BLANK_SWATCH, .label = label,
+        .count = count};
 }
 
 /* A line with two fixed colours. */
@@ -237,9 +306,9 @@ static PanelLine group_line(const ColourGroup *g)
                                 g->count);
 }
 
-/* Room for every line panel_draw can make: 12 fixed lines, 2 more before
+/* Room for every line panel_draw can make: 18 fixed lines, 2 more before
  * the groups and one per group. */
-#define PANEL_MAX_LINES (14 + PANEL_GROUP_LINES)
+#define PANEL_MAX_LINES (20 + PANEL_GROUP_LINES)
 
 /* Appends line to lines, which holds *n lines so far, and counts it. A
  * line that does not fit is dropped: C would let lines[*n] be written
@@ -254,7 +323,7 @@ static void add_line(PanelLine *lines, int *n, PanelLine line)
 
 void panel_draw(const Sim *s, int col, int row0, int rows)
 {
-    PanelCounts c = panel_count(s);
+    const Stats *st = &s->stats;
     ColourGroup groups[PANEL_GROUP_LINES];
     int n_groups = panel_colour_groups(s, groups, PANEL_GROUP_LINES);
 
@@ -264,23 +333,33 @@ void panel_draw(const Sim *s, int col, int row0, int rows)
     PanelLine lines[PANEL_MAX_LINES];
     int n = 0;
     add_line(lines, &n, heading(" population"));
-    add_line(lines, &n, creatures_line(groups, n_groups, c.creatures));
+    add_line(lines, &n, creatures_line(groups, n_groups, st->creatures));
     /* A plant-eater keeps its family's pale colour (shown here in the
      * largest group's); a meat-eater turns deep red. */
     float family_hue = n_groups > 0 ? groups[0].hue : 0.33f;
-    add_line(lines, &n, creature_colour_line(family_hue, 0.0f, "eat plants",
-                                             c.plant_eaters));
     add_line(lines, &n,
-             creature_colour_line(0.0f, 1.0f, "eat meat", c.meat_eaters));
+             creature_colour_line(family_hue, 0.0f, "eat plants",
+                                  st->by_level[BAND_PLANT]));
+    add_line(lines, &n, graph_line(&st->hist_plant_eaters));
+    add_line(lines, &n,
+             creature_colour_line(0.0f, 1.0f, "eat meat",
+                                  st->by_level[BAND_MEAT] +
+                                      st->by_level[BAND_TOP]));
+    add_line(lines, &n, graph_line(&st->hist_meat_eaters));
+    add_line(lines, &n, count_line("top hunter", st->by_level[BAND_TOP]));
     add_line(lines, &n,
              swatch_line(RENDER_SWATCH_PLANT, RENDER_SWATCH_PLANT, "plants",
-                         c.plants));
+                         st->planted));
+    add_line(lines, &n, graph_line(&st->hist_planted));
     add_line(lines, &n,
              swatch_line(RENDER_SWATCH_WITHERED, RENDER_SWATCH_WITHERED,
-                         "withering", c.withering));
+                         "withering", st->withering));
     add_line(lines, &n,
              swatch_line(RENDER_SWATCH_CARRION, RENDER_SWATCH_CARRION,
-                         "carrion", c.carrion));
+                         "carrion", st->carrion_cells));
+    add_line(lines, &n, count_line("families", st->lineages));
+    /* uint32_t into long: every uint32_t value fits in a 64-bit long. */
+    add_line(lines, &n, count_line("oldest", (long)st->oldest_age));
     add_line(lines, &n, heading(""));
     add_line(lines, &n, heading(" map"));
     add_line(lines, &n,

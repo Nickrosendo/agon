@@ -292,6 +292,14 @@ void render_text(int col, int row, const char *text, int max_cols)
     term_put(line);
 }
 
+void render_utf8(int col, int row, const char *text)
+{
+    term_move(col, row);
+    term_fg(TEXT.r, TEXT.g, TEXT.b);
+    term_bg(TEXT_BACKGROUND.r, TEXT_BACKGROUND.g, TEXT_BACKGROUND.b);
+    term_put(text);
+}
+
 void render_swatch(int col, int row, int swatch)
 {
     if (swatch < 0 || swatch >= RENDER_SWATCH_COUNT) {
