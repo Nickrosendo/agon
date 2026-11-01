@@ -88,28 +88,42 @@ static void spawn_with_hue(Sim *sim, int x, float hue)
     }
 }
 
-static void test_common_hues(void)
+static void test_colour_groups(void)
 {
     Sim sim;
     make_empty_sim(&sim);
-    float hues[2] = {-1.0f, -1.0f};
-    CHECK(panel_common_hues(&sim, hues, 2) == 0); /* nobody alive */
-    CHECK(hues[0] == -1.0f);                      /* left alone */
+    ColourGroup groups[PANEL_HUE_BANDS];
+    groups[0].count = -1;
+    CHECK(panel_colour_groups(&sim, groups, 2) == 0); /* nobody alive */
+    CHECK(groups[0].count == -1);                     /* left alone */
 
-    /* Three in one band (around 0.5), one in another (around 0.1). */
+    /* Three in the cyan band (0.50 to 0.583), one in orange. */
     spawn_with_hue(&sim, 1, 0.50f);
     spawn_with_hue(&sim, 3, 0.52f);
     spawn_with_hue(&sim, 5, 0.54f);
     spawn_with_hue(&sim, 7, 0.10f);
-    CHECK(panel_common_hues(&sim, hues, 2) == 2);
-    /* Each band reports the average hue of its members. */
-    CHECK(fabsf(hues[0] - 0.52f) < 1e-5f);
-    CHECK(fabsf(hues[1] - 0.10f) < 1e-5f);
+    CHECK(panel_colour_groups(&sim, groups, 2) == 2);
+    CHECK(groups[0].count == 3 && groups[1].count == 1);
+    CHECK(strcmp(panel_band_name(groups[0].band), "cyan") == 0);
+    CHECK(strcmp(panel_band_name(groups[1].band), "orange") == 0);
+    /* Each group reports the average hue of its members. */
+    CHECK(fabsf(groups[0].hue - 0.52f) < 1e-5f);
+    CHECK(fabsf(groups[1].hue - 0.10f) < 1e-5f);
 
-    /* Asking for more bands than are occupied returns only those. */
-    float many[PANEL_HUE_BANDS];
-    CHECK(panel_common_hues(&sim, many, PANEL_HUE_BANDS) == 2);
+    /* Asking for more groups than exist returns only those. */
+    CHECK(panel_colour_groups(&sim, groups, PANEL_HUE_BANDS) == 2);
+    /* Asking for one gives the largest. */
+    CHECK(panel_colour_groups(&sim, groups, 1) == 1 && groups[0].count == 3);
     sim_free(&sim);
+}
+
+static void test_band_names(void)
+{
+    CHECK(strcmp(panel_band_name(0), "red") == 0);
+    CHECK(strcmp(panel_band_name(9), "violet") == 0);
+    CHECK(strcmp(panel_band_name(PANEL_HUE_BANDS - 1), "pink") == 0);
+    CHECK(strcmp(panel_band_name(-1), "?") == 0);
+    CHECK(strcmp(panel_band_name(PANEL_HUE_BANDS), "?") == 0);
 }
 
 int main(void)
@@ -118,6 +132,7 @@ int main(void)
     test_format_count();
     test_format_count_small_buffer();
     test_counts();
-    test_common_hues();
+    test_colour_groups();
+    test_band_names();
     TEST_SUMMARY();
 }

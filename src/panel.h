@@ -26,14 +26,27 @@ PanelCounts panel_count(const Sim *s);
 /* How many bands the hue wheel is cut into when counting colours. */
 #define PANEL_HUE_BANDS 12
 
-/* Finds the n most common colours among living creatures: the hue wheel
- * is cut into PANEL_HUE_BANDS bands, and the bands holding the most
- * creatures win (on a tie, the band with the lower hue). Writes the
- * average hue of each winning band into hues[0], hues[1], ..., most
- * common first, and returns how many it wrote: fewer than n when fewer
- * bands are occupied, 0 (hues untouched) when nobody is alive. hues must
- * have room for n floats. */
-int panel_common_hues(const Sim *s, float *hues, int n);
+/* How many colour groups the panel lists, most common first. */
+#define PANEL_GROUP_LINES 6
+
+/* The creatures whose hue falls in one band of the colour wheel. */
+typedef struct {
+    int band;    /* 0 .. PANEL_HUE_BANDS - 1, red first */
+    float hue;   /* the average hue of its members */
+    int count;   /* how many are alive */
+} ColourGroup;
+
+/* Finds the n largest colour groups among living creatures: the hue
+ * wheel is cut into PANEL_HUE_BANDS bands, and the bands holding the most
+ * creatures win (on a tie, the band with the lower hue). Writes them into
+ * groups[0], groups[1], ..., largest first, and returns how many it
+ * wrote: fewer than n when fewer bands are occupied, 0 (groups untouched)
+ * when nobody is alive. groups must have room for n entries. */
+int panel_colour_groups(const Sim *s, ColourGroup *groups, int n);
+
+/* A short name for a band's colour ("red", "violet", ...), or "?" for a
+ * number outside 0 .. PANEL_HUE_BANDS - 1. */
+const char *panel_band_name(int band);
 
 /* Writes n with a comma every three digits ("12,345") into out, a buffer
  * of size bytes. Always ends out with '\0', cutting the text short if it

@@ -38,7 +38,22 @@ static int hue_band(float hue)
     return band >= PANEL_HUE_BANDS ? PANEL_HUE_BANDS - 1 : band;
 }
 
-int panel_common_hues(const Sim *s, float *hues, int n)
+/* One name per band, 30 degrees of the wheel each, red first. The
+ * colours on screen are pale (see render.c), so the names are rough. */
+static const char *const BAND_NAMES[PANEL_HUE_BANDS] = {
+    "red",  "orange", "yellow", "lime",   "green",   "mint",
+    "cyan", "azure",  "blue",   "violet", "magenta", "pink",
+};
+
+const char *panel_band_name(int band)
+{
+    if (band < 0 || band >= PANEL_HUE_BANDS) {
+        return "?"; /* BAND_NAMES[band] would read outside the array */
+    }
+    return BAND_NAMES[band];
+}
+
+int panel_colour_groups(const Sim *s, ColourGroup *groups, int n)
 {
     int count[PANEL_HUE_BANDS] = {0};
     float sum[PANEL_HUE_BANDS] = {0};
@@ -65,7 +80,11 @@ int panel_common_hues(const Sim *s, float *hues, int n)
         if (best < 0) {
             break; /* no occupied band left */
         }
-        hues[written] = sum[best] / (float)count[best];
+        groups[written] = (ColourGroup){
+            .band = best,
+            .hue = sum[best] / (float)count[best],
+            .count = count[best],
+        };
         count[best] = 0;
         written++;
     }
@@ -102,47 +121,33 @@ void panel_format_count(char *out, size_t size, long n)
     out[o] = '\0';
 }
 
-/* One line of the panel: a swatch (a RENDER_SWATCH_ value, or
- * NO_SWATCH), a label and a count (-1 for none). */
+/* What a line's colour cell shows: a RENDER_SWATCH_ value, or one of
+ * these. */
+#define HUE_SWATCH -2   /* the creature colour given by the line's hue */
+#define BLANK_SWATCH -3 /* an empty cell */
+
+/* One line of the panel: two colour cells, a label and a count (-1 for
+ * none). A line whose first swatch is NO_SWATCH is a heading or blank
+ * line: just the label, from the first column. */
 typedef struct {
-    int swatch, swatch2; /* swatch2: a second colour beside the first */
+    int swatch, swatch2;
+    float hue, hue2; /* for HUE_SWATCH cells */
     const char *label;
     long count;
 } PanelLine;
 
-/* A swatch value meaning "the creatures' colours": the line's two cells
- * show the two most common creature hues instead of fixed colours. */
-#define HUE_SWATCH -2
-
-/* The two most common creature hues, for HUE_SWATCH lines: count of them
- * (0, 1 or 2) are valid. */
-typedef struct {
-    float hue[2];
-    int count;
-} CommonHues;
-
-/* The line's two colour cells, at columns col and col + 1. */
-static void draw_swatches(const PanelLine *line, const CommonHues *common,
-                          int col, int row)
+static void draw_cell(int swatch, float hue, int col, int row)
 {
-    if (line->swatch != HUE_SWATCH) {
-        render_swatch(col, row, line->swatch);
-        render_swatch(col + 1, row, line->swatch2);
-        return;
-    }
-    for (int k = 0; k < 2; k++) {
-        if (k < common->count) {
-            render_hue_swatch(col + k, row, common->hue[k]);
-        } else if (common->count == 1) {
-            render_hue_swatch(col + k, row, common->hue[0]); /* one colour */
-        } else {
-            render_text(col + k, row, " ", 1); /* nobody alive */
-        }
+    if (swatch == HUE_SWATCH) {
+        render_hue_swatch(col, row, hue);
+    } else if (swatch >= 0) {
+        render_swatch(col, row, swatch);
+    } else {
+        render_text(col, row, " ", 1);
     }
 }
 
-static void draw_line(const PanelLine *line, const CommonHues *common,
-                      int col, int row)
+static void draw_line(const PanelLine *line, int col, int row)
 {
     /* Roomier than the panel: render_text cuts the line to its width
      * anyway, and gcc's -Wformat-truncation checks that snprintf can
@@ -153,7 +158,8 @@ static void draw_line(const PanelLine *line, const CommonHues *common,
         return;
     }
     render_text(col, row, " ", 1);
-    draw_swatches(line, common, col + 1, row);
+    draw_cell(line->swatch, line->hue, col + 1, row);
+    draw_cell(line->swatch2, line->hue2, col + 2, row);
     if (line->count < 0) {
         snprintf(text, sizeof(text), " %s", line->label);
     } else {
@@ -167,33 +173,99 @@ static void draw_line(const PanelLine *line, const CommonHues *common,
     render_text(col + SWATCH_INDENT, row, text, PANEL_COLS - SWATCH_INDENT);
 }
 
+/* Lines with no colour cells: a heading, or "" for a blank line. */
+static PanelLine heading(const char *label)
+{
+    return (PanelLine){.swatch = NO_SWATCH, .label = label, .count = -1};
+}
+
+/* A line with two fixed colours. */
+static PanelLine swatch_line(int swatch, int swatch2, const char *label,
+                             long count)
+{
+    return (PanelLine){
+        .swatch = swatch, .swatch2 = swatch2, .label = label, .count = count};
+}
+
+/* The creatures line: its cells show the two largest colour groups (the
+ * same colour twice when there is one group, blank when there is none). */
+static PanelLine creatures_line(const ColourGroup *groups, int n_groups,
+                                long count)
+{
+    PanelLine line = swatch_line(BLANK_SWATCH, BLANK_SWATCH, "creatures",
+                                 count);
+    if (n_groups >= 1) {
+        line.swatch = line.swatch2 = HUE_SWATCH;
+        line.hue = line.hue2 = groups[0].hue;
+    }
+    if (n_groups >= 2) {
+        line.hue2 = groups[1].hue;
+    }
+    return line;
+}
+
+/* One colour group: both cells in its colour, its name and its count. */
+static PanelLine group_line(const ColourGroup *g)
+{
+    PanelLine line = swatch_line(HUE_SWATCH, HUE_SWATCH,
+                                 panel_band_name(g->band), g->count);
+    line.hue = line.hue2 = g->hue;
+    return line;
+}
+
+/* Room for every line panel_draw can make: 9 fixed lines, 2 more before
+ * the groups and one per group. */
+#define PANEL_MAX_LINES (11 + PANEL_GROUP_LINES)
+
+/* Appends line to lines, which holds *n lines so far, and counts it. A
+ * line that does not fit is dropped: C would let lines[*n] be written
+ * past the end of the array without a word. */
+static void add_line(PanelLine *lines, int *n, PanelLine line)
+{
+    if (*n < PANEL_MAX_LINES) {
+        lines[*n] = line;
+        (*n)++; /* the parentheses: *n++ would move the pointer instead */
+    }
+}
+
 void panel_draw(const Sim *s, int col, int row0, int rows)
 {
     PanelCounts c = panel_count(s);
-    CommonHues common;
-    /* common.hue is an array inside a struct; passed to the function it
-     * becomes a pointer to its first element, room for 2 floats. */
-    common.count = panel_common_hues(s, common.hue, 2);
-    /* A local array of structs, built anew on every call: unlike a
-     * static table, its initialiser may use values computed at run
-     * time, such as this frame's counts. */
-    const PanelLine lines[] = {
-        {NO_SWATCH, NO_SWATCH, " population", -1},
-        {HUE_SWATCH, HUE_SWATCH, "creatures", c.creatures},
-        {RENDER_SWATCH_PLANT, RENDER_SWATCH_PLANT, "plants", c.plants},
-        {RENDER_SWATCH_WITHERED, RENDER_SWATCH_WITHERED, "withering",
-         c.withering},
-        {NO_SWATCH, NO_SWATCH, "", -1},
-        {NO_SWATCH, NO_SWATCH, " map", -1},
-        {RENDER_SWATCH_WATER, RENDER_SWATCH_WATER, "water", -1},
-        {RENDER_SWATCH_ROCK, RENDER_SWATCH_ROCK, "rock", -1},
-        {RENDER_SWATCH_SOIL_DRY, RENDER_SWATCH_SOIL_RICH, "soil, dry/rich",
-         -1},
-    };
-    int count = (int)(sizeof(lines) / sizeof(lines[0]));
+    ColourGroup groups[PANEL_GROUP_LINES];
+    int n_groups = panel_colour_groups(s, groups, PANEL_GROUP_LINES);
+
+    /* Built line by line, because how many there are depends on how many
+     * colour groups exist this frame. Each line is a whole PanelLine
+     * returned by value and copied into the array. */
+    PanelLine lines[PANEL_MAX_LINES];
+    int n = 0;
+    add_line(lines, &n, heading(" population"));
+    add_line(lines, &n, creatures_line(groups, n_groups, c.creatures));
+    add_line(lines, &n,
+             swatch_line(RENDER_SWATCH_PLANT, RENDER_SWATCH_PLANT, "plants",
+                         c.plants));
+    add_line(lines, &n,
+             swatch_line(RENDER_SWATCH_WITHERED, RENDER_SWATCH_WITHERED,
+                         "withering", c.withering));
+    add_line(lines, &n, heading(""));
+    add_line(lines, &n, heading(" map"));
+    add_line(lines, &n,
+             swatch_line(RENDER_SWATCH_WATER, RENDER_SWATCH_WATER, "water",
+                         -1));
+    add_line(lines, &n,
+             swatch_line(RENDER_SWATCH_ROCK, RENDER_SWATCH_ROCK, "rock", -1));
+    add_line(lines, &n,
+             swatch_line(RENDER_SWATCH_SOIL_DRY, RENDER_SWATCH_SOIL_RICH,
+                         "soil, dry/rich", -1));
+    /* Last, so a short window cuts the groups rather than the legend. */
+    add_line(lines, &n, heading(""));
+    add_line(lines, &n, heading(" colour groups"));
+    for (int k = 0; k < n_groups; k++) {
+        add_line(lines, &n, group_line(&groups[k]));
+    }
     for (int r = 0; r < rows; r++) {
-        if (r < count) {
-            draw_line(&lines[r], &common, col, row0 + r);
+        if (r < n) {
+            draw_line(&lines[r], col, row0 + r);
         } else {
             render_text(col, row0 + r, "", PANEL_COLS); /* blank */
         }
