@@ -9,7 +9,7 @@
  * the order of random draws changes the simulation, this test fails, and
  * the new value must be put here deliberately, knowing why it changed.
  */
-#define SEED_7_AFTER_500 0x43d711ec3fdec363ULL
+#define SEED_7_AFTER_500 0x1700daf01fe2cf1dULL
 
 static void test_same_seed_same_checksum(void)
 {

@@ -25,7 +25,12 @@ typedef struct {
      * is fertility * veg_capacity. While m >= capacity an empty cell
      * cannot sprout and a planted cell cannot grow; above it, a planted
      * cell shrinks. Poor soil therefore holds sparse plants, rich soil
-     * dense ones, and no area fills up completely. */
+     * dense ones, and no area fills up completely.
+     *
+     * Life cycle: every tick a plant ages by one. From veg_mature_age on,
+     * a healthy plant starts withering with probability veg_wither_chance
+     * per tick. A withering plant no longer grows or shrinks; after
+     * veg_wither_ticks ticks it disappears and the cell is bare soil. */
     int veg_birth_lo;
     int veg_birth_hi;
     int veg_crowd_max;
@@ -33,6 +38,9 @@ typedef struct {
     float veg_start_chance; /* chance a soil cell starts planted */
     int veg_reach;          /* radius of the neighbourhood for m */
     float veg_capacity;     /* largest m a cell of fertility 1 allows */
+    int veg_mature_age;       /* ticks before a plant can start withering */
+    float veg_wither_chance;  /* chance per tick, once mature */
+    int veg_wither_ticks;     /* how long withering lasts */
 } Settings;
 
 Settings settings_default(void);

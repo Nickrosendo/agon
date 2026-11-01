@@ -17,6 +17,8 @@ typedef struct {
     uint8_t *terrain;
     float *fertility;        /* 0..1 */
     uint8_t *veg, *veg_next; /* 0..VEG_MAX */
+    uint16_t *veg_age;       /* ticks since the plant on this cell sprouted */
+    uint8_t *veg_wither;     /* 0 healthy, else ticks spent withering */
     uint8_t *veg_rule;       /* lesson 9: packed thresholds per cell */
     float *carrion;          /* energy lying on the cell */
     float *carrion_level;    /* food-chain level of that carrion */

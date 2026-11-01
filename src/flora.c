@@ -84,6 +84,30 @@ static uint8_t next_density(uint8_t density, int n, int mass,
     return (uint8_t)(density - 1); /* density >= 1 here, so no wrap */
 }
 
+/* veg_wither is a uint8_t, so withering can last at most 255 ticks; a
+ * larger setting would make the counter wrap back to 0 ("healthy"). */
+static int wither_limit(const Settings *s)
+{
+    if (s->veg_wither_ticks < 1) {
+        return 1;
+    }
+    return s->veg_wither_ticks > UINT8_MAX ? UINT8_MAX : s->veg_wither_ticks;
+}
+
+/* A withering plant: one more tick of withering, or gone. Age and
+ * withering are written in place: only this cell reads them, so unlike
+ * veg they need no second buffer. */
+static uint8_t wither_on(World *w, int i, int limit)
+{
+    if (w->veg_wither[i] >= limit) {
+        w->veg_age[i] = 0;
+        w->veg_wither[i] = 0;
+        return 0;
+    }
+    w->veg_wither[i]++;
+    return w->veg[i]; /* withering plants neither grow nor shrink */
+}
+
 void flora_step(World *w, Rng *r, const Settings *s)
 {
     /* wrap_near needs the reach to be no larger than the world; a tiny
@@ -96,6 +120,7 @@ void flora_step(World *w, Rng *r, const Settings *s)
     if (reach > w->h) {
         reach = w->h;
     }
+    int limit = wither_limit(s);
     for (int y = 0; y < w->h; y++) {
         for (int x = 0; x < w->w; x++) {
             int i = world_idx(w, x, y);
@@ -103,17 +128,43 @@ void flora_step(World *w, Rng *r, const Settings *s)
                 w->veg_next[i] = 0;
                 continue;
             }
-            /* Exactly one draw for every empty soil cell, whichever
-             * branch uses it, and none for planted cells. The draws then
-             * happen in the same order on every run, which is what keeps
-             * two runs with the same seed identical. It is a separate
-             * statement on purpose: inside a larger expression, C does
-             * not say in which order the parts are evaluated. */
-            float draw = w->veg[i] == 0 ? rng_unit(r) : 0.0f;
+            /* Exactly one draw for every soil cell, whichever branch uses
+             * it: empty cells use it to sprout, healthy mature plants to
+             * start withering. The draws then happen in the same order on
+             * every run, which is what keeps two runs with the same seed
+             * identical. It is a separate statement on purpose: inside a
+             * larger expression, C does not say in which order the parts
+             * are evaluated. */
+            float draw = rng_unit(r);
+
+            if (w->veg[i] > 0 && w->veg_wither[i] > 0) {
+                w->veg_next[i] = wither_on(w, i, limit);
+                continue;
+            }
+            if (w->veg[i] > 0) {
+                /* A healthy plant ages; the age stops at the largest
+                 * uint16_t instead of wrapping back to 0. */
+                if (w->veg_age[i] < UINT16_MAX) {
+                    w->veg_age[i]++;
+                }
+                if (w->veg_age[i] >= s->veg_mature_age &&
+                    draw < s->veg_wither_chance) {
+                    w->veg_wither[i] = 1;
+                    w->veg_next[i] = w->veg[i];
+                    continue;
+                }
+            }
+
             int n = planted_neighbours(w, x, y);
             int mass = plant_mass(w, x, y, reach);
-            w->veg_next[i] =
+            uint8_t next =
                 next_density(w->veg[i], n, mass, w->fertility[i], draw, s);
+            if (w->veg[i] == 0 || next == 0) {
+                /* Bare now, or just sprouted: a fresh start. */
+                w->veg_age[i] = 0;
+                w->veg_wither[i] = 0;
+            }
+            w->veg_next[i] = next;
         }
     }
     uint8_t *old = w->veg;

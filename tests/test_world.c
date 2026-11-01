@@ -40,6 +40,7 @@ static void test_layers_start_empty(void)
     for (int i = 0; i < w.w * w.h; i++) {
         if (w.occupant[i] != -1 || w.terrain[i] != 0 ||
             w.fertility[i] != 0.0f || w.veg[i] != 0 || w.veg_next[i] != 0 ||
+            w.veg_age[i] != 0 || w.veg_wither[i] != 0 ||
             w.veg_rule[i] != 0 || w.carrion[i] != 0.0f ||
             w.carrion_level[i] != 0.0f) {
             ok = 0;

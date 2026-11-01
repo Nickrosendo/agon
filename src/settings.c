@@ -17,6 +17,9 @@ Settings settings_default(void)
         .veg_start_chance = 0.03f,
         .veg_reach = 2,
         .veg_capacity = 50.0f,
+        .veg_mature_age = 60,
+        .veg_wither_chance = 0.02f,
+        .veg_wither_ticks = 20,
     };
     return s;
 }

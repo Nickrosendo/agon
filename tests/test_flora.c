@@ -28,6 +28,7 @@ static Settings rule(int birth_lo, int birth_hi, int crowd_max)
     s.veg_seed_chance = 0.0f;
     /* Out of reach: these tests are about the neighbour rule alone. */
     s.veg_capacity = 1000.0f;
+    s.veg_wither_chance = 0.0f; /* plants never wither */
     return s;
 }
 
@@ -261,6 +262,71 @@ static void test_tiny_world_is_safe(void)
     world_free(&w);
 }
 
+static void test_plant_withers_then_disappears(void)
+{
+    /* Mature at age 2, certain to start withering once mature, withering
+     * lasts 3 ticks. Nothing sprouts around it (birth range 9..9). */
+    World w;
+    make_world(&w, 7, 7);
+    Settings s = rule(9, 9, 8);
+    s.veg_mature_age = 2;
+    s.veg_wither_chance = 1.0f;
+    s.veg_wither_ticks = 3;
+    Rng r;
+    rng_seed(&r, 10);
+    int i = world_idx(&w, 3, 3);
+    w.veg[i] = 1;
+
+    flora_step(&w, &r, &s); /* age 1: not mature yet, grows */
+    CHECK(w.veg[i] == 2 && w.veg_age[i] == 1 && w.veg_wither[i] == 0);
+    flora_step(&w, &r, &s); /* age 2: mature, starts withering */
+    CHECK(w.veg[i] == 2 && w.veg_wither[i] == 1);
+    flora_step(&w, &r, &s); /* withering: no growth */
+    flora_step(&w, &r, &s);
+    CHECK(w.veg[i] == 2 && w.veg_wither[i] == 3);
+    flora_step(&w, &r, &s); /* withering is over: gone */
+    CHECK(w.veg[i] == 0 && w.veg_age[i] == 0 && w.veg_wither[i] == 0);
+    world_free(&w);
+}
+
+static void test_no_wither_chance_lives_on(void)
+{
+    World w;
+    make_world(&w, 7, 7);
+    Settings s = rule(9, 9, 8);
+    s.veg_mature_age = 1;
+    Rng r;
+    rng_seed(&r, 11);
+    int i = world_idx(&w, 3, 3);
+    w.veg[i] = 1;
+    for (int step = 0; step < 300; step++) {
+        flora_step(&w, &r, &s);
+    }
+    CHECK(w.veg[i] == VEG_MAX && w.veg_wither[i] == 0);
+    CHECK(w.veg_age[i] == 300);
+    world_free(&w);
+}
+
+static void test_sprout_starts_young(void)
+{
+    /* A cell that sprouts gets age 0 and is healthy, even if the plant
+     * that grew there before left its numbers behind. */
+    World w;
+    make_world(&w, 9, 9);
+    Settings s = rule(3, 3, 3);
+    Rng r;
+    rng_seed(&r, 12);
+    w.veg[world_idx(&w, 4, 3)] = 1;
+    w.veg[world_idx(&w, 4, 4)] = 1;
+    w.veg[world_idx(&w, 4, 5)] = 1;
+    int side = world_idx(&w, 3, 4);
+    w.veg_age[side] = 500;
+    w.veg_wither[side] = 7;
+    flora_step(&w, &r, &s);
+    CHECK(w.veg[side] == 1 && w.veg_age[side] == 0 && w.veg_wither[side] == 0);
+    world_free(&w);
+}
+
 int main(void)
 {
     test_line_of_three();
@@ -272,5 +338,8 @@ int main(void)
     test_capacity_scales_with_fertility();
     test_over_capacity_shrinks();
     test_tiny_world_is_safe();
+    test_plant_withers_then_disappears();
+    test_no_wither_chance_lives_on();
+    test_sprout_starts_young();
     TEST_SUMMARY();
 }

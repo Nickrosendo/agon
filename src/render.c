@@ -13,6 +13,10 @@
 /* How many soil colours, from dry to rich. */
 #define SOIL_SHADES 6
 
+/* How many colour steps a withering plant goes through on its way from
+ * green to straw. */
+#define WITHER_SHADES 4
+
 /* The largest screen area whose last drawing is remembered. Cells beyond
  * it are simply redrawn every frame. */
 #define MEMORY_COLS 512
@@ -27,6 +31,7 @@ static const Colour ROCK = {112, 112, 118};
 static const Colour SOIL_DRY = {132, 110, 78};
 static const Colour SOIL_RICH = {70, 56, 38};
 static const Colour PLANT = {58, 150, 62};
+static const Colour WITHERED = {196, 168, 84}; /* dry straw */
 static const Colour TEXT = {150, 155, 165};
 static const Colour TEXT_BACKGROUND = {14, 17, 23};
 
@@ -76,7 +81,22 @@ static Colour soil_colour(float fertility)
     return mix(SOIL_DRY, SOIL_RICH, (float)shade / (float)(SOIL_SHADES - 1));
 }
 
-static Colour cell_colour(const World *w, int i)
+/* How far a withering plant has gone, in WITHER_SHADES steps from 1 (just
+ * started) to WITHER_SHADES (about to disappear). Integer division
+ * rounds down, so the + ticks - 1 rounds up instead: the first tick of
+ * withering already shows a change of colour. */
+static int wither_shade(int wither, int ticks)
+{
+    if (ticks < 1) {
+        ticks = 1;
+    }
+    if (wither > ticks) {
+        wither = ticks;
+    }
+    return (wither * WITHER_SHADES + ticks - 1) / ticks;
+}
+
+static Colour cell_colour(const World *w, const Settings *set, int i)
 {
     if (w->terrain[i] == TERRAIN_WATER) {
         return WATER;
@@ -91,7 +111,13 @@ static Colour cell_colour(const World *w, int i)
     /* Four shades of green over the soil: density 1 is 40 % of the way
      * from the soil colour to full green, density VEG_MAX is all green. */
     float t = (float)(w->veg[i] + 1) / (float)(VEG_MAX + 1);
-    return mix(soil, PLANT, t);
+    Colour plant = mix(soil, PLANT, t);
+    if (w->veg_wither[i] == 0) {
+        return plant;
+    }
+    /* Withering: from the plant's green towards straw, in a few steps. */
+    int shade = wither_shade(w->veg_wither[i], set->veg_wither_ticks);
+    return mix(plant, WITHERED, (float)shade / (float)WITHER_SHADES);
 }
 
 static uint64_t pack(Colour top, Colour bottom)
@@ -122,8 +148,9 @@ void render_world(const Sim *s, int col0, int row0, int cols, int rows)
          * itself. */
         int cursor_in_place = 0;
         for (int x = 0; x < view_cols; x++) {
-            Colour top = cell_colour(w, world_idx(w, x, 2 * row));
-            Colour bottom = cell_colour(w, world_idx(w, x, 2 * row + 1));
+            Colour top = cell_colour(w, &s->set, world_idx(w, x, 2 * row));
+            Colour bottom =
+                cell_colour(w, &s->set, world_idx(w, x, 2 * row + 1));
             uint64_t packed = pack(top, bottom);
             int remembered = row < MEMORY_ROWS && x < MEMORY_COLS;
             if (remembered && last_drawn[row][x] == packed) {

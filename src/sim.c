@@ -68,7 +68,8 @@ static uint64_t fnv1a(uint64_t hash, const void *data, size_t len)
  * the struct holds pointers (different addresses on every run) and may
  * hold padding, unused bytes the compiler inserts between fields to align
  * them, whose values are unspecified. The arrays hashed here have no
- * padding: uint8_t, float and uint64_t elements sit back to back.
+ * padding: uint8_t, uint16_t, float and uint64_t elements sit back to
+ * back.
  */
 uint64_t sim_checksum(const Sim *s)
 {
@@ -80,5 +81,7 @@ uint64_t sim_checksum(const Sim *s)
     hash = fnv1a(hash, w->terrain, n * sizeof(uint8_t));
     hash = fnv1a(hash, w->fertility, n * sizeof(float));
     hash = fnv1a(hash, w->veg, n * sizeof(uint8_t));
+    hash = fnv1a(hash, w->veg_age, n * sizeof(uint16_t));
+    hash = fnv1a(hash, w->veg_wither, n * sizeof(uint8_t));
     return hash;
 }
