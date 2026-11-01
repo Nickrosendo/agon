@@ -32,6 +32,7 @@ static const Colour SOIL_DRY = {132, 110, 78};
 static const Colour SOIL_RICH = {70, 56, 38};
 static const Colour PLANT = {58, 150, 62};
 static const Colour WITHERED = {196, 168, 84}; /* dry straw */
+static const Colour CREATURE = {250, 236, 210}; /* warm white */
 static const Colour TEXT = {150, 155, 165};
 static const Colour TEXT_BACKGROUND = {14, 17, 23};
 
@@ -98,6 +99,10 @@ static int wither_shade(int wither, int ticks)
 
 static Colour cell_colour(const World *w, const Settings *set, int i)
 {
+    /* A creature hides whatever is under it. */
+    if (w->occupant[i] >= 0) {
+        return CREATURE;
+    }
     if (w->terrain[i] == TERRAIN_WATER) {
         return WATER;
     }

@@ -5,6 +5,9 @@
 #ifndef AGON_SETTINGS_H
 #define AGON_SETTINGS_H
 
+/* Room for a brain's name, the terminating '\0' included. */
+#define BRAIN_NAME_MAX 32
+
 typedef struct {
     /* Terrain. Heights are spread over 0..1 for each world; below
      * water_level is water, at or above rock_level is rock, soil between. */
@@ -44,6 +47,25 @@ typedef struct {
     int veg_mature_age;       /* ticks before a plant can start withering */
     float veg_wither_chance;  /* chance per tick, once mature */
     int veg_wither_ticks;     /* how long withering lasts */
+
+    /* Creatures. Energy is the only currency: every tick costs
+     * upkeep_base, a move costs move_cost more (even a blocked one), and
+     * a bite of vegetation gains bite_veg_energy. At zero energy a
+     * creature dies. From split_threshold on it can split, handing
+     * split_share of its energy to the child. While fewer than
+     * min_creatures are alive, new ones are placed at random (0 turns
+     * this off). */
+    int pool_capacity;       /* most creatures alive at once */
+    int start_creatures;     /* placed when a world is built */
+    int min_creatures;       /* the floor */
+    char brain_name[BRAIN_NAME_MAX]; /* which brain every creature uses */
+    float energy_start;      /* for creatures placed, not born */
+    float upkeep_base;
+    float move_cost;
+    float bite_veg_energy;
+    float split_threshold;
+    float split_share;       /* 0..1 */
+    float sense_age_half;    /* the age sensed as 0.5 */
 } Settings;
 
 Settings settings_default(void);

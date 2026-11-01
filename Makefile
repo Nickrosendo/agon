@@ -25,6 +25,9 @@ LIB_OBJ = $(filter-out $(OUT)/main.o, $(OBJ))
 
 TEST_SRC = $(wildcard tests/test_*.c)
 TEST_BIN = $(TEST_SRC:tests/%.c=$(OUT)/tests/%)
+# Code only the tests use, linked into every test program: the scripted
+# brain. The program itself never contains it.
+TEST_SUPPORT_OBJ = $(OUT)/tests/brain_script.o
 
 all: $(OUT)/agon
 
@@ -41,11 +44,15 @@ $(OUT)/agon: $(OBJ)
 $(OUT)/%.o: src/%.c | $(OUT)
 	$(CC) $(CFLAGS) -MMD -MP -c $< -o $@
 
-# One program per test file. -Isrc lets the tests write #include "rng.h".
-$(OUT)/tests/%: tests/%.c $(LIB_OBJ) | $(OUT)/tests
-	$(CC) $(CFLAGS) -Isrc -MMD -MP $< $(LIB_OBJ) -o $@ $(LDLIBS)
+$(OUT)/tests/brain_script.o: tests/brain_script.c | $(OUT)/tests
+	$(CC) $(CFLAGS) -Isrc -MMD -MP -c $< -o $@
 
--include $(OBJ:.o=.d) $(TEST_BIN:=.d)
+# One program per test file. -Isrc lets the tests write #include "rng.h".
+$(OUT)/tests/%: tests/%.c $(LIB_OBJ) $(TEST_SUPPORT_OBJ) | $(OUT)/tests
+	$(CC) $(CFLAGS) -Isrc -MMD -MP $< $(LIB_OBJ) $(TEST_SUPPORT_OBJ) \
+		-o $@ $(LDLIBS)
+
+-include $(OBJ:.o=.d) $(TEST_BIN:=.d) $(TEST_SUPPORT_OBJ:.o=.d)
 
 $(OUT) $(OUT)/tests:
 	mkdir -p $@

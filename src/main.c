@@ -114,8 +114,10 @@ static void draw_title(int cols, const Sim *sim, int speed, int paused)
      * platform ("lx" here); writing %llx would be wrong on some systems.
      * Adjacent string literals are joined into one by the compiler. */
     snprintf(text, sizeof(text),
-             " agon | seed 0x%" PRIx64 " | tick %" PRIu64 " | %d/s%s",
-             sim->seed, sim->tick, SPEEDS[speed], paused ? " paused" : "");
+             " agon | seed 0x%" PRIx64 " | tick %" PRIu64
+             " | creatures %d | %d/s%s",
+             sim->seed, sim->tick, sim->pool.count, SPEEDS[speed],
+             paused ? " paused" : "");
     render_text(0, 0, text, cols);
 }
 
@@ -150,7 +152,9 @@ int main(int argc, char **argv)
     Sim sim;
     if (!sim_init(&sim, &settings, seed, world_w, world_h)) {
         term_close(); /* so the message lands on the normal screen */
-        fprintf(stderr, "agon: out of memory\n");
+        fprintf(stderr, "agon: could not start: out of memory, or no "
+                        "brain called '%s'\n",
+                settings.brain_name);
         return 1;
     }
 
@@ -163,6 +167,7 @@ int main(int argc, char **argv)
     int paused = 0;
     int running = 1;
     int need_clear = 1;
+    int failed = 0;
     /* Ticks owed, in thirtieths: each frame adds the speed, and every 30
      * owed pays for one tick. Keeps whole numbers only. */
     int ticks_due = 0;
@@ -185,7 +190,10 @@ int main(int argc, char **argv)
             } else if (key == '-' && speed > 0) {
                 speed--;
             } else if (key == 'r') {
-                sim_reseed(&sim, rng_next(&seed_source));
+                if (!sim_reseed(&sim, rng_next(&seed_source))) {
+                    failed = 1; /* the brain could not be reopened */
+                    running = 0;
+                }
             }
         }
 
@@ -224,5 +232,9 @@ int main(int argc, char **argv)
 
     term_close();
     sim_free(&sim);
+    if (failed) {
+        fprintf(stderr, "agon: out of memory while building a new world\n");
+        return 1;
+    }
     return 0;
 }
