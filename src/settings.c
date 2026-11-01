@@ -49,6 +49,7 @@ Settings settings_default(void)
         .sight_upkeep = 0.01f,
         .diet_penalty = 1.5f,
         .bite_meat_energy = 8.0f,
+        .digest_floor = 0.25f,
         .attack_steepness = 3.0f,
         .attack_cost = 0.5f,
         .bite_damage = 6.0f,

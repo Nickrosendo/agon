@@ -309,6 +309,7 @@ static void test_bite_carrion(void)
     make_world(&w, 8, 8);
     Settings s = settings_default();
     s.bite_meat_energy = 8.0f;
+    s.digest_floor = 0.0f; /* the pure curves; the floor is tested below */
     Rng r;
     rng_seed(&r, 1);
     Pool p;
@@ -349,6 +350,15 @@ static void test_bite_carrion(void)
     creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
     CHECK(near(p.items[i].energy, before));
     CHECK(p.items[i].level == level_before);
+
+    /* With a floor of 0.25, the same plant-eater gets a quarter of what
+     * it takes, and its level moves towards the carrion's. */
+    s.digest_floor = 0.25f;
+    carrion_add(&w, ahead, 20.0f, 4.0f); /* a full bite of 8 */
+    before = p.items[i].energy;
+    creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
+    CHECK(near(p.items[i].energy, before + 0.25f * 8.0f));
+    CHECK(p.items[i].level != level_before);
     pool_free(&p);
     world_free(&w);
 }

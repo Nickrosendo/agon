@@ -293,15 +293,24 @@ static float carrion_take(const World *w, int i, const Settings *s)
                                                  : s->bite_meat_energy;
 }
 
+/* An efficiency from the diet curve, lifted by the digest floor: from
+ * digest_floor (curve 0) to 1 (curve 1). */
+static float with_floor(float curve, const Settings *s)
+{
+    return s->digest_floor + (1.0f - s->digest_floor) * curve;
+}
+
 static float meat_gain(const Creature *c, float take, const Settings *s)
 {
-    return take * diet_meat_eff(c->genome.g[GENE_DIET], s->diet_penalty);
+    float diet = c->genome.g[GENE_DIET];
+    return take * with_floor(diet_meat_eff(diet, s->diet_penalty), s);
 }
 
 static float plant_gain(const Creature *c, const Settings *s)
 {
+    float diet = c->genome.g[GENE_DIET];
     return s->bite_veg_energy *
-           diet_plant_eff(c->genome.g[GENE_DIET], s->diet_penalty);
+           with_floor(diet_plant_eff(diet, s->diet_penalty), s);
 }
 
 /* Eats up to bite_meat_energy of the carrion ahead. */
