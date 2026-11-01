@@ -214,8 +214,9 @@ static uint64_t fnv1a(uint64_t hash, const void *data, size_t len)
     return hash;
 }
 
-/* One living creature, field by field: Creature has padding (after
- * alive, and after heading), so its raw bytes are not safe to hash. */
+/* One living creature, field by field: Creature has 9 bytes of padding
+ * (3 after alive, 3 after heading, 1 inside Action between kind and
+ * hold, 2 at the end), so its raw bytes are not safe to hash. */
 static uint64_t hash_creature(uint64_t hash, const Creature *c)
 {
     hash = fnv1a(hash, &c->id, sizeof(c->id));
