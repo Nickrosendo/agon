@@ -24,8 +24,14 @@ release:
 $(OUT)/agon: $(OBJ)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
 
+# -MMD also writes a .d file next to each object listing the headers the
+# .c file included; -MP adds an empty rule per header so deleting one does
+# not break the build. Including the .d files makes an object rebuild when
+# any header it uses changes.
 $(OUT)/%.o: src/%.c | $(OUT)
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) -MMD -MP -c $< -o $@
+
+-include $(OBJ:.o=.d)
 
 $(OUT):
 	mkdir -p $@
