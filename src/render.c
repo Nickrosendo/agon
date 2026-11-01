@@ -33,10 +33,8 @@ static const Colour SOIL_DRY = {132, 110, 78};
 static const Colour SOIL_RICH = {70, 56, 38};
 static const Colour PLANT = {58, 150, 62};
 static const Colour WITHERED = {196, 168, 84}; /* dry straw */
-/* The legend's creature colour. On the map each creature is coloured by
- * the hue in its genome instead, light enough to stand out from the
- * terrain. */
-static const Colour CREATURE = {250, 236, 210}; /* warm white */
+/* Each creature is coloured by the hue in its genome, light enough to
+ * stand out from the terrain. The legend uses the same colours. */
 #define CREATURE_SATURATION 0.55f /* 0 white .. 1 full colour */
 static const Colour TEXT = {150, 155, 165};
 static const Colour TEXT_BACKGROUND = {14, 17, 23};
@@ -49,7 +47,7 @@ static const Colour TEXT_BACKGROUND = {14, 17, 23};
  * variable is a constant.
  */
 static const Colour *const SWATCHES[RENDER_SWATCH_COUNT] = {
-    &WATER, &ROCK, &SOIL_DRY, &SOIL_RICH, &PLANT, &WITHERED, &CREATURE,
+    &WATER, &ROCK, &SOIL_DRY, &SOIL_RICH, &PLANT, &WITHERED,
 };
 
 /*
@@ -263,6 +261,16 @@ void render_swatch(int col, int row, int swatch)
     const Colour *c = SWATCHES[swatch];
     term_move(col, row);
     term_bg(c->r, c->g, c->b);
+    term_put(" ");
+}
+
+void render_hue_swatch(int col, int row, float hue)
+{
+    /* The same function the map uses, so the legend cannot drift from
+     * what is drawn. */
+    Colour c = hue_colour(hue, CREATURE_SATURATION);
+    term_move(col, row);
+    term_bg(c.r, c.g, c.b);
     term_put(" ");
 }
 

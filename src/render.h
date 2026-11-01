@@ -29,13 +29,16 @@ enum {
     RENDER_SWATCH_SOIL_RICH,
     RENDER_SWATCH_PLANT,
     RENDER_SWATCH_WITHERED,
-    RENDER_SWATCH_CREATURE,
     RENDER_SWATCH_COUNT
 };
 
 /* One character cell at (col, row) filled with a RENDER_SWATCH_ colour.
  * An unknown value draws nothing. */
 void render_swatch(int col, int row, int swatch);
+
+/* One character cell at (col, row) in the colour a creature of this hue
+ * (0..1) has on the map. */
+void render_hue_swatch(int col, int row, float hue);
 
 /* The message shown instead of the world when the window is too small. */
 void render_too_small(int cols, int rows, int min_cols, int min_rows);
