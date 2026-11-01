@@ -191,7 +191,7 @@ void creature_ate(Creature *c, float energy, float source_level)
 /* What one ray senses, written into its RAY_VALUES slots of out. The
  * first cell gives the vegetation and the scent of carrion. Then the ray
  * walks up to sight cells, stopping at rock, and reports the nearest
- * creature: its closeness, relative size and kinship. */
+ * creature: its closeness, relative size, kinship and whether it hunts. */
 static void sense_ray(const World *w, const Pool *p, const Creature *c,
                       uint8_t heading, const Settings *s, float *out)
 {
@@ -216,6 +216,8 @@ static void sense_ray(const World *w, const Pool *p, const Creature *c,
             out[RAY_NEAR] = 1.0f - (float)(d - 1) / (float)sight;
             out[RAY_RELSIZE] = t / (a + t);
             out[RAY_KIN] = genome_kinship(&c->genome, &seen->genome);
+            /* A bool converted to float is exactly 0.0f or 1.0f. */
+            out[RAY_HUNTER] = (float)creature_is_hunter(seen);
             return;
         }
     }

@@ -39,7 +39,7 @@ typedef struct {
     float level;
     float eaten;
     /* Stored inside the creature, not behind a pointer: GENOME_LEN floats
-     * (668 bytes) in every slot, allocated with the pool and never freed
+     * (744 bytes) in every slot, allocated with the pool and never freed
      * on its own. */
     Genome genome;
 } Creature;
@@ -90,7 +90,8 @@ void pool_kill(Pool *p, World *w, int idx, const Settings *s);
  * meat digestion gene; and along each of its three rays (ahead, left,
  * right) the vegetation and the scent of carrion in the first cell, and
  * the nearest creature within sight: its closeness, its size relative to
- * the viewer and its kinship. A ray stops at rock. */
+ * the viewer, its kinship and whether it is a hunter. A ray stops at
+ * rock. */
 void creature_sense(const World *w, const Pool *p, int idx,
                     const Settings *s, Senses *out);
 /* Carries out one tick of action a for creature idx. Returns the slot of

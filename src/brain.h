@@ -18,13 +18,22 @@ enum { RAY_AHEAD, RAY_LEFT, RAY_RIGHT, RAY_COUNT };
 /* What each ray reports: the vegetation and the scent of carrion in the
  * first cell, the closeness of the nearest creature (1 next to the
  * viewer, falling with distance, 0 for none in sight), that creature's
- * size relative to the viewer's, and its kinship. */
-enum { RAY_VEG, RAY_CARRION, RAY_NEAR, RAY_RELSIZE, RAY_KIN, RAY_VALUES };
+ * size relative to the viewer's, its kinship, and whether it is a hunter
+ * (1) or not (0). */
+enum {
+    RAY_VEG,
+    RAY_CARRION,
+    RAY_NEAR,
+    RAY_RELSIZE,
+    RAY_KIN,
+    RAY_HUNTER,
+    RAY_VALUES
+};
 
 /* The senses, as positions in Senses.v. After the four single values come
  * the rays: ray k's value j is at SENSE_RAYS + k * RAY_VALUES + j. The
  * neural network of lesson 6 has one input per sense, so its NET_IN must
- * equal SENSE_COUNT (19). */
+ * equal SENSE_COUNT (22). */
 enum {
     SENSE_ENERGY,
     SENSE_AGE,

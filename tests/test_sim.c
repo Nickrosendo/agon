@@ -13,9 +13,10 @@
  * layers and the new creature fields are hashed, and the start and the
  * floor went up to 150 creatures; then the digest floor; then separate
  * plant and meat digestion genes; then scent, and a bite that looks all
- * round and lets hunters hunt.
+ * round and lets hunters hunt; then the hunter ray value, which adds
+ * three network inputs and so 18 genes, changing every random genome.
  */
-#define SEED_7_AFTER_500 0xba254d13a252dcceULL
+#define SEED_7_AFTER_500 0x4049da0a2462a5c4ULL
 
 static void test_same_seed_same_checksum(void)
 {

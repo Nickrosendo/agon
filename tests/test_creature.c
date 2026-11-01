@@ -552,6 +552,10 @@ static void test_ray_sees_creature(void)
     CHECK(near(ahead[RAY_RELSIZE], 0.5f));
     CHECK(ahead[RAY_KIN] ==
           genome_kinship(&p.items[i].genome, &p.items[j].genome));
+    CHECK(ahead[RAY_HUNTER] == 0.0f); /* a plant-eater */
+    make_hunter(&p.items[j]);
+    creature_sense(&w, &p, i, &s, &in);
+    CHECK(ahead[RAY_HUNTER] == 1.0f);
     /* Nothing to the sides. */
     CHECK(in.v[SENSE_RAYS + RAY_LEFT * RAY_VALUES + RAY_NEAR] == 0.0f);
     /* Carrion three cells to the left (west). After its scent has
