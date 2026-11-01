@@ -230,6 +230,21 @@ void render_invalidate(void)
     memset(last_drawn, 0, sizeof(last_drawn));
 }
 
+/* One character cell showing two cells, top and bottom. */
+static void put_cell(Colour top, Colour bottom)
+{
+    if (same_colour(top, bottom)) {
+        /* A space in the background colour looks the same and is 1 byte
+         * instead of 3. */
+        term_bg(top.r, top.g, top.b);
+        term_put(" ");
+    } else {
+        term_fg(top.r, top.g, top.b);
+        term_bg(bottom.r, bottom.g, bottom.b);
+        term_put(UPPER_HALF_BLOCK);
+    }
+}
+
 void render_world(const Sim *s, int col0, int row0, int cols, int rows)
 {
     const World *w = &s->world;
@@ -256,16 +271,7 @@ void render_world(const Sim *s, int col0, int row0, int cols, int rows)
                 term_move(col0 + x, row0 + row);
                 cursor_in_place = 1;
             }
-            if (same_colour(top, bottom)) {
-                /* A space in the background colour looks the same and is
-                 * 1 byte instead of 3. */
-                term_bg(top.r, top.g, top.b);
-                term_put(" ");
-            } else {
-                term_fg(top.r, top.g, top.b);
-                term_bg(bottom.r, bottom.g, bottom.b);
-                term_put(UPPER_HALF_BLOCK);
-            }
+            put_cell(top, bottom);
         }
     }
 }
@@ -296,6 +302,31 @@ void render_cursor(const Sim *s, int col0, int row0, int cols, int rows,
     if (row < MEMORY_ROWS && x < MEMORY_COLS) {
         last_drawn[row][x] = 0;
     }
+}
+
+void render_snapshot(const Sim *s)
+{
+    const World *w = &s->world;
+    term_begin();
+    /* (h + 1) / 2 rows, so an odd height still shows its last row; the
+     * missing cell below it is drawn in the terminal's own colour. */
+    for (int row = 0; row < (w->h + 1) / 2; row++) {
+        for (int x = 0; x < w->w; x++) {
+            Colour top = cell_colour(s, world_idx(w, x, 2 * row));
+            if (2 * row + 1 < w->h) {
+                put_cell(top, cell_colour(s, world_idx(w, x, 2 * row + 1)));
+            } else {
+                term_reset_colours();
+                term_fg(top.r, top.g, top.b);
+                term_put(UPPER_HALF_BLOCK);
+            }
+        }
+        /* Default colours before the newline: otherwise the terminal
+         * paints the rest of the line in the last background colour. */
+        term_reset_colours();
+        term_put("\n");
+    }
+    term_end();
 }
 
 void render_text(int col, int row, const char *text, int max_cols)

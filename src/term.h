@@ -22,6 +22,14 @@ bool term_open(void);
 /* Undoes term_open. Safe to call twice, and from a signal handler. */
 void term_close(void);
 
+/* For output without term_open (agon --once): picks 24-bit or 256
+ * colours from the environment, as term_open does. A frame can then be
+ * built and written with term_begin ... term_end as usual; it goes to
+ * standard output whether or not that is a terminal. */
+void term_detect_colour(void);
+/* Back to the terminal's default colours, as part of this frame. */
+void term_reset_colours(void);
+
 void term_size(int *cols, int *rows);
 bool term_resized(void); /* true once after each resize */
 int term_key(void);      /* the next byte typed, or -1 when none is waiting */

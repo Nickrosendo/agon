@@ -1,12 +1,10 @@
-#include <errno.h>
 #include <inttypes.h> /* PRIx64, PRIu64: printf formats for uint64_t */
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h> /* strtoull */
-#include <string.h> /* strcmp */
 #include <time.h>   /* clock_gettime, nanosleep, struct timespec (POSIX) */
 
 #include "inspect.h"
+#include "options.h"
 #include "panel.h"
 #include "render.h"
 #include "rng.h"
@@ -27,6 +25,17 @@ static const int SPEEDS[] = {1, 2, 5, 10, 15, 30, 60, 120};
 #define SPEED_COUNT ((int)(sizeof(SPEEDS) / sizeof(SPEEDS[0])))
 #define DEFAULT_SPEED 3 /* 10 ticks per second */
 
+#define AGON_VERSION "0.1.0-dev"
+
+/* What main returns to the shell: 0 for success, 1 when something failed
+ * while running, 2 for a mistake on the command line (the convention of
+ * many Unix tools, so scripts can tell the two apart). */
+enum { EXIT_FINE = 0, EXIT_FAILED = 1, EXIT_USAGE = 2 };
+
+/* --once with no --size: a world that prints as 80 columns by 20 lines. */
+#define ONCE_WIDTH 80
+#define ONCE_HEIGHT 40
+
 /* A seed for when none is given: the current time, mixed. */
 static uint64_t seed_from_clock(void)
 {
@@ -34,55 +43,6 @@ static uint64_t seed_from_clock(void)
     clock_gettime(CLOCK_REALTIME, &t);
     uint64_t state = (uint64_t)t.tv_sec * 1000000000ULL + (uint64_t)t.tv_nsec;
     return rng_splitmix64(&state);
-}
-
-/*
- * Parses "123" or "0x7b" into *seed. strtoull alone is too forgiving: it
- * skips leading spaces, accepts "-1" (and turns it into 2^64 - 1), stops
- * quietly at the first bad character, and reports a too-large number only
- * through errno. Each of those is checked here.
- */
-static int parse_seed(const char *text, uint64_t *seed)
-{
-    if (text[0] < '0' || text[0] > '9') {
-        return 0; /* empty, a sign, or a space */
-    }
-    char *end;
-    errno = 0;
-    /* Base 0: decimal, or hexadecimal after 0x. end is set to the first
-     * character not used. */
-    unsigned long long value = strtoull(text, &end, 0);
-    if (errno == ERANGE || *end != '\0') {
-        return 0;
-    }
-    *seed = value;
-    return 1;
-}
-
-static int parse_args(int argc, char **argv, uint64_t *seed)
-{
-    /* argv[0] is the program's own name; options start at argv[1]. */
-    for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "--seed") == 0) {
-            if (i + 1 >= argc) {
-                fprintf(stderr, "agon: --seed needs a number after it\n");
-                return 0;
-            }
-            i++;
-            if (!parse_seed(argv[i], seed)) {
-                fprintf(stderr, "agon: '%s' is not a seed (a whole number, "
-                                "decimal or 0x hexadecimal)\n",
-                        argv[i]);
-                return 0;
-            }
-        } else {
-            fprintf(stderr, "agon: unknown option '%s'\n"
-                            "usage: agon [--seed N]\n",
-                    argv[i]);
-            return 0;
-        }
-    }
-    return 1;
 }
 
 /* Nanoseconds from a fixed but arbitrary starting point. CLOCK_MONOTONIC
@@ -204,20 +164,94 @@ static int world_columns(int cols)
     return cols >= MIN_COLS + PANEL_COLS ? cols - PANEL_COLS : cols;
 }
 
+/* The speed step for a number of ticks per second: the fastest step not
+ * above it, or the slowest step when it is below them all. */
+static int speed_step(int ticks_per_second)
+{
+    int step = 0;
+    for (int i = 0; i < SPEED_COUNT; i++) {
+        if (SPEEDS[i] <= ticks_per_second) {
+            step = i;
+        }
+    }
+    return step;
+}
+
+/* The three lines --once prints under the world. */
+static void print_summary(const Sim *sim)
+{
+    const Stats *st = &sim->stats;
+    char tick[32], plants[32], oldest[32];
+    panel_format_count(tick, sizeof(tick), (long)sim->tick);
+    panel_format_count(plants, sizeof(plants), st->planted);
+    panel_format_count(oldest, sizeof(oldest), (long)st->oldest_age);
+    printf("agon | seed 0x%" PRIx64 " | tick %s | world %d x %d\n", sim->seed,
+           tick, sim->world.w, sim->world.h);
+    printf("creatures %d: %d eat plants, %d eat meat (%d top hunters) | "
+           "%d families\n",
+           st->creatures, st->by_level[BAND_PLANT],
+           st->by_level[BAND_MEAT] + st->by_level[BAND_TOP],
+           st->by_level[BAND_TOP], st->lineages);
+    printf("plants on %s cells | carrion on %d cells | oldest %s ticks\n",
+           plants, st->carrion_cells, oldest);
+}
+
+/* agon --once: build the world, run it, print it and a summary. Never
+ * opens the terminal, so it works in a pipe, a file or a shell start-up
+ * script. */
+static int run_once(const Options *o, const Settings *settings,
+                    uint64_t seed)
+{
+    int w = o->size_given ? o->width : ONCE_WIDTH;
+    int h = o->size_given ? o->height : ONCE_HEIGHT;
+    Sim sim;
+    if (!sim_init(&sim, settings, seed, w, h)) {
+        fprintf(stderr, "agon: could not start: out of memory\n");
+        return EXIT_FAILED;
+    }
+    for (long i = 0; i < o->ticks; i++) {
+        sim_step(&sim);
+    }
+    /* A fresh sample: the last one may be up to stats_every ticks old. */
+    stats_sample(&sim.stats, &sim.world, &sim.pool, sim.tick, sim.scratch);
+    term_detect_colour();
+    render_snapshot(&sim);
+    print_summary(&sim);
+    sim_free(&sim);
+    return EXIT_FINE;
+}
+
 int main(int argc, char **argv)
 {
-    uint64_t seed = seed_from_clock();
+    Options opt;
+    char err[160];
     /* Bad options are reported before the screen is taken over, so the
      * message stays visible. */
-    if (!parse_args(argc, argv, &seed)) {
-        return 1;
+    if (!options_parse(argc, argv, &opt, err, sizeof(err))) {
+        fprintf(stderr, "agon: %s (see agon --help)\n", err);
+        return EXIT_USAGE;
     }
+    if (opt.help) {
+        fputs(OPTIONS_USAGE, stdout);
+        return EXIT_FINE;
+    }
+    if (opt.version) {
+        printf("agon %s\n", AGON_VERSION);
+        return EXIT_FINE;
+    }
+    uint64_t seed = opt.seed_given ? opt.seed : seed_from_clock();
     Settings settings = settings_default();
+    if (opt.no_floor) {
+        settings.min_creatures = 0;
+    }
+    if (opt.once) {
+        return run_once(&opt, &settings, seed);
+    }
 
     if (!term_open()) {
         fprintf(stderr, "agon: needs a terminal (do not redirect input or "
-                        "output)\n");
-        return 1;
+                        "output; agon --once works without one)\n");
+        return EXIT_FAILED;
     }
 
     int cols, rows;
@@ -229,6 +263,10 @@ int main(int argc, char **argv)
      * the title line and the bottom row the help line. */
     int world_w = world_columns(cols < MIN_COLS ? MIN_COLS : cols);
     int world_h = 2 * ((rows < MIN_ROWS ? MIN_ROWS : rows) - 2);
+    if (opt.size_given) {
+        world_w = opt.width;
+        world_h = opt.height;
+    }
 
     /* The Sim struct lives on main's stack; the world's layers it points
      * to live on the heap until sim_free. */
@@ -238,7 +276,7 @@ int main(int argc, char **argv)
         fprintf(stderr, "agon: could not start: out of memory, or no "
                         "brain called '%s'\n",
                 settings.brain_name);
-        return 1;
+        return EXIT_FAILED;
     }
 
     /* New seeds for r come from their own generator, so pressing r gives
@@ -246,7 +284,7 @@ int main(int argc, char **argv)
     Rng seed_source;
     rng_seed(&seed_source, seed);
 
-    int speed = DEFAULT_SPEED;
+    int speed = opt.speed > 0 ? speed_step(opt.speed) : DEFAULT_SPEED;
     int paused = 0;
     int running = 1;
     int need_clear = 1;
@@ -348,7 +386,7 @@ int main(int argc, char **argv)
     sim_free(&sim);
     if (failed) {
         fprintf(stderr, "agon: out of memory while building a new world\n");
-        return 1;
+        return EXIT_FAILED;
     }
-    return 0;
+    return EXIT_FINE;
 }

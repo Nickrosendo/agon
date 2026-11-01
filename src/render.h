@@ -20,6 +20,13 @@ void render_world(const Sim *s, int col0, int row0, int cols, int rows);
 void render_cursor(const Sim *s, int col0, int row0, int cols, int rows,
                    int x, int y);
 
+/* Writes the whole world to standard output as lines of coloured
+ * half-block characters, two cells per character as on screen, each line
+ * ending with the default colours and '\n'. No cursor movement, no
+ * screen switching: suitable for a pipe or a file. Call
+ * term_detect_colour first. */
+void render_snapshot(const Sim *s);
+
 /* Forget what render_world drew last, so the next call redraws every
  * cell. Call after the screen was cleared or resized. */
 void render_invalidate(void);

@@ -168,6 +168,11 @@ static bool colorterm_says_truecolor(void)
     return strcmp(value, "truecolor") == 0 || strcmp(value, "24bit") == 0;
 }
 
+void term_detect_colour(void)
+{
+    truecolor = colorterm_says_truecolor();
+}
+
 bool term_open(void)
 {
     if (!isatty(STDIN_FILENO) || !isatty(STDOUT_FILENO)) {
@@ -177,7 +182,7 @@ bool term_open(void)
         return false;
     }
     install_cleanup();
-    truecolor = colorterm_says_truecolor();
+    term_detect_colour();
 
     struct termios raw = saved_mode; /* a struct assignment copies it */
     /* Turn off: echoing keys (ECHO), waiting for Enter (ICANON), Ctrl-V
@@ -281,6 +286,13 @@ void term_clear(void)
     /* Reset colours first: the terminal clears with the current
      * background colour. */
     frame_append("\033[0m\033[2J", 8);
+    current_fg = -1;
+    current_bg = -1;
+}
+
+void term_reset_colours(void)
+{
+    frame_append("\033[0m", 4);
     current_fg = -1;
     current_bg = -1;
 }
