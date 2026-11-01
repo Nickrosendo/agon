@@ -5,6 +5,7 @@
 
 #include "brain_script.h"
 #include "creature.h"
+#include "flora.h"
 #include "settings.h"
 #include "sim.h"
 #include "world.h"
@@ -19,6 +20,21 @@ static void make_world(World *w, int width, int height)
     }
 }
 
+/* pool_spawn, then a standard body: size 1 and full speed (with the
+ * default size_min 0.5 and size_max 1.5), sight 1. Tests that are about
+ * one trait change it afterwards. */
+static int spawn(Pool *p, World *w, int x, int y)
+{
+    int idx = pool_spawn(p, w, x, y);
+    if (idx >= 0) {
+        Genome *g = &p->items[idx].genome;
+        g->g[GENE_SIZE] = 0.5f;
+        g->g[GENE_SPEED] = 1.0f;
+        g->g[GENE_SIGHT] = 0.0f;
+    }
+    return idx;
+}
+
 static void test_pool_slots_and_ids(void)
 {
     World w;
@@ -26,12 +42,12 @@ static void test_pool_slots_and_ids(void)
     Settings s = settings_default();
     Pool p;
     CHECK(pool_init(&p, 3));
-    int a = pool_spawn(&p, &w, 1, 1);
-    int b = pool_spawn(&p, &w, 2, 1);
-    int c = pool_spawn(&p, &w, 3, 1);
+    int a = spawn(&p, &w, 1, 1);
+    int b = spawn(&p, &w, 2, 1);
+    int c = spawn(&p, &w, 3, 1);
     CHECK(a >= 0 && b >= 0 && c >= 0);
     CHECK(a != b && b != c && a != c);
-    CHECK(pool_spawn(&p, &w, 4, 1) == -1); /* full */
+    CHECK(spawn(&p, &w, 4, 1) == -1); /* full */
     CHECK(p.count == 3);
     CHECK(w.occupant[world_idx(&w, 2, 1)] == b);
 
@@ -42,7 +58,7 @@ static void test_pool_slots_and_ids(void)
     pool_kill(&p, &w, b, &s); /* killing a free slot changes nothing */
     CHECK(p.count == 2);
 
-    int d = pool_spawn(&p, &w, 5, 5);
+    int d = spawn(&p, &w, 5, 5);
     CHECK(d == b);                      /* the slot is reused */
     CHECK(p.items[d].id != old_id);     /* the id is not */
     CHECK(p.items[d].id == 3);
@@ -56,10 +72,10 @@ static void test_spawn_needs_free_soil(void)
     make_world(&w, 8, 8);
     Pool p;
     CHECK(pool_init(&p, 4));
-    CHECK(pool_spawn(&p, &w, 3, 3) >= 0);
-    CHECK(pool_spawn(&p, &w, 3, 3) == -1); /* occupied */
+    CHECK(spawn(&p, &w, 3, 3) >= 0);
+    CHECK(spawn(&p, &w, 3, 3) == -1); /* occupied */
     w.terrain[world_idx(&w, 4, 4)] = TERRAIN_WATER;
-    CHECK(pool_spawn(&p, &w, 4, 4) == -1);
+    CHECK(spawn(&p, &w, 4, 4) == -1);
     CHECK(p.count == 1);
     CHECK(p.next_id == 1); /* failed spawns use no id */
     pool_free(&p);
@@ -75,7 +91,7 @@ static void test_move_wraps(void)
     rng_seed(&r, 1);
     Pool p;
     CHECK(pool_init(&p, 4));
-    int i = pool_spawn(&p, &w, 0, 0); /* heading north */
+    int i = spawn(&p, &w, 0, 0); /* heading north */
     p.items[i].energy = 10.0f;
     creature_act(&w, &p, i, (Action){ACT_MOVE, 1}, &s, &r);
     CHECK(p.items[i].x == 0 && p.items[i].y == 5);
@@ -95,9 +111,9 @@ static void test_move_blocked(void)
     rng_seed(&r, 1);
     Pool p;
     CHECK(pool_init(&p, 4));
-    int i = pool_spawn(&p, &w, 3, 3);
+    int i = spawn(&p, &w, 3, 3);
     p.items[i].energy = 10.0f;
-    CHECK(pool_spawn(&p, &w, 3, 2) >= 0); /* someone to the north */
+    CHECK(spawn(&p, &w, 3, 2) >= 0); /* someone to the north */
     creature_act(&w, &p, i, (Action){ACT_MOVE, 1}, &s, &r);
     CHECK(p.items[i].x == 3 && p.items[i].y == 3);
     CHECK(fabsf(p.items[i].energy - (10.0f - s.move_cost)) < 1e-6f);
@@ -124,7 +140,7 @@ static void test_turns(void)
     rng_seed(&r, 1);
     Pool p;
     CHECK(pool_init(&p, 1));
-    int i = pool_spawn(&p, &w, 3, 3);
+    int i = spawn(&p, &w, 3, 3);
     creature_act(&w, &p, i, (Action){ACT_TURN_LEFT, 1}, &s, &r);
     CHECK(p.items[i].heading == HEADING_WEST); /* left of north */
     creature_act(&w, &p, i, (Action){ACT_TURN_RIGHT, 1}, &s, &r);
@@ -143,7 +159,7 @@ static void test_bite(void)
     rng_seed(&r, 1);
     Pool p;
     CHECK(pool_init(&p, 1));
-    int i = pool_spawn(&p, &w, 3, 3);
+    int i = spawn(&p, &w, 3, 3);
     p.items[i].energy = 10.0f;
     w.veg[world_idx(&w, 3, 2)] = 3; /* ahead, to the north */
     creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
@@ -168,7 +184,7 @@ static void test_split(void)
     rng_seed(&r, 1);
     Pool p;
     CHECK(pool_init(&p, 4));
-    int i = pool_spawn(&p, &w, 3, 3);
+    int i = spawn(&p, &w, 3, 3);
     float before = s.split_threshold + 10.0f;
     p.items[i].energy = before;
     genome_random(&p.items[i].genome, &r, &s);
@@ -207,7 +223,7 @@ static void test_split_needs_room(void)
     rng_seed(&r, 1);
     Pool p;
     CHECK(pool_init(&p, 16));
-    int i = pool_spawn(&p, &w, 3, 3);
+    int i = spawn(&p, &w, 3, 3);
     p.items[i].energy = s.split_threshold * 2.0f;
     /* Water all around. */
     for (int dy = -1; dy <= 1; dy++) {
@@ -231,7 +247,7 @@ static void test_sense(void)
     Settings s = settings_default();
     Pool p;
     CHECK(pool_init(&p, 1));
-    int i = pool_spawn(&p, &w, 3, 3); /* heading north */
+    int i = spawn(&p, &w, 3, 3); /* heading north */
     p.items[i].energy = s.split_threshold / 2.0f;
     p.items[i].age = (uint32_t)s.sense_age_half;
     w.veg[world_idx(&w, 3, 2)] = VEG_MAX; /* ahead */
@@ -244,7 +260,8 @@ static void test_sense(void)
     CHECK(in.v[SENSE_RAYS + RAY_AHEAD * RAY_VALUES + RAY_VEG] == 1.0f);
     CHECK(in.v[SENSE_RAYS + RAY_LEFT * RAY_VALUES + RAY_VEG] == 0.5f);
     CHECK(in.v[SENSE_RAYS + RAY_RIGHT * RAY_VALUES + RAY_VEG] == 0.0f);
-    CHECK(in.v[SENSE_SIZE] == 0.0f); /* not filled in yet */
+    CHECK(in.v[SENSE_SIZE] == 0.5f); /* the gene spawn set */
+    CHECK(in.v[SENSE_DIET] == 0.0f);
     pool_free(&p);
     world_free(&w);
 }
@@ -267,18 +284,242 @@ static void make_sim(Sim *sim, Settings *set)
     }
 }
 
+static bool near(float a, float b)
+{
+    return fabsf(a - b) < 1e-4f;
+}
+
+static void test_level(void)
+{
+    Creature c = {.level = LEVEL_START};
+    creature_ate(&c, 10.0f, 1.0f);
+    CHECK(near(c.level, 2.0f));
+    creature_ate(&c, 10.0f, 2.0f);
+    CHECK(near(c.level, 2.5f));
+    creature_ate(&c, 20.0f, 2.5f);
+    CHECK(near(c.level, 3.0f));
+    CHECK(near(c.eaten, 40.0f));
+    creature_ate(&c, 0.0f, 9.0f); /* nothing eaten: nothing changes */
+    CHECK(near(c.level, 3.0f));
+}
+
+static void test_bite_carrion(void)
+{
+    World w;
+    make_world(&w, 8, 8);
+    Settings s = settings_default();
+    s.bite_meat_energy = 8.0f;
+    Rng r;
+    rng_seed(&r, 1);
+    Pool p;
+    CHECK(pool_init(&p, 2));
+    int i = spawn(&p, &w, 3, 3); /* heading north: (3, 2) is ahead */
+    p.items[i].genome.g[GENE_DIET] = 1.0f; /* meat efficiency 1 */
+    p.items[i].energy = 10.0f;
+    int ahead = world_idx(&w, 3, 2);
+    carrion_add(&w, ahead, 5.0f, 2.0f);
+    creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
+    CHECK(near(p.items[i].energy, 15.0f));
+    CHECK(w.carrion[ahead] == 0.0f);
+    CHECK(near(p.items[i].level, 3.0f)); /* 1 + level of the meal */
+
+    carrion_add(&w, ahead, 20.0f, 2.0f);
+    creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
+    CHECK(near(p.items[i].energy, 23.0f)); /* at most one bite of 8 */
+    CHECK(near(w.carrion[ahead], 12.0f));
+
+    /* Both carrion and plants ahead: a plant-eater eats the plants. */
+    p.items[i].genome.g[GENE_DIET] = 0.0f;
+    w.veg[ahead] = 2;
+    float carrion_before = w.carrion[ahead];
+    creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
+    CHECK(w.veg[ahead] == 1);
+    CHECK(w.carrion[ahead] == carrion_before);
+    /* A meat-eater, the carrion. */
+    p.items[i].genome.g[GENE_DIET] = 1.0f;
+    creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
+    CHECK(w.veg[ahead] == 1);
+    CHECK(w.carrion[ahead] < carrion_before);
+    w.veg[ahead] = 0;
+
+    /* A pure plant-eater gets nothing from meat, and its level stays. */
+    p.items[i].genome.g[GENE_DIET] = 0.0f;
+    float before = p.items[i].energy;
+    float level_before = p.items[i].level;
+    creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
+    CHECK(near(p.items[i].energy, before));
+    CHECK(p.items[i].level == level_before);
+    pool_free(&p);
+    world_free(&w);
+}
+
+static void test_attack_chance(void)
+{
+    CHECK(near(attack_chance(1.0f, 1.0f, 3.0f), 0.5f));
+    CHECK(near(attack_chance(2.0f, 1.0f, 3.0f), 0.8889f));
+    CHECK(near(attack_chance(1.0f, 2.0f, 3.0f), 0.1111f));
+}
+
+static void test_attacks_hit_half_the_time(void)
+{
+    World w;
+    make_world(&w, 8, 8);
+    Settings s = settings_default();
+    Rng r;
+    rng_seed(&r, 7);
+    Pool p;
+    CHECK(pool_init(&p, 2));
+    int a = spawn(&p, &w, 3, 3);
+    int t = spawn(&p, &w, 3, 2); /* right ahead, the same size */
+    p.items[a].energy = 1e6f;
+    int hits = 0, misses_checked = 0;
+    for (int k = 0; k < 10000; k++) {
+        p.items[t].energy = 1000.0f;
+        float attacker_before = p.items[a].energy;
+        creature_act(&w, &p, a, (Action){ACT_BITE, 1}, &s, &r);
+        if (p.items[t].energy < 1000.0f) {
+            hits++;
+            CHECK(near(p.items[t].energy, 1000.0f - s.bite_damage * 1.0f));
+        } else if (misses_checked < 10) {
+            /* A miss still costs the attacker; the target is untouched. */
+            CHECK(p.items[t].energy == 1000.0f);
+            misses_checked++;
+        }
+        /* Every attack costs the same, hit or miss. The tolerance is
+         * relative: at a million, a float's steps are 0.0625 apart. */
+        CHECK(fabsf(attacker_before - p.items[a].energy - s.attack_cost) <
+              0.1f);
+    }
+    CHECK(hits >= 4800 && hits <= 5200);
+    CHECK(misses_checked == 10);
+    pool_free(&p);
+    world_free(&w);
+}
+
+static void test_slow_creature(void)
+{
+    World w;
+    make_world(&w, 8, 8);
+    Settings s = settings_default();
+    s.speed_min = 0.25f;
+    Rng r;
+    rng_seed(&r, 1);
+    Pool p;
+    CHECK(pool_init(&p, 1));
+    int i = spawn(&p, &w, 3, 7);
+    p.items[i].genome.g[GENE_SPEED] = 0.0f; /* speed 0.25 */
+    p.items[i].energy = 100.0f;
+    int moves = 0, y = p.items[i].y;
+    for (int t = 0; t < 8; t++) {
+        creature_act(&w, &p, i, (Action){ACT_MOVE, 1}, &s, &r);
+        if (p.items[i].y != y) {
+            moves++;
+            y = p.items[i].y;
+        }
+    }
+    CHECK(moves == 2); /* once in four ticks */
+    pool_free(&p);
+    world_free(&w);
+}
+
+static void test_ray_sees_creature(void)
+{
+    World w;
+    make_world(&w, 12, 12);
+    Settings s = settings_default();
+    s.sight_max = 4;
+    Pool p;
+    CHECK(pool_init(&p, 2));
+    int i = spawn(&p, &w, 5, 8);
+    p.items[i].genome.g[GENE_SIGHT] = 1.0f; /* sight 4 */
+    int j = spawn(&p, &w, 5, 6); /* two cells ahead (north) */
+    p.items[j].genome.g[GENE_HUE] = 0.3f; /* not identical to the viewer */
+    Senses in;
+    creature_sense(&w, &p, i, &s, &in);
+    const float *ahead = &in.v[SENSE_RAYS + RAY_AHEAD * RAY_VALUES];
+    CHECK(near(ahead[RAY_NEAR], 0.75f));
+    CHECK(near(ahead[RAY_RELSIZE], 0.5f));
+    CHECK(ahead[RAY_KIN] ==
+          genome_kinship(&p.items[i].genome, &p.items[j].genome));
+    /* Nothing to the sides. */
+    CHECK(in.v[SENSE_RAYS + RAY_LEFT * RAY_VALUES + RAY_NEAR] == 0.0f);
+    /* Carrion three cells to the left (west), past nothing: 0.5. */
+    carrion_add(&w, world_idx(&w, 2, 8), 4.0f, 2.0f);
+    creature_sense(&w, &p, i, &s, &in);
+    CHECK(near(in.v[SENSE_RAYS + RAY_LEFT * RAY_VALUES + RAY_CARRION], 0.5f));
+    CHECK(in.v[SENSE_RAYS + RAY_RIGHT * RAY_VALUES + RAY_CARRION] == 0.0f);
+    pool_free(&p);
+    world_free(&w);
+}
+
+static void test_ray_limits(void)
+{
+    World w;
+    make_world(&w, 16, 16);
+    Settings s = settings_default();
+    s.sight_max = 4;
+    Pool p;
+    CHECK(pool_init(&p, 3));
+    int i = spawn(&p, &w, 5, 10);
+    p.items[i].genome.g[GENE_SIGHT] = 1.0f; /* sight 4 */
+    spawn(&p, &w, 5, 5); /* five cells ahead: out of sight */
+    Senses in;
+    creature_sense(&w, &p, i, &s, &in);
+    CHECK(in.v[SENSE_RAYS + RAY_AHEAD * RAY_VALUES + RAY_NEAR] == 0.0f);
+
+    /* Rock between the viewer and a creature two cells ahead. */
+    spawn(&p, &w, 5, 8);
+    w.terrain[world_idx(&w, 5, 9)] = TERRAIN_ROCK;
+    creature_sense(&w, &p, i, &s, &in);
+    CHECK(in.v[SENSE_RAYS + RAY_AHEAD * RAY_VALUES + RAY_NEAR] == 0.0f);
+    pool_free(&p);
+    world_free(&w);
+}
+
 static void test_starved_creature_dies(void)
 {
     Sim sim;
     Settings set;
     make_sim(&sim, &set);
-    int i = pool_spawn(&sim.pool, &sim.world, 4, 4);
+    int i = spawn(&sim.pool, &sim.world, 4, 4);
     sim.pool.items[i].energy = set.upkeep_base / 2.0f;
     sim_step(&sim);
     CHECK(!sim.pool.items[i].alive);
     CHECK(sim.pool.count == 0);
     CHECK(sim.world.occupant[world_idx(&sim.world, 4, 4)] == -1);
     CHECK(brain_script_deaths(&sim.brain) == 1);
+    /* The body is left as carrion, at the creature's level. Energy left
+     * was below 0, so only the body counts. */
+    int cell = world_idx(&sim.world, 4, 4);
+    CHECK(near(sim.world.carrion[cell], set.body_energy * 1.0f));
+    CHECK(near(sim.world.carrion_level[cell], LEVEL_START));
+    sim_free(&sim);
+}
+
+static void test_killed_creature_leaves_carrion(void)
+{
+    Sim sim;
+    Settings set;
+    make_sim(&sim, &set);
+    sim.set.attack_steepness = 50.0f; /* the bigger one always hits */
+    int a = spawn(&sim.pool, &sim.world, 4, 6);
+    int t = spawn(&sim.pool, &sim.world, 4, 5); /* ahead of a */
+    sim.pool.items[a].genome.g[GENE_SIZE] = 1.0f; /* size 1.5 */
+    sim.pool.items[t].genome.g[GENE_SIZE] = 0.0f; /* size 0.5 */
+    sim.pool.items[a].energy = 100.0f;
+    sim.pool.items[t].energy = 1.0f; /* one hit is enough */
+    sim.pool.items[t].level = 2.5f;
+    uint32_t target_id = sim.pool.items[t].id;
+    /* Both answers are bites; the target's bites hit the empty cell
+     * ahead of it. */
+    Action script[] = {{ACT_BITE, 1}, {ACT_BITE, 1}};
+    brain_script_load(&sim.brain, script, 2);
+    sim_step(&sim);
+    CHECK(!sim.pool.items[t].alive || sim.pool.items[t].id != target_id);
+    int cell = world_idx(&sim.world, 4, 5);
+    CHECK(sim.world.occupant[cell] == -1);
+    CHECK(near(sim.world.carrion[cell], set.body_energy * 0.5f));
+    CHECK(near(sim.world.carrion_level[cell], 2.5f));
     sim_free(&sim);
 }
 
@@ -301,7 +542,7 @@ static void test_hold_then_rest(void)
     Sim sim;
     Settings set;
     make_sim(&sim, &set);
-    int i = pool_spawn(&sim.pool, &sim.world, 4, 4);
+    int i = spawn(&sim.pool, &sim.world, 4, 4);
     sim.pool.items[i].energy = 100.0f;
     sim.pool.items[i].heading = HEADING_EAST;
     Action script[] = {{ACT_MOVE, 3}};
@@ -388,7 +629,15 @@ int main(void)
     test_split();
     test_split_needs_room();
     test_sense();
+    test_level();
+    test_bite_carrion();
+    test_attack_chance();
+    test_attacks_hit_half_the_time();
+    test_slow_creature();
+    test_ray_sees_creature();
+    test_ray_limits();
     test_starved_creature_dies();
+    test_killed_creature_leaves_carrion();
     test_old_age();
     test_hold_then_rest();
     test_floor_restocks();

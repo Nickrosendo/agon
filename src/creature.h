@@ -31,11 +31,28 @@ typedef struct {
     uint32_t age;       /* ticks lived */
     Action current;     /* what the brain last said */
     uint16_t hold_left; /* ticks of current still to do */
+    float move_points;  /* a move needs 1; gains speed per tick, up to 1 */
+    /* Food-chain level: 1 + the energy-weighted average level of what it
+     * has eaten (plants are level 1, so a pure plant-eater is at 2). eaten
+     * is the energy those meals gave, the weight of the average. Until
+     * the first meal, level is LEVEL_START or the parent's level. */
+    float level;
+    float eaten;
     /* Stored inside the creature, not behind a pointer: GENOME_LEN floats
      * (668 bytes) in every slot, allocated with the pool and never freed
      * on its own. */
     Genome genome;
 } Creature;
+
+/* The level of a creature that has eaten nothing yet and has no parent:
+ * counted as a plant-eater. */
+#define LEVEL_START 2.0f
+
+/* Below 0 and above 1 are not possible, but a sum of 0.25f four times is
+ * exactly 1 while a sum of 0.1f ten times is 0.99999994. A move is
+ * allowed from 1 - MOVE_SLACK move points, so rounding cannot cost a
+ * creature a whole tick. */
+#define MOVE_SLACK 1e-4f
 
 /*
  * Every creature lives in one array of capacity slots, allocated once.
@@ -64,12 +81,16 @@ void pool_free(Pool *p);
  * full or the cell is not free soil; nothing changes then. The caller
  * sets the energy and the genome. */
 int pool_spawn(Pool *p, World *w, int x, int y);
-/* Removes the creature in slot idx from the world and frees the slot.
- * Does nothing to a slot that is already free. */
+/* Removes the creature in slot idx from the world, leaves its body as
+ * carrion (body_energy * size plus any energy left, at its level) and
+ * frees the slot. Does nothing to a slot that is already free. */
 void pool_kill(Pool *p, World *w, int idx, const Settings *s);
 
-/* Fills *out with what creature idx senses: its energy and age, and the
- * vegetation in the cell ahead, to its left and to its right. */
+/* Fills *out with what creature idx senses: its energy, age, size and
+ * diet; and along each of its three rays (ahead, left, right) the
+ * vegetation in the first cell, the closeness of the nearest carrion
+ * within sight, and the nearest creature within sight: its closeness,
+ * its size relative to the viewer and its kinship. A ray stops at rock. */
 void creature_sense(const World *w, const Pool *p, int idx,
                     const Settings *s, Senses *out);
 /* Carries out one tick of action a for creature idx. Returns the slot of
@@ -81,5 +102,24 @@ int creature_act(World *w, Pool *p, int idx, Action a, const Settings *s,
  * false when its energy is gone or it has reached max_age: it must then
  * be killed. */
 bool creature_upkeep(Creature *c, const Settings *s);
+
+/* The body the genes describe (see Settings): size from size_min to
+ * size_max, speed in move points per tick, sight in cells. */
+float creature_size(const Creature *c, const Settings *s);
+float creature_speed(const Creature *c, const Settings *s);
+int creature_sight(const Creature *c, const Settings *s);
+/* Energy one tick of life costs this creature. */
+float creature_upkeep_cost(const Creature *c, const Settings *s);
+
+/* Chance that an attacker of size a hits a target of size t:
+ * a^k / (a^k + t^k). Equal sizes give 0.5; larger k makes size matter
+ * more. A pure function (no state, no randomness), so tests can check it
+ * exactly. */
+float attack_chance(float a, float t, float k);
+
+/* Records a meal that gave energy from a source at source_level (1 for
+ * plants, the carrion's level for meat): updates level and eaten. Does
+ * nothing for energy <= 0. Does not add the energy itself. */
+void creature_ate(Creature *c, float energy, float source_level);
 
 #endif

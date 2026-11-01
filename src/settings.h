@@ -57,7 +57,12 @@ typedef struct {
      * this off). */
     int pool_capacity;       /* most creatures alive at once */
     int start_creatures;     /* placed when a world is built */
-    int min_creatures;       /* the floor */
+    /* the floor. High on purpose: while no family can feed itself yet,
+     * the floor keeps placing random genomes, and the more are tried at
+     * once, the sooner one that works turns up: over ten seeds, 400
+     * creatures after 5,300 ticks on average with a floor of 150, after
+     * 17,600 with a floor of 10. */
+    int min_creatures;
     char brain_name[BRAIN_NAME_MAX]; /* which brain every creature uses */
     float energy_start;      /* for creatures placed, not born */
     float upkeep_base;
@@ -82,6 +87,45 @@ typedef struct {
     float mutation_spread;
     float weight_limit;
     float weight_start_spread;
+
+    /* Traits. Each gene is 0..1; the body uses it as a physical value:
+     * size from size_min to size_max, speed (move points gained per
+     * tick) from speed_min to 1, sight from 1 to sight_max cells. A
+     * creature may move only with at least 1 move point. Upkeep per
+     * tick is upkeep_base + size_upkeep * size + speed_upkeep * speed +
+     * sight_upkeep * sight, and splitting needs split_threshold * size. */
+    float size_min;
+    float size_max;
+    float speed_min;
+    int sight_max;
+    float size_upkeep;
+    float speed_upkeep;
+    float sight_upkeep;      /* per cell of sight */
+
+    /* Food. A bite takes, in this order of priority, from a creature
+     * ahead (an attack), carrion ahead, or vegetation ahead. Energy gained
+     * is what was taken times the diet efficiency: plants
+     * (1 - diet)^diet_penalty, meat diet^diet_penalty. A carrion bite
+     * takes at most bite_meat_energy. */
+    float diet_penalty;
+    float bite_meat_energy;
+
+    /* Attack. Every attack costs attack_cost. It hits with chance
+     * a^k / (a^k + t^k), for attacker size a, target size t and k =
+     * attack_steepness; a hit takes bite_damage * a from the target's
+     * energy. The attacker gains nothing directly: the kill becomes
+     * carrion. */
+    float attack_steepness;
+    float attack_cost;
+    float bite_damage;
+
+    /* Carrion. A death leaves body_energy * size plus any energy left.
+     * Each tick carrion loses carrion_decay of itself; carrion_to_fertility
+     * of what is lost feeds the cell's fertility, up to fertility_max. */
+    float body_energy;
+    float carrion_decay;
+    float carrion_to_fertility;
+    float fertility_max;
 } Settings;
 
 Settings settings_default(void);

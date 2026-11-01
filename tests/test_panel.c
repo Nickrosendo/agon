@@ -56,12 +56,19 @@ static void test_counts(void)
     sim.world.veg_wither[5] = 4;
     sim.world.veg_wither[6] = 9; /* bare: not counted as withering */
     CHECK(pool_spawn(&sim.pool, &sim.world, 8, 8) >= 0);
-    CHECK(pool_spawn(&sim.pool, &sim.world, 9, 8) >= 0);
+    int hunter = pool_spawn(&sim.pool, &sim.world, 9, 8);
+    CHECK(hunter >= 0);
+    if (hunter >= 0) {
+        sim.pool.items[hunter].level = PANEL_MEAT_LEVEL; /* counts as meat */
+    }
+    sim.world.carrion[20] = 3.0f;
 
     PanelCounts c = panel_count(&sim);
     CHECK(c.creatures == 2);
     CHECK(c.plants == 3);
     CHECK(c.withering == 1);
+    CHECK(c.plant_eaters == 1 && c.meat_eaters == 1);
+    CHECK(c.carrion == 1);
     sim_free(&sim);
 }
 

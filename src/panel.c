@@ -16,7 +16,21 @@ PanelCounts panel_count(const Sim *s)
     const World *w = &s->world;
     PanelCounts c = {0};
     c.creatures = s->pool.count;
+    for (int i = 0; i < s->pool.capacity; i++) {
+        const Creature *cr = &s->pool.items[i];
+        if (!cr->alive) {
+            continue;
+        }
+        if (cr->level >= PANEL_MEAT_LEVEL) {
+            c.meat_eaters++;
+        } else {
+            c.plant_eaters++;
+        }
+    }
     for (int i = 0; i < w->w * w->h; i++) {
+        if (w->carrion[i] > 0.0f) {
+            c.carrion++;
+        }
         if (w->veg[i] > 0) {
             c.plants++;
             if (w->veg_wither[i] > 0) {
@@ -132,14 +146,15 @@ void panel_format_count(char *out, size_t size, long n)
 typedef struct {
     int swatch, swatch2;
     float hue, hue2; /* for HUE_SWATCH cells */
+    float meat;      /* for HUE_SWATCH cells: 0 plant-eater .. 1 meat */
     const char *label;
     long count;
 } PanelLine;
 
-static void draw_cell(int swatch, float hue, int col, int row)
+static void draw_cell(int swatch, float hue, float meat, int col, int row)
 {
     if (swatch == HUE_SWATCH) {
-        render_hue_swatch(col, row, hue);
+        render_creature_swatch(col, row, hue, meat);
     } else if (swatch >= 0) {
         render_swatch(col, row, swatch);
     } else {
@@ -158,17 +173,18 @@ static void draw_line(const PanelLine *line, int col, int row)
         return;
     }
     render_text(col, row, " ", 1);
-    draw_cell(line->swatch, line->hue, col + 1, row);
-    draw_cell(line->swatch2, line->hue2, col + 2, row);
+    draw_cell(line->swatch, line->hue, line->meat, col + 1, row);
+    draw_cell(line->swatch2, line->hue2, line->meat, col + 2, row);
     if (line->count < 0) {
         snprintf(text, sizeof(text), " %s", line->label);
     } else {
         char count[16]; /* "-9,223,372,036,854,775,808" would not fit,
                            but no count here comes near it */
         panel_format_count(count, sizeof(count), line->count);
-        /* %-9s pads the label with spaces to 9 columns, %7s right-aligns
-         * the count in 7: 1 + 9 + 7 = 17 = PANEL_COLS - SWATCH_INDENT. */
-        snprintf(text, sizeof(text), " %-9s%7s", line->label, count);
+        /* %-10s pads the label with spaces to 10 columns, %6s
+         * right-aligns the count in 6 ("99,999" at most fits): 1 + 10 + 6
+         * = 17 = PANEL_COLS - SWATCH_INDENT. */
+        snprintf(text, sizeof(text), " %-10s%6s", line->label, count);
     }
     render_text(col + SWATCH_INDENT, row, text, PANEL_COLS - SWATCH_INDENT);
 }
@@ -204,18 +220,26 @@ static PanelLine creatures_line(const ColourGroup *groups, int n_groups,
     return line;
 }
 
-/* One colour group: both cells in its colour, its name and its count. */
-static PanelLine group_line(const ColourGroup *g)
+/* A line whose two cells show a creature colour. */
+static PanelLine creature_colour_line(float hue, float meat,
+                                      const char *label, long count)
 {
-    PanelLine line = swatch_line(HUE_SWATCH, HUE_SWATCH,
-                                 panel_band_name(g->band), g->count);
-    line.hue = line.hue2 = g->hue;
+    PanelLine line = swatch_line(HUE_SWATCH, HUE_SWATCH, label, count);
+    line.hue = line.hue2 = hue;
+    line.meat = meat;
     return line;
 }
 
-/* Room for every line panel_draw can make: 9 fixed lines, 2 more before
+/* One colour group: both cells in its colour, its name and its count. */
+static PanelLine group_line(const ColourGroup *g)
+{
+    return creature_colour_line(g->hue, 0.0f, panel_band_name(g->band),
+                                g->count);
+}
+
+/* Room for every line panel_draw can make: 12 fixed lines, 2 more before
  * the groups and one per group. */
-#define PANEL_MAX_LINES (11 + PANEL_GROUP_LINES)
+#define PANEL_MAX_LINES (14 + PANEL_GROUP_LINES)
 
 /* Appends line to lines, which holds *n lines so far, and counts it. A
  * line that does not fit is dropped: C would let lines[*n] be written
@@ -241,12 +265,22 @@ void panel_draw(const Sim *s, int col, int row0, int rows)
     int n = 0;
     add_line(lines, &n, heading(" population"));
     add_line(lines, &n, creatures_line(groups, n_groups, c.creatures));
+    /* A plant-eater keeps its family's pale colour (shown here in the
+     * largest group's); a meat-eater turns deep red. */
+    float family_hue = n_groups > 0 ? groups[0].hue : 0.33f;
+    add_line(lines, &n, creature_colour_line(family_hue, 0.0f, "eat plants",
+                                             c.plant_eaters));
+    add_line(lines, &n,
+             creature_colour_line(0.0f, 1.0f, "eat meat", c.meat_eaters));
     add_line(lines, &n,
              swatch_line(RENDER_SWATCH_PLANT, RENDER_SWATCH_PLANT, "plants",
                          c.plants));
     add_line(lines, &n,
              swatch_line(RENDER_SWATCH_WITHERED, RENDER_SWATCH_WITHERED,
                          "withering", c.withering));
+    add_line(lines, &n,
+             swatch_line(RENDER_SWATCH_CARRION, RENDER_SWATCH_CARRION,
+                         "carrion", c.carrion));
     add_line(lines, &n, heading(""));
     add_line(lines, &n, heading(" map"));
     add_line(lines, &n,
@@ -259,7 +293,8 @@ void panel_draw(const Sim *s, int col, int row0, int rows)
                          "soil, dry/rich", -1));
     /* Last, so a short window cuts the groups rather than the legend. */
     add_line(lines, &n, heading(""));
-    add_line(lines, &n, heading(" colour groups"));
+    /* Grouped by inherited hue, before any red shift for meat. */
+    add_line(lines, &n, heading(" family colours"));
     for (int k = 0; k < n_groups; k++) {
         add_line(lines, &n, group_line(&groups[k]));
     }

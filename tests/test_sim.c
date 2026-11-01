@@ -8,11 +8,12 @@
  * settings. Pinned on purpose: if a change to the rules, the settings or
  * the order of random draws changes the simulation, this test fails, and
  * the new value must be put here deliberately, knowing why it changed.
- * Last changed when creatures got genomes: placing a creature now draws a
- * random genome, every split draws mutations, the genome is hashed, the
- * default brain became "net", and upkeep and old age were rebalanced.
+ * Last changed with predation: traits cost upkeep and set speed and
+ * sight, bites can attack, deaths leave carrion that rots, the carrion
+ * layers and the new creature fields are hashed, and the start and the
+ * floor went up to 150 creatures.
  */
-#define SEED_7_AFTER_500 0x314e3c4530a29c3aULL
+#define SEED_7_AFTER_500 0x1175dfac5c8962b8ULL
 
 static void test_same_seed_same_checksum(void)
 {

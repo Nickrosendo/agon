@@ -33,8 +33,10 @@ static const Colour SOIL_DRY = {132, 110, 78};
 static const Colour SOIL_RICH = {70, 56, 38};
 static const Colour PLANT = {58, 150, 62};
 static const Colour WITHERED = {196, 168, 84}; /* dry straw */
+static const Colour CARRION = {110, 30, 34};   /* dried blood */
 /* Each creature is coloured by the hue in its genome, light enough to
- * stand out from the terrain. The legend uses the same colours. */
+ * stand out from the terrain, and pulled towards a deep red the more of
+ * its food is meat. The legend uses the same colours. */
 #define CREATURE_SATURATION 0.55f /* 0 white .. 1 full colour */
 static const Colour TEXT = {150, 155, 165};
 static const Colour TEXT_BACKGROUND = {14, 17, 23};
@@ -47,7 +49,7 @@ static const Colour TEXT_BACKGROUND = {14, 17, 23};
  * variable is a constant.
  */
 static const Colour *const SWATCHES[RENDER_SWATCH_COUNT] = {
-    &WATER, &ROCK, &SOIL_DRY, &SOIL_RICH, &PLANT, &WITHERED,
+    &WATER, &ROCK, &SOIL_DRY, &SOIL_RICH, &PLANT, &WITHERED, &CARRION,
 };
 
 /*
@@ -141,6 +143,34 @@ static Colour hue_colour(float hue, float saturation)
     return c;
 }
 
+float render_meat_share(float level)
+{
+    float t = level - 2.0f;
+    if (t < 0.0f) {
+        return 0.0f;
+    }
+    return t > 1.0f ? 1.0f : t;
+}
+
+/* A family's hue moved t of the way round the wheel to red (hue 0),
+ * whichever way round is shorter: a blue creature (hue 0.67) passes
+ * through violet, a yellow one (0.17) through orange. */
+static float hue_towards_red(float hue, float t)
+{
+    float step = hue > 0.5f ? 1.0f - hue : -hue; /* signed distance to 0 */
+    float h = hue + step * t;
+    return h >= 1.0f ? h - 1.0f : h; /* only 1.0 itself can come out */
+}
+
+static Colour creature_colour(float hue, float meat)
+{
+    /* Plant-eaters: pale family colours. Meat-eaters: deep red, with the
+     * saturation climbing from 0.55 to 1 as the hue turns. */
+    float saturation =
+        CREATURE_SATURATION + (1.0f - CREATURE_SATURATION) * meat;
+    return hue_colour(hue_towards_red(hue, meat), saturation);
+}
+
 static Colour cell_colour(const Sim *s, int i)
 {
     const World *w = &s->world;
@@ -149,7 +179,8 @@ static Colour cell_colour(const Sim *s, int i)
      * the pool, so its genome is one lookup away. */
     if (w->occupant[i] >= 0) {
         const Creature *c = &s->pool.items[w->occupant[i]];
-        return hue_colour(c->genome.g[GENE_HUE], CREATURE_SATURATION);
+        return creature_colour(c->genome.g[GENE_HUE],
+                               render_meat_share(c->level));
     }
     if (w->terrain[i] == TERRAIN_WATER) {
         return WATER;
@@ -158,6 +189,14 @@ static Colour cell_colour(const Sim *s, int i)
         return ROCK;
     }
     Colour soil = soil_colour(w->fertility[i]);
+    if (w->carrion[i] > 0.0f) {
+        /* Carrion covers whatever grows there: from a faint stain to
+         * full colour as it approaches several bites' worth, in a few
+         * steps so neighbouring cells often share a colour. */
+        float amount = w->carrion[i] / (w->carrion[i] + set->bite_meat_energy);
+        int shade = 1 + (int)(amount * 3.0f); /* 1..3, 4 only at amount 1 */
+        return mix(soil, CARRION, (float)shade / 4.0f);
+    }
     if (w->veg[i] == 0) {
         return soil;
     }
@@ -264,11 +303,11 @@ void render_swatch(int col, int row, int swatch)
     term_put(" ");
 }
 
-void render_hue_swatch(int col, int row, float hue)
+void render_creature_swatch(int col, int row, float hue, float meat)
 {
     /* The same function the map uses, so the legend cannot drift from
      * what is drawn. */
-    Colour c = hue_colour(hue, CREATURE_SATURATION);
+    Colour c = creature_colour(hue, meat);
     term_move(col, row);
     term_bg(c.r, c.g, c.b);
     term_put(" ");

@@ -29,6 +29,7 @@ enum {
     RENDER_SWATCH_SOIL_RICH,
     RENDER_SWATCH_PLANT,
     RENDER_SWATCH_WITHERED,
+    RENDER_SWATCH_CARRION,
     RENDER_SWATCH_COUNT
 };
 
@@ -36,9 +37,13 @@ enum {
  * An unknown value draws nothing. */
 void render_swatch(int col, int row, int swatch);
 
-/* One character cell at (col, row) in the colour a creature of this hue
- * (0..1) has on the map. */
-void render_hue_swatch(int col, int row, float hue);
+/* How much of a creature's food is meat, from its food-chain level: 0 at
+ * level 2 or below (plants only), 1 at level 3 or above (meat only). */
+float render_meat_share(float level);
+
+/* One character cell at (col, row) in the colour a creature has on the
+ * map, given its inherited hue (0..1) and its meat share (0..1). */
+void render_creature_swatch(int col, int row, float hue, float meat);
 
 /* The message shown instead of the world when the window is too small. */
 void render_too_small(int cols, int rows, int min_cols, int min_rows);

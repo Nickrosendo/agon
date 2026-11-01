@@ -152,10 +152,11 @@ static void creatures_act(Sim *s)
     shuffle(s->turns, n, &s->rng);
     for (int k = 0; k < n; k++) {
         const Creature *c = &s->pool.items[s->turns[k].idx];
-        /* Children born this tick are not in the list. A creature killed
-         * earlier in this tick (possible from lesson 7) has alive false,
-         * or its slot already holds a newborn with another id. */
-        if (c->alive && c->id == s->turns[k].id) {
+        /* Children born this tick are not in the list. A slot that holds
+         * a newborn with another id is skipped. So is a creature whose
+         * energy an attack took to 0 or below earlier in this tick: it is
+         * dying, and the accounting removes it. */
+        if (c->alive && c->id == s->turns[k].id && c->energy > 0.0f) {
             take_turn(s, s->turns[k].idx);
         }
     }
@@ -187,6 +188,7 @@ static void restock(Sim *s)
 void sim_step(Sim *s)
 {
     flora_step(&s->world, &s->rng, &s->set);
+    carrion_step(&s->world, &s->set);
     creatures_act(s);
     accounting(s);
     restock(s);
@@ -235,6 +237,9 @@ static uint64_t hash_creature(uint64_t hash, const Creature *c)
     hash = fnv1a(hash, &c->current.kind, sizeof(c->current.kind));
     hash = fnv1a(hash, &c->current.hold, sizeof(c->current.hold));
     hash = fnv1a(hash, &c->hold_left, sizeof(c->hold_left));
+    hash = fnv1a(hash, &c->move_points, sizeof(c->move_points));
+    hash = fnv1a(hash, &c->level, sizeof(c->level));
+    hash = fnv1a(hash, &c->eaten, sizeof(c->eaten));
     /* sizeof of an array that is a struct field is the whole array,
      * GENOME_LEN * sizeof(float): it has not decayed to a pointer here,
      * as an array passed to a function would. */
@@ -263,6 +268,8 @@ uint64_t sim_checksum(const Sim *s)
     hash = fnv1a(hash, w->veg, n * sizeof(uint8_t));
     hash = fnv1a(hash, w->veg_age, n * sizeof(uint16_t));
     hash = fnv1a(hash, w->veg_wither, n * sizeof(uint8_t));
+    hash = fnv1a(hash, w->carrion, n * sizeof(float));
+    hash = fnv1a(hash, w->carrion_level, n * sizeof(float));
     hash = fnv1a(hash, w->occupant, n * sizeof(int32_t));
     hash = fnv1a(hash, &s->pool.count, sizeof(s->pool.count));
     hash = fnv1a(hash, &s->pool.next_id, sizeof(s->pool.next_id));

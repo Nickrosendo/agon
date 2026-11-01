@@ -170,6 +170,26 @@ static void test_weight_positions(void)
     CHECK(wrong == 0);
 }
 
+/* Floats compared with a tolerance: pow's result for 0.5^1.5 is close to
+ * 0.35355339 but need not be that exact float. */
+static bool near(float a, float b)
+{
+    return fabsf(a - b) < 1e-4f;
+}
+
+static void test_diet_efficiency(void)
+{
+    CHECK(near(diet_plant_eff(0.0f, 1.5f), 1.0f));
+    CHECK(near(diet_meat_eff(0.0f, 1.5f), 0.0f));
+    CHECK(near(diet_plant_eff(1.0f, 1.5f), 0.0f));
+    CHECK(near(diet_meat_eff(1.0f, 1.5f), 1.0f));
+    /* The middle is penalised: at penalty 1.5 each is below 0.5. */
+    CHECK(near(diet_plant_eff(0.5f, 1.5f), 0.3536f));
+    CHECK(near(diet_meat_eff(0.5f, 1.5f), 0.3536f));
+    CHECK(near(diet_plant_eff(0.5f, 1.0f), 0.5f));
+    CHECK(near(diet_meat_eff(0.5f, 1.0f), 0.5f));
+}
+
 int main(void)
 {
     test_random_in_range();
@@ -178,5 +198,6 @@ int main(void)
     test_hue_wraps();
     test_kinship();
     test_weight_positions();
+    test_diet_efficiency();
     TEST_SUMMARY();
 }

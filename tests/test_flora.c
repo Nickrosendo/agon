@@ -1,5 +1,6 @@
 #include "test.h"
 
+#include <math.h>   /* fabsf */
 #include <string.h> /* memcpy */
 
 #include "flora.h"
@@ -385,6 +386,56 @@ static void test_sprouting_follows_its_rate(void)
     world_free(&w);
 }
 
+static void test_carrion_merges(void)
+{
+    World w;
+    make_world(&w, 4, 4);
+    int i = world_idx(&w, 1, 1);
+    carrion_add(&w, i, 10.0f, 3.0f);
+    carrion_add(&w, i, 10.0f, 2.0f);
+    CHECK(fabsf(w.carrion[i] - 20.0f) < 1e-4f);
+    CHECK(fabsf(w.carrion_level[i] - 2.5f) < 1e-4f);
+    carrion_add(&w, i, 0.0f, 9.0f); /* nothing: level unchanged */
+    CHECK(fabsf(w.carrion_level[i] - 2.5f) < 1e-4f);
+    world_free(&w);
+}
+
+static void test_carrion_rots_into_soil(void)
+{
+    World w;
+    make_world(&w, 4, 4);
+    Settings s = settings_default();
+    s.carrion_decay = 0.1f;
+    s.carrion_to_fertility = 0.001f;
+    s.fertility_max = 1.0f;
+    int i = world_idx(&w, 2, 2);
+    w.fertility[i] = 0.5f;
+    carrion_add(&w, i, 100.0f, 2.0f);
+    carrion_step(&w, &s);
+    CHECK(fabsf(w.carrion[i] - 90.0f) < 1e-4f);
+    CHECK(fabsf(w.fertility[i] - (0.5f + 10.0f * 0.001f)) < 1e-4f);
+
+    /* Never above fertility_max. */
+    w.fertility[i] = 0.999f;
+    carrion_step(&w, &s);
+    CHECK(w.fertility[i] == s.fertility_max);
+    world_free(&w);
+}
+
+static void test_carrion_disappears(void)
+{
+    World w;
+    make_world(&w, 4, 4);
+    Settings s = settings_default();
+    s.carrion_decay = 0.5f;
+    int i = world_idx(&w, 0, 0);
+    carrion_add(&w, i, 0.015f, 2.0f);
+    carrion_step(&w, &s); /* 0.0075 left: below CARRION_MIN */
+    CHECK(w.carrion[i] == 0.0f);
+    CHECK(w.carrion_level[i] == 0.0f);
+    world_free(&w);
+}
+
 int main(void)
 {
     test_line_of_three();
@@ -401,5 +452,8 @@ int main(void)
     test_sprout_starts_young();
     test_growth_follows_its_chance();
     test_sprouting_follows_its_rate();
+    test_carrion_merges();
+    test_carrion_rots_into_soil();
+    test_carrion_disappears();
     TEST_SUMMARY();
 }

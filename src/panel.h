@@ -18,7 +18,15 @@ typedef struct {
     int creatures;
     int plants;    /* cells with any vegetation */
     int withering; /* of those, how many are withering */
+    int plant_eaters; /* creatures below PANEL_MEAT_LEVEL */
+    int meat_eaters;  /* creatures at or above it */
+    int carrion;      /* cells with carrion on them */
 } PanelCounts;
+
+/* The food-chain level from which the panel counts a creature as a
+ * meat-eater: half way from a pure plant-eater (2) to a pure eater of
+ * plant-eaters (3), so more than half its food was meat. */
+#define PANEL_MEAT_LEVEL 2.5f
 
 /* Counts what the panel shows, straight from the world and the pool. */
 PanelCounts panel_count(const Sim *s);

@@ -113,6 +113,40 @@ static uint8_t wither_on(World *w, int i, int limit)
     return w->veg[i]; /* withering plants neither grow nor shrink */
 }
 
+void carrion_add(World *w, int idx, float energy, float level)
+{
+    if (energy <= 0.0f) {
+        return;
+    }
+    float before = w->carrion[idx];
+    float total = before + energy;
+    /* A running weighted average: each part counts in proportion to its
+     * energy. total > 0 here, since energy > 0 and carrion is never
+     * negative, so the division is safe. */
+    w->carrion_level[idx] =
+        (before * w->carrion_level[idx] + energy * level) / total;
+    w->carrion[idx] = total;
+}
+
+void carrion_step(World *w, const Settings *s)
+{
+    int n = w->w * w->h;
+    for (int i = 0; i < n; i++) {
+        if (w->carrion[i] <= 0.0f) {
+            continue;
+        }
+        float lost = w->carrion[i] * s->carrion_decay;
+        w->carrion[i] -= lost;
+        float fertility = w->fertility[i] + lost * s->carrion_to_fertility;
+        w->fertility[i] =
+            fertility > s->fertility_max ? s->fertility_max : fertility;
+        if (w->carrion[i] < CARRION_MIN) {
+            w->carrion[i] = 0.0f;
+            w->carrion_level[i] = 0.0f;
+        }
+    }
+}
+
 void flora_step(World *w, Rng *r, const Settings *s)
 {
     /* wrap_near needs the reach to be no larger than the world; a tiny
