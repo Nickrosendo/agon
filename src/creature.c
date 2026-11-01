@@ -149,9 +149,11 @@ int creature_sight(const Creature *c, const Settings *s)
 
 float creature_upkeep_cost(const Creature *c, const Settings *s)
 {
+    float digest = c->genome.g[GENE_PLANT] + c->genome.g[GENE_MEAT];
     return s->upkeep_base + s->size_upkeep * creature_size(c, s) +
            s->speed_upkeep * creature_speed(c, s) +
-           s->sight_upkeep * (float)creature_sight(c, s);
+           s->sight_upkeep * (float)creature_sight(c, s) +
+           s->digest_upkeep * digest * digest;
 }
 
 /* The energy at which this creature may split: bigger bodies need more. */
@@ -237,7 +239,7 @@ void creature_sense(const World *w, const Pool *p, int idx,
     float age = (float)c->age;
     out->v[SENSE_AGE] = age / (age + s->sense_age_half);
     out->v[SENSE_SIZE] = c->genome.g[GENE_SIZE];
-    out->v[SENSE_DIET] = c->genome.g[GENE_DIET];
+    out->v[SENSE_DIET] = c->genome.g[GENE_MEAT]; /* how much a hunter */
 
     /* The directions of the three rays, in RAY_ order. */
     const uint8_t ray_heading[RAY_COUNT] = {
@@ -293,24 +295,21 @@ static float carrion_take(const World *w, int i, const Settings *s)
                                                  : s->bite_meat_energy;
 }
 
-/* An efficiency from the diet curve, lifted by the digest floor: from
- * digest_floor (curve 0) to 1 (curve 1). */
-static float with_floor(float curve, const Settings *s)
+/* The share of a food's energy a digestion gene of this value gets out
+ * of it: from digest_floor (gene 0) to 1 (gene 1). */
+static float digest_eff(float gene, const Settings *s)
 {
-    return s->digest_floor + (1.0f - s->digest_floor) * curve;
+    return s->digest_floor + (1.0f - s->digest_floor) * gene;
 }
 
 static float meat_gain(const Creature *c, float take, const Settings *s)
 {
-    float diet = c->genome.g[GENE_DIET];
-    return take * with_floor(diet_meat_eff(diet, s->diet_penalty), s);
+    return take * digest_eff(c->genome.g[GENE_MEAT], s);
 }
 
 static float plant_gain(const Creature *c, const Settings *s)
 {
-    float diet = c->genome.g[GENE_DIET];
-    return s->bite_veg_energy *
-           with_floor(diet_plant_eff(diet, s->diet_penalty), s);
+    return s->bite_veg_energy * digest_eff(c->genome.g[GENE_PLANT], s);
 }
 
 /* Eats up to bite_meat_energy of the carrion ahead. */

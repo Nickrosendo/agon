@@ -11,9 +11,10 @@
  * Last changed with predation: traits cost upkeep and set speed and
  * sight, bites can attack, deaths leave carrion that rots, the carrion
  * layers and the new creature fields are hashed, and the start and the
- * floor went up to 150 creatures; then the digest floor.
+ * floor went up to 150 creatures; then the digest floor; then separate
+ * plant and meat digestion genes.
  */
-#define SEED_7_AFTER_500 0xa6fda867129f7794ULL
+#define SEED_7_AFTER_500 0x0b702287d6d5202cULL
 
 static void test_same_seed_same_checksum(void)
 {

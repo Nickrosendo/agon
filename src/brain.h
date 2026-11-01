@@ -29,7 +29,7 @@ enum {
     SENSE_ENERGY,
     SENSE_AGE,
     SENSE_SIZE,
-    SENSE_DIET,
+    SENSE_DIET, /* the meat digestion gene */
     SENSE_RAYS,
     SENSE_COUNT = SENSE_RAYS + RAY_COUNT * RAY_VALUES
 };

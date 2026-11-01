@@ -1,6 +1,6 @@
 #include "genome.h"
 
-#include <math.h> /* fabsf, floorf, isfinite, powf */
+#include <math.h> /* fabsf, floorf, isfinite */
 
 /* Two values "nearly match" for genome_kinship when they differ by less
  * than this. Random genomes rarely match (about 1 value in 20); a child
@@ -97,20 +97,6 @@ float genome_kinship(const Genome *a, const Genome *b)
     /* Counting is symmetric because fabsf(a - b) == fabsf(b - a) exactly:
      * a - b and b - a are the same number with opposite signs. */
     return (float)matches / (float)GENOME_LEN;
-}
-
-/* powf(x, y) is x to the power y, in float. Costlier than a
- * multiplication (it goes through a logarithm and an exponential), which
- * matters only if called for every creature every tick; it is called per
- * bite. For x = 0 and y > 0 it returns exactly 0. */
-float diet_plant_eff(float diet, float penalty)
-{
-    return powf(1.0f - diet, penalty);
-}
-
-float diet_meat_eff(float diet, float penalty)
-{
-    return powf(diet, penalty);
 }
 
 /* The weights start after the traits: first every hidden value's NET_IN

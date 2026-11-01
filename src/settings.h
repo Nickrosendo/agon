@@ -93,7 +93,8 @@ typedef struct {
      * tick) from speed_min to 1, sight from 1 to sight_max cells. A
      * creature may move only with at least 1 move point. Upkeep per
      * tick is upkeep_base + size_upkeep * size + speed_upkeep * speed +
-     * sight_upkeep * sight, and splitting needs split_threshold * size. */
+     * sight_upkeep * sight + the digestion cost (below), and splitting
+     * needs split_threshold * size. */
     float size_min;
     float size_max;
     float speed_min;
@@ -102,18 +103,19 @@ typedef struct {
     float speed_upkeep;
     float sight_upkeep;      /* per cell of sight */
 
-    /* Food. A bite takes, in this order of priority, from a creature
-     * ahead (an attack), carrion ahead, or vegetation ahead. Energy gained
-     * is what was taken times the diet efficiency: plants
-     * (1 - diet)^diet_penalty, meat diet^diet_penalty, each raised by
-     * digest_floor (below). A carrion bite takes at most bite_meat_energy. */
-    float diet_penalty;
+    /* Food. A bite attacks a creature ahead; otherwise it eats carrion or
+     * vegetation ahead, whichever gives more. Energy gained is what was
+     * taken times the efficiency for that food: digest_floor + (1 -
+     * digest_floor) * gene, with GENE_PLANT or GENE_MEAT. Digesting costs
+     * upkeep every tick: digest_upkeep * (plant + meat)^2. The square
+     * makes a generalist (both genes 1) pay four times what a specialist
+     * (one gene 1) pays, while a little of the second food costs a
+     * specialist almost nothing at first, so a plant-eater can drift
+     * towards meat one small step at a time. A carrion bite takes at most
+     * bite_meat_energy. */
     float bite_meat_energy;
-    /* Every creature digests at least this share of either food: the
-     * efficiency used is digest_floor + (1 - digest_floor) * curve. So a
-     * plant-eater gains a little from carrion, and networks that seek
-     * carrion can be rewarded before any diet has moved towards meat. */
     float digest_floor;
+    float digest_upkeep;
 
     /* Attack. Every attack costs attack_cost. It hits with chance
      * a^k / (a^k + t^k), for attacker size a, target size t and k =

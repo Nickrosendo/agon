@@ -1,6 +1,7 @@
 /*
  * genome: everything a creature inherits, as one flat array of floats.
- * The first GENE_TRAITS values are traits (size, speed, sight, diet, hue);
+ * The first GENE_TRAITS values are traits (size, speed, sight, plant and
+ * meat digestion, hue);
  * the rest are the weights of the creature's neural network. A child gets
  * a copy of its parent's genome with small random changes.
  */
@@ -10,10 +11,19 @@
 #include "rng.h"
 #include "settings.h"
 
-/* The traits, as positions in Genome.g. Each is stored in 0..1. Only hue
- * has an effect so far; the other four start to matter with predation
- * (lesson 7). */
-enum { GENE_SIZE, GENE_SPEED, GENE_SIGHT, GENE_DIET, GENE_HUE, GENE_TRAITS };
+/* The traits, as positions in Genome.g. Each is stored in 0..1.
+ * GENE_PLANT and GENE_MEAT are how well the creature digests each food;
+ * they are separate genes, so one can rise without the other falling,
+ * and an upkeep cost (see Settings) keeps a creature from having both. */
+enum {
+    GENE_SIZE,
+    GENE_SPEED,
+    GENE_SIGHT,
+    GENE_PLANT,
+    GENE_MEAT,
+    GENE_HUE,
+    GENE_TRAITS
+};
 
 /* The network: NET_IN senses plus a constant 1 feed NET_HIDDEN hidden
  * values, which plus a constant 1 feed NET_OUT outputs, one per action.
@@ -50,12 +60,6 @@ void genome_copy_mutated(Genome *child, const Genome *parent, Rng *r,
 /* How related two genomes look: the share of values that nearly match,
  * from 1 (identical) down towards 0. The same either way round. */
 float genome_kinship(const Genome *a, const Genome *b);
-
-/* How much of a food's energy a creature with this diet trait (0 plants
- * .. 1 meat) gets out of it: plants (1 - diet)^penalty, meat
- * diet^penalty. A penalty above 1 makes a mixed diet digest both poorly. */
-float diet_plant_eff(float diet, float penalty);
-float diet_meat_eff(float diet, float penalty);
 
 /* Where a weight sits in Genome.g. From input i (NET_IN for the constant
  * 1, the bias) into hidden value h; from hidden value j (NET_HIDDEN for

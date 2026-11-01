@@ -21,8 +21,8 @@ static void make_world(World *w, int width, int height)
 }
 
 /* pool_spawn, then a standard body: size 1 and full speed (with the
- * default size_min 0.5 and size_max 1.5), sight 1. Tests that are about
- * one trait change it afterwards. */
+ * default size_min 0.5 and size_max 1.5), sight 1, a plant-eater. Tests
+ * that are about one trait change it afterwards. */
 static int spawn(Pool *p, World *w, int x, int y)
 {
     int idx = pool_spawn(p, w, x, y);
@@ -31,6 +31,8 @@ static int spawn(Pool *p, World *w, int x, int y)
         g->g[GENE_SIZE] = 0.5f;
         g->g[GENE_SPEED] = 1.0f;
         g->g[GENE_SIGHT] = 0.0f;
+        g->g[GENE_PLANT] = 1.0f; /* a plant-eater: full plant energy */
+        g->g[GENE_MEAT] = 0.0f;
     }
     return idx;
 }
@@ -315,7 +317,8 @@ static void test_bite_carrion(void)
     Pool p;
     CHECK(pool_init(&p, 2));
     int i = spawn(&p, &w, 3, 3); /* heading north: (3, 2) is ahead */
-    p.items[i].genome.g[GENE_DIET] = 1.0f; /* meat efficiency 1 */
+    p.items[i].genome.g[GENE_MEAT] = 1.0f; /* meat efficiency 1 */
+    p.items[i].genome.g[GENE_PLANT] = 0.0f;
     p.items[i].energy = 10.0f;
     int ahead = world_idx(&w, 3, 2);
     carrion_add(&w, ahead, 5.0f, 2.0f);
@@ -330,21 +333,24 @@ static void test_bite_carrion(void)
     CHECK(near(w.carrion[ahead], 12.0f));
 
     /* Both carrion and plants ahead: a plant-eater eats the plants. */
-    p.items[i].genome.g[GENE_DIET] = 0.0f;
+    p.items[i].genome.g[GENE_MEAT] = 0.0f;
+    p.items[i].genome.g[GENE_PLANT] = 1.0f;
     w.veg[ahead] = 2;
     float carrion_before = w.carrion[ahead];
     creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
     CHECK(w.veg[ahead] == 1);
     CHECK(w.carrion[ahead] == carrion_before);
     /* A meat-eater, the carrion. */
-    p.items[i].genome.g[GENE_DIET] = 1.0f;
+    p.items[i].genome.g[GENE_MEAT] = 1.0f;
+    p.items[i].genome.g[GENE_PLANT] = 0.0f;
     creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
     CHECK(w.veg[ahead] == 1);
     CHECK(w.carrion[ahead] < carrion_before);
     w.veg[ahead] = 0;
 
     /* A pure plant-eater gets nothing from meat, and its level stays. */
-    p.items[i].genome.g[GENE_DIET] = 0.0f;
+    p.items[i].genome.g[GENE_MEAT] = 0.0f;
+    p.items[i].genome.g[GENE_PLANT] = 1.0f;
     float before = p.items[i].energy;
     float level_before = p.items[i].level;
     creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
@@ -533,6 +539,24 @@ static void test_killed_creature_leaves_carrion(void)
     sim_free(&sim);
 }
 
+static void test_digestion_costs(void)
+{
+    Settings s = settings_default();
+    s.digest_upkeep = 0.1f;
+    Creature c = {0}; /* size, speed and sight genes 0 */
+    c.genome.g[GENE_PLANT] = 0.0f;
+    float none = creature_upkeep_cost(&c, &s);
+    c.genome.g[GENE_PLANT] = 1.0f;
+    float specialist = creature_upkeep_cost(&c, &s);
+    c.genome.g[GENE_MEAT] = 1.0f;
+    float generalist = creature_upkeep_cost(&c, &s);
+    CHECK(near(specialist - none, 0.1f));
+    CHECK(near(generalist - none, 0.4f)); /* (1 + 1)^2 = 4 times */
+    /* A little meat on top of full plants costs little more at first. */
+    c.genome.g[GENE_MEAT] = 0.1f;
+    CHECK(near(creature_upkeep_cost(&c, &s) - specialist, 0.1f * 0.21f));
+}
+
 static void test_old_age(void)
 {
     Settings s = settings_default();
@@ -648,6 +672,7 @@ int main(void)
     test_ray_limits();
     test_starved_creature_dies();
     test_killed_creature_leaves_carrion();
+    test_digestion_costs();
     test_old_age();
     test_hold_then_rest();
     test_floor_restocks();
