@@ -1,10 +1,17 @@
-#include <stdint.h> /* uint8_t: an unsigned integer exactly 8 bits wide */
+#include <errno.h>
+#include <inttypes.h> /* PRIx64: the printf format for a uint64_t */
+#include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h> /* malloc, calloc, free */
-#include <string.h> /* memcpy, memset, strlen */
+#include <stdlib.h> /* strtoull */
+#include <string.h> /* memset, strcmp */
 #include <time.h>   /* clock_gettime, nanosleep, struct timespec (POSIX) */
 
-#include "term.h" /* quotes: look in this file's folder first */
+#include "render.h"
+#include "rng.h"
+#include "settings.h"
+#include "term.h"
+#include "terrain.h"
+#include "world.h"
 
 #define FRAMES_PER_SECOND 30
 #define NANOSECONDS_PER_SECOND 1000000000L
@@ -19,197 +26,125 @@ static const int SPEEDS[] = {1, 2, 5, 10, 15, 30, 60, 120};
 #define SPEED_COUNT ((int)(sizeof(SPEEDS) / sizeof(SPEEDS[0])))
 #define DEFAULT_SPEED 3 /* 10 generations per second */
 
-/* The upper half block, U+2580, as its three UTF-8 bytes. The top half of
- * the character cell takes the foreground colour, the bottom half the
- * background colour, so one character shows two square cells. */
-#define UPPER_HALF_BLOCK "\xE2\x96\x80"
-
-typedef struct {
-    uint8_t r, g, b;
-} Colour;
-
-static const Colour ALIVE = {130, 220, 150};
-static const Colour DEAD = {14, 17, 23};
-static const Colour STATUS_TEXT = {150, 155, 165};
+/* One soil cell in this many starts alive. */
+#define LIFE_START_ONE_IN 4
 
 /*
- * The grid is one flat array of w * h cells, row after row.
- * Cell (x, y) lives at y * w + x. The array itself does not know its own
- * size, so every function that walks it is told w and h.
- *
- * Coordinates outside the grid wrap to the other side. In C, % keeps the
- * sign of the left operand: (-1) % 5 is -1, not 4. Adding w and taking
- * % again turns -1 into w - 1. This only works for x >= -w, which is all
- * we need, since neighbours are at most one step away.
+ * Life on the vegetation layer, a stand-in until real vegetation arrives
+ * in lesson 4: Conway's rules, but only soil cells can be alive.
  */
-static int idx(int x, int y, int w, int h)
+static void life_seed(World *w, Rng *r)
 {
-    int wrapped_x = ((x % w) + w) % w;
-    int wrapped_y = ((y % h) + h) % h;
-    return wrapped_y * w + wrapped_x;
+    for (int i = 0; i < w->w * w->h; i++) {
+        int alive = w->terrain[i] == TERRAIN_SOIL &&
+                    rng_below(r, LIFE_START_ONE_IN) == 0;
+        w->veg[i] = alive ? 1 : 0;
+    }
 }
 
-static int count_neighbours(const uint8_t *grid, int x, int y, int w, int h)
+static int count_neighbours(const World *w, int x, int y)
 {
     int count = 0;
     for (int dy = -1; dy <= 1; dy++) {
         for (int dx = -1; dx <= 1; dx++) {
-            if (dx == 0 && dy == 0) {
-                continue;
+            if (dx != 0 || dy != 0) {
+                count += w->veg[world_idx(w, x + dx, y + dy)];
             }
-            /* Each cell is 0 or 1, so adding them counts the live ones.
-             * The uint8_t is widened to int before the addition. */
-            count += grid[idx(x + dx, y + dy, w, h)];
         }
     }
     return count;
 }
 
-/*
- * Reads every cell of current and writes every cell of next. current is
- * never written here (const promises that, and the compiler enforces it),
- * so every cell sees the same generation.
- */
-static void step(const uint8_t *current, uint8_t *next, int w, int h)
+static void life_step(World *w)
 {
-    for (int y = 0; y < h; y++) {
-        for (int x = 0; x < w; x++) {
-            int i = idx(x, y, w, h);
-            int n = count_neighbours(current, x, y, w, h);
-            if (current[i]) {
-                next[i] = (n == 2 || n == 3) ? 1 : 0; /* survives */
+    for (int y = 0; y < w->h; y++) {
+        for (int x = 0; x < w->w; x++) {
+            int i = world_idx(w, x, y);
+            int n = count_neighbours(w, x, y);
+            int alive;
+            if (w->terrain[i] != TERRAIN_SOIL) {
+                alive = 0;
+            } else if (w->veg[i]) {
+                alive = n == 2 || n == 3;
             } else {
-                next[i] = (n == 3) ? 1 : 0; /* born */
+                alive = n == 3;
             }
+            w->veg_next[i] = alive ? 1 : 0;
         }
     }
+    /* Swap the two layer pointers inside the struct. w is a pointer, so
+     * this changes the caller's World, not a copy of it. */
+    uint8_t *old = w->veg;
+    w->veg = w->veg_next;
+    w->veg_next = old;
+}
+
+/* Everything in a world follows from its seed: terrain, fertility and the
+ * starting cells. The world's memory is reused, never reallocated. */
+static void build_world(World *w, uint64_t seed, const Settings *s)
+{
+    Rng r;
+    rng_seed(&r, seed);
+    terrain_generate(w, &r, s);
+    life_seed(w, &r);
+}
+
+/* A seed for when none is given: the current time, mixed. */
+static uint64_t seed_from_clock(void)
+{
+    struct timespec t;
+    clock_gettime(CLOCK_REALTIME, &t);
+    uint64_t state = (uint64_t)t.tv_sec * 1000000000ULL + (uint64_t)t.tv_nsec;
+    return rng_splitmix64(&state);
 }
 
 /*
- * Copies a small pattern into the grid with its top left corner at
- * (x0, y0). '#' is a live cell, anything else is left as it is. The
- * pattern is an array of strings, one per row; its length is passed in
- * because the function only receives a pointer to the first row.
+ * Parses "123" or "0x7b" into *seed. strtoull alone is too forgiving: it
+ * skips leading spaces, accepts "-1" (and turns it into 2^64 - 1), stops
+ * quietly at the first bad character, and reports a too-large number only
+ * through errno. Each of those is checked here.
  */
-static void place_pattern(uint8_t *grid, int w, int h, int x0, int y0,
-                          const char *const *rows, int row_count)
+static int parse_seed(const char *text, uint64_t *seed)
 {
-    for (int dy = 0; dy < row_count; dy++) {
-        const char *row = rows[dy];
-        /* A C string ends at the first '\0' byte; that is how the loop
-         * knows where the row stops. */
-        for (int dx = 0; row[dx] != '\0'; dx++) {
-            if (row[dx] == '#') {
-                grid[idx(x0 + dx, y0 + dy, w, h)] = 1;
+    if (text[0] < '0' || text[0] > '9') {
+        return 0; /* empty, a sign, or a space */
+    }
+    char *end;
+    errno = 0;
+    /* Base 0: decimal, or hexadecimal after 0x. end is set to the first
+     * character not used. */
+    unsigned long long value = strtoull(text, &end, 0);
+    if (errno == ERANGE || *end != '\0') {
+        return 0;
+    }
+    *seed = value;
+    return 1;
+}
+
+static int parse_args(int argc, char **argv, uint64_t *seed)
+{
+    /* argv[0] is the program's own name; options start at argv[1]. */
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--seed") == 0) {
+            if (i + 1 >= argc) {
+                fprintf(stderr, "agon: --seed needs a number after it\n");
+                return 0;
             }
+            i++;
+            if (!parse_seed(argv[i], seed)) {
+                fprintf(stderr, "agon: '%s' is not a seed (a whole number, "
+                                "decimal or 0x hexadecimal)\n",
+                        argv[i]);
+                return 0;
+            }
+        } else {
+            fprintf(stderr, "agon: unknown option '%s'\n"
+                            "usage: agon [--seed N]\n",
+                    argv[i]);
+            return 0;
         }
     }
-}
-
-static void seed(uint8_t *grid, int w, int h)
-{
-    /* The acorn: seven cells that keep changing for about 5,000
-     * generations on an open plane. */
-    static const char *const ACORN[] = {
-        ".#.....",
-        "...#...",
-        "##..###",
-    };
-    /* The R-pentomino: five cells, about 1,100 generations of chaos. */
-    static const char *const R_PENTOMINO[] = {
-        ".##",
-        "##.",
-        ".#.",
-    };
-    place_pattern(grid, w, h, w / 2 - 3, h / 2 - 1, ACORN, 3);
-    place_pattern(grid, w, h, w / 5, h / 4, R_PENTOMINO, 3);
-}
-
-static void set_fg(Colour c)
-{
-    term_fg(c.r, c.g, c.b);
-}
-
-static void set_bg(Colour c)
-{
-    term_bg(c.r, c.g, c.b);
-}
-
-/*
- * Writes text at the current position, cut to max_cols characters and
- * padded with spaces to exactly max_cols, so a shorter text fully covers
- * a longer one from the frame before. Only for ASCII text: there one
- * byte is one column on screen.
- */
-static void put_padded(const char *text, int max_cols)
-{
-    char line[512];
-    size_t width = (size_t)max_cols;
-    if (width > sizeof(line) - 1) {
-        width = sizeof(line) - 1;
-    }
-    size_t len = strlen(text);
-    if (len > width) {
-        len = width;
-    }
-    memcpy(line, text, len);
-    memset(line + len, ' ', width - len);
-    line[width] = '\0';
-    term_put(line);
-}
-
-/*
- * Each character cell shows two grid cells: (x, 2*row) on top and
- * (x, 2*row + 1) below it. Draws as much of the grid as fits; if the
- * window is larger than the grid, the rest stays blank.
- */
-static void draw_grid(const uint8_t *grid, int w, int h, int cols, int rows)
-{
-    int view_cols = cols < w ? cols : w;
-    int view_rows = rows < h / 2 ? rows : h / 2;
-    for (int row = 0; row < view_rows; row++) {
-        term_move(0, row);
-        for (int x = 0; x < view_cols; x++) {
-            uint8_t top = grid[idx(x, 2 * row, w, h)];
-            uint8_t bottom = grid[idx(x, 2 * row + 1, w, h)];
-            if (top == bottom) {
-                /* Both halves the same: a space in the background colour
-                 * looks identical and is 1 byte instead of 3. Most of the
-                 * screen is dead cells, so this shrinks the frame a lot. */
-                set_bg(top ? ALIVE : DEAD);
-                term_put(" ");
-            } else {
-                set_fg(top ? ALIVE : DEAD);
-                set_bg(bottom ? ALIVE : DEAD);
-                term_put(UPPER_HALF_BLOCK);
-            }
-        }
-    }
-}
-
-static void draw_status(int row, int cols, long generation, int speed,
-                        int paused)
-{
-    char text[160];
-    snprintf(text, sizeof(text),
-             " generation %ld | %d/s%s | space pause | +/- speed | q quit",
-             generation, SPEEDS[speed], paused ? " paused" : "");
-    term_move(0, row);
-    set_fg(STATUS_TEXT);
-    set_bg(DEAD);
-    put_padded(text, cols);
-}
-
-static void draw_too_small(int cols, int rows)
-{
-    set_fg(STATUS_TEXT);
-    set_bg(DEAD);
-    term_move(0, 0);
-    put_padded("window too small", cols);
-    if (rows > 1) {
-        term_move(0, 1);
-        put_padded("need 20 x 6", cols);
-    }
+    return 1;
 }
 
 /* Nanoseconds from a fixed but arbitrary starting point. CLOCK_MONOTONIC
@@ -236,8 +171,29 @@ static void sleep_until(int64_t deadline)
     nanosleep(&pause, NULL);
 }
 
-int main(void)
+static void draw_title(int cols, uint64_t seed, long generation, int speed,
+                       int paused)
 {
+    char text[160];
+    /* PRIx64 expands to the right printf letters for a uint64_t on this
+     * platform ("lx" here); writing %llx would be wrong on some systems.
+     * Adjacent string literals are joined into one by the compiler. */
+    snprintf(text, sizeof(text),
+             " agon | seed 0x%" PRIx64 " | generation %ld | %d/s%s", seed,
+             generation, SPEEDS[speed], paused ? " paused" : "");
+    render_text(0, 0, text, cols);
+}
+
+int main(int argc, char **argv)
+{
+    uint64_t seed = seed_from_clock();
+    /* Bad options are reported before the screen is taken over, so the
+     * message stays visible. */
+    if (!parse_args(argc, argv, &seed)) {
+        return 1;
+    }
+    Settings settings = settings_default();
+
     if (!term_open()) {
         fprintf(stderr, "agon: needs a terminal (do not redirect input or "
                         "output)\n");
@@ -247,27 +203,25 @@ int main(void)
     int cols, rows;
     term_size(&cols, &rows);
 
-    /* The grid is sized once, from the window at start-up (never smaller
+    /* The world is sized once, from the window at start-up (never smaller
      * than the minimum window), and keeps that size: resizing changes how
-     * much of it is visible, not the grid. Two cells per character row,
-     * and the last row is the status line. */
-    int w = cols < MIN_COLS ? MIN_COLS : cols;
-    int h = 2 * ((rows < MIN_ROWS ? MIN_ROWS : rows) - 1);
-    size_t cell_count = (size_t)w * (size_t)h;
+     * much of it is visible. Two cells per character row; the top row is
+     * the title line and the bottom row the help line. */
+    int world_w = cols < MIN_COLS ? MIN_COLS : cols;
+    int world_h = 2 * ((rows < MIN_ROWS ? MIN_ROWS : rows) - 2);
 
-    /* calloc zeroes the memory, so every cell starts dead. malloc does
-     * not: next starts as whatever bytes were there, which is fine because
-     * step writes every cell of it before anyone reads it. */
-    uint8_t *current = calloc(cell_count, sizeof(uint8_t));
-    uint8_t *next = malloc(cell_count * sizeof(uint8_t));
-    if (current == NULL || next == NULL) {
+    World world;
+    if (!world_init(&world, world_w, world_h)) {
         term_close(); /* so the message lands on the normal screen */
         fprintf(stderr, "agon: out of memory\n");
-        free(current); /* free(NULL) does nothing, so this is safe */
-        free(next);
         return 1;
     }
-    seed(current, w, h);
+    build_world(&world, seed, &settings);
+
+    /* New seeds for r come from their own generator, so pressing r gives
+     * the same series of worlds after the same starting seed. */
+    Rng seed_source;
+    rng_seed(&seed_source, seed);
 
     long generation = 0;
     int speed = DEFAULT_SPEED;
@@ -295,17 +249,17 @@ int main(void)
                 speed++;
             } else if (key == '-' && speed > 0) {
                 speed--;
+            } else if (key == 'r') {
+                seed = rng_next(&seed_source);
+                build_world(&world, seed, &settings);
+                generation = 0;
             }
         }
 
         if (!paused) {
             generations_due += SPEEDS[speed];
             while (generations_due >= FRAMES_PER_SECOND) {
-                step(current, next, w, h);
-                /* Swap the pointers, not the cells (see lesson 1). */
-                uint8_t *old = current;
-                current = next;
-                next = old;
+                life_step(&world);
                 generation++;
                 generations_due -= FRAMES_PER_SECOND;
             }
@@ -317,10 +271,13 @@ int main(void)
             need_clear = 0;
         }
         if (cols < MIN_COLS || rows < MIN_ROWS) {
-            draw_too_small(cols, rows);
+            render_too_small(cols, rows, MIN_COLS, MIN_ROWS);
         } else {
-            draw_grid(current, w, h, cols, rows - 1);
-            draw_status(rows - 1, cols, generation, speed, paused);
+            draw_title(cols, seed, generation, speed, paused);
+            render_world(&world, 0, 1, cols, rows - 2);
+            render_text(0, rows - 1,
+                        " space pause | +/- speed | r new seed | q quit",
+                        cols);
         }
         term_end();
 
@@ -333,7 +290,6 @@ int main(void)
     }
 
     term_close();
-    free(current);
-    free(next);
+    world_free(&world);
     return 0;
 }

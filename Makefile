@@ -13,12 +13,22 @@ else
 CFLAGS += -g -fsanitize=address,undefined
 endif
 
+# The test build is the debug build with every warning turned into an error.
+ifeq ($(MODE), test)
+CFLAGS += -Werror
+endif
+
 SRC = $(wildcard src/*.c)
 OBJ = $(SRC:src/%.c=$(OUT)/%.o)
+# Everything except main.o: what a test program links against.
+LIB_OBJ = $(filter-out $(OUT)/main.o, $(OBJ))
+
+TEST_SRC = $(wildcard tests/test_*.c)
+TEST_BIN = $(TEST_SRC:tests/%.c=$(OUT)/tests/%)
 
 all: $(OUT)/agon
 
-release: 
+release:
 	$(MAKE) MODE=release
 
 $(OUT)/agon: $(OBJ)
@@ -31,15 +41,25 @@ $(OUT)/agon: $(OBJ)
 $(OUT)/%.o: src/%.c | $(OUT)
 	$(CC) $(CFLAGS) -MMD -MP -c $< -o $@
 
--include $(OBJ:.o=.d)
+# One program per test file. -Isrc lets the tests write #include "rng.h".
+$(OUT)/tests/%: tests/%.c $(LIB_OBJ) | $(OUT)/tests
+	$(CC) $(CFLAGS) -Isrc -MMD -MP $< $(LIB_OBJ) -o $@ $(LDLIBS)
 
-$(OUT):
+-include $(OBJ:.o=.d) $(TEST_BIN:=.d)
+
+$(OUT) $(OUT)/tests:
 	mkdir -p $@
 
-test: 
-	@echo "no tests yet"
+test:
+	$(MAKE) MODE=test run-tests
+
+# Runs every test program, even after one fails, and fails if any did.
+run-tests: $(TEST_BIN)
+	@failed=0; \
+	for t in $(TEST_BIN); do ./$$t || failed=1; done; \
+	exit $$failed
 
 clean:
 	rm -rf build
 
-.PHONY: all release test clean
+.PHONY: all release test run-tests clean
