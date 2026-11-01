@@ -39,6 +39,7 @@ static const Colour CARRION = {110, 30, 34};   /* dried blood */
  * its food is meat. The legend uses the same colours. */
 #define CREATURE_SATURATION 0.55f /* 0 white .. 1 full colour */
 static const Colour TEXT = {150, 155, 165};
+static const Colour CURSOR = {255, 255, 255};
 static const Colour TEXT_BACKGROUND = {14, 17, 23};
 
 /*
@@ -266,6 +267,34 @@ void render_world(const Sim *s, int col0, int row0, int cols, int rows)
                 term_put(UPPER_HALF_BLOCK);
             }
         }
+    }
+}
+
+void render_cursor(const Sim *s, int col0, int row0, int cols, int rows,
+                   int x, int y)
+{
+    const World *w = &s->world;
+    int row = y / 2; /* the character row holding cells 2 row, 2 row + 1 */
+    if (x < 0 || x >= cols || x >= w->w || row < 0 || row >= rows ||
+        y >= w->h) {
+        return;
+    }
+    Colour top = cell_colour(s, world_idx(w, x, 2 * row));
+    Colour bottom = cell_colour(s, world_idx(w, x, 2 * row + 1));
+    /* y % 2 picks the half: 0 the top cell, 1 the bottom one. */
+    if (y % 2 == 0) {
+        top = CURSOR;
+    } else {
+        bottom = CURSOR;
+    }
+    term_move(col0 + x, row0 + row);
+    term_fg(top.r, top.g, top.b);
+    term_bg(bottom.r, bottom.g, bottom.b);
+    term_put(UPPER_HALF_BLOCK);
+    /* 0 means "never drawn": render_world will draw this cell again on
+     * the next frame, whatever its colours. */
+    if (row < MEMORY_ROWS && x < MEMORY_COLS) {
+        last_drawn[row][x] = 0;
     }
 }
 

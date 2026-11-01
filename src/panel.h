@@ -8,6 +8,7 @@
 
 #include <stddef.h> /* size_t */
 
+#include "inspect.h"
 #include "sim.h"
 
 /* How many screen columns the panel takes. */
@@ -60,5 +61,10 @@ void panel_sparkline(char *out, size_t size, const History *h, int cols);
 /* Draws the panel in the screen area starting at (col, row0), PANEL_COLS
  * wide and rows tall. Lines that do not fit are left out. */
 void panel_draw(const Sim *s, int col, int row0, int rows);
+
+/* Draws inspect mode's panel in the same area: the cell under the cursor
+ * and the creature on it, if any. */
+void panel_draw_inspect(const Sim *s, const Inspect *in, int col, int row0,
+                        int rows);
 
 #endif

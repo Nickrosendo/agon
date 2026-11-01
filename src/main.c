@@ -6,6 +6,7 @@
 #include <string.h> /* strcmp */
 #include <time.h>   /* clock_gettime, nanosleep, struct timespec (POSIX) */
 
+#include "inspect.h"
 #include "panel.h"
 #include "render.h"
 #include "rng.h"
@@ -108,18 +109,99 @@ static void sleep_until(int64_t deadline)
     nanosleep(&pause, NULL);
 }
 
-static void draw_title(int cols, const Sim *sim, int speed, int paused)
+static void draw_title(int cols, const Sim *sim, int speed, int paused,
+                       bool inspecting)
 {
+    char tick[32];
+    /* tick is a uint64_t; every value a run reaches fits in a long. */
+    panel_format_count(tick, sizeof(tick), (long)sim->tick);
     char text[160];
     /* PRIx64 expands to the right printf letters for a uint64_t on this
      * platform ("lx" here); writing %llx would be wrong on some systems.
      * Adjacent string literals are joined into one by the compiler. */
     snprintf(text, sizeof(text),
-             " agon | seed 0x%" PRIx64 " | tick %" PRIu64
-             " | creatures %d | %d/s%s",
-             sim->seed, sim->tick, sim->pool.count, SPEEDS[speed],
-             paused ? " paused" : "");
+             " agon | seed 0x%" PRIx64 " | tick %s | creatures %d | %d/s%s%s",
+             sim->seed, tick, sim->pool.count, SPEEDS[speed],
+             paused ? " | paused" : "", inspecting ? " | inspect" : "");
     render_text(0, 0, text, cols);
+}
+
+static void draw_help(int cols, int rows, bool inspecting)
+{
+    const char *help =
+        inspecting
+            ? " arrows/hjkl move | HJKL by 5 | i or Esc leave | space pause"
+              " | q quit"
+            : " space pause | +/- speed | r new seed | i inspect | q quit";
+    render_text(0, rows - 1, help, cols);
+}
+
+/* The keys that move the cursor in inspect mode, as a step in cells. */
+enum { KEY_UP = 1000, KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_ESCAPE };
+
+/*
+ * The next key, with the arrow keys turned into KEY_ values. An arrow key
+ * arrives as three bytes: the escape character (27), '[' and a letter, A
+ * to D. The Esc key alone sends just the 27. In raw mode all three bytes
+ * of an arrow are normally waiting together, so a 27 with nothing after
+ * it is taken to be Esc. -1 when no key is waiting.
+ */
+static int read_key(void)
+{
+    int key = term_key();
+    if (key != 27) {
+        return key;
+    }
+    int second = term_key();
+    if (second == -1) {
+        return KEY_ESCAPE;
+    }
+    if (second != '[') {
+        return -1; /* Alt plus a key, or something else: ignored */
+    }
+    switch (term_key()) {
+    case 'A': return KEY_UP;
+    case 'B': return KEY_DOWN;
+    case 'C': return KEY_RIGHT;
+    case 'D': return KEY_LEFT;
+    default: return -1; /* another escape sequence (F1, Home, ...) */
+    }
+}
+
+/* The step (dx, dy) a key moves the cursor by; false for other keys. */
+static bool cursor_step(int key, int *dx, int *dy)
+{
+    *dx = 0;
+    *dy = 0;
+    switch (key) {
+    case KEY_LEFT: case 'h': *dx = -1; break;
+    case KEY_RIGHT: case 'l': *dx = 1; break;
+    case KEY_UP: case 'k': *dy = -1; break;
+    case KEY_DOWN: case 'j': *dy = 1; break;
+    case 'H': *dx = -5; break;
+    case 'L': *dx = 5; break;
+    case 'K': *dy = -5; break;
+    case 'J': *dy = 5; break;
+    default: return false;
+    }
+    return true;
+}
+
+/* How much of the world is on screen: at most the world, at most the
+ * area beside the panel, two cells per character row. */
+static void visible_cells(const Sim *sim, int world_cols, int rows,
+                          int *max_x, int *max_y)
+{
+    *max_x = world_cols < sim->world.w ? world_cols : sim->world.w;
+    int cell_rows = 2 * (rows - 2);
+    *max_y = cell_rows < sim->world.h ? cell_rows : sim->world.h;
+}
+
+/* The columns the world gets: all of them, or all but the panel's when
+ * the window is wide enough for both. */
+static int world_columns(int cols)
+{
+    return cols >= MIN_COLS + PANEL_COLS ? cols - PANEL_COLS : cols;
 }
 
 int main(int argc, char **argv)
@@ -145,10 +227,7 @@ int main(int argc, char **argv)
      * than the minimum window), and keeps that size: resizing changes how
      * much of it is visible. Two cells per character row; the top row is
      * the title line and the bottom row the help line. */
-    int world_w = cols < MIN_COLS ? MIN_COLS : cols;
-    if (cols >= MIN_COLS + PANEL_COLS) {
-        world_w = cols - PANEL_COLS; /* the panel takes the right side */
-    }
+    int world_w = world_columns(cols < MIN_COLS ? MIN_COLS : cols);
     int world_h = 2 * ((rows < MIN_ROWS ? MIN_ROWS : rows) - 2);
 
     /* The Sim struct lives on main's stack; the world's layers it points
@@ -176,6 +255,7 @@ int main(int argc, char **argv)
      * owed pays for one tick. Keeps whole numbers only. */
     int ticks_due = 0;
     int64_t next_frame = now_ns();
+    Inspect inspect = {0}; /* off until i is pressed */
 
     while (running) {
         if (term_resized()) {
@@ -183,12 +263,25 @@ int main(int argc, char **argv)
             need_clear = 1;
         }
 
+        int max_x, max_y;
+        visible_cells(&sim, world_columns(cols), rows, &max_x, &max_y);
         int key;
-        while ((key = term_key()) != -1) {
+        while ((key = read_key()) != -1) {
+            int dx, dy;
             if (key == 'q') {
                 running = 0;
             } else if (key == ' ') {
                 paused = !paused;
+            } else if (key == 'i') {
+                if (inspect.on) {
+                    inspect.on = false;
+                } else {
+                    inspect_start(&inspect, &sim, max_x, max_y);
+                }
+            } else if (key == KEY_ESCAPE) {
+                inspect.on = false;
+            } else if (inspect.on && cursor_step(key, &dx, &dy)) {
+                inspect_move(&inspect, &sim, dx, dy, max_x, max_y);
             } else if ((key == '+' || key == '=') && speed < SPEED_COUNT - 1) {
                 speed++;
             } else if (key == '-' && speed > 0) {
@@ -197,6 +290,10 @@ int main(int argc, char **argv)
                 if (!sim_reseed(&sim, rng_next(&seed_source))) {
                     failed = 1; /* the brain could not be reopened */
                     running = 0;
+                } else if (inspect.on) {
+                    /* Ids start again from 0 in a new world: the id being
+                     * followed now belongs to someone else. */
+                    inspect_start(&inspect, &sim, max_x, max_y);
                 }
             }
         }
@@ -208,6 +305,9 @@ int main(int argc, char **argv)
                 ticks_due -= FRAMES_PER_SECOND;
             }
         }
+        if (inspect.on) {
+            inspect_update(&inspect, &sim);
+        }
 
         term_begin();
         if (need_clear) {
@@ -218,18 +318,21 @@ int main(int argc, char **argv)
         if (cols < MIN_COLS || rows < MIN_ROWS) {
             render_too_small(cols, rows, MIN_COLS, MIN_ROWS);
         } else {
-            draw_title(cols, &sim, speed, paused);
+            draw_title(cols, &sim, speed, paused, inspect.on);
             /* The panel only when the world keeps its minimum width
              * beside it: on a narrow window the panel goes first. */
-            int world_cols = cols;
-            if (cols >= MIN_COLS + PANEL_COLS) {
-                world_cols = cols - PANEL_COLS;
+            int world_cols = world_columns(cols);
+            if (world_cols < cols && inspect.on) {
+                panel_draw_inspect(&sim, &inspect, world_cols, 1, rows - 2);
+            } else if (world_cols < cols) {
                 panel_draw(&sim, world_cols, 1, rows - 2);
             }
             render_world(&sim, 0, 1, world_cols, rows - 2);
-            render_text(0, rows - 1,
-                        " space pause | +/- speed | r new seed | q quit",
-                        cols);
+            if (inspect.on) {
+                render_cursor(&sim, 0, 1, world_cols, rows - 2, inspect.x,
+                              inspect.y);
+            }
+            draw_help(cols, rows, inspect.on);
         }
         term_end();
 

@@ -13,6 +13,13 @@
  * than the world, the rest is left untouched. */
 void render_world(const Sim *s, int col0, int row0, int cols, int rows);
 
+/* Marks world cell (x, y) with a white square, over what render_world
+ * drew in the same area (col0, row0, cols by rows). Nothing is drawn when
+ * the cell is outside the area. The next render_world redraws that
+ * character cell, so a cursor that moves leaves no trace. */
+void render_cursor(const Sim *s, int col0, int row0, int cols, int rows,
+                   int x, int y);
+
 /* Forget what render_world drew last, so the next call redraws every
  * cell. Call after the screen was cleared or resized. */
 void render_invalidate(void);

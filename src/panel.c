@@ -1,6 +1,7 @@
 #include "panel.h"
 
-#include <stdio.h> /* snprintf */
+#include <assert.h> /* static_assert */
+#include <stdio.h>  /* snprintf */
 
 #include "render.h"
 
@@ -383,5 +384,138 @@ void panel_draw(const Sim *s, int col, int row0, int rows)
         } else {
             render_text(col, row0 + r, "", PANEL_COLS); /* blank */
         }
+    }
+}
+
+/* What the brain told a creature to do, by ACT_ value. */
+static const char *const ACTION_NAMES[] = {
+    "rest", "turn left", "turn right", "move", "bite", "split",
+};
+/* sizeof the whole array divided by sizeof one element is its length,
+ * which only works on a real array (not on a pointer to one). */
+static_assert(sizeof(ACTION_NAMES) / sizeof(ACTION_NAMES[0]) == ACT_COUNT,
+              "one name per action");
+
+/* Room for the lines panel_draw_inspect makes. */
+#define INSPECT_LINES 24
+/* Each line's text: PANEL_COLS characters and the '\0', with room to
+ * spare so -Wformat-truncation can see snprintf never cuts a value. */
+#define INSPECT_LINE_BYTES 48
+
+/*
+ * The lines being built: a two-dimensional array, INSPECT_LINES rows of
+ * INSPECT_LINE_BYTES chars, one block of memory. text[k] is row k, itself
+ * an array of chars, which can be passed to snprintf as a char pointer.
+ */
+typedef struct {
+    char text[INSPECT_LINES][INSPECT_LINE_BYTES];
+    int n;
+} Lines;
+
+/* Adds a line: " key" on the left, value right-aligned so the line is
+ * PANEL_COLS - 1 wide. A line that does not fit is dropped. */
+static void add_pair(Lines *l, const char *key, const char *value)
+{
+    if (l->n < INSPECT_LINES) {
+        /* %-11s pads the key to 11, %8s right-aligns the value in 8:
+         * 1 + 11 + 8 = 20 = PANEL_COLS. */
+        snprintf(l->text[l->n], INSPECT_LINE_BYTES, " %-11s%8s", key, value);
+        l->n++;
+    }
+}
+
+static void add_text(Lines *l, const char *text)
+{
+    if (l->n < INSPECT_LINES) {
+        snprintf(l->text[l->n], INSPECT_LINE_BYTES, "%s", text);
+        l->n++;
+    }
+}
+
+/* A float with the given number of decimals, as text in out. */
+static void format_float(char *out, size_t size, float v, int decimals)
+{
+    /* "%.*f": the * takes the number of decimals from the next argument,
+     * an int, instead of from the format text. A float argument is
+     * passed to snprintf as a double, which is what %f expects. */
+    snprintf(out, size, "%.*f", decimals, (double)v);
+}
+
+static void add_float(Lines *l, const char *key, float v, int decimals)
+{
+    char value[24];
+    format_float(value, sizeof(value), v, decimals);
+    add_pair(l, key, value);
+}
+
+static void add_long(Lines *l, const char *key, long v)
+{
+    char value[24];
+    panel_format_count(value, sizeof(value), v);
+    add_pair(l, key, value);
+}
+
+static void describe_cell(Lines *l, const Sim *s, const Inspect *in)
+{
+    const World *w = &s->world;
+    int i = world_idx(w, in->x, in->y);
+    char text[INSPECT_LINE_BYTES];
+    snprintf(text, sizeof(text), " cell %d, %d", in->x, in->y);
+    add_text(l, text);
+    if (w->terrain[i] == TERRAIN_WATER) {
+        add_pair(l, "ground", "water");
+    } else if (w->terrain[i] == TERRAIN_ROCK) {
+        add_pair(l, "ground", "rock");
+    } else {
+        add_float(l, "fertility", w->fertility[i], 2);
+        add_long(l, "plants", w->veg[i]);
+        if (w->carrion[i] > 0.0f) {
+            add_float(l, "carrion", w->carrion[i], 1);
+        }
+    }
+}
+
+static void describe_creature(Lines *l, const Sim *s, const Creature *c)
+{
+    const Settings *set = &s->set;
+    char text[INSPECT_LINE_BYTES];
+    /* %u for unsigned int; uint32_t is converted to it explicitly, since
+     * C does not promise that uint32_t is unsigned int on every system. */
+    snprintf(text, sizeof(text), " creature #%u", (unsigned)c->id);
+    add_text(l, text);
+    snprintf(text, sizeof(text), " family   #%u", (unsigned)c->lineage);
+    add_text(l, text);
+    add_float(l, "energy", c->energy, 1);
+    add_long(l, "age", (long)c->age);
+    add_float(l, "level", c->level, 2);
+    add_float(l, "food eaten", c->eaten, 0);
+    add_pair(l, "hunter", creature_is_hunter(c) ? "yes" : "no");
+    add_float(l, "size", creature_size(c, set), 2);
+    add_float(l, "speed", creature_speed(c, set), 2);
+    add_long(l, "sight", creature_sight(c, set));
+    add_float(l, "plant gene", c->genome.g[GENE_PLANT], 2);
+    add_float(l, "meat gene", c->genome.g[GENE_MEAT], 2);
+    add_float(l, "upkeep", creature_upkeep_cost(c, set), 2);
+    /* kind comes from a brain; checked before indexing the array. */
+    const char *doing =
+        c->current.kind < ACT_COUNT ? ACTION_NAMES[c->current.kind] : "?";
+    add_pair(l, "doing", doing);
+}
+
+void panel_draw_inspect(const Sim *s, const Inspect *in, int col, int row0,
+                        int rows)
+{
+    Lines l = {.n = 0};
+    add_text(&l, " inspect");
+    describe_cell(&l, s, in);
+    add_text(&l, "");
+    const Creature *c = inspect_creature(in, s);
+    if (c != NULL) {
+        describe_creature(&l, s, c);
+    } else {
+        add_text(&l, " no creature here");
+    }
+    for (int r = 0; r < rows; r++) {
+        render_text(col, row0 + r, r < l.n ? l.text[r] : "", PANEL_COLS);
     }
 }
