@@ -269,7 +269,7 @@ static void act_move(World *w, Creature *c, int idx, const Settings *s)
     c->y = to / w->w;
 }
 
-/* An attack on the creature ahead. The target is only hurt: if its
+/* An attack by c on target. The target is only hurt: if its
  * energy reaches 0 it stops acting, and the end-of-tick accounting kills
  * it and leaves its body as carrion. */
 static void attack(Creature *c, Creature *target, const Settings *s, Rng *r)
@@ -280,6 +280,30 @@ static void attack(Creature *c, Creature *target, const Settings *s, Rng *r)
                                  s->attack_steepness);
     if (rng_unit(r) < chance) {
         target->energy -= s->bite_damage * a;
+    }
+}
+
+/* Pack defence (see Settings): after a hunter attacks victim, the
+ * victim's kin among the plant-eaters around the hunter strike back, in
+ * clockwise order from north. A defender already at 0 energy is dying and
+ * does not join; once the hunter is at 0 the rest need not. */
+static void pack_defend(World *w, Pool *p, int hunter, int victim,
+                        const Settings *s, Rng *r)
+{
+    Creature *h = &p->items[hunter];
+    const Creature *v = &p->items[victim];
+    for (int k = 0; k < 8 && h->energy > 0.0f; k++) {
+        int cell = world_idx(w, h->x + AROUND_X[k], h->y + AROUND_Y[k]);
+        int other = w->occupant[cell];
+        if (other < 0 || other == victim) {
+            continue;
+        }
+        Creature *d = &p->items[other];
+        if (creature_is_hunter(d) || d->energy <= 0.0f ||
+            genome_kinship(&d->genome, &v->genome) < s->pack_kinship) {
+            continue;
+        }
+        attack(d, h, s, r);
     }
 }
 
@@ -348,7 +372,8 @@ bool creature_is_hunter(const Creature *c)
  *
  * A hunter (meat gene above plant gene) with no carrion on any of the
  * eight cells attacks instead: the neighbouring plant-eater it is most
- * likely to hit. Plant-eaters never attack. */
+ * likely to hit. Plant-eaters never attack, except to defend their kin
+ * (pack_defend). */
 static void act_bite(World *w, Pool *p, int idx, const Settings *s, Rng *r)
 {
     Creature *c = &p->items[idx];
@@ -400,6 +425,9 @@ static void act_bite(World *w, Pool *p, int idx, const Settings *s, Rng *r)
 
     if (hunter && !carrion_near && prey >= 0) {
         attack(c, &p->items[prey], s, r);
+        if (s->pack_defence) {
+            pack_defend(w, p, idx, prey, s, r);
+        }
     } else if (food_cell >= 0 && food_is_carrion) {
         eat_carrion(w, c, food_cell, s);
     } else if (food_cell >= 0) {

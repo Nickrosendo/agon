@@ -129,6 +129,17 @@ typedef struct {
     float attack_cost;
     float bite_damage;
 
+    /* Pack defence. With pack_defence 1, every attack on a plant-eater
+     * draws in its family: each plant-eater on the eight cells around the
+     * hunter (the victim aside) whose genome_kinship with the victim is
+     * at least pack_kinship strikes back at once, in the same tick, with
+     * the same chance formula, damage and attack_cost as any attack.
+     * pack_defence 0 turns this off, so runs with and without it can be
+     * compared. An int, not a bool, so the settings file of lesson 10 can
+     * read it like every other whole number. */
+    int pack_defence;
+    float pack_kinship;
+
     /* Carrion. A death leaves body_energy * size plus any energy left.
      * Each tick carrion loses carrion_decay of itself; carrion_to_fertility
      * of what is lost feeds the cell's fertility, up to fertility_max. */

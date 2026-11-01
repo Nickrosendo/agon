@@ -53,6 +53,11 @@ Settings settings_default(void)
         .attack_steepness = 3.0f,
         .attack_cost = 0.5f,
         .bite_damage = 6.0f,
+        /* Off: in a quick check (five seeds, 20,000 ticks) hunters died out
+         * on 3 of 5 seeds with it on at kinship 0.5, on 2 of 5 at 0.8 and
+         * at 0.95, and on none with it off. */
+        .pack_defence = 0,
+        .pack_kinship = 0.5f,
         .body_energy = 10.0f,
         .carrion_decay = 0.01f,
         .carrion_to_fertility = 0.002f,

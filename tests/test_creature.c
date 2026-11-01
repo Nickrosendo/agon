@@ -490,6 +490,78 @@ static void test_who_attacks(void)
     world_free(&w);
 }
 
+/* A hunter at (3, 3) with its victim north of it at (3, 2) and a third
+ * creature, a plant-eater, west of the hunter at (2, 3). spawn gives all
+ * three the same genome apart from the hunter's two diet genes, so the
+ * victim and the third creature are identical: kinship 1. Every energy
+ * starts at 100. */
+static void hunter_victim_and_friend(World *w, Pool *p, int *h, int *v,
+                                     int *f)
+{
+    make_world(w, 8, 8);
+    CHECK(pool_init(p, 3));
+    *h = spawn(p, w, 3, 3);
+    *v = spawn(p, w, 3, 2);
+    *f = spawn(p, w, 2, 3);
+    make_hunter(&p->items[*h]);
+    p->items[*h].energy = 100.0f;
+    p->items[*v].energy = 100.0f;
+    p->items[*f].energy = 100.0f;
+}
+
+static void test_pack_defence(void)
+{
+    Settings s = settings_default();
+    Rng r;
+    World w;
+    Pool p;
+    int h, v, f;
+    const int bites = 20;
+
+    /* Switched off: the friend does nothing, and the hunter pays only for
+     * its own attacks. 100 - 20 * 0.5 is exact in float. */
+    s.pack_defence = 0;
+    rng_seed(&r, 3);
+    hunter_victim_and_friend(&w, &p, &h, &v, &f);
+    for (int k = 0; k < bites; k++) {
+        creature_act(&w, &p, h, (Action){ACT_BITE, 1}, &s, &r);
+    }
+    CHECK(p.items[f].energy == 100.0f);
+    CHECK(p.items[h].energy == 100.0f - (float)bites * s.attack_cost);
+    pool_free(&p);
+    world_free(&w);
+
+    /* Switched on: the friend pays attack_cost once per attack on its
+     * kin, and its hits cost the hunter more than its own attacks did. */
+    s.pack_defence = 1;
+    rng_seed(&r, 3);
+    hunter_victim_and_friend(&w, &p, &h, &v, &f);
+    for (int k = 0; k < bites && p.items[h].energy > 0.0f; k++) {
+        creature_act(&w, &p, h, (Action){ACT_BITE, 1}, &s, &r);
+    }
+    CHECK(p.items[f].energy < 100.0f);
+    CHECK(p.items[h].energy < 100.0f - (float)bites * s.attack_cost);
+    pool_free(&p);
+    world_free(&w);
+
+    /* A neighbour that is not kin stays out of it: every weight of the
+     * friend differs from the victim's, so their kinship is 6 / 186. */
+    rng_seed(&r, 3);
+    hunter_victim_and_friend(&w, &p, &h, &v, &f);
+    for (int i = GENE_TRAITS; i < GENOME_LEN; i++) {
+        p.items[f].genome.g[i] = 1.0f;
+    }
+    CHECK(genome_kinship(&p.items[f].genome, &p.items[v].genome) <
+          s.pack_kinship);
+    for (int k = 0; k < bites; k++) {
+        creature_act(&w, &p, h, (Action){ACT_BITE, 1}, &s, &r);
+    }
+    CHECK(p.items[f].energy == 100.0f);
+    CHECK(p.items[h].energy == 100.0f - (float)bites * s.attack_cost);
+    pool_free(&p);
+    world_free(&w);
+}
+
 static void test_food_under_a_creature(void)
 {
     Settings s = settings_default();
@@ -775,6 +847,7 @@ int main(void)
     test_attack_chance();
     test_attacks_hit_half_the_time();
     test_who_attacks();
+    test_pack_defence();
     test_food_under_a_creature();
     test_slow_creature();
     test_ray_sees_creature();
