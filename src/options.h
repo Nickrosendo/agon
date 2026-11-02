@@ -17,6 +17,8 @@
 #define OPTIONS_MAX_TICKS 100000000L
 /* The range --speed accepts, in ticks per second. */
 #define OPTIONS_MAX_SPEED 1000
+/* The most --frames accepts. */
+#define OPTIONS_MAX_FRAMES 100000000L
 
 typedef struct {
     bool seed_given;
@@ -29,6 +31,11 @@ typedef struct {
     bool no_floor;
     bool help, version;
     bool list_settings;      /* --settings */
+    bool checksum;           /* --checksum: print the world's on leaving */
+    /* For the window program only; the terminal program refuses them. */
+    long frames;             /* --frames: stop after this many; 0 for never */
+    const char *screenshot_path; /* --screenshot: the last frame goes here */
+    const char *zoom_name;   /* --zoom: the starting zoom step's name */
     /* Paths from the command line, NULL when not given. They point into
      * argv, which lives as long as main does; nothing is copied or freed. */
     const char *config_path;

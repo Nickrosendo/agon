@@ -52,6 +52,28 @@ all: $(OUT)/agon
 release:
 	$(MAKE) MODE=release
 
+# The window program is built only when asked for: everything else builds and
+# tests with no SDL installed. = (not :=) means sdl2-config runs only when a
+# rule actually uses these. -isystem is -I for headers that are not ours, so
+# our strict warnings are not applied to SDL's own code.
+SDL_CFLAGS = $(patsubst -I%,-isystem %,$(shell sdl2-config --cflags))
+SDL_LIBS = $(shell sdl2-config --libs)
+
+window: $(OUT)/agon-window
+
+$(OUT)/agon-window: $(CORE_OBJ) $(GFX_OBJ) $(WIN_OBJ)
+	$(CC) $(CFLAGS) $^ -o $@ $(SDL_LIBS) $(LDLIBS)
+
+# Only this one file sees SDL's headers.
+$(OUT)/window/platform_sdl.o: CFLAGS += $(SDL_CFLAGS)
+
+# Runs both programs on SDL's dummy video driver: no screen needed.
+test-window:
+	$(MAKE) MODE=test run-window-smoke
+
+run-window-smoke: $(OUT)/agon $(OUT)/agon-window
+	sh tests/window_smoke.sh $(OUT)
+
 $(OUT)/agon: $(OBJ)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
 
@@ -71,7 +93,7 @@ $(OUT)/tests/%: tests/%.c $(LIB_OBJ) $(TEST_SUPPORT_OBJ) | $(OUT)/tests
 	$(CC) $(CFLAGS) -MMD -MP $< $(LIB_OBJ) $(TEST_SUPPORT_OBJ) \
 		-o $@ $(LDLIBS)
 
--include $(OBJ:.o=.d) $(GFX_OBJ:.o=.d) $(TEST_BIN:=.d) $(SLOW_BIN:=.d) \
+-include $(OBJ:.o=.d) $(GFX_OBJ:.o=.d) $(WIN_OBJ:.o=.d) $(TEST_BIN:=.d) $(SLOW_BIN:=.d) \
 	$(TEST_SUPPORT_OBJ:.o=.d)
 
 $(OUT)/tests:
@@ -116,5 +138,5 @@ clean:
 # else; a bare .SECONDARY: keeps them, so objects survive between runs.
 .SECONDARY:
 
-.PHONY: all release test run-tests test-slow run-slow-tests install uninstall \
+.PHONY: all release window test-window run-window-smoke test run-tests test-slow run-slow-tests install uninstall \
 	clean

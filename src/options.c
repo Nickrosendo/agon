@@ -23,6 +23,7 @@ const char OPTIONS_USAGE[] =
     "                --no-floor\n"
     "  --settings    print every setting and its default, in the form\n"
     "                --config reads, and exit\n"
+    "  --checksum    print a fingerprint of the world on leaving\n"
     "  -h, --help    this text\n"
     "  --version     the version\n"
     "keys: space pause, +/- speed, r new seed, i inspect, s save, q quit\n";
@@ -118,7 +119,11 @@ enum {
     OPT_CONFIG,
     OPT_SAVE,
     OPT_LOAD,
-    OPT_SETTINGS
+    OPT_SETTINGS,
+    OPT_CHECKSUM,
+    OPT_FRAMES,
+    OPT_SCREENSHOT,
+    OPT_ZOOM
 };
 
 /* The table getopt_long reads: name, whether a value follows, a flag
@@ -137,6 +142,10 @@ static const struct option LONG_OPTIONS[] = {
     {"save", required_argument, NULL, OPT_SAVE},
     {"load", required_argument, NULL, OPT_LOAD},
     {"settings", no_argument, NULL, OPT_SETTINGS},
+    {"checksum", no_argument, NULL, OPT_CHECKSUM},
+    {"frames", required_argument, NULL, OPT_FRAMES},
+    {"screenshot", required_argument, NULL, OPT_SCREENSHOT},
+    {"zoom", required_argument, NULL, OPT_ZOOM},
     {NULL, 0, NULL, 0},
 };
 
@@ -154,6 +163,20 @@ static bool take_value(int opt, const char *value, Options *o, char *err,
         return true;
     case OPT_LOAD:
         o->load_path = value;
+        return true;
+    case OPT_SCREENSHOT:
+        o->screenshot_path = value;
+        return true;
+    case OPT_ZOOM:
+        o->zoom_name = value;
+        return true;
+    case OPT_FRAMES:
+        if (!parse_long(value, 1, OPTIONS_MAX_FRAMES, &n)) {
+            snprintf(err, err_size, "--frames needs a whole number from 1 to %ld",
+                     OPTIONS_MAX_FRAMES);
+            return false;
+        }
+        o->frames = n;
         return true;
     case OPT_SEED:
         o->seed_given = parse_seed(value, &o->seed);
@@ -230,6 +253,9 @@ bool options_parse(int argc, char **argv, Options *o, char *err,
             break;
         case OPT_SETTINGS:
             o->list_settings = true;
+            break;
+        case OPT_CHECKSUM:
+            o->checksum = true;
             break;
         case ':':
             /* optind has moved past the option missing its value. */

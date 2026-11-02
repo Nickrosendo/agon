@@ -203,11 +203,16 @@ static int run_once(const Options *o, const Settings *settings,
         sim_free(&sim);
         return EXIT_FAILED;
     }
+    /* Before the fresh sample below, like the save. */
+    uint64_t checksum = sim_checksum(&sim);
     /* A fresh sample: the last one may be up to stats_every ticks old. */
     stats_sample(&sim.stats, &sim.world, &sim.pool, sim.tick, sim.scratch);
     term_detect_colour();
     render_snapshot(&sim);
     print_summary(&sim);
+    if (o->checksum) {
+        printf("checksum 0x%016" PRIx64 "\n", checksum);
+    }
     sim_free(&sim);
     return EXIT_FINE;
 }
@@ -246,6 +251,12 @@ int main(int argc, char **argv)
     }
     if (opt.no_floor) {
         settings.min_creatures = 0;
+    }
+    /* These only mean something with a window to draw in. */
+    if (opt.frames > 0 || opt.screenshot_path != NULL || opt.zoom_name != NULL) {
+        fprintf(stderr, "agon: --frames, --screenshot and --zoom are for "
+                        "agon-window\n");
+        return EXIT_USAGE;
     }
     if (opt.once) {
         return run_once(&opt, &settings, seed);
@@ -412,6 +423,9 @@ int main(int argc, char **argv)
         sim_free(&sim);
         fprintf(stderr, "agon: %s\n", err);
         return EXIT_FAILED;
+    }
+    if (opt.checksum) {
+        printf("checksum 0x%016" PRIx64 "\n", sim_checksum(&sim));
     }
     sim_free(&sim);
     return EXIT_FINE;

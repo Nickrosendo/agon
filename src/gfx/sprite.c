@@ -7,6 +7,8 @@
 /* How many steps each trait is rounded into. */
 #define SIZE_STEPS 4
 #define SIGHT_STEPS 4
+/* How far down the tile the belly reaches; the legs fill the rest. */
+#define BELLY 0.80f
 /* Sight from here up puts the eye on a stalk. */
 #define STALK_FROM 0.7f
 
@@ -120,11 +122,13 @@ static void make_shape(Shape *s, const BodyTraits *t, int size, int frame)
     s->px = px;
     s->line = px * 0.5f;
     s->leg_count = leg_count(t->speed, size);
-    /* The body's middle, raised for the larger symbols; bobs by a pixel. */
-    s->cx = 0.42f;
-    s->cy = 0.56f - (size > 8 ? 0.02f : 0.0f) - (float)frame_bob(frame) * px;
     s->rx = 0.19f + 0.20f * body_size;
     s->ry = 0.13f + 0.15f * body_size;
+    /* The belly sits at the same height whatever the size, so legs stay short
+     * and a small creature stands on the ground instead of on stilts. The
+     * body bobs by a pixel. */
+    s->cx = 0.42f;
+    s->cy = BELLY - s->ry - (float)frame_bob(frame) * px;
     /* Biting: the head lunges forward by a pixel or two. */
     float lunge = frame == FRAME_BITE ? px * (size > 8 ? 2.0f : 1.0f) : 0.0f;
     s->hx = s->cx + s->rx * 0.9f + lunge;

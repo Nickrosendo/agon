@@ -165,6 +165,31 @@ static void test_file_options(void)
     CHECK(fails_with(no_path, "--config"));
 }
 
+static void test_window_options(void)
+{
+    Options o;
+    char err[128];
+    char *none[] = {"agon", NULL};
+    CHECK(parse(none, &o, err, sizeof(err)));
+    CHECK(!o.checksum && o.frames == 0);
+    CHECK(o.screenshot_path == NULL && o.zoom_name == NULL);
+
+    char *all[] = {"agon", "--checksum", "--frames", "500", "--screenshot",
+                   "a.ppm", "--zoom", "far", NULL};
+    CHECK(parse(all, &o, err, sizeof(err)));
+    CHECK(o.checksum);
+    CHECK(o.frames == 500);
+    CHECK(strcmp(o.screenshot_path, "a.ppm") == 0);
+    CHECK(strcmp(o.zoom_name, "far") == 0);
+
+    char *zero[] = {"agon", "--frames", "0", NULL};
+    CHECK(fails_with(zero, "--frames"));
+    char *word[] = {"agon", "--frames", "many", NULL};
+    CHECK(fails_with(word, "--frames"));
+    char *no_path[] = {"agon", "--screenshot", NULL};
+    CHECK(fails_with(no_path, "--screenshot"));
+}
+
 static void test_parse_twice(void)
 {
     /* getopt_long keeps its place in global variables. A second parse
@@ -186,6 +211,7 @@ int main(void)
     test_every_option();
     test_mistakes();
     test_file_options();
+    test_window_options();
     test_parse_twice();
     TEST_SUMMARY();
 }
