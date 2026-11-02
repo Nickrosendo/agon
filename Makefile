@@ -112,5 +112,9 @@ uninstall:
 clean:
 	rm -rf build
 
+# Make deletes "intermediate" files it had to build on the way to something
+# else; a bare .SECONDARY: keeps them, so objects survive between runs.
+.SECONDARY:
+
 .PHONY: all release test run-tests test-slow run-slow-tests install uninstall \
 	clean
