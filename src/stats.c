@@ -100,8 +100,8 @@ static void sample_world(Stats *st, const World *w)
     }
 }
 
-void stats_sample(Stats *st, const World *w, const Pool *p, uint64_t tick,
-                  uint32_t *scratch)
+void stats_measure(Stats *st, const World *w, const Pool *p, uint64_t tick,
+                   uint32_t *scratch)
 {
     /* Zero the counts but keep the histories: copy them out, clear the
      * whole struct, copy them back. Each History is a struct holding an
@@ -117,6 +117,12 @@ void stats_sample(Stats *st, const World *w, const Pool *p, uint64_t tick,
     st->tick = tick;
     sample_creatures(st, p, scratch);
     sample_world(st, w);
+}
+
+void stats_sample(Stats *st, const World *w, const Pool *p, uint64_t tick,
+                  uint32_t *scratch)
+{
+    stats_measure(st, w, p, tick, scratch);
     history_add(&st->hist_plant_eaters, st->by_level[BAND_PLANT]);
     history_add(&st->hist_meat_eaters,
                 st->by_level[BAND_MEAT] + st->by_level[BAND_TOP]);

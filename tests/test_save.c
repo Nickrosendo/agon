@@ -1,0 +1,690 @@
+#include "test.h"
+
+#include <stdlib.h> /* malloc, free */
+#include <string.h> /* strstr, memcmp */
+#include <sys/stat.h> /* mkdir (POSIX) */
+#include <unistd.h>   /* rmdir (POSIX) */
+
+#include "genome.h"
+#include "rng.h"
+#include "save.h"
+#include "settings.h"
+#include "sim.h"
+
+/* Under build/, which git ignores. Tests run from the top folder. */
+#define SAVE_FILE "build/test_save.save"
+#define BROKEN_FILE "build/test_save_broken.save"
+
+/* The whole of a file, on the heap; the caller frees it. */
+static unsigned char *read_whole(const char *path, size_t *size)
+{
+    FILE *f = fopen(path, "rb");
+    if (f == NULL) {
+        return NULL;
+    }
+    fseek(f, 0, SEEK_END);
+    long end = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    unsigned char *bytes = malloc((size_t)end);
+    if (bytes != NULL && fread(bytes, 1, (size_t)end, f) != (size_t)end) {
+        free(bytes);
+        bytes = NULL;
+    }
+    fclose(f);
+    *size = (size_t)end;
+    return bytes;
+}
+
+static void write_whole(const char *path, const unsigned char *bytes,
+                        size_t size)
+{
+    FILE *f = fopen(path, "wb");
+    CHECK(f != NULL);
+    if (f != NULL) {
+        CHECK(fwrite(bytes, 1, size, f) == size);
+        fclose(f);
+    }
+}
+
+static bool history_same(const History *a, const History *b)
+{
+    if (a->len != b->len) {
+        return false;
+    }
+    for (int k = 0; k < a->len; k++) {
+        if (history_at(a, k) != history_at(b, k)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/*
+ * The main promise: a loaded world is the same world, and it goes on to
+ * do exactly what the original does. The second half matters most: state
+ * that is missing from the checksum but changes the future (the order of
+ * the free list, the random generator) shows up only by running on.
+ */
+static void test_round_trip_and_continue(void)
+{
+    Settings set = settings_default();
+    Sim a, b;
+    char err[256] = "";
+    CHECK(sim_init(&a, &set, 7, 64, 32));
+    for (int i = 0; i < 1000; i++) {
+        sim_step(&a);
+    }
+    CHECK(save_write(&a, SAVE_FILE, err, sizeof(err)));
+    CHECK(save_read(&b, SAVE_FILE, err, sizeof(err)));
+    CHECK(b.seed == 7 && b.tick == 1000);
+    CHECK(b.world.w == 64 && b.world.h == 32);
+    CHECK(b.pool.free_head == a.pool.free_head);
+    CHECK(sim_checksum(&a) == sim_checksum(&b));
+    CHECK(history_same(&a.stats.hist_plant_eaters, &b.stats.hist_plant_eaters));
+    CHECK(history_same(&a.stats.hist_meat_eaters, &b.stats.hist_meat_eaters));
+    CHECK(history_same(&a.stats.hist_planted, &b.stats.hist_planted));
+    CHECK(b.stats.creatures == a.pool.count);
+    Settings copied = a.set;
+    CHECK(memcmp(&copied, &b.set, sizeof(copied)) == 0);
+
+    for (int i = 0; i < 1000; i++) {
+        sim_step(&a);
+        sim_step(&b);
+    }
+    CHECK(sim_checksum(&a) == sim_checksum(&b));
+    sim_free(&a);
+    sim_free(&b);
+}
+
+static void test_settings_travel_with_the_file(void)
+{
+    Settings set = settings_default();
+    set.max_age = 321;
+    set.mutation_rate = 0.125f;
+    Sim a, b;
+    char err[256] = "";
+    CHECK(sim_init(&a, &set, 3, 16, 16));
+    CHECK(save_write(&a, SAVE_FILE, err, sizeof(err)));
+    CHECK(save_read(&b, SAVE_FILE, err, sizeof(err)));
+    CHECK(b.set.max_age == 321);
+    CHECK(b.set.mutation_rate == 0.125f);
+    CHECK(strcmp(b.set.brain_name, "net") == 0);
+    sim_free(&a);
+    sim_free(&b);
+}
+
+/* A brain with private state starts it afresh: no crash, and it runs. */
+static void test_random_brain_reopens(void)
+{
+    Settings set = settings_default();
+    snprintf(set.brain_name, sizeof(set.brain_name), "random");
+    Sim a, b;
+    char err[256] = "";
+    CHECK(sim_init(&a, &set, 4, 16, 16));
+    CHECK(save_write(&a, SAVE_FILE, err, sizeof(err)));
+    CHECK(save_read(&b, SAVE_FILE, err, sizeof(err)));
+    CHECK(strcmp(b.brain.name, "random") == 0);
+    for (int i = 0; i < 20; i++) {
+        sim_step(&b);
+    }
+    sim_free(&a);
+    sim_free(&b);
+}
+
+/* A small world and a file of it, for the tests of damaged files. */
+static unsigned char *small_save(size_t *size)
+{
+    Settings set = settings_default();
+    set.pool_capacity = 40;
+    set.start_creatures = 20;
+    set.min_creatures = 20;
+    Sim a;
+    char err[256] = "";
+    CHECK(sim_init(&a, &set, 11, 16, 16));
+    for (int i = 0; i < 150; i++) {
+        sim_step(&a);
+    }
+    CHECK(save_write(&a, SAVE_FILE, err, sizeof(err)));
+    sim_free(&a);
+    return read_whole(SAVE_FILE, size);
+}
+
+/* Must fail, with a message mentioning piece. AddressSanitizer's leak check
+ * at exit proves a failed load leaves nothing to free. */
+static bool load_fails(const unsigned char *bytes, size_t size,
+                       const char *piece)
+{
+    write_whole(BROKEN_FILE, bytes, size);
+    Sim s;
+    char err[256] = "";
+    if (save_read(&s, BROKEN_FILE, err, sizeof(err))) {
+        sim_free(&s);
+        return false;
+    }
+    return strstr(err, piece) != NULL;
+}
+
+static void test_wrong_magic_and_version(void)
+{
+    size_t size = 0;
+    unsigned char *bytes = small_save(&size);
+    CHECK(bytes != NULL);
+    if (bytes == NULL) {
+        return;
+    }
+    bytes[0] ^= 0x01;
+    CHECK(load_fails(bytes, size, "not an agon save"));
+    bytes[0] ^= 0x01;
+    bytes[8] ^= 0x40; /* the version comes right after the 8-byte magic */
+    CHECK(load_fails(bytes, size, "version"));
+    bytes[8] ^= 0x40;
+    /* And the same bytes, untouched, are fine: the failures above came
+     * from the changes. */
+    write_whole(BROKEN_FILE, bytes, size);
+    Sim s;
+    char err[256] = "";
+    CHECK(save_read(&s, BROKEN_FILE, err, sizeof(err)));
+    sim_free(&s);
+    free(bytes);
+}
+
+static void test_cut_short(void)
+{
+    size_t size = 0;
+    unsigned char *bytes = small_save(&size);
+    CHECK(bytes != NULL);
+    if (bytes == NULL) {
+        return;
+    }
+    /* Ten points through the file, then the very first and last bytes. */
+    for (size_t point = 0; point < 10; point++) {
+        CHECK(load_fails(bytes, size * point / 10, "cut short"));
+    }
+    CHECK(load_fails(bytes, 3, "cut short"));
+    CHECK(load_fails(bytes, size - 1, "cut short"));
+    free(bytes);
+}
+
+static void test_extra_bytes(void)
+{
+    size_t size = 0;
+    unsigned char *bytes = small_save(&size);
+    CHECK(bytes != NULL);
+    if (bytes == NULL) {
+        return;
+    }
+    unsigned char *longer = malloc(size + 1);
+    CHECK(longer != NULL);
+    if (longer != NULL) {
+        memcpy(longer, bytes, size);
+        longer[size] = 0;
+        CHECK(load_fails(longer, size + 1, "extra"));
+        free(longer);
+    }
+    free(bytes);
+}
+
+static void test_missing_file_and_bad_path(void)
+{
+    Sim s;
+    char err[256] = "";
+    CHECK(!save_read(&s, "build/no_such.save", err, sizeof(err)));
+    CHECK(strstr(err, "build/no_such.save") != NULL);
+
+    Settings set = settings_default();
+    Sim a;
+    CHECK(sim_init(&a, &set, 3, 8, 8));
+    CHECK(!save_write(&a, "build/no_such_folder/x.save", err, sizeof(err)));
+    CHECK(strstr(err, "no_such_folder") != NULL);
+    sim_free(&a);
+}
+
+/* A failed write must not hurt the save that is already there. A folder
+ * sits where the temporary file wants to go, so the write cannot start. */
+static void test_failed_write_keeps_old_file(void)
+{
+    size_t size = 0;
+    unsigned char *before = small_save(&size);
+    CHECK(before != NULL);
+    if (before == NULL) {
+        return;
+    }
+    char tmp_path[128];
+    snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", SAVE_FILE);
+    CHECK(mkdir(tmp_path, 0700) == 0);
+
+    Settings set = settings_default();
+    Sim a;
+    char err[256] = "";
+    CHECK(sim_init(&a, &set, 5, 8, 8));
+    CHECK(!save_write(&a, SAVE_FILE, err, sizeof(err)));
+    sim_free(&a);
+    CHECK(rmdir(tmp_path) == 0);
+
+    size_t after_size = 0;
+    unsigned char *after = read_whole(SAVE_FILE, &after_size);
+    CHECK(after != NULL && after_size == size);
+    CHECK(after != NULL && memcmp(after, before, size) == 0);
+    free(before);
+    free(after);
+}
+
+/*
+ * The layout of the smallest useful file, spelled out here on purpose: a
+ * test written from the format, not from the code that writes it. The
+ * world has one living creature in slot 0 and one free slot, 1. Positions
+ * count from the file's start or, for the pool, from its end.
+ */
+#define OFF_VERSION 8
+#define OFF_WIDTH 24
+#define OFF_HEIGHT 28
+#define OFF_SETTINGS 80
+#define OFF_SIZE_FREE_SLOT 5 /* alive byte, next_free */
+
+/* The bytes from the living creature's alive byte, in the file's order. */
+enum {
+    AT_ALIVE = 0,
+    AT_ID = 1,
+    AT_LINEAGE = 5,
+    AT_X = 9,
+    AT_Y = 13,
+    AT_HEADING = 17,
+    AT_ENERGY = 18,
+    AT_AGE = 22,
+    AT_KIND = 26,
+    AT_HOLD = 27,
+    AT_HOLD_LEFT = 29,
+    AT_MOVE_POINTS = 31,
+    AT_LEVEL = 35,
+    AT_EATEN = 39,
+    AT_GENOME = 43,
+    SLOT_LIVING_BYTES = 43 + 4 * GENOME_LEN,
+};
+
+typedef struct {
+    unsigned char *bytes;
+    size_t size;
+    size_t layers;    /* where the world's layers start */
+    size_t histories; /* where the three histories start */
+    size_t pool;      /* where free_head is */
+    size_t living;    /* slot 0's alive byte */
+    size_t free_slot; /* slot 1's alive byte */
+} Tiny;
+
+static void put_le32(unsigned char *at, uint32_t v)
+{
+    for (int i = 0; i < 4; i++) {
+        at[i] = (unsigned char)((v >> (8 * i)) & 0xFFu);
+    }
+}
+
+static uint32_t get_le32(const unsigned char *at)
+{
+    uint32_t v = 0;
+    for (int i = 0; i < 4; i++) {
+        v |= (uint32_t)at[i] << (8 * i);
+    }
+    return v;
+}
+
+/* NaN and a huge number, as bit patterns of a float. */
+#define BITS_NAN 0x7FC00000u
+#define BITS_HUGE 0x7F000000u /* about 1.7e38 */
+
+static Tiny tiny_save(void)
+{
+    Settings set = settings_default();
+    set.pool_capacity = 2;
+    set.start_creatures = 1;
+    set.min_creatures = 1;
+    Sim a;
+    char err[256] = "";
+    /* An 8 by 8 world could be all rock and water for some seeds; the
+     * count check below fails if this seed ever has no soil. */
+    CHECK(sim_init(&a, &set, 3, 8, 8));
+    CHECK(a.pool.count == 1 && a.pool.items[0].alive);
+    CHECK(save_write(&a, SAVE_FILE, err, sizeof(err)));
+    sim_free(&a);
+
+    Tiny t = {0};
+    t.bytes = read_whole(SAVE_FILE, &t.size);
+    size_t settings_bytes = 0;
+    for (int i = 0; i < settings_count(); i++) {
+        settings_bytes +=
+            settings_info(i)->type == SETTING_TEXT ? BRAIN_NAME_MAX : 4;
+    }
+    t.layers = OFF_SETTINGS + settings_bytes;
+    /* terrain, fertility, veg, veg_age, veg_wither, veg_rule, carrion,
+     * carrion_level, scent, for 64 cells. */
+    t.histories = t.layers + 64 * (1 + 4 + 1 + 2 + 1 + 1 + 4 + 4 + 4);
+    t.pool = t.histories + 3 * (HISTORY * 4 + 8);
+    t.living = t.pool + 8;
+    t.free_slot = t.living + SLOT_LIVING_BYTES;
+    CHECK(t.size == t.free_slot + OFF_SIZE_FREE_SLOT);
+    return t;
+}
+
+/* The file with one 32-bit value changed must be refused, naming piece. */
+static void refuses_u32(const Tiny *t, size_t at, uint32_t value,
+                        const char *piece)
+{
+    unsigned char *copy = malloc(t->size);
+    CHECK(copy != NULL);
+    if (copy == NULL) {
+        return;
+    }
+    memcpy(copy, t->bytes, t->size);
+    put_le32(copy + at, value);
+    if (!load_fails(copy, t->size, piece)) {
+        fprintf(stderr, "offset %zu, value 0x%x: expected a refusal with "
+                        "'%s'\n", at, value, piece);
+        CHECK(false);
+    }
+    free(copy);
+}
+
+static void refuses_byte(const Tiny *t, size_t at, unsigned char value,
+                         const char *piece)
+{
+    unsigned char *copy = malloc(t->size);
+    CHECK(copy != NULL);
+    if (copy == NULL) {
+        return;
+    }
+    memcpy(copy, t->bytes, t->size);
+    copy[at] = value;
+    if (!load_fails(copy, t->size, piece)) {
+        fprintf(stderr, "offset %zu, byte 0x%x: expected a refusal with "
+                        "'%s'\n", at, value, piece);
+        CHECK(false);
+    }
+    free(copy);
+}
+
+static void test_layout_is_as_documented(void)
+{
+    Tiny t = tiny_save();
+    CHECK(t.bytes != NULL);
+    if (t.bytes == NULL) {
+        return;
+    }
+    CHECK(memcmp(t.bytes, "AGONSAVE", 8) == 0);
+    CHECK(get_le32(t.bytes + OFF_WIDTH) == 8);
+    CHECK(get_le32(t.bytes + OFF_HEIGHT) == 8);
+    CHECK(t.bytes[t.living + AT_ALIVE] == 1);
+    CHECK(t.bytes[t.free_slot + AT_ALIVE] == 0);
+    CHECK(t.bytes[t.living + AT_KIND] < ACT_COUNT);
+    free(t.bytes);
+}
+
+static void test_refuses_impossible_header(void)
+{
+    Tiny t = tiny_save();
+    if (t.bytes == NULL) {
+        CHECK(false);
+        return;
+    }
+    refuses_u32(&t, OFF_VERSION + 4, 1, "different build"); /* settings */
+    refuses_u32(&t, OFF_VERSION + 8, 1, "different build"); /* genome */
+    refuses_u32(&t, OFF_VERSION + 12, 1, "different build"); /* history */
+    refuses_u32(&t, OFF_WIDTH, 0, "size");
+    refuses_u32(&t, OFF_WIDTH, 0xFFFFFFFFu, "size");
+    refuses_u32(&t, OFF_HEIGHT, 100000, "size");
+    free(t.bytes);
+}
+
+static void test_refuses_impossible_settings(void)
+{
+    Tiny t = tiny_save();
+    if (t.bytes == NULL) {
+        CHECK(false);
+        return;
+    }
+    size_t at = OFF_SETTINGS;
+    for (int i = 0; i < settings_count(); i++) {
+        const SettingInfo *info = settings_info(i);
+        if (info->type == SETTING_TEXT) {
+            /* No '\0' anywhere in the name: not a string. */
+            unsigned char *copy = malloc(t.size);
+            CHECK(copy != NULL);
+            if (copy != NULL) {
+                memcpy(copy, t.bytes, t.size);
+                memset(copy + at, 'x', BRAIN_NAME_MAX);
+                CHECK(load_fails(copy, t.size, info->name));
+                free(copy);
+            }
+            /* A proper name no brain has. */
+            copy = malloc(t.size);
+            CHECK(copy != NULL);
+            if (copy != NULL) {
+                memcpy(copy, t.bytes, t.size);
+                memcpy(copy + at, "nope", 5);
+                CHECK(load_fails(copy, t.size, "nope"));
+                free(copy);
+            }
+            at += BRAIN_NAME_MAX;
+        } else if (info->type == SETTING_INT) {
+            refuses_u32(&t, at, 0xFFFFFFFFu, info->name); /* -1 */
+            at += 4;
+        } else {
+            refuses_u32(&t, at, BITS_NAN, info->name);
+            at += 4;
+        }
+    }
+    free(t.bytes);
+}
+
+/* The first cell of each layer, with an impossible value. */
+static void test_refuses_impossible_layers(void)
+{
+    Tiny t = tiny_save();
+    if (t.bytes == NULL) {
+        CHECK(false);
+        return;
+    }
+    size_t terrain = t.layers;
+    size_t fertility = terrain + 64;
+    size_t veg = fertility + 64 * 4;
+    size_t veg_age = veg + 64;
+    size_t veg_wither = veg_age + 64 * 2;
+    size_t veg_rule = veg_wither + 64;
+    size_t carrion = veg_rule + 64;
+    size_t carrion_level = carrion + 64 * 4;
+    size_t scent = carrion_level + 64 * 4;
+    refuses_byte(&t, terrain, 3, "layer");
+    refuses_u32(&t, fertility, BITS_NAN, "out of range");
+    refuses_u32(&t, fertility, 0x40000000u /* 2.0 */, "out of range");
+    refuses_u32(&t, fertility, BITS_HUGE, "out of range");
+    refuses_byte(&t, veg, VEG_MAX + 1, "layer");
+    refuses_byte(&t, veg_rule, 0x80, "layer");
+    refuses_u32(&t, carrion, BITS_NAN, "out of range");
+    refuses_u32(&t, carrion, BITS_HUGE, "out of range");
+    refuses_u32(&t, carrion_level, BITS_NAN, "out of range");
+    refuses_u32(&t, scent, BITS_NAN, "out of range");
+    free(t.bytes);
+}
+
+static void test_refuses_impossible_histories(void)
+{
+    Tiny t = tiny_save();
+    if (t.bytes == NULL) {
+        CHECK(false);
+        return;
+    }
+    size_t pos = t.histories + HISTORY * 4;
+    refuses_u32(&t, t.histories, 0xFFFFFFFFu, "history"); /* value -1 */
+    refuses_u32(&t, t.histories, 0x7FFFFFFFu, "history"); /* value huge */
+    refuses_u32(&t, pos, HISTORY, "history");
+    refuses_u32(&t, pos, 0xFFFFFFFFu, "history");
+    refuses_u32(&t, pos + 4, HISTORY + 1, "history");
+    refuses_u32(&t, pos + 4, 0xFFFFFFFFu, "history");
+    free(t.bytes);
+}
+
+static void test_refuses_impossible_creature(void)
+{
+    Tiny t = tiny_save();
+    if (t.bytes == NULL) {
+        CHECK(false);
+        return;
+    }
+    size_t c = t.living;
+    refuses_byte(&t, c + AT_ALIVE, 2, "slot");
+    refuses_u32(&t, c + AT_X, 8, "creature");
+    refuses_u32(&t, c + AT_X, 0xFFFFFFFFu, "creature");
+    refuses_u32(&t, c + AT_Y, 8, "creature");
+    refuses_u32(&t, c + AT_Y, 0xFFFFFFFFu, "creature");
+    refuses_byte(&t, c + AT_HEADING, HEADING_COUNT, "creature");
+    refuses_byte(&t, c + AT_KIND, ACT_COUNT, "creature");
+    refuses_u32(&t, c + AT_ENERGY, BITS_NAN, "out of range");
+    refuses_u32(&t, c + AT_ENERGY, BITS_HUGE, "out of range");
+    refuses_u32(&t, c + AT_MOVE_POINTS, BITS_NAN, "out of range");
+    refuses_u32(&t, c + AT_LEVEL, BITS_NAN, "out of range");
+    refuses_u32(&t, c + AT_EATEN, BITS_NAN, "out of range");
+    refuses_u32(&t, c + AT_GENOME, BITS_NAN, "out of range");
+    refuses_u32(&t, c + AT_GENOME, 0x40000000u /* 2.0, a trait */,
+                "out of range");
+    refuses_u32(&t, c + AT_GENOME + 4 * GENE_TRAITS, BITS_NAN, "out of range");
+    refuses_u32(&t, c + AT_GENOME + 4 * GENE_TRAITS, BITS_HUGE, "out of range");
+    free(t.bytes);
+}
+
+/* A creature standing on a cell that is not soil. */
+static void test_refuses_creature_off_soil(void)
+{
+    Tiny t = tiny_save();
+    if (t.bytes == NULL) {
+        CHECK(false);
+        return;
+    }
+    /* Change the terrain under the creature instead: same effect, and no
+     * dependence on what this seed's world looks like. */
+    uint32_t x = get_le32(t.bytes + t.living + AT_X);
+    uint32_t y = get_le32(t.bytes + t.living + AT_Y);
+    refuses_byte(&t, t.layers + y * 8 + x, TERRAIN_WATER, "cannot");
+    free(t.bytes);
+}
+
+static void test_refuses_broken_free_list(void)
+{
+    Tiny t = tiny_save();
+    if (t.bytes == NULL) {
+        CHECK(false);
+        return;
+    }
+    /* free_head: should be 1, the free slot. */
+    refuses_u32(&t, t.pool, 0, "free list");          /* a living slot */
+    refuses_u32(&t, t.pool, 2, "free list");          /* past the end */
+    refuses_u32(&t, t.pool, 0xFFFFFFFEu, "free list"); /* -2 */
+    refuses_u32(&t, t.pool, 0xFFFFFFFFu, "free list"); /* -1: a slot lost */
+    /* The free slot's next_free: should be -1. */
+    size_t next = t.free_slot + 1;
+    refuses_u32(&t, next, 1, "free list"); /* a cycle: itself */
+    refuses_u32(&t, next, 0, "free list"); /* a living slot */
+    refuses_u32(&t, next, 2, "free list"); /* past the end */
+    free(t.bytes);
+}
+
+/* Two creatures on one cell: the second slot's place taken from the first. */
+static void test_refuses_two_on_one_cell(void)
+{
+    Settings set = settings_default();
+    set.pool_capacity = 2;
+    set.start_creatures = 2;
+    set.min_creatures = 2;
+    Sim a;
+    char err[256] = "";
+    CHECK(sim_init(&a, &set, 3, 8, 8));
+    CHECK(a.pool.count == 2);
+    CHECK(save_write(&a, SAVE_FILE, err, sizeof(err)));
+    sim_free(&a);
+    size_t size = 0;
+    unsigned char *bytes = read_whole(SAVE_FILE, &size);
+    CHECK(bytes != NULL);
+    if (bytes == NULL) {
+        return;
+    }
+    size_t second = size - SLOT_LIVING_BYTES;
+    size_t first = second - SLOT_LIVING_BYTES;
+    memcpy(bytes + second + AT_X, bytes + first + AT_X, 8); /* x and y */
+    CHECK(load_fails(bytes, size, "cannot"));
+    free(bytes);
+}
+
+/*
+ * The file is not trusted. One wrong byte, wherever it is, must end in
+ * either a clean refusal or a world that runs without touching memory it
+ * should not (AddressSanitizer and the undefined-behaviour checker watch
+ * this test). This is a fuzz test: many random small damages.
+ */
+static void try_damage(const unsigned char *bytes, size_t size, size_t at,
+                       unsigned char mask)
+{
+    unsigned char *copy = malloc(size);
+    CHECK(copy != NULL);
+    if (copy == NULL) {
+        return;
+    }
+    memcpy(copy, bytes, size);
+    copy[at] ^= mask;
+    write_whole(BROKEN_FILE, copy, size);
+    free(copy);
+    Sim s;
+    char err[256] = "";
+    if (save_read(&s, BROKEN_FILE, err, sizeof(err))) {
+        for (int i = 0; i < 5; i++) {
+            sim_step(&s);
+        }
+        sim_free(&s);
+    } else {
+        CHECK(err[0] != '\0');
+    }
+}
+
+static void test_damaged_bytes_never_crash(void)
+{
+    size_t size = 0;
+    unsigned char *bytes = small_save(&size);
+    CHECK(bytes != NULL);
+    if (bytes == NULL) {
+        return;
+    }
+    /* Every byte of the start of the file, where the sizes live. */
+    for (size_t at = 0; at < 64 && at < size; at++) {
+        try_damage(bytes, size, at, 0xFF);
+    }
+    /* Random bytes everywhere else: all bits, the top bit, a low bit. */
+    Rng r;
+    rng_seed(&r, 12345);
+    const unsigned char masks[] = {0xFF, 0x80, 0x01, 0x7F};
+    for (int i = 0; i < 1200; i++) {
+        size_t at = (size_t)rng_below(&r, (uint32_t)size);
+        try_damage(bytes, size, at, masks[rng_below(&r, 4)]);
+    }
+    free(bytes);
+}
+
+int main(void)
+{
+    test_round_trip_and_continue();
+    test_settings_travel_with_the_file();
+    test_random_brain_reopens();
+    test_wrong_magic_and_version();
+    test_cut_short();
+    test_extra_bytes();
+    test_missing_file_and_bad_path();
+    test_failed_write_keeps_old_file();
+    test_layout_is_as_documented();
+    test_refuses_impossible_header();
+    test_refuses_impossible_settings();
+    test_refuses_impossible_layers();
+    test_refuses_impossible_histories();
+    test_refuses_impossible_creature();
+    test_refuses_creature_off_soil();
+    test_refuses_broken_free_list();
+    test_refuses_two_on_one_cell();
+    test_damaged_bytes_never_crash();
+    remove(SAVE_FILE);
+    remove(BROKEN_FILE);
+    TEST_SUMMARY();
+}

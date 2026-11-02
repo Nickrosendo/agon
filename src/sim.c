@@ -64,7 +64,7 @@ static void sample(Sim *s)
     stats_sample(&s->stats, &s->world, &s->pool, s->tick, s->scratch);
 }
 
-bool sim_init(Sim *s, const Settings *set, uint64_t seed, int w, int h)
+bool sim_alloc(Sim *s, const Settings *set, int w, int h)
 {
     /* Everything zero first: sim_free can then clean up after a failure
      * at any point below, since every free function accepts empty
@@ -78,10 +78,38 @@ bool sim_init(Sim *s, const Settings *set, uint64_t seed, int w, int h)
     }
     s->turns = malloc((size_t)set->pool_capacity * sizeof(*s->turns));
     s->scratch = malloc((size_t)set->pool_capacity * sizeof(*s->scratch));
-    if (s->turns == NULL || s->scratch == NULL || !sim_reseed(s, seed)) {
+    if (s->turns == NULL || s->scratch == NULL) {
         sim_free(s);
         return false;
     }
+    return true;
+}
+
+bool sim_init(Sim *s, const Settings *set, uint64_t seed, int w, int h)
+{
+    if (!sim_alloc(s, set, w, h)) {
+        return false;
+    }
+    if (!sim_reseed(s, seed)) {
+        sim_free(s);
+        return false;
+    }
+    return true;
+}
+
+bool sim_resume(Sim *s)
+{
+    if (!brain_open(&s->brain, s->set.brain_name, &s->set,
+                    s->seed ^ BRAIN_SEED_SALT)) {
+        return false;
+    }
+    for (int i = 0; i < s->pool.capacity; i++) {
+        const Creature *c = &s->pool.items[i];
+        if (c->alive) {
+            s->brain.on_birth(&s->brain, c->id, &c->genome);
+        }
+    }
+    stats_measure(&s->stats, &s->world, &s->pool, s->tick, s->scratch);
     return true;
 }
 

@@ -8,6 +8,7 @@
 #include "panel.h"
 #include "render.h"
 #include "rng.h"
+#include "save.h"
 #include "settings.h"
 #include "sim.h"
 #include "term.h"
@@ -26,6 +27,9 @@ static const int SPEEDS[] = {1, 2, 5, 10, 15, 30, 60, 120};
 #define DEFAULT_SPEED 3 /* 10 ticks per second */
 
 #define AGON_VERSION "0.1.0-dev"
+
+/* How long a message stays on the title line: two seconds. */
+#define NOTICE_FRAMES (2 * FRAMES_PER_SECOND)
 
 /* What main returns to the shell: 0 for success, 1 when something failed
  * while running, 2 for a mistake on the command line (the convention of
@@ -70,19 +74,20 @@ static void sleep_until(int64_t deadline)
 }
 
 static void draw_title(int cols, const Sim *sim, int speed, int paused,
-                       bool inspecting)
+                       bool inspecting, const char *notice)
 {
     char tick[32];
     /* tick is a uint64_t; every value a run reaches fits in a long. */
     panel_format_count(tick, sizeof(tick), (long)sim->tick);
-    char text[160];
+    char text[320];
     /* PRIx64 expands to the right printf letters for a uint64_t on this
      * platform ("lx" here); writing %llx would be wrong on some systems.
      * Adjacent string literals are joined into one by the compiler. */
     snprintf(text, sizeof(text),
-             " agon | seed 0x%" PRIx64 " | tick %s | creatures %d | %d/s%s%s",
+             " agon | seed 0x%" PRIx64 " | tick %s | creatures %d | %d/s%s%s%s%s",
              sim->seed, tick, sim->pool.count, SPEEDS[speed],
-             paused ? " | paused" : "", inspecting ? " | inspect" : "");
+             paused ? " | paused" : "", inspecting ? " | inspect" : "",
+             notice[0] != '\0' ? " | " : "", notice);
     render_text(0, 0, text, cols);
 }
 
@@ -92,7 +97,7 @@ static void draw_help(int cols, int rows, bool inspecting)
         inspecting
             ? " arrows/hjkl move | HJKL by 5 | i or Esc leave | space pause"
               " | q quit"
-            : " space pause | +/- speed | r new seed | i inspect | q quit";
+            : " space pause | +/- speed | r new seed | i inspect | s save | q quit";
     render_text(0, rows - 1, help, cols);
 }
 
@@ -196,6 +201,23 @@ static void print_summary(const Sim *sim)
            plants, st->carrion_cells, oldest);
 }
 
+/* Builds the world the options ask for: from --load, or new. False with a
+ * message in err; there is nothing to free then. */
+static bool open_world(Sim *sim, const Options *o, const Settings *settings,
+                       uint64_t seed, int w, int h, char *err, size_t errlen)
+{
+    if (o->load_path != NULL) {
+        return save_read(sim, o->load_path, err, errlen);
+    }
+    if (!sim_init(sim, settings, seed, w, h)) {
+        snprintf(err, errlen, "could not start: out of memory, or no brain "
+                              "called '%s'",
+                 settings->brain_name);
+        return false;
+    }
+    return true;
+}
+
 /* agon --once: build the world, run it, print it and a summary. Never
  * opens the terminal, so it works in a pipe, a file or a shell start-up
  * script. */
@@ -205,14 +227,21 @@ static int run_once(const Options *o, const Settings *settings,
     int w = o->size_given ? o->width : ONCE_WIDTH;
     int h = o->size_given ? o->height : ONCE_HEIGHT;
     Sim sim;
-    if (!sim_init(&sim, settings, seed, w, h)) {
-        fprintf(stderr, "agon: could not start: out of memory, or no brain "
-                        "called '%s'\n",
-                settings->brain_name);
+    char err[512];
+    if (!open_world(&sim, o, settings, seed, w, h, err, sizeof(err))) {
+        fprintf(stderr, "agon: %s\n", err);
         return EXIT_FAILED;
     }
     for (long i = 0; i < o->ticks; i++) {
         sim_step(&sim);
+    }
+    /* Before the fresh sample below, which would add a point to the
+     * histories that the running world never took. */
+    if (o->save_path != NULL &&
+        !save_write(&sim, o->save_path, err, sizeof(err))) {
+        fprintf(stderr, "agon: %s\n", err);
+        sim_free(&sim);
+        return EXIT_FAILED;
     }
     /* A fresh sample: the last one may be up to stats_every ticks old. */
     stats_sample(&sim.stats, &sim.world, &sim.pool, sim.tick, sim.scratch);
@@ -221,6 +250,19 @@ static int run_once(const Options *o, const Settings *settings,
     print_summary(&sim);
     sim_free(&sim);
     return EXIT_FINE;
+}
+
+/* The s key. The result goes to the title line: a failure must not end a
+ * world that may have been running for days. */
+static void save_now(const Sim *sim, const char *path, char *notice,
+                     size_t size)
+{
+    if (path == NULL) {
+        snprintf(notice, size, "nowhere to save: start with --save PATH");
+    } else if (save_write(sim, path, notice, size)) {
+        snprintf(notice, size, "saved to %s", path);
+    }
+    /* On failure save_write has already put its message in notice. */
 }
 
 int main(int argc, char **argv)
@@ -285,18 +327,17 @@ int main(int argc, char **argv)
     /* The Sim struct lives on main's stack; the world's layers it points
      * to live on the heap until sim_free. */
     Sim sim;
-    if (!sim_init(&sim, &settings, seed, world_w, world_h)) {
+    if (!open_world(&sim, &opt, &settings, seed, world_w, world_h, err,
+                    sizeof(err))) {
         term_close(); /* so the message lands on the normal screen */
-        fprintf(stderr, "agon: could not start: out of memory, or no "
-                        "brain called '%s'\n",
-                settings.brain_name);
+        fprintf(stderr, "agon: %s\n", err);
         return EXIT_FAILED;
     }
 
     /* New seeds for r come from their own generator, so pressing r gives
      * the same series of worlds after the same starting seed. */
     Rng seed_source;
-    rng_seed(&seed_source, seed);
+    rng_seed(&seed_source, sim.seed); /* a loaded world has its own seed */
 
     int speed = opt.speed > 0 ? speed_step(opt.speed) : DEFAULT_SPEED;
     int paused = 0;
@@ -308,6 +349,9 @@ int main(int argc, char **argv)
     int ticks_due = 0;
     int64_t next_frame = now_ns();
     Inspect inspect = {0}; /* off until i is pressed */
+    /* A message for the title line, cleared after NOTICE_FRAMES frames. */
+    char notice[256] = "";
+    int notice_frames = 0;
 
     while (running) {
         if (term_resized()) {
@@ -338,6 +382,9 @@ int main(int argc, char **argv)
                 speed++;
             } else if (key == '-' && speed > 0) {
                 speed--;
+            } else if (key == 's') {
+                save_now(&sim, opt.save_path, notice, sizeof(notice));
+                notice_frames = NOTICE_FRAMES;
             } else if (key == 'r') {
                 if (!sim_reseed(&sim, rng_next(&seed_source))) {
                     failed = 1; /* the brain could not be reopened */
@@ -370,7 +417,7 @@ int main(int argc, char **argv)
         if (cols < MIN_COLS || rows < MIN_ROWS) {
             render_too_small(cols, rows, MIN_COLS, MIN_ROWS);
         } else {
-            draw_title(cols, &sim, speed, paused, inspect.on);
+            draw_title(cols, &sim, speed, paused, inspect.on, notice);
             /* The panel only when the world keeps its minimum width
              * beside it: on a narrow window the panel goes first. */
             int world_cols = world_columns(cols);
@@ -388,6 +435,13 @@ int main(int argc, char **argv)
         }
         term_end();
 
+        if (notice_frames > 0) {
+            notice_frames--;
+            if (notice_frames == 0) {
+                notice[0] = '\0';
+            }
+        }
+
         next_frame += FRAME_NANOSECONDS;
         int64_t now = now_ns();
         if (now > next_frame + FRAME_NANOSECONDS) {
@@ -397,10 +451,21 @@ int main(int argc, char **argv)
     }
 
     term_close();
-    sim_free(&sim);
     if (failed) {
+        sim_free(&sim);
         fprintf(stderr, "agon: out of memory while building a new world\n");
         return EXIT_FAILED;
     }
+    /* On quit, after term_close, so a failure is seen on the normal screen
+     * and the exit code says so. Only q comes here: Ctrl-C and other
+     * signals end the program from term.c's handler, where writing a file
+     * is not safe, so they do not save. */
+    if (opt.save_path != NULL &&
+        !save_write(&sim, opt.save_path, err, sizeof(err))) {
+        sim_free(&sim);
+        fprintf(stderr, "agon: %s\n", err);
+        return EXIT_FAILED;
+    }
+    sim_free(&sim);
     return EXIT_FINE;
 }

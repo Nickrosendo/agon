@@ -46,6 +46,15 @@ typedef struct {
  * capacity is invalid, the brain name unknown, or memory runs out;
  * nothing to free then. */
 bool sim_init(Sim *s, const Settings *set, uint64_t seed, int w, int h);
+/* The first half of sim_init: allocates a w by h world and the pool, and
+ * builds nothing. False as for sim_init, with nothing to free. */
+bool sim_alloc(Sim *s, const Settings *set, int w, int h);
+/* After a Sim allocated by sim_alloc was filled in from a save file: opens
+ * the brain, tells it about every living creature, and takes the numbers
+ * for the panel without adding to the histories. A brain's private state
+ * is not saved, so a brain that has any starts it afresh; the "net" brain
+ * has none. False for an unknown brain; the Sim must then be freed. */
+bool sim_resume(Sim *s);
 /* Rebuilds the same-sized world from a new seed, reusing its memory. The
  * brain is closed and opened again with the new seed; false if that
  * fails, and the Sim must then be freed. */

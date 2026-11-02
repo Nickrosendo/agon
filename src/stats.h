@@ -58,6 +58,11 @@ void stats_clear(Stats *st);
 void stats_sample(Stats *st, const World *w, const Pool *p, uint64_t tick,
                   uint32_t *scratch);
 
+/* The same numbers without adding to the histories: for a world just
+ * loaded, whose histories came from the file. */
+void stats_measure(Stats *st, const World *w, const Pool *p, uint64_t tick,
+                   uint32_t *scratch);
+
 /* The band a food-chain level falls in: a BAND_ value. */
 int stats_band(float level);
 
