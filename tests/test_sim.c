@@ -18,9 +18,10 @@
  * then heritable plant rules: a third random draw per soil cell each
  * tick, and the rule layer hashed; then the costs of vigorous plant
  * rules (less food, earlier withering) and the plant-eater cap counted
- * by food-chain level, all three on by default.
+ * by food-chain level, all three on by default; then slower, sparser,
+ * more nourishing plants (sprout rate, capacity, bite energy).
  */
-#define SEED_7_AFTER_500 0xea886784f201d55bULL
+#define SEED_7_AFTER_500 0xb7a7c1d7edb97c3bULL
 
 static void test_same_seed_same_checksum(void)
 {

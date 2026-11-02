@@ -23,12 +23,19 @@ Settings settings_default(void)
         .veg_mutation = 0.02f,
         .veg_vigour_food = 0.6f,
         .veg_vigour_ageing = 0.6f,
-        .veg_sprout_rate = 0.4f,
+        /* Slow and sparse on purpose: at 0.4, capacity 50 and bite 5, plants
+         * covered 40 % of the soil within 100 ticks and stayed there. Now
+         * (five seeds, 160 by 80) they take 550 to 2,375 ticks to reach 10 %
+         * and peak at 10 to 14 % by tick 20,000, 17 to 20 % by 150,000: rotting
+         * carrion slowly enriches the soil. Fewer plants feed fewer creatures,
+         * which is why bite_veg_energy went up with these two: alone, they
+         * left only the floor's random newcomers alive. */
+        .veg_sprout_rate = 0.02f,
         .veg_grow_chance = 0.05f,
         .veg_seed_chance = 0.0002f,
         .veg_start_chance = 0.03f,
         .veg_reach = 2,
-        .veg_capacity = 50.0f,
+        .veg_capacity = 15.0f,
         .veg_mature_age = 60,
         .veg_wither_chance = 0.02f,
         .veg_wither_ticks = 20,
@@ -46,7 +53,7 @@ Settings settings_default(void)
         .energy_start = 20.0f,
         .upkeep_base = 0.1f,
         .move_cost = 0.3f,
-        .bite_veg_energy = 5.0f,
+        .bite_veg_energy = 40.0f,
         .split_threshold = 30.0f,
         .split_share = 0.5f,
         .sense_age_half = 200.0f,

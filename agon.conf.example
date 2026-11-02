@@ -36,7 +36,7 @@ veg_vigour_food = 0.6
 veg_vigour_ageing = 0.6
 
 # scales the chance to sprout beside plants (0 to 1)
-veg_sprout_rate = 0.4
+veg_sprout_rate = 0.02
 
 # chance per tick that a plant thickens (0 to 1)
 veg_grow_chance = 0.05
@@ -51,7 +51,7 @@ veg_start_chance = 0.03
 veg_reach = 2
 
 # most plant mass around a cell of fertility 1 (0 to 1e+06)
-veg_capacity = 50
+veg_capacity = 15
 
 # ticks before a plant can wither (0 to 65535)
 veg_mature_age = 60
@@ -87,7 +87,7 @@ upkeep_base = 0.1
 move_cost = 0.3
 
 # energy in a bite of plant (0 to 1e+06)
-bite_veg_energy = 5
+bite_veg_energy = 40
 
 # energy needed to split, by size (0 to 1e+06)
 split_threshold = 30
