@@ -110,6 +110,18 @@ void pool_kill(Pool *p, World *w, int idx, const Settings *s);
  * rock. */
 void creature_sense(const World *w, const Pool *p, int idx,
                     const Settings *s, Senses *out);
+/* What a bite by creature idx would do right now. Reads only, and uses no
+ * random numbers, so the drawing side can ask too and show the same thing the
+ * simulation does. cell is the target's cell (world_idx), -1 for
+ * BITE_NOTHING; prey is the target's pool slot, for BITE_ATTACK only. */
+enum { BITE_NOTHING, BITE_ATTACK, BITE_CARRION, BITE_PLANT };
+typedef struct {
+    int kind; /* a BITE_ value */
+    int cell;
+    int prey;
+} BiteChoice;
+BiteChoice creature_bite_choice(const World *w, const Pool *p, int idx,
+                                const Settings *s);
 /* Carries out one tick of action a for creature idx. Returns the slot of
  * a child born by splitting, or -1 when none was. A child inherits its
  * parent's lineage and a mutated copy of its genome. */

@@ -386,7 +386,9 @@ bool creature_counts_as_plant_eater(const Creature *c, const Settings *s)
     return !creature_is_hunter(c);
 }
 
-/* A bite looks at the eight cells around the creature, starting with the
+/* The reasoning behind creature_bite_choice:
+ *
+ * A bite looks at the eight cells around the creature, starting with the
  * one ahead and going clockwise; on a tie, the first one seen wins.
  *
  * Food on a cell holding a creature is covered by it and is not eaten.
@@ -398,9 +400,10 @@ bool creature_counts_as_plant_eater(const Creature *c, const Settings *s)
  * eight cells attacks instead: the neighbouring plant-eater it is most
  * likely to hit. Plant-eaters never attack, except to defend their kin
  * (pack_defend). */
-static void act_bite(World *w, Pool *p, int idx, const Settings *s, Rng *r)
+BiteChoice creature_bite_choice(const World *w, const Pool *p, int idx,
+                                const Settings *s)
 {
-    Creature *c = &p->items[idx];
+    const Creature *c = &p->items[idx];
     bool hunter = creature_is_hunter(c);
     float my_size = creature_size(c, s);
     int food_cell = -1;
@@ -408,6 +411,7 @@ static void act_bite(World *w, Pool *p, int idx, const Settings *s, Rng *r)
     float best_gain = 0.0f;
     bool carrion_near = false;
     int prey = -1;
+    int prey_cell = -1;
     float best_chance = 0.0f;
 
     /* AROUND_ is clockwise from north, two steps per heading. */
@@ -424,6 +428,7 @@ static void act_bite(World *w, Pool *p, int idx, const Settings *s, Rng *r)
                 if (chance > best_chance) {
                     best_chance = chance;
                     prey = other;
+                    prey_cell = cell;
                 }
             }
             continue; /* the food under a creature is covered */
@@ -447,15 +452,37 @@ static void act_bite(World *w, Pool *p, int idx, const Settings *s, Rng *r)
         }
     }
 
+    BiteChoice choice = {BITE_NOTHING, -1, -1};
     if (hunter && !carrion_near && prey >= 0) {
-        attack(c, &p->items[prey], s, r);
-        if (s->pack_defence) {
-            pack_defend(w, p, idx, prey, s, r);
-        }
-    } else if (food_cell >= 0 && food_is_carrion) {
-        eat_carrion(w, c, food_cell, s);
+        choice.kind = BITE_ATTACK;
+        choice.cell = prey_cell;
+        choice.prey = prey;
     } else if (food_cell >= 0) {
-        eat_plant(w, c, food_cell, s);
+        choice.kind = food_is_carrion ? BITE_CARRION : BITE_PLANT;
+        choice.cell = food_cell;
+    }
+    return choice;
+}
+
+static void act_bite(World *w, Pool *p, int idx, const Settings *s, Rng *r)
+{
+    Creature *c = &p->items[idx];
+    BiteChoice choice = creature_bite_choice(w, p, idx, s);
+    switch (choice.kind) {
+    case BITE_ATTACK:
+        attack(c, &p->items[choice.prey], s, r);
+        if (s->pack_defence) {
+            pack_defend(w, p, idx, choice.prey, s, r);
+        }
+        break;
+    case BITE_CARRION:
+        eat_carrion(w, c, choice.cell, s);
+        break;
+    case BITE_PLANT:
+        eat_plant(w, c, choice.cell, s);
+        break;
+    default:
+        break;
     }
 }
 
