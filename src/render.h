@@ -31,54 +31,6 @@ void render_snapshot(const Sim *s);
  * cell. Call after the screen was cleared or resized. */
 void render_invalidate(void);
 
-/* ASCII text at (col, row), cut or padded with spaces to exactly
- * max_cols characters. */
-void render_text(int col, int row, const char *text, int max_cols);
-
-/* UTF-8 text at (col, row) in the text colours, written as it is: no
- * cutting or padding, since its width on screen is not its length in
- * bytes. The caller makes sure it fits. */
-void render_utf8(int col, int row, const char *text);
-
-/* The colours a legend can show, as used on the map. */
-enum {
-    RENDER_SWATCH_WATER,
-    RENDER_SWATCH_ROCK,
-    RENDER_SWATCH_SOIL_DRY,
-    RENDER_SWATCH_SOIL_RICH,
-    RENDER_SWATCH_PLANT,
-    RENDER_SWATCH_WITHERED,
-    RENDER_SWATCH_CARRION,
-    RENDER_SWATCH_COUNT
-};
-
-/* One character cell at (col, row) filled with a RENDER_SWATCH_ colour.
- * An unknown value draws nothing. */
-void render_swatch(int col, int row, int swatch);
-
-/* How much of a creature's food is meat, from its food-chain level: 0 at
- * level 2 or below (plants only), 1 at level 3 or above (meat only). */
-float render_meat_share(float level);
-
-/* The greens plants are drawn in, as hues (0..1 round the colour wheel:
- * 0 red, 1/3 green). Creatures are never drawn in them. */
-#define RENDER_PLANT_HUE_FROM 0.20f
-#define RENDER_PLANT_HUE_TO 0.47f
-
-/* The hue a plant is drawn in, from its rule byte (world.h): the four
- * birth bits pick one of 16 hues spread across the plants' greens, so
- * neighbouring patches with different birth ranges look different. */
-float render_plant_hue(uint8_t rule);
-
-/* The hue a creature is drawn in, from its inherited hue: the whole wheel
- * squeezed into the part outside the plants' greens, order kept, so a
- * creature never looks like a plant and close families stay close. */
-float render_display_hue(float hue);
-
-/* One character cell at (col, row) in the colour a creature has on the
- * map, given its inherited hue (0..1) and its meat share (0..1). */
-void render_creature_swatch(int col, int row, float hue, float meat);
-
 /* The message shown instead of the world when the window is too small. */
 void render_too_small(int cols, int rows, int min_cols, int min_rows);
 

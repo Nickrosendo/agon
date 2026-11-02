@@ -1,6 +1,7 @@
 #include "test.h"
 
-#include "render.h"
+#include "palette.h"
+#include "world.h" /* veg_rule_pack */
 
 static void test_display_hue_skips_the_greens(void)
 {

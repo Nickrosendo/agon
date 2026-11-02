@@ -3,9 +3,11 @@
 #include <stdio.h>
 #include <time.h>   /* clock_gettime, nanosleep, struct timespec (POSIX) */
 
+#include "app.h"
 #include "inspect.h"
 #include "options.h"
 #include "panel.h"
+#include "cells.h"
 #include "render.h"
 #include "rng.h"
 #include "save.h"
@@ -21,20 +23,8 @@
 #define MIN_COLS 20
 #define MIN_ROWS 6
 
-/* Ticks per second for each speed step; + and - move along it. */
-static const int SPEEDS[] = {1, 2, 5, 10, 15, 30, 60, 120};
-#define SPEED_COUNT ((int)(sizeof(SPEEDS) / sizeof(SPEEDS[0])))
-#define DEFAULT_SPEED 3 /* 10 ticks per second */
-
-#define AGON_VERSION "0.1.0"
-
 /* How long a message stays on the title line: two seconds. */
 #define NOTICE_FRAMES (2 * FRAMES_PER_SECOND)
-
-/* What main returns to the shell: 0 for success, 1 when something failed
- * while running, 2 for a mistake on the command line (the convention of
- * many Unix tools, so scripts can tell the two apart). */
-enum { EXIT_FINE = 0, EXIT_FAILED = 1, EXIT_USAGE = 2 };
 
 /* --once with no --size: a world that prints as 80 columns by 20 lines. */
 #define ONCE_WIDTH 80
@@ -85,7 +75,7 @@ static void draw_title(int cols, const Sim *sim, int speed, int paused,
      * Adjacent string literals are joined into one by the compiler. */
     snprintf(text, sizeof(text),
              " agon | seed 0x%" PRIx64 " | tick %s | creatures %d | %d/s%s%s%s%s",
-             sim->seed, tick, sim->pool.count, SPEEDS[speed],
+             sim->seed, tick, sim->pool.count, APP_SPEEDS[speed],
              paused ? " | paused" : "", inspecting ? " | inspect" : "",
              notice[0] != '\0' ? " | " : "", notice);
     render_text(0, 0, text, cols);
@@ -169,19 +159,6 @@ static int world_columns(int cols)
     return cols >= MIN_COLS + PANEL_COLS ? cols - PANEL_COLS : cols;
 }
 
-/* The speed step for a number of ticks per second: the fastest step not
- * above it, or the slowest step when it is below them all. */
-static int speed_step(int ticks_per_second)
-{
-    int step = 0;
-    for (int i = 0; i < SPEED_COUNT; i++) {
-        if (SPEEDS[i] <= ticks_per_second) {
-            step = i;
-        }
-    }
-    return step;
-}
-
 /* The three lines --once prints under the world. */
 static void print_summary(const Sim *sim)
 {
@@ -201,23 +178,6 @@ static void print_summary(const Sim *sim)
            plants, st->carrion_cells, oldest);
 }
 
-/* Builds the world the options ask for: from --load, or new. False with a
- * message in err; there is nothing to free then. */
-static bool open_world(Sim *sim, const Options *o, const Settings *settings,
-                       uint64_t seed, int w, int h, char *err, size_t errlen)
-{
-    if (o->load_path != NULL) {
-        return save_read(sim, o->load_path, err, errlen);
-    }
-    if (!sim_init(sim, settings, seed, w, h)) {
-        snprintf(err, errlen, "could not start: out of memory, or no brain "
-                              "called '%s'",
-                 settings->brain_name);
-        return false;
-    }
-    return true;
-}
-
 /* agon --once: build the world, run it, print it and a summary. Never
  * opens the terminal, so it works in a pipe, a file or a shell start-up
  * script. */
@@ -228,7 +188,7 @@ static int run_once(const Options *o, const Settings *settings,
     int h = o->size_given ? o->height : ONCE_HEIGHT;
     Sim sim;
     char err[512];
-    if (!open_world(&sim, o, settings, seed, w, h, err, sizeof(err))) {
+    if (!app_open_world(&sim, o, settings, seed, w, h, err, sizeof(err))) {
         fprintf(stderr, "agon: %s\n", err);
         return EXIT_FAILED;
     }
@@ -250,19 +210,6 @@ static int run_once(const Options *o, const Settings *settings,
     print_summary(&sim);
     sim_free(&sim);
     return EXIT_FINE;
-}
-
-/* The s key. The result goes to the title line: a failure must not end a
- * world that may have been running for days. */
-static void save_now(const Sim *sim, const char *path, char *notice,
-                     size_t size)
-{
-    if (path == NULL) {
-        snprintf(notice, size, "nowhere to save: start with --save PATH");
-    } else if (save_write(sim, path, notice, size)) {
-        snprintf(notice, size, "saved to %s", path);
-    }
-    /* On failure save_write has already put its message in notice. */
 }
 
 int main(int argc, char **argv)
@@ -327,7 +274,7 @@ int main(int argc, char **argv)
     /* The Sim struct lives on main's stack; the world's layers it points
      * to live on the heap until sim_free. */
     Sim sim;
-    if (!open_world(&sim, &opt, &settings, seed, world_w, world_h, err,
+    if (!app_open_world(&sim, &opt, &settings, seed, world_w, world_h, err,
                     sizeof(err))) {
         term_close(); /* so the message lands on the normal screen */
         fprintf(stderr, "agon: %s\n", err);
@@ -339,7 +286,7 @@ int main(int argc, char **argv)
     Rng seed_source;
     rng_seed(&seed_source, sim.seed); /* a loaded world has its own seed */
 
-    int speed = opt.speed > 0 ? speed_step(opt.speed) : DEFAULT_SPEED;
+    int speed = opt.speed > 0 ? app_speed_step(opt.speed) : APP_DEFAULT_SPEED;
     int paused = 0;
     int running = 1;
     int need_clear = 1;
@@ -378,12 +325,12 @@ int main(int argc, char **argv)
                 inspect.on = false;
             } else if (inspect.on && cursor_step(key, &dx, &dy)) {
                 inspect_move(&inspect, &sim, dx, dy, max_x, max_y);
-            } else if ((key == '+' || key == '=') && speed < SPEED_COUNT - 1) {
+            } else if ((key == '+' || key == '=') && speed < APP_SPEED_COUNT - 1) {
                 speed++;
             } else if (key == '-' && speed > 0) {
                 speed--;
             } else if (key == 's') {
-                save_now(&sim, opt.save_path, notice, sizeof(notice));
+                app_save_now(&sim, opt.save_path, notice, sizeof(notice));
                 notice_frames = NOTICE_FRAMES;
             } else if (key == 'r') {
                 if (!sim_reseed(&sim, rng_next(&seed_source))) {
@@ -398,7 +345,7 @@ int main(int argc, char **argv)
         }
 
         if (!paused) {
-            ticks_due += SPEEDS[speed];
+            ticks_due += APP_SPEEDS[speed];
             while (ticks_due >= FRAMES_PER_SECOND) {
                 sim_step(&sim);
                 ticks_due -= FRAMES_PER_SECOND;

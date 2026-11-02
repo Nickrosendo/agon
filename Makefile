@@ -1,6 +1,9 @@
 CC = gcc
+# -I adds a folder to where #include "x.h" looks, so a file in one folder
+# can include a header from another by its bare name.
 CFLAGS = -std=c11 -D_POSIX_C_SOURCE=200809L \
-				 -Wall -Wextra -Wpedantic -Wshadow -Wconversion
+				 -Wall -Wextra -Wpedantic -Wshadow -Wconversion \
+				 -Isrc -Isrc/gfx -Isrc/window
 
 LDLIBS = -lm
 
@@ -18,10 +21,22 @@ ifeq ($(MODE), test)
 CFLAGS += -Werror
 endif
 
-SRC = $(wildcard src/*.c)
-OBJ = $(SRC:src/%.c=$(OUT)/%.o)
-# Everything except main.o: what a test program links against.
-LIB_OBJ = $(filter-out $(OUT)/main.o, $(OBJ))
+# The code comes in groups, by what it may depend on.
+# TERM: the terminal program's own files. CORE: everything shared by both
+# programs (it never touches the terminal or SDL). GFX: pure drawing into a
+# block of pixels. WIN: the window program's own files.
+TERM_SRC = src/main.c src/term.c src/render.c src/cells_term.c
+CORE_SRC = $(filter-out $(TERM_SRC), $(wildcard src/*.c))
+GFX_SRC = $(wildcard src/gfx/*.c)
+WIN_SRC = $(wildcard src/window/*.c)
+
+CORE_OBJ = $(CORE_SRC:src/%.c=$(OUT)/%.o)
+TERM_OBJ = $(TERM_SRC:src/%.c=$(OUT)/%.o)
+GFX_OBJ = $(GFX_SRC:src/%.c=$(OUT)/%.o)
+WIN_OBJ = $(WIN_SRC:src/%.c=$(OUT)/%.o)
+OBJ = $(CORE_OBJ) $(TERM_OBJ)
+# What a test program links against: everything except main.o.
+LIB_OBJ = $(filter-out $(OUT)/main.o, $(OBJ)) $(GFX_OBJ)
 
 TEST_SRC = $(wildcard tests/test_*.c)
 TEST_BIN = $(TEST_SRC:tests/%.c=$(OUT)/tests/%)
@@ -44,21 +59,22 @@ $(OUT)/agon: $(OBJ)
 # .c file included; -MP adds an empty rule per header so deleting one does
 # not break the build. Including the .d files makes an object rebuild when
 # any header it uses changes.
-$(OUT)/%.o: src/%.c | $(OUT)
+$(OUT)/%.o: src/%.c
+	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -MMD -MP -c $< -o $@
 
 $(OUT)/tests/brain_script.o: tests/brain_script.c | $(OUT)/tests
-	$(CC) $(CFLAGS) -Isrc -MMD -MP -c $< -o $@
+	$(CC) $(CFLAGS) -MMD -MP -c $< -o $@
 
-# One program per test file. -Isrc lets the tests write #include "rng.h".
+# One program per test file.
 $(OUT)/tests/%: tests/%.c $(LIB_OBJ) $(TEST_SUPPORT_OBJ) | $(OUT)/tests
-	$(CC) $(CFLAGS) -Isrc -MMD -MP $< $(LIB_OBJ) $(TEST_SUPPORT_OBJ) \
+	$(CC) $(CFLAGS) -MMD -MP $< $(LIB_OBJ) $(TEST_SUPPORT_OBJ) \
 		-o $@ $(LDLIBS)
 
--include $(OBJ:.o=.d) $(TEST_BIN:=.d) $(SLOW_BIN:=.d) \
+-include $(OBJ:.o=.d) $(GFX_OBJ:.o=.d) $(TEST_BIN:=.d) $(SLOW_BIN:=.d) \
 	$(TEST_SUPPORT_OBJ:.o=.d)
 
-$(OUT) $(OUT)/tests:
+$(OUT)/tests:
 	mkdir -p $@
 
 test:

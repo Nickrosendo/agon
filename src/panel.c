@@ -3,7 +3,8 @@
 #include <assert.h> /* static_assert */
 #include <stdio.h>  /* snprintf */
 
-#include "render.h"
+#include "cells.h"
+#include "palette.h"
 
 /* No swatch on this line: a heading or a blank line. */
 #define NO_SWATCH -1
