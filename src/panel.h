@@ -23,12 +23,12 @@
 /* The creatures whose hue falls in one band of the colour wheel. */
 typedef struct {
     int band;    /* 0 .. PANEL_HUE_BANDS - 1, red first */
-    float hue;   /* the average hue of its members */
+    float hue;   /* the average inherited hue of its members */
     int count;   /* how many are alive */
 } ColourGroup;
 
 /* Finds the n largest colour groups among living creatures: the hue
- * wheel is cut into PANEL_HUE_BANDS bands, and the bands holding the most
+ * wheel, as drawn (render_display_hue), is cut into PANEL_HUE_BANDS bands, and the bands holding the most
  * creatures win (on a tie, the band with the lower hue). Writes them into
  * groups[0], groups[1], ..., largest first, and returns how many it
  * wrote: fewer than n when fewer bands are occupied, 0 (groups untouched)

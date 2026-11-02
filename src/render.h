@@ -60,6 +60,16 @@ void render_swatch(int col, int row, int swatch);
  * level 2 or below (plants only), 1 at level 3 or above (meat only). */
 float render_meat_share(float level);
 
+/* The greens plants are drawn in, as hues (0..1 round the colour wheel:
+ * 0 red, 1/3 green). Creatures are never drawn in them. */
+#define RENDER_PLANT_HUE_FROM 0.20f
+#define RENDER_PLANT_HUE_TO 0.47f
+
+/* The hue a creature is drawn in, from its inherited hue: the whole wheel
+ * squeezed into the part outside the plants' greens, order kept, so a
+ * creature never looks like a plant and close families stay close. */
+float render_display_hue(float hue);
+
 /* One character cell at (col, row) in the colour a creature has on the
  * map, given its inherited hue (0..1) and its meat share (0..1). */
 void render_creature_swatch(int col, int row, float hue, float meat);

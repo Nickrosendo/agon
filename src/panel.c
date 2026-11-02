@@ -46,7 +46,9 @@ int panel_colour_groups(const Sim *s, ColourGroup *groups, int n)
         const Creature *c = &s->pool.items[i];
         if (c->alive) {
             float hue = c->genome.g[GENE_HUE];
-            int band = hue_band(hue);
+            /* Banded by the hue drawn on the map, so each group's name
+             * describes the colour you see. */
+            int band = hue_band(render_display_hue(hue));
             count[band]++;
             sum[band] += hue;
         }

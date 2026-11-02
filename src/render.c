@@ -163,8 +163,19 @@ static float hue_towards_red(float hue, float t)
     return h >= 1.0f ? h - 1.0f : h; /* only 1.0 itself can come out */
 }
 
+float render_display_hue(float hue)
+{
+    float gap = RENDER_PLANT_HUE_TO - RENDER_PLANT_HUE_FROM;
+    /* First squeeze 0..1 into 0..1 - gap, then lift everything from the
+     * gap's start upwards past the gap. 0 stays 0 (red); a hue just below
+     * 1 ends just below 1, so the wheel still closes up at red. */
+    float shown = hue * (1.0f - gap);
+    return shown >= RENDER_PLANT_HUE_FROM ? shown + gap : shown;
+}
+
 static Colour creature_colour(float hue, float meat)
 {
+    hue = render_display_hue(hue); /* hue is a copy: the caller's is safe */
     /* Plant-eaters: pale family colours. Meat-eaters: deep red, with the
      * saturation climbing from 0.55 to 1 as the hue turns. */
     float saturation =

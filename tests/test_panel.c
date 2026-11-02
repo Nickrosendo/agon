@@ -150,15 +150,17 @@ static void test_colour_groups(void)
     CHECK(panel_colour_groups(&sim, groups, 2) == 0); /* nobody alive */
     CHECK(groups[0].count == -1);                     /* left alone */
 
-    /* Three in the cyan band (0.50 to 0.583), one in orange. */
+    /* Three drawn in the azure band, one in red: inherited hues 0.50 to
+     * 0.54 are drawn at 0.635 to 0.664 once the greens are skipped
+     * (render_display_hue), and 0.10 at 0.073. */
     spawn_with_hue(&sim, 1, 0.50f);
     spawn_with_hue(&sim, 3, 0.52f);
     spawn_with_hue(&sim, 5, 0.54f);
     spawn_with_hue(&sim, 7, 0.10f);
     CHECK(panel_colour_groups(&sim, groups, 2) == 2);
     CHECK(groups[0].count == 3 && groups[1].count == 1);
-    CHECK(strcmp(panel_band_name(groups[0].band), "cyan") == 0);
-    CHECK(strcmp(panel_band_name(groups[1].band), "orange") == 0);
+    CHECK(strcmp(panel_band_name(groups[0].band), "azure") == 0);
+    CHECK(strcmp(panel_band_name(groups[1].band), "red") == 0);
     /* Each group reports the average hue of its members. */
     CHECK(fabsf(groups[0].hue - 0.52f) < 1e-5f);
     CHECK(fabsf(groups[1].hue - 0.10f) < 1e-5f);
