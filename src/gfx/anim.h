@@ -42,6 +42,8 @@ typedef struct {
     int frame;   /* a FRAME_ value (sprite.h) */
     bool flip;   /* true when facing left */
     float pop;   /* 0..1; 1 is full size */
+    int bite;    /* a BITE_ value (creature.h): what it is doing right now */
+    int target_x, target_y; /* the cell it is biting, unless BITE_NOTHING */
 } AnimPose;
 
 /* False when memory runs out; nothing to free then. */

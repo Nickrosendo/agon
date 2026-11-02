@@ -27,6 +27,8 @@ typedef struct {
     uint16_t soil[2][TILE_VARIANTS][TILE_SOIL_DETAILS][16];
     uint16_t plant[2][TILE_VARIANTS][VEG_MAX + 1][16];
     uint16_t carrion[2][TILE_VARIANTS][16];
+    uint16_t slash[2][TILE_MARK_FRAMES][16];
+    uint16_t crumbs[2][TILE_MARK_FRAMES][16];
 } Scene;
 
 /* False when memory runs out; nothing to free then. */

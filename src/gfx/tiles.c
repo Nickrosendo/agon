@@ -138,6 +138,48 @@ static void build_carrion(uint16_t rows[16], int variant, int size)
     }
 }
 
+/* A claw mark: a diagonal cross that flares and fades over its frames. */
+static void build_slash(uint16_t rows[16], int size, int frame)
+{
+    /* How far each arm reaches from the middle, as a share of the tile. */
+    static const float REACH[TILE_MARK_FRAMES] = {0.18f, 0.44f, 0.30f, 0.0f};
+    float reach = REACH[frame % TILE_MARK_FRAMES];
+    float line = 0.5f / (float)size + 0.01f;
+    for (int j = 0; j < size; j++) {
+        for (int i = 0; i < size; i++) {
+            float u = ((float)i + 0.5f) / (float)size - 0.5f;
+            float v = ((float)j + 0.5f) / (float)size - 0.5f;
+            if (fabsf(u) <= reach && fabsf(v) <= reach &&
+                (fabsf(u - v) < line || fabsf(u + v) < line)) {
+                set_pixel(rows, size, i, j);
+            }
+        }
+    }
+    /* The fourth frame's reach of 0 still leaves a single spark in the middle,
+     * so the mark never vanishes while the fight goes on. */
+    set_pixel(rows, size, size / 2, size / 2);
+}
+
+/* Three crumbs on arcs up and out from the middle; each frame moves them on. */
+static void build_crumbs(uint16_t rows[16], int size, int frame)
+{
+    /* Whole-pixel steps in sixteenths of a tile, one list per crumb. */
+    static const int STEP_X[3][TILE_MARK_FRAMES] = {
+        {7, 5, 3, 2}, {8, 9, 10, 12}, {9, 7, 6, 5}};
+    static const int STEP_Y[3][TILE_MARK_FRAMES] = {
+        {9, 6, 4, 5}, {8, 5, 4, 6}, {10, 8, 7, 9}};
+    int f = frame % TILE_MARK_FRAMES;
+    for (int k = 0; k < 3; k++) {
+        int x = STEP_X[k][f] * size / 16;
+        int y = STEP_Y[k][f] * size / 16;
+        set_pixel(rows, size, x, y);
+        /* Two pixels wide at the larger size, or it would be hard to see. */
+        if (size > 8) {
+            set_pixel(rows, size, x + 1, y);
+        }
+    }
+}
+
 void tiles_build(uint16_t rows[16], int kind, int variant, int detail, int size,
                  int frame)
 {
@@ -150,6 +192,8 @@ void tiles_build(uint16_t rows[16], int kind, int variant, int detail, int size,
     case TILE_SOIL: build_soil(rows, variant, detail, size); break;
     case TILE_PLANT: build_plant(rows, variant, detail, size); break;
     case TILE_CARRION: build_carrion(rows, variant, size); break;
+    case TILE_SLASH: build_slash(rows, size, frame); break;
+    case TILE_CRUMBS: build_crumbs(rows, size, frame); break;
     default: break;
     }
 }

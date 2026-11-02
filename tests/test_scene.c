@@ -88,10 +88,58 @@ static void test_tiny_world_on_black(void)
     sim_free(&s);
 }
 
+/* Draws a hunter beside its prey at Normal zoom, biting or not, and says how
+ * many pixels are the fight's red. */
+static int red_pixels(int action)
+{
+    Settings set = settings_default();
+    Sim s;
+    CHECK(sim_init(&s, &set, 3, 16, 16));
+    for (int i = 0; i < s.pool.capacity; i++) {
+        if (s.pool.items[i].alive) {
+            pool_kill(&s.pool, &s.world, i, &s.set);
+        }
+    }
+    for (int i = 0; i < 16 * 16; i++) {
+        s.world.terrain[i] = TERRAIN_SOIL;
+        s.world.veg[i] = 0;
+        s.world.carrion[i] = 0.0f;
+    }
+    int hunter = pool_spawn(&s.pool, &s.world, 8, 8);
+    int prey = pool_spawn(&s.pool, &s.world, 9, 8);
+    s.pool.items[hunter].current.kind = (uint8_t)action;
+    s.pool.items[hunter].genome.g[GENE_MEAT] = 1.0f;
+    s.pool.items[prey].genome.g[GENE_PLANT] = 1.0f;
+    s.pool.items[prey].energy = 10.0f;
+    Scene sc;
+    CHECK(scene_init(&sc, &s));
+    Canvas c;
+    CHECK(canvas_init(&c, VIEW_W, VIEW_H));
+    Camera cam;
+    camera_init(&cam, 16, 16, VIEW_W, VIEW_H);
+    scene_update(&sc, &s, 10);
+    scene_draw_world(&sc, &c, &cam, &s, 0.0f, 0, 110, 0, 0);
+    int red = 0;
+    for (int i = 0; i < VIEW_W * VIEW_H; i++) {
+        red += c.px[i] == canvas_rgb(255, 70, 50);
+    }
+    canvas_free(&c);
+    scene_free(&sc);
+    sim_free(&s);
+    return red;
+}
+
+static void test_fight_draws_a_mark(void)
+{
+    CHECK(red_pixels(ACT_REST) == 0);
+    CHECK(red_pixels(ACT_BITE) > 0);
+}
+
 int main(void)
 {
     test_drawing_changes_nothing();
     test_empty_view_draws_nothing();
     test_tiny_world_on_black();
+    test_fight_draws_a_mark();
     TEST_SUMMARY();
 }

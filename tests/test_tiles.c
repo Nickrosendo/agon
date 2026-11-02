@@ -87,6 +87,23 @@ static void test_water_frames_differ(void)
     CHECK(memcmp(a, b, sizeof(a)) != 0);
 }
 
+static void test_marks_change_over_their_frames(void)
+{
+    const int kinds[2] = {TILE_SLASH, TILE_CRUMBS};
+    for (int k = 0; k < 2; k++) {
+        for (int size = 8; size <= 16; size += 8) {
+            for (int f = 0; f < TILE_MARK_FRAMES; f++) {
+                uint16_t a[16], b[16];
+                tiles_build(a, kinds[k], 0, 0, size, f);
+                tiles_build(b, kinds[k], 0, 0, size,
+                            (f + 1) % TILE_MARK_FRAMES);
+                CHECK(mask_bits(a) > 0);
+                CHECK(memcmp(a, b, sizeof(a)) != 0);
+            }
+        }
+    }
+}
+
 static void test_size_8_stays_in_tile(void)
 {
     for (int kind = 0; kind < TILE_KINDS; kind++) {
@@ -114,6 +131,7 @@ int main(void)
     test_plant_grows_with_density();
     test_fertile_soil_more_dots();
     test_water_frames_differ();
+    test_marks_change_over_their_frames();
     test_size_8_stays_in_tile();
     TEST_SUMMARY();
 }

@@ -4,6 +4,8 @@
 
 /* How long one water frame lasts, in milliseconds. */
 #define WATER_FRAME_MS 250u
+/* How long one frame of a fight's or a meal's mark lasts. */
+#define MARK_FRAME_MS 110u
 
 /* The near-black behind every symbol; outside the world it is true black. */
 static const Colour BACKGROUND = {6, 6, 8};
@@ -11,6 +13,11 @@ static const Colour BACKGROUND = {6, 6, 8};
 static const Colour WHITE = {245, 240, 235};
 /* A little carrion is a pale bone; a lot goes dark red. */
 static const Colour BONE = {196, 176, 150};
+/* The flash of a fight: brighter than anything else in the world. */
+static const Colour SLASH = {255, 70, 50};
+/* Crumbs of meat. Crumbs of plant are the plant's own colour, lightened, or
+ * they would vanish against the tree they come from. */
+static const Colour MEAT_CRUMB = {255, 110, 100};
 
 static uint32_t to_pixel(Colour c)
 {
@@ -29,6 +36,10 @@ bool scene_init(Scene *sc, const Sim *s)
     /* Every symbol once, here, so drawing a frame only copies bits. */
     for (int z = 0; z < 2; z++) {
         int size = z == 0 ? 16 : 8;
+        for (int f = 0; f < TILE_MARK_FRAMES; f++) {
+            tiles_build(sc->slash[z][f], TILE_SLASH, 0, 0, size, f);
+            tiles_build(sc->crumbs[z][f], TILE_CRUMBS, 0, 0, size, f);
+        }
         for (int v = 0; v < TILE_VARIANTS; v++) {
             for (int f = 0; f < TILE_WATER_FRAMES; f++) {
                 tiles_build(sc->water[z][v][f], TILE_WATER, v, 0, size, f);
@@ -233,6 +244,63 @@ static void draw_creatures(Scene *sc, Canvas *c, const Camera *cam, const Sim *s
     }
 }
 
+/* The mark over the cell a creature is biting: a red flash for a fight, and
+ * crumbs whose colour says what is being eaten. */
+static void draw_mark(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
+                      const Creature *cr, const AnimPose *p, uint64_t body_ms,
+                      int view_x, int view_y)
+{
+    int ppc = camera_ppc(cam);
+    int size = camera_sprite_size(cam);
+    int scale = camera_sprite_scale(cam);
+    int z = size == 16 ? 0 : 1;
+    int sx, sy;
+    camera_to_screen(cam, (float)p->target_x, (float)p->target_y, &sx, &sy);
+    if (sx <= -ppc || sy <= -ppc || sx >= cam->view_w || sy >= cam->view_h) {
+        return;
+    }
+    /* The id keeps neighbouring marks out of step. */
+    int f = (int)((body_ms / MARK_FRAME_MS + cr->id) % TILE_MARK_FRAMES);
+    const uint16_t *rows = sc->crumbs[z][f];
+    Colour colour = MEAT_CRUMB;
+    if (p->bite == BITE_ATTACK) {
+        rows = sc->slash[z][f];
+        colour = SLASH;
+    } else if (p->bite == BITE_PLANT) {
+        const World *w = &s->world;
+        Colour plant = palette_plant(w->veg_rule[p->target_y * w->w + p->target_x]);
+        colour = palette_mix(plant, WHITE, 0.6f);
+    }
+    canvas_mask(c, rows, size, view_x + sx, view_y + sy, scale, false,
+                to_pixel(colour));
+}
+
+/* After every body, so no creature's cleared tile can hide a mark. */
+static void draw_marks(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
+                       float tick_fraction, uint64_t body_ms, int view_x,
+                       int view_y)
+{
+    if (camera_sprite_size(cam) == 0) {
+        return; /* a coloured square per cell has no room for a mark */
+    }
+    int n = s->pool.capacity < sc->anim.capacity ? s->pool.capacity
+                                                 : sc->anim.capacity;
+    for (int i = 0; i < n; i++) {
+        const Creature *cr = &s->pool.items[i];
+        /* Tested first: most creatures are not biting, and this saves
+         * working out their pose a second time. */
+        if (!cr->alive || !sc->anim.slots[i].seen ||
+            cr->current.kind != ACT_BITE) {
+            continue;
+        }
+        AnimPose p;
+        anim_pose(&sc->anim, s, i, tick_fraction, body_ms, &p);
+        if (p.bite != BITE_NOTHING) {
+            draw_mark(sc, c, cam, s, cr, &p, body_ms, view_x, view_y);
+        }
+    }
+}
+
 void scene_draw_world(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
                       float tick_fraction, uint64_t water_ms, uint64_t body_ms,
                       int view_x, int view_y)
@@ -250,4 +318,5 @@ void scene_draw_world(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
                 v.rows * ppc, to_pixel(BACKGROUND));
     draw_terrain(sc, c, cam, s, water_ms, view_x, view_y);
     draw_creatures(sc, c, cam, s, tick_fraction, body_ms, view_x, view_y);
+    draw_marks(sc, c, cam, s, tick_fraction, body_ms, view_x, view_y);
 }

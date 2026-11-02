@@ -7,6 +7,8 @@
 
 /* How long one breath of a resting creature lasts, in milliseconds. */
 #define BREATH_MS 625u
+/* How long each half of a chomp lasts, in milliseconds. */
+#define CHOMP_MS 150u
 
 bool anim_init(Anim *a, int capacity)
 {
@@ -129,14 +131,37 @@ void anim_pose(const Anim *a, const Sim *s, int slot, float tick_fraction,
         out->y = (float)m->from_y + dy * t;
     }
 
+    out->bite = BITE_NOTHING;
     if (c->current.kind == ACT_BITE) {
-        out->frame = FRAME_BITE;
+        /* The simulation's own answer, so what is shown cannot drift from
+         * the rules. It describes the next bite, so it can differ for a tick
+         * from the one just taken, which nobody could see at this speed. */
+        BiteChoice choice = creature_bite_choice(w, &s->pool, slot, &s->set);
+        out->bite = choice.kind;
+        if (choice.kind != BITE_NOTHING) {
+            out->target_x = choice.cell % w->w;
+            out->target_y = choice.cell / w->w;
+        }
+    }
+
+    if (out->bite != BITE_NOTHING) {
+        /* Mouth open, mouth shut. The id keeps a crowd out of step. */
+        bool open = (now_ms / CHOMP_MS + c->id) % 2u == 0;
+        out->frame = open ? FRAME_BITE : FRAME_REST0;
     } else if (c->current.kind == ACT_SPLIT) {
         out->frame = FRAME_SPLIT;
     } else {
         out->frame = idle_or_walk_frame(a, m, s, t, moved, now_ms);
     }
     out->flip = m->face < 0;
+    /* A biter faces what it bites, whatever its heading says; straight above
+     * or below keeps the facing it had. */
+    if (out->bite != BITE_NOTHING) {
+        int to_target = wrapped_step(c->x, out->target_x, w->w);
+        if (to_target != 0) {
+            out->flip = to_target < 0;
+        }
+    }
     float pop = ((float)(s->tick - m->born_tick) + tick_fraction) /
                 (float)ANIM_POP_TICKS;
     out->pop = pop > 1.0f ? 1.0f : pop;
