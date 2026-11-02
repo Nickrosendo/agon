@@ -15,12 +15,16 @@
  * this one is the fractional part of the golden ratio. */
 #define BRAIN_SEED_SALT 0x9E3779B97F4A7C15ULL
 
-/* Random starting plants: one draw per soil cell, in row order. */
+/* Random starting plants: one draw per soil cell, in row order. Every
+ * starting plant carries the rule from the settings. */
 static void plant_start(World *w, Rng *r, const Settings *s)
 {
+    uint8_t rule =
+        veg_rule_pack(s->veg_birth_lo, s->veg_birth_hi, s->veg_crowd_max);
     for (int i = 0; i < w->w * w->h; i++) {
         if (w->terrain[i] == TERRAIN_SOIL) {
             w->veg[i] = rng_unit(r) < s->veg_start_chance ? 1 : 0;
+            w->veg_rule[i] = rule;
         }
     }
 }
@@ -285,6 +289,7 @@ uint64_t sim_checksum(const Sim *s)
     hash = fnv1a(hash, w->veg, n * sizeof(uint8_t));
     hash = fnv1a(hash, w->veg_age, n * sizeof(uint16_t));
     hash = fnv1a(hash, w->veg_wither, n * sizeof(uint8_t));
+    hash = fnv1a(hash, w->veg_rule, n * sizeof(uint8_t));
     hash = fnv1a(hash, w->carrion, n * sizeof(float));
     hash = fnv1a(hash, w->carrion_level, n * sizeof(float));
     hash = fnv1a(hash, w->scent, n * sizeof(float));

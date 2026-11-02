@@ -65,6 +65,11 @@ float render_meat_share(float level);
 #define RENDER_PLANT_HUE_FROM 0.20f
 #define RENDER_PLANT_HUE_TO 0.47f
 
+/* The hue a plant is drawn in, from its rule byte (world.h): the four
+ * birth bits pick one of 16 hues spread across the plants' greens, so
+ * neighbouring patches with different birth ranges look different. */
+float render_plant_hue(uint8_t rule);
+
 /* The hue a creature is drawn in, from its inherited hue: the whole wheel
  * squeezed into the part outside the plants' greens, order kept, so a
  * creature never looks like a plant and close families stay close. */

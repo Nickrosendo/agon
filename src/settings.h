@@ -18,11 +18,23 @@ typedef struct {
     float fertility_scale; /* the same, for the fertility field */
 
     /* Vegetation. n is how many of a soil cell's eight neighbours carry
-     * plants. Empty with veg_birth_lo <= n <= veg_birth_hi: sprouts with
-     * probability fertility * veg_sprout_rate. Empty otherwise: sprouts
-     * with probability veg_seed_chance * fertility. Planted: while
-     * n <= veg_crowd_max, grows by 1 with probability veg_grow_chance;
-     * above it, shrinks by 1.
+     * plants. Every planted cell carries its own rule (world.h, veg_rule):
+     * a birth range and a crowd limit.
+     *
+     * An empty cell with planted neighbours picks one of them at random,
+     * its parent. If n is inside the parent's birth range, the cell
+     * sprouts with probability fertility * veg_sprout_rate; otherwise
+     * with probability veg_seed_chance * fertility. A sprout copies its
+     * parent's rule, and with probability veg_mutation one of the rule's
+     * seven bits is flipped. An empty cell with no planted neighbour
+     * sprouts with probability veg_seed_chance * fertility and gets a
+     * random rule. A planted cell, while n is at most its own crowd
+     * limit, grows by 1 with probability veg_grow_chance; above it,
+     * shrinks by 1.
+     *
+     * veg_birth_lo, veg_birth_hi and veg_crowd_max are the rule the
+     * starting plants carry, clamped to what a rule byte can hold
+     * (birth_lo 1..4, birth_hi up to birth_lo + 3, crowd_max 0..7).
      *
      * Local carrying capacity: m is the total density of every cell within
      * veg_reach steps (the cell itself left out), and the cell's capacity
@@ -38,6 +50,7 @@ typedef struct {
     int veg_birth_lo;
     int veg_birth_hi;
     int veg_crowd_max;
+    float veg_mutation;     /* chance a sprout's rule has one bit flipped */
     float veg_sprout_rate;  /* scales the chance to sprout beside plants */
     float veg_grow_chance;  /* chance per tick that a plant thickens */
     float veg_seed_chance;

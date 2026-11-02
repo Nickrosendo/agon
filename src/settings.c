@@ -13,6 +13,7 @@ Settings settings_default(void)
         .veg_birth_lo = 3,
         .veg_birth_hi = 4,
         .veg_crowd_max = 3,
+        .veg_mutation = 0.02f,
         .veg_sprout_rate = 0.4f,
         .veg_grow_chance = 0.05f,
         .veg_seed_chance = 0.0002f,

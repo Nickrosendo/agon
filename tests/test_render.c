@@ -33,8 +33,28 @@ static void test_display_hue_keeps_the_order(void)
     }
 }
 
+static void test_plant_hues_stay_in_the_greens(void)
+{
+    /* Every rule's hue lies inside the plants' greens, which creatures
+     * never use; rules that differ in their birth bits differ in hue;
+     * rules that differ only in the crowd bits share a hue. */
+    int outside = 0;
+    for (int b = 0; b <= (int)VEG_RULE_USED_MASK; b++) {
+        float hue = render_plant_hue((uint8_t)b);
+        if (hue < RENDER_PLANT_HUE_FROM || hue > RENDER_PLANT_HUE_TO) {
+            outside++;
+        }
+    }
+    CHECK(outside == 0);
+    CHECK(render_plant_hue(veg_rule_pack(3, 4, 3)) !=
+          render_plant_hue(veg_rule_pack(1, 4, 3)));
+    CHECK(render_plant_hue(veg_rule_pack(3, 4, 0)) ==
+          render_plant_hue(veg_rule_pack(3, 4, 7)));
+}
+
 int main(void)
 {
+    test_plant_hues_stay_in_the_greens();
     test_display_hue_skips_the_greens();
     test_display_hue_keeps_the_order();
     TEST_SUMMARY();

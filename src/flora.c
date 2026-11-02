@@ -36,6 +36,75 @@ static int planted_neighbours(const World *w, int x, int y)
     return count;
 }
 
+/* The index of the k-th planted neighbour of (x, y), counted in the same
+ * order as planted_neighbours: row by row, the cell itself skipped. k
+ * must be below the count planted_neighbours gives. */
+static int planted_neighbour_at(const World *w, int x, int y, int k)
+{
+    for (int dy = -1; dy <= 1; dy++) {
+        int row_start = wrap_near(y + dy, w->h) * w->w;
+        for (int dx = -1; dx <= 1; dx++) {
+            if (dx == 0 && dy == 0) {
+                continue;
+            }
+            int idx = row_start + wrap_near(x + dx, w->w);
+            if (w->veg[idx]) {
+                if (k == 0) {
+                    return idx;
+                }
+                k--;
+            }
+        }
+    }
+    return -1; /* only reached if k was too large */
+}
+
+/*
+ * One 64-bit draw per soil cell supplies the random choices a sprout's
+ * rule needs. Each choice reads its own group of bits, so the choices do
+ * not depend on one another:
+ *
+ *   bits  0..23  which planted neighbour is the parent
+ *   bits 24..47  whether the rule mutates (24 bits, as in rng_unit)
+ *   bits 48..63  which bit flips; bits 48..54 are a lone sprout's rule
+ *
+ * Shifting right moves a group down to bit 0; & with a mask of ones
+ * keeps only that group's width.
+ */
+#define DRAW_24_BITS 0xFFFFFFu
+#define DRAW_16_BITS 0xFFFFu
+
+static int draw_parent(uint64_t draw, int count)
+{
+    /* % on 2^24 values favours the smallest results by at most count in
+     * 2^24 (rng_below explains why), far too little to matter here. */
+    return (int)((uint32_t)(draw & DRAW_24_BITS) % (uint32_t)count);
+}
+
+static bool draw_mutates(uint64_t draw, float chance)
+{
+    uint32_t bits = (uint32_t)((draw >> 24) & DRAW_24_BITS);
+    return (float)bits / 16777216.0f < chance; /* 0 <= value < 1 */
+}
+
+static uint8_t draw_lone_rule(uint64_t draw)
+{
+    return (uint8_t)((draw >> 48) & VEG_RULE_USED_MASK);
+}
+
+/* The rule a sprout inherits: its parent's, with one bit flipped by
+ * XOR (^) when it mutates. 1u << bit is a mask with only that bit set;
+ * XOR with it turns a 0 there into 1 and a 1 into 0, leaving every other
+ * bit alone. */
+static uint8_t child_rule(uint8_t parent, uint64_t draw, float mutation)
+{
+    if (!draw_mutates(draw, mutation)) {
+        return parent;
+    }
+    unsigned bit = (unsigned)((draw >> 48) & DRAW_16_BITS) % VEG_RULE_BITS;
+    return (uint8_t)(parent ^ (1u << bit));
+}
+
 /* The total density of every cell within reach steps of (x, y), the cell
  * itself left out: the plant mass competing for the same ground. */
 static int plant_mass(const World *w, int x, int y, int reach)
@@ -52,8 +121,11 @@ static int plant_mass(const World *w, int x, int y, int reach)
     return mass - w->veg[y * w->w + x];
 }
 
-/* draw decides sprouting, grow_draw decides growth; both are in 0..1. */
-static uint8_t next_density(uint8_t density, int n, int mass,
+/* draw decides sprouting, grow_draw decides growth; both are in 0..1.
+ * rule is the cell's own for a planted cell, the parent's for an empty
+ * one. An empty cell with no planted neighbour (n = 0) is never inside a
+ * birth range, since every range starts at 1 or more. */
+static uint8_t next_density(uint8_t density, uint8_t rule, int n, int mass,
                             float fertility, float draw, float grow_draw,
                             const Settings *s)
 {
@@ -65,7 +137,8 @@ static uint8_t next_density(uint8_t density, int n, int mass,
         if (!room) {
             return 0;
         }
-        float chance = (n >= s->veg_birth_lo && n <= s->veg_birth_hi)
+        float chance = (n >= veg_rule_birth_lo(rule) &&
+                        n <= veg_rule_birth_hi(rule))
                            ? fertility * s->veg_sprout_rate
                            : s->veg_seed_chance * fertility;
         /* draw is in 0..1 (never 1), so a chance of 1 always sprouts and
@@ -78,7 +151,7 @@ static uint8_t next_density(uint8_t density, int n, int mass,
     if (!room) {
         return density; /* exactly at capacity: hold */
     }
-    if (n <= s->veg_crowd_max) {
+    if (n <= veg_rule_crowd_max(rule)) {
         if (grow_draw >= s->veg_grow_chance) {
             return density; /* room to grow, but not this tick */
         }
@@ -210,9 +283,10 @@ void flora_step(World *w, Rng *r, const Settings *s)
                 w->veg_next[i] = 0;
                 continue;
             }
-            /* Exactly two draws for every soil cell, whichever branch
+            /* Exactly three draws for every soil cell, whichever branch
              * uses them: the first to sprout (empty cells) or to start
-             * withering (healthy mature plants), the second to grow. The
+             * withering (healthy mature plants), the second to grow, the
+             * third for a sprout's rule (see draw_parent). The
              * draws then happen in the same order on every run, which is
              * what keeps two runs with the same seed identical. They are
              * separate statements on purpose: inside a larger
@@ -222,6 +296,7 @@ void flora_step(World *w, Rng *r, const Settings *s)
              * be more likely to grow. */
             float draw = rng_unit(r);
             float grow_draw = rng_unit(r);
+            uint64_t rule_draw = rng_next(r);
 
             if (w->veg[i] > 0 && w->veg_wither[i] > 0) {
                 w->veg_next[i] = wither_on(w, i, limit);
@@ -247,12 +322,35 @@ void flora_step(World *w, Rng *r, const Settings *s)
             }
             int n = planted_neighbours(w, x, y);
             int mass = plant_mass(w, x, y, reach);
-            uint8_t next = next_density(w->veg[i], n, mass, w->fertility[i],
-                                        draw, grow_draw, s);
+            /* A planted cell follows its own rule; an empty one, the rule
+             * of the neighbour that would be its parent. */
+            uint8_t rule = w->veg_rule[i];
+            int parent = -1;
+            if (w->veg[i] == 0 && n > 0) {
+                parent = planted_neighbour_at(w, x, y,
+                                              draw_parent(rule_draw, n));
+                rule = w->veg_rule[parent];
+            }
+            uint8_t next = next_density(w->veg[i], rule, n, mass,
+                                        w->fertility[i], draw, grow_draw, s);
             if (w->veg[i] == 0 || next == 0) {
                 /* Bare now, or just sprouted: a fresh start. */
                 w->veg_age[i] = 0;
                 w->veg_wither[i] = 0;
+            }
+            if (w->veg[i] == 0 && next > 0) {
+                /* Written in place, without a second buffer, and still
+                 * safe: a parent is a cell planted before this tick
+                 * (w->veg is the old buffer), and a planted cell's rule
+                 * never changes during the tick. The only rules written
+                 * here belong to cells that were empty, which no later
+                 * cell can pick as a parent this tick. A plant that dies
+                 * keeps its rule for the same reason: its neighbours may
+                 * still pick it as a parent this tick. */
+                w->veg_rule[i] = parent >= 0
+                                     ? child_rule(rule, rule_draw,
+                                                  s->veg_mutation)
+                                     : draw_lone_rule(rule_draw);
             }
             w->veg_next[i] = next;
         }

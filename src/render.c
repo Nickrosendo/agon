@@ -31,7 +31,9 @@ static const Colour WATER = {34, 66, 112};
 static const Colour ROCK = {112, 112, 118};
 static const Colour SOIL_DRY = {132, 110, 78};
 static const Colour SOIL_RICH = {70, 56, 38};
+/* The legend's plant colour, and the colour of the starting rule. */
 static const Colour PLANT = {58, 150, 62};
+static const Colour BLACK = {0, 0, 0};
 static const Colour WITHERED = {196, 168, 84}; /* dry straw */
 static const Colour CARRION = {110, 30, 34};   /* dried blood */
 /* Each creature is coloured by the hue in its genome, light enough to
@@ -173,6 +175,27 @@ float render_display_hue(float hue)
     return shown >= RENDER_PLANT_HUE_FROM ? shown + gap : shown;
 }
 
+float render_plant_hue(uint8_t rule)
+{
+    /* The birth bits are the low four: & 0xF keeps them, 0..15. */
+    unsigned birth = (unsigned)rule & 0xFu;
+    float gap = RENDER_PLANT_HUE_TO - RENDER_PLANT_HUE_FROM;
+    return RENDER_PLANT_HUE_FROM + gap * (float)birth / 15.0f;
+}
+
+/*
+ * A plant's full colour, from its rule: the hue from the birth bits, and
+ * the saturation from the crowd limit (0.35 for a limit of 0 up to 0.84
+ * for 7: plants that tolerate crowding look a deeper green). Darkened to
+ * 60 % so plants sit below the brightness of creatures. The starting
+ * rule (born with 3 or 4, crowd limit 3) comes out close to PLANT.
+ */
+static Colour plant_colour(uint8_t rule)
+{
+    float saturation = 0.35f + 0.07f * (float)veg_rule_crowd_max(rule);
+    return mix(BLACK, hue_colour(render_plant_hue(rule), saturation), 0.6f);
+}
+
 static Colour creature_colour(float hue, float meat)
 {
     hue = render_display_hue(hue); /* hue is a copy: the caller's is safe */
@@ -212,10 +235,11 @@ static Colour cell_colour(const Sim *s, int i)
     if (w->veg[i] == 0) {
         return soil;
     }
-    /* Four shades of green over the soil: density 1 is 40 % of the way
-     * from the soil colour to full green, density VEG_MAX is all green. */
+    /* Four shades of the rule's green over the soil: density 1 is 40 %
+     * of the way from the soil colour to the full green, density VEG_MAX
+     * is all green. */
     float t = (float)(w->veg[i] + 1) / (float)(VEG_MAX + 1);
-    Colour plant = mix(soil, PLANT, t);
+    Colour plant = mix(soil, plant_colour(w->veg_rule[i]), t);
     if (w->veg_wither[i] == 0) {
         return plant;
     }

@@ -14,9 +14,11 @@
  * floor went up to 150 creatures; then the digest floor; then separate
  * plant and meat digestion genes; then scent, and a bite that looks all
  * round and lets hunters hunt; then the hunter ray value, which adds
- * three network inputs and so 18 genes, changing every random genome.
+ * three network inputs and so 18 genes, changing every random genome;
+ * then heritable plant rules: a third random draw per soil cell each
+ * tick, and the rule layer hashed.
  */
-#define SEED_7_AFTER_500 0x4049da0a2462a5c4ULL
+#define SEED_7_AFTER_500 0x453ef41d2fcbe5bbULL
 
 static void test_same_seed_same_checksum(void)
 {

@@ -18,8 +18,10 @@ static void make_world(World *w, int width, int height)
     }
 }
 
-/* Default settings with the rule's numbers replaced, and no seeding from
- * nothing, so every change in these tests comes from the rule itself. */
+/* Default settings with the starting rule's numbers replaced, and no
+ * seeding from nothing and no mutation, so every change in these tests
+ * comes from the rule itself. The rule must also be laid on the cells:
+ * see rule_everywhere. */
 static Settings rule(int birth_lo, int birth_hi, int crowd_max)
 {
     Settings s = settings_default();
@@ -27,6 +29,7 @@ static Settings rule(int birth_lo, int birth_hi, int crowd_max)
     s.veg_birth_hi = birth_hi;
     s.veg_crowd_max = crowd_max;
     s.veg_seed_chance = 0.0f;
+    s.veg_mutation = 0.0f;
     /* Out of reach: these tests are about the neighbour rule alone. */
     s.veg_capacity = 1000.0f;
     s.veg_wither_chance = 0.0f; /* plants never wither */
@@ -34,6 +37,15 @@ static Settings rule(int birth_lo, int birth_hi, int crowd_max)
     s.veg_sprout_rate = 1.0f;
     s.veg_grow_chance = 1.0f;
     return s;
+}
+
+/* Every cell carries the starting rule of s: what flora_step reads for
+ * a planted cell, and what an empty cell inherits from its neighbours. */
+static void rule_everywhere(World *w, const Settings *s)
+{
+    uint8_t packed =
+        veg_rule_pack(s->veg_birth_lo, s->veg_birth_hi, s->veg_crowd_max);
+    memset(w->veg_rule, packed, (size_t)(w->w * w->h));
 }
 
 static uint8_t veg_at(const World *w, int x, int y)
@@ -46,6 +58,7 @@ static void test_line_of_three(void)
     World w;
     make_world(&w, 9, 9);
     Settings s = rule(3, 3, 3);
+    rule_everywhere(&w, &s);
     Rng r;
     rng_seed(&r, 1);
     w.veg[world_idx(&w, 4, 3)] = 1;
@@ -74,6 +87,7 @@ static void test_lone_cell_grows_to_max(void)
     World w;
     make_world(&w, 7, 7);
     Settings s = rule(3, 3, 3);
+    rule_everywhere(&w, &s);
     Rng r;
     rng_seed(&r, 2);
     w.veg[world_idx(&w, 3, 3)] = 1;
@@ -92,8 +106,10 @@ static void test_crowded_cell_shrinks(void)
 {
     World w;
     make_world(&w, 9, 9);
-    /* Birth range 9..9 can never happen, so nothing sprouts around. */
-    Settings s = rule(9, 9, 3);
+    /* Birth range 4..4: no cell around the block has exactly four
+     * planted neighbours (at most three), so nothing sprouts there. */
+    Settings s = rule(4, 4, 3);
+    rule_everywhere(&w, &s);
     Rng r;
     rng_seed(&r, 3);
     for (int dy = -1; dy <= 1; dy++) {
@@ -115,8 +131,9 @@ static void test_water_and_rock_stay_bare(void)
 {
     World w;
     make_world(&w, 9, 9);
-    Settings s = rule(1, 8, 8);
+    Settings s = rule(1, 4, 7);
     s.veg_seed_chance = 1.0f; /* even forced sprouting must not reach them */
+    rule_everywhere(&w, &s);
     Rng r;
     rng_seed(&r, 4);
     int water = world_idx(&w, 2, 2);
@@ -140,6 +157,7 @@ static void test_barren_world_stays_empty(void)
     World w;
     make_world(&w, 16, 16);
     Settings s = rule(3, 3, 3);
+    rule_everywhere(&w, &s);
     Rng r;
     rng_seed(&r, 5);
     for (int i = 0; i < w.w * w.h; i++) {
@@ -171,31 +189,13 @@ static void ring(World *w, int cx, int cy, int reach, uint8_t density)
     }
 }
 
-static void test_capacity_blocks_sprouting(void)
+/* Empties the four cells that touch (cx, cy) diagonally. */
+static void clear_corners(World *w, int cx, int cy)
 {
-    /* Reach 2: 24 cells around the centre. All at density 1 gives
-     * m = 24. The centre has 8 planted touching neighbours, so the birth
-     * range 1..8 would let it sprout, but capacity 20 * fertility 1 is
-     * below 24. */
-    World w;
-    make_world(&w, 11, 11);
-    Settings s = rule(1, 8, 8);
-    s.veg_reach = 2;
-    s.veg_capacity = 20.0f;
-    Rng r;
-    rng_seed(&r, 6);
-    ring(&w, 5, 5, 2, 1);
-    flora_step(&w, &r, &s);
-    CHECK(veg_at(&w, 5, 5) == 0);
-
-    /* Same neighbourhood with room to spare: it sprouts. */
-    world_free(&w);
-    make_world(&w, 11, 11);
-    s.veg_capacity = 30.0f;
-    ring(&w, 5, 5, 2, 1);
-    flora_step(&w, &r, &s);
-    CHECK(veg_at(&w, 5, 5) == 1);
-    world_free(&w);
+    w->veg[world_idx(w, cx - 1, cy - 1)] = 0;
+    w->veg[world_idx(w, cx + 1, cy - 1)] = 0;
+    w->veg[world_idx(w, cx - 1, cy + 1)] = 0;
+    w->veg[world_idx(w, cx + 1, cy + 1)] = 0;
 }
 
 /* How many cells of the world carry any vegetation. */
@@ -210,18 +210,50 @@ static int planted_cells(const World *w)
     return count;
 }
 
+static void test_capacity_blocks_sprouting(void)
+{
+    /* Reach 2: 24 cells around the centre; without the four corners
+     * that touch it, 20 at density 1 give m = 20. The centre then has 4
+     * planted touching neighbours, inside the birth range 1..4, but
+     * capacity 20 * fertility 1 leaves no room (m must stay below it). */
+    World w;
+    make_world(&w, 11, 11);
+    Settings s = rule(1, 4, 7);
+    s.veg_reach = 2;
+    s.veg_capacity = 20.0f;
+    rule_everywhere(&w, &s);
+    Rng r;
+    rng_seed(&r, 6);
+    ring(&w, 5, 5, 2, 1);
+    clear_corners(&w, 5, 5);
+    flora_step(&w, &r, &s);
+    CHECK(veg_at(&w, 5, 5) == 0);
+
+    /* Same neighbourhood with room to spare: it sprouts. */
+    world_free(&w);
+    make_world(&w, 11, 11);
+    rule_everywhere(&w, &s);
+    s.veg_capacity = 30.0f;
+    ring(&w, 5, 5, 2, 1);
+    clear_corners(&w, 5, 5);
+    flora_step(&w, &r, &s);
+    CHECK(veg_at(&w, 5, 5) == 1);
+    world_free(&w);
+}
+
 static void test_planted_cells_cap(void)
 {
-    /* Eight planted cells around (5, 5). With birth range 1..8 the centre
-     * and the cells around the ring would all sprout. */
+    /* Eight planted cells around (5, 5). With birth range 1..4 the cells
+     * around the ring (1 to 3 planted neighbours each) would sprout. */
     World w;
-    Settings s = rule(1, 8, 8);
+    Settings s = rule(1, 4, 7);
     Rng r;
     rng_seed(&r, 6);
 
     /* A cap of 8 is already reached: nothing sprouts, and the eight
      * plants stay. */
     make_world(&w, 11, 11);
+    rule_everywhere(&w, &s);
     s.veg_max_cells = 8;
     ring(&w, 5, 5, 1, 1);
     flora_step(&w, &r, &s);
@@ -231,6 +263,7 @@ static void test_planted_cells_cap(void)
     /* A cap of 9 is not reached at the start of the tick, so sprouting
      * goes ahead; the count is taken once per tick, so it can overshoot. */
     make_world(&w, 11, 11);
+    rule_everywhere(&w, &s);
     s.veg_max_cells = 9;
     ring(&w, 5, 5, 1, 1);
     flora_step(&w, &r, &s);
@@ -239,6 +272,7 @@ static void test_planted_cells_cap(void)
 
     /* 0 means no cap. */
     make_world(&w, 11, 11);
+    rule_everywhere(&w, &s);
     s.veg_max_cells = 0;
     ring(&w, 5, 5, 1, 1);
     flora_step(&w, &r, &s);
@@ -248,17 +282,19 @@ static void test_planted_cells_cap(void)
 
 static void test_capacity_scales_with_fertility(void)
 {
-    /* m = 24 again, capacity 40: room at fertility 1 (limit 40), none at
-     * fertility 0.5 (limit 20). The neighbourhood fertility does not
-     * matter, only the cell's own. */
+    /* m = 20 again (the ring without its four corners), capacity 40:
+     * room at fertility 1 (limit 40), none at fertility 0.5 (limit 20).
+     * The neighbourhood fertility does not matter, only the cell's own. */
     World w;
     make_world(&w, 11, 11);
-    Settings s = rule(1, 8, 8);
+    Settings s = rule(1, 4, 7);
     s.veg_reach = 2;
     s.veg_capacity = 40.0f;
+    rule_everywhere(&w, &s);
     Rng r;
     rng_seed(&r, 7);
     ring(&w, 5, 5, 2, 1);
+    clear_corners(&w, 5, 5);
     w.fertility[world_idx(&w, 5, 5)] = 0.5f;
     /* Fertility 0.5 also halves the chance to sprout, so try several
      * steps on a fresh copy each time: it must never sprout. */
@@ -278,17 +314,19 @@ static void test_capacity_scales_with_fertility(void)
 
 static void test_over_capacity_shrinks(void)
 {
-    /* A planted centre with room among its touching neighbours (crowd
-     * limit 8) but m = 24 * 2 = 48 above capacity 30: it thins by one per
-     * step instead of growing. */
+    /* A planted centre with room among its touching neighbours (7 of
+     * them planted, crowd limit 7) but m = 23 * 2 = 46 above capacity 30:
+     * it thins by one per step instead of growing. */
     World w;
     make_world(&w, 11, 11);
-    Settings s = rule(9, 9, 8);
+    Settings s = rule(4, 4, 7);
     s.veg_reach = 2;
     s.veg_capacity = 30.0f;
+    rule_everywhere(&w, &s);
     Rng r;
     rng_seed(&r, 8);
     ring(&w, 5, 5, 2, 2);
+    w.veg[world_idx(&w, 4, 4)] = 0;
     w.veg[world_idx(&w, 5, 5)] = 3;
     flora_step(&w, &r, &s);
     CHECK(veg_at(&w, 5, 5) == 2);
@@ -302,8 +340,9 @@ static void test_tiny_world_is_safe(void)
      * memory checker stops the test with a heap-buffer-overflow report. */
     World w;
     make_world(&w, 2, 2);
-    Settings s = rule(1, 8, 8);
+    Settings s = rule(1, 4, 7);
     s.veg_reach = 3;
+    rule_everywhere(&w, &s);
     Rng r;
     rng_seed(&r, 9);
     w.veg[0] = 1;
@@ -317,13 +356,15 @@ static void test_tiny_world_is_safe(void)
 static void test_plant_withers_then_disappears(void)
 {
     /* Mature at age 2, certain to start withering once mature, withering
-     * lasts 3 ticks. Nothing sprouts around it (birth range 9..9). */
+     * lasts 3 ticks. Nothing sprouts around it: its neighbours have one
+     * planted neighbour each, outside the birth range 4..4. */
     World w;
     make_world(&w, 7, 7);
-    Settings s = rule(9, 9, 8);
+    Settings s = rule(4, 4, 7);
     s.veg_mature_age = 2;
     s.veg_wither_chance = 1.0f;
     s.veg_wither_ticks = 3;
+    rule_everywhere(&w, &s);
     Rng r;
     rng_seed(&r, 10);
     int i = world_idx(&w, 3, 3);
@@ -345,8 +386,9 @@ static void test_no_wither_chance_lives_on(void)
 {
     World w;
     make_world(&w, 7, 7);
-    Settings s = rule(9, 9, 8);
+    Settings s = rule(4, 4, 7);
     s.veg_mature_age = 1;
+    rule_everywhere(&w, &s);
     Rng r;
     rng_seed(&r, 11);
     int i = world_idx(&w, 3, 3);
@@ -366,6 +408,7 @@ static void test_sprout_starts_young(void)
     World w;
     make_world(&w, 9, 9);
     Settings s = rule(3, 3, 3);
+    rule_everywhere(&w, &s);
     Rng r;
     rng_seed(&r, 12);
     w.veg[world_idx(&w, 4, 3)] = 1;
@@ -381,24 +424,30 @@ static void test_sprout_starts_young(void)
 
 static void test_growth_follows_its_chance(void)
 {
-    /* 4,096 lone-ish plants at density 1 with nothing to stop them
-     * growing (crowd limit 8, capacity out of reach): after one step the
-     * share that grew should be close to veg_grow_chance. */
+    /* Every other column planted at density 1: 2,048 plants, each with
+     * 2 planted neighbours (above and below), well inside the crowd
+     * limit 7, and capacity out of reach. The empty cells have 6 planted
+     * neighbours, outside the birth range 4..4, so they stay empty.
+     * After one step the share of plants that grew should be close to
+     * veg_grow_chance. */
     World w;
     make_world(&w, 64, 64);
-    Settings s = rule(9, 9, 8);
+    Settings s = rule(4, 4, 7);
     s.veg_grow_chance = 0.25f;
+    rule_everywhere(&w, &s);
     Rng r;
     rng_seed(&r, 13);
-    for (int i = 0; i < w.w * w.h; i++) {
-        w.veg[i] = 1;
+    for (int y = 0; y < w.h; y++) {
+        for (int x = 0; x < w.w; x += 2) {
+            w.veg[world_idx(&w, x, y)] = 1;
+        }
     }
     flora_step(&w, &r, &s);
     int grown = 0;
     for (int i = 0; i < w.w * w.h; i++) {
         grown += w.veg[i] == 2;
     }
-    double share = (double)grown / (w.w * w.h);
+    double share = (double)grown / (w.w * w.h / 2);
     CHECK(share > 0.22 && share < 0.28);
 
     /* A chance of 0: nothing ever thickens. */
@@ -416,21 +465,217 @@ static void test_growth_follows_its_chance(void)
 
 static void test_sprouting_follows_its_rate(void)
 {
-    /* Birth range 0..8 puts every empty cell in range, fertility 1 and
-     * rate 0.25: about a quarter of an empty world sprouts in one step. */
+    /* A checkerboard: every empty cell has exactly 4 planted neighbours
+     * (the four that touch its sides), inside the birth range 4..4.
+     * Fertility 1 and rate 0.25: about a quarter of the 2,048 empty cells
+     * sprout in one step. */
     World w;
     make_world(&w, 64, 64);
-    Settings s = rule(0, 8, 8);
+    Settings s = rule(4, 4, 7);
     s.veg_sprout_rate = 0.25f;
+    rule_everywhere(&w, &s);
     Rng r;
     rng_seed(&r, 14);
+    for (int y = 0; y < w.h; y++) {
+        for (int x = 0; x < w.w; x++) {
+            w.veg[world_idx(&w, x, y)] = (x + y) % 2 == 0 ? 1 : 0;
+        }
+    }
     flora_step(&w, &r, &s);
     int sprouted = 0;
-    for (int i = 0; i < w.w * w.h; i++) {
-        sprouted += w.veg[i] > 0;
+    for (int y = 0; y < w.h; y++) {
+        for (int x = 0; x < w.w; x++) {
+            if ((x + y) % 2 == 1) {
+                sprouted += veg_at(&w, x, y) > 0;
+            }
+        }
     }
-    double share = (double)sprouted / (w.w * w.h);
+    double share = (double)sprouted / (w.w * w.h / 2);
     CHECK(share > 0.22 && share < 0.28);
+    world_free(&w);
+}
+
+static void test_rule_pack_round_trip(void)
+{
+    /* Every byte with bit 7 clear is a rule. Unpacking it and packing
+     * the three numbers again must give the same byte back, and the
+     * numbers must be inside their documented ranges. */
+    int bad = 0;
+    for (int b = 0; b <= (int)VEG_RULE_USED_MASK; b++) {
+        uint8_t rule_byte = (uint8_t)b;
+        int lo = veg_rule_birth_lo(rule_byte);
+        int hi = veg_rule_birth_hi(rule_byte);
+        int crowd = veg_rule_crowd_max(rule_byte);
+        if (lo < 1 || lo > 4 || hi < lo || hi > lo + 3 || crowd < 0 ||
+            crowd > 7 || veg_rule_pack(lo, hi, crowd) != rule_byte) {
+            bad++;
+        }
+    }
+    CHECK(bad == 0);
+    /* The lesson 4 defaults: born with 3 or 4 neighbours, crowd limit 3.
+     * Low 3 is stored as 2 (binary 10), width 1 (01), crowd 3 (011):
+     * 0 011 01 10 is 0x36. */
+    CHECK(veg_rule_pack(3, 4, 3) == 0x36);
+    /* Out of range values are clamped, not wrapped into other bits. */
+    CHECK(veg_rule_pack(0, 9, 9) == veg_rule_pack(1, 4, 7));
+    CHECK(veg_rule_pack(9, 2, -1) == veg_rule_pack(4, 4, 0));
+}
+
+/* Three plants in a column at (4, 3), (4, 4), (4, 5) carrying the given
+ * rules; the cells beside the middle one, (3, 4) and (5, 4), have three
+ * planted neighbours. */
+static void column_of_three(World *w, uint8_t top, uint8_t middle,
+                            uint8_t bottom)
+{
+    int a = world_idx(w, 4, 3), b = world_idx(w, 4, 4), c = world_idx(w, 4, 5);
+    w->veg[a] = w->veg[b] = w->veg[c] = 1;
+    w->veg_rule[a] = top;
+    w->veg_rule[b] = middle;
+    w->veg_rule[c] = bottom;
+}
+
+static void test_sprout_copies_its_parent(void)
+{
+    /* All three neighbours carry rule R (born with 3, crowd limit 5,
+     * unlike the default): with no mutation, the sprouts beside the
+     * middle carry R too. */
+    World w;
+    make_world(&w, 9, 9);
+    Settings s = rule(3, 3, 3);
+    uint8_t parent_rule = veg_rule_pack(3, 3, 5);
+    Rng r;
+    rng_seed(&r, 15);
+    column_of_three(&w, parent_rule, parent_rule, parent_rule);
+    flora_step(&w, &r, &s);
+    CHECK(veg_at(&w, 3, 4) == 1 && veg_at(&w, 5, 4) == 1);
+    CHECK(w.veg_rule[world_idx(&w, 3, 4)] == parent_rule);
+    CHECK(w.veg_rule[world_idx(&w, 5, 4)] == parent_rule);
+    world_free(&w);
+}
+
+static void test_sprout_picks_one_neighbour(void)
+{
+    /* Three different rules, all born with exactly 3 neighbours. Over
+     * many tries, each sprout copies one of the three, and each of the
+     * three is picked sometimes. */
+    uint8_t rules[3] = {veg_rule_pack(3, 3, 1), veg_rule_pack(3, 3, 4),
+                        veg_rule_pack(3, 6, 7)};
+    int picked[3] = {0, 0, 0};
+    int foreign = 0;
+    Settings s = rule(3, 3, 3);
+    Rng r;
+    rng_seed(&r, 16);
+    for (int attempt = 0; attempt < 60; attempt++) {
+        World w;
+        make_world(&w, 9, 9);
+        column_of_three(&w, rules[0], rules[1], rules[2]);
+        flora_step(&w, &r, &s);
+        uint8_t got = w.veg_rule[world_idx(&w, 3, 4)];
+        int known = 0;
+        for (int k = 0; k < 3; k++) {
+            if (got == rules[k]) {
+                picked[k]++;
+                known = 1;
+            }
+        }
+        foreign += !known;
+        world_free(&w);
+    }
+    CHECK(foreign == 0);
+    CHECK(picked[0] > 0 && picked[1] > 0 && picked[2] > 0);
+}
+
+/* How many bits are set in v. */
+static int bits_set(unsigned v)
+{
+    int count = 0;
+    while (v != 0) {
+        count += (int)(v & 1u);
+        v >>= 1;
+    }
+    return count;
+}
+
+static void test_mutation_flips_one_bit(void)
+{
+    /* With mutation 1, every sprout's rule differs from its parent's in
+     * exactly one of the seven bits in use: XOR keeps the bits that
+     * differ, and exactly one must be set, never bit 7. Across many
+     * sprouts, every one of the seven bits gets flipped at some point. */
+    Settings s = rule(3, 3, 3);
+    s.veg_mutation = 1.0f;
+    uint8_t parent_rule = veg_rule_pack(3, 3, 3);
+    Rng r;
+    rng_seed(&r, 17);
+    int wrong = 0;
+    unsigned flipped = 0;
+    for (int attempt = 0; attempt < 100; attempt++) {
+        World w;
+        make_world(&w, 9, 9);
+        column_of_three(&w, parent_rule, parent_rule, parent_rule);
+        flora_step(&w, &r, &s);
+        unsigned diff =
+            (unsigned)(w.veg_rule[world_idx(&w, 3, 4)] ^ parent_rule);
+        if (veg_at(&w, 3, 4) != 1 || bits_set(diff) != 1 ||
+            (diff & ~VEG_RULE_USED_MASK) != 0) {
+            wrong++;
+        }
+        flipped |= diff;
+        world_free(&w);
+    }
+    CHECK(wrong == 0);
+    CHECK(flipped == VEG_RULE_USED_MASK);
+}
+
+static void test_lone_sprouts_get_random_rules(void)
+{
+    /* Seeding from nothing is certain and nothing is planted: every
+     * cell sprouts with no planted neighbour, so with a random rule.
+     * 4,096 random picks out of 128 rules should leave none unused, and
+     * bit 7 must stay clear. */
+    World w;
+    make_world(&w, 64, 64);
+    Settings s = rule(3, 3, 3);
+    s.veg_seed_chance = 1.0f;
+    Rng r;
+    rng_seed(&r, 18);
+    flora_step(&w, &r, &s);
+    int seen[VEG_RULE_USED_MASK + 1] = {0};
+    int high_bit = 0;
+    int planted = 0;
+    for (int i = 0; i < w.w * w.h; i++) {
+        planted += w.veg[i] > 0;
+        high_bit += (w.veg_rule[i] & 0x80u) != 0;
+        seen[w.veg_rule[i] & VEG_RULE_USED_MASK] = 1;
+    }
+    int distinct = 0;
+    for (int k = 0; k <= (int)VEG_RULE_USED_MASK; k++) {
+        distinct += seen[k];
+    }
+    CHECK(planted == w.w * w.h);
+    CHECK(high_bit == 0);
+    CHECK(distinct == (int)VEG_RULE_USED_MASK + 1);
+    world_free(&w);
+}
+
+static void test_plant_reads_its_own_rule(void)
+{
+    /* Two touching plants, each with one planted neighbour (the other).
+     * The left one's crowd limit is 0, so one neighbour is too many and
+     * it shrinks; the right one's is 7, so it grows. */
+    World w;
+    make_world(&w, 9, 9);
+    Settings s = rule(4, 4, 7);
+    Rng r;
+    rng_seed(&r, 19);
+    int left = world_idx(&w, 3, 4), right = world_idx(&w, 4, 4);
+    w.veg[left] = 2;
+    w.veg[right] = 2;
+    w.veg_rule[left] = veg_rule_pack(4, 4, 0);
+    w.veg_rule[right] = veg_rule_pack(4, 4, 7);
+    flora_step(&w, &r, &s);
+    CHECK(w.veg[left] == 1);
+    CHECK(w.veg[right] == 3);
     world_free(&w);
 }
 
@@ -528,6 +773,12 @@ int main(void)
     test_sprout_starts_young();
     test_growth_follows_its_chance();
     test_sprouting_follows_its_rate();
+    test_rule_pack_round_trip();
+    test_sprout_copies_its_parent();
+    test_sprout_picks_one_neighbour();
+    test_mutation_flips_one_bit();
+    test_lone_sprouts_get_random_rules();
+    test_plant_reads_its_own_rule();
     test_carrion_merges();
     test_carrion_rots_into_soil();
     test_carrion_disappears();

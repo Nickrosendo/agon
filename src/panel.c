@@ -471,6 +471,16 @@ static void describe_cell(Lines *l, const Sim *s, const Inspect *in)
     } else {
         add_float(l, "fertility", w->fertility[i], 2);
         add_long(l, "plants", w->veg[i]);
+        if (w->veg[i] > 0) {
+            /* The cell's rule, unpacked: e.g. "3-4 / 3" for born with 3
+             * or 4 planted neighbours, grows with at most 3. */
+            char rule_text[24];
+            snprintf(rule_text, sizeof(rule_text), "%d-%d / %d",
+                     veg_rule_birth_lo(w->veg_rule[i]),
+                     veg_rule_birth_hi(w->veg_rule[i]),
+                     veg_rule_crowd_max(w->veg_rule[i]));
+            add_pair(l, "rule", rule_text);
+        }
         if (w->carrion[i] > 0.0f) {
             add_float(l, "carrion", w->carrion[i], 1);
         }

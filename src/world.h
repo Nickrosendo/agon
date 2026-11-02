@@ -38,4 +38,80 @@ void world_clear(World *w);
 void world_free(World *w);
 int world_idx(const World *w, int x, int y); /* wraps both axes */
 
+/*
+ * A vegetation rule packed into one byte (veg_rule). Three small numbers
+ * share it, each in its own group of bits:
+ *
+ *   bit   7     6 5 4        3 2           1 0
+ *         unused crowd max   birth width   birth low - 1
+ *
+ * birth low is 1..4 (stored as 0..3), birth width is 0..3, so an empty
+ * cell can sprout by the rule when it has from birth low to birth low +
+ * width planted neighbours (birth high, 1..7). crowd max is 0..7: a
+ * plant grows while it has at most that many planted neighbours.
+ *
+ * To read a group: shift it down to bit 0, then keep only its bits with
+ * a mask (0x3 is binary 11, two bits; 0x7 is 111, three bits). To write
+ * one: mask the value to its width and shift it up into place.
+ *
+ * A cell's rule means something only while the cell is planted; on bare
+ * soil it is whatever the last plant there carried.
+ */
+#define VEG_RULE_LO_SHIFT 0
+#define VEG_RULE_WIDTH_SHIFT 2
+#define VEG_RULE_CROWD_SHIFT 4
+#define VEG_RULE_LO_MASK 0x3u
+#define VEG_RULE_WIDTH_MASK 0x3u
+#define VEG_RULE_CROWD_MASK 0x7u
+/* The seven bits in use; a mutation flips one of them. */
+#define VEG_RULE_BITS 7
+#define VEG_RULE_USED_MASK 0x7Fu
+
+/* static inline in a header: every .c file that includes it gets its own
+ * private copy, which the compiler can paste straight into the caller.
+ * Without static, two files including the header would each define the
+ * same function and the link would fail. */
+/* (unsigned)rule first: in an expression, a uint8_t is promoted to a
+ * signed int before anything else happens, and & with an unsigned mask
+ * would then mix signed and unsigned (-Wconversion warns). */
+static inline int veg_rule_birth_lo(uint8_t rule)
+{
+    return (int)(((unsigned)rule >> VEG_RULE_LO_SHIFT) & VEG_RULE_LO_MASK) +
+           1;
+}
+
+static inline int veg_rule_birth_hi(uint8_t rule)
+{
+    return veg_rule_birth_lo(rule) +
+           (int)(((unsigned)rule >> VEG_RULE_WIDTH_SHIFT) & VEG_RULE_WIDTH_MASK);
+}
+
+static inline int veg_rule_crowd_max(uint8_t rule)
+{
+    return (int)(((unsigned)rule >> VEG_RULE_CROWD_SHIFT) &
+                 VEG_RULE_CROWD_MASK);
+}
+
+/* Clamps v into lo..hi. */
+static inline int veg_rule_clamp(int v, int lo, int hi)
+{
+    return v < lo ? lo : (v > hi ? hi : v);
+}
+
+/* Packs a rule. Values that do not fit are clamped: birth_lo into 1..4,
+ * birth_hi into birth_lo .. birth_lo + 3, crowd_max into 0..7. */
+static inline uint8_t veg_rule_pack(int birth_lo, int birth_hi, int crowd_max)
+{
+    int lo = veg_rule_clamp(birth_lo, 1, 4);
+    int width = veg_rule_clamp(birth_hi, lo, lo + 3) - lo;
+    int crowd = veg_rule_clamp(crowd_max, 0, 7);
+    /* Each part is small and non-negative, so converting it to unsigned
+     * changes nothing; the shifts then work on unsigned values, and the
+     * result (at most 0x7F) fits a uint8_t. */
+    unsigned packed = ((unsigned)(lo - 1) << VEG_RULE_LO_SHIFT) |
+                      ((unsigned)width << VEG_RULE_WIDTH_SHIFT) |
+                      ((unsigned)crowd << VEG_RULE_CROWD_SHIFT);
+    return (uint8_t)packed;
+}
+
 #endif
