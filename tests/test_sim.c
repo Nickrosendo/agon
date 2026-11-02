@@ -19,9 +19,10 @@
  * tick, and the rule layer hashed; then the costs of vigorous plant
  * rules (less food, earlier withering) and the plant-eater cap counted
  * by food-chain level, all three on by default; then slower, sparser,
- * more nourishing plants (sprout rate, capacity, bite energy).
+ * more nourishing plants (sprout rate, capacity, bite energy); then
+ * carrion no longer feeding the soil by default.
  */
-#define SEED_7_AFTER_500 0xb7a7c1d7edb97c3bULL
+#define SEED_7_AFTER_500 0x5d2acadc4d55dbc1ULL
 
 static void test_same_seed_same_checksum(void)
 {

@@ -183,7 +183,8 @@ typedef struct {
 
     /* Carrion. A death leaves body_energy * size plus any energy left.
      * Each tick carrion loses carrion_decay of itself; carrion_to_fertility
-     * of what is lost feeds the cell's fertility, up to fertility_max. */
+     * of what is lost feeds the cell's fertility, up to fertility_max (0:
+     * carrion only rots away, and fertility never changes). */
     float body_energy;
     float carrion_decay;
     float carrion_to_fertility;

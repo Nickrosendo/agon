@@ -112,7 +112,7 @@ for the build that wrote them; a build with a different format refuses them.
    its genome. No fitness function exists: what lives long enough to split
    spreads.
 8. Hunters attack plant-eaters, and bigger attackers hit more often. Kills
-   become carrion, which rots into the soil and sends out a scent.
+   become carrion, which rots away and sends out a scent.
 9. A creature's food-chain level is measured from what it actually eats: a
    plant-eater sits at about 2, something that eats plant-eaters at about 3.
 10. A floor of random newcomers keeps a world from staying empty (`--no-floor`

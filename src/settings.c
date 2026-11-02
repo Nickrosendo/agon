@@ -25,9 +25,9 @@ Settings settings_default(void)
         .veg_vigour_ageing = 0.6f,
         /* Slow and sparse on purpose: at 0.4, capacity 50 and bite 5, plants
          * covered 40 % of the soil within 100 ticks and stayed there. Now
-         * (five seeds, 160 by 80) they take 550 to 2,375 ticks to reach 10 %
-         * and peak at 10 to 14 % by tick 20,000, 17 to 20 % by 150,000: rotting
-         * carrion slowly enriches the soil. Fewer plants feed fewer creatures,
+         * (five seeds, 160 by 80) they take from 550 to 48,650 ticks to reach
+         * 10 %, and peak at 10 to 13 % even by tick 150,000 (see
+         * carrion_to_fertility). Fewer plants feed fewer creatures,
          * which is why bite_veg_energy went up with these two: alone, they
          * left only the floor's random newcomers alive. */
         .veg_sprout_rate = 0.02f,
@@ -85,7 +85,10 @@ Settings settings_default(void)
         .pack_kinship = 0.5f,
         .body_energy = 10.0f,
         .carrion_decay = 0.01f,
-        .carrion_to_fertility = 0.002f,
+        /* Off: at 0.002, rotting carrion slowly enriched the soil and plants
+         * crept up to 17 to 20 % of it by tick 150,000. Off, they hold at 10
+         * to 13 %. Set it above 0 to have carrion feed the soil again. */
+        .carrion_to_fertility = 0.0f,
         .fertility_max = 1.0f,
         .scent_emit = 0.05f,
         .scent_spread = 0.5f,
@@ -197,7 +200,7 @@ static const SettingInfo TABLE[] = {
     FLOAT_ROW(body_energy, 0, BIG, "carrion a body leaves, by size"),
     FLOAT_ROW(carrion_decay, 0, 1, "share of carrion lost per tick"),
     FLOAT_ROW(carrion_to_fertility, 0, 1, "share of lost carrion that feeds "
-                                          "the soil"),
+                                          "the soil (0: none)"),
     FLOAT_ROW(fertility_max, 0, 1, "most fertile the soil can get"),
     FLOAT_ROW(scent_emit, 0, BIG, "scent per unit of carrion per tick"),
     FLOAT_ROW(scent_spread, 0, 1, "share of scent that spreads per tick"),
