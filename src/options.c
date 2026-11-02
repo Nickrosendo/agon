@@ -15,9 +15,17 @@ const char OPTIONS_USAGE[] =
     "  --once        print one snapshot after --ticks ticks and exit\n"
     "  --ticks N     ticks to run before the snapshot (default 2000)\n"
     "  --no-floor    never place new random creatures\n"
+    "  --config PATH read settings from a file (see --settings)\n"
+    "  --save PATH   write the world there on quit and on the s key\n"
+    "                (with --once: after the last tick)\n"
+    "  --load PATH   resume a saved world; it brings its own seed, size and\n"
+    "                settings, so not with --seed, --size, --config or\n"
+    "                --no-floor\n"
+    "  --settings    print every setting and its default, in the form\n"
+    "                --config reads, and exit\n"
     "  -h, --help    this text\n"
     "  --version     the version\n"
-    "keys: space pause, +/- speed, r new seed, i inspect, q quit\n";
+    "keys: space pause, +/- speed, r new seed, i inspect, s save, q quit\n";
 
 static bool is_digit(char c)
 {
@@ -106,7 +114,11 @@ enum {
     OPT_ONCE,
     OPT_TICKS,
     OPT_NO_FLOOR,
-    OPT_VERSION
+    OPT_VERSION,
+    OPT_CONFIG,
+    OPT_SAVE,
+    OPT_LOAD,
+    OPT_SETTINGS
 };
 
 /* The table getopt_long reads: name, whether a value follows, a flag
@@ -121,6 +133,10 @@ static const struct option LONG_OPTIONS[] = {
     {"no-floor", no_argument, NULL, OPT_NO_FLOOR},
     {"help", no_argument, NULL, 'h'},
     {"version", no_argument, NULL, OPT_VERSION},
+    {"config", required_argument, NULL, OPT_CONFIG},
+    {"save", required_argument, NULL, OPT_SAVE},
+    {"load", required_argument, NULL, OPT_LOAD},
+    {"settings", no_argument, NULL, OPT_SETTINGS},
     {NULL, 0, NULL, 0},
 };
 
@@ -130,6 +146,15 @@ static bool take_value(int opt, const char *value, Options *o, char *err,
 {
     long n;
     switch (opt) {
+    case OPT_CONFIG:
+        o->config_path = value;
+        return true;
+    case OPT_SAVE:
+        o->save_path = value;
+        return true;
+    case OPT_LOAD:
+        o->load_path = value;
+        return true;
     case OPT_SEED:
         o->seed_given = parse_seed(value, &o->seed);
         if (!o->seed_given) {
@@ -203,6 +228,9 @@ bool options_parse(int argc, char **argv, Options *o, char *err,
         case OPT_NO_FLOOR:
             o->no_floor = true;
             break;
+        case OPT_SETTINGS:
+            o->list_settings = true;
+            break;
         case ':':
             /* optind has moved past the option missing its value. */
             snprintf(err, err_size, "%s needs a value", argv[optind - 1]);
@@ -227,6 +255,16 @@ bool options_parse(int argc, char **argv, Options *o, char *err,
      * mistake: agon takes no file names or other bare words. */
     if (optind < argc) {
         snprintf(err, err_size, "unexpected argument '%s'", argv[optind]);
+        return false;
+    }
+    /* A saved world brings its own seed, size and settings; taking any of
+     * these as well would have to mean ignoring one of the two. */
+    if (o->load_path != NULL &&
+        (o->seed_given || o->size_given || o->config_path != NULL ||
+         o->no_floor)) {
+        snprintf(err, err_size, "--load brings its own seed, size and "
+                                "settings: not with --seed, --size, --config "
+                                "or --no-floor");
         return false;
     }
     return true;

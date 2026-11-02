@@ -28,6 +28,12 @@ typedef struct {
     long ticks;        /* how far --once runs */
     bool no_floor;
     bool help, version;
+    bool list_settings;      /* --settings */
+    /* Paths from the command line, NULL when not given. They point into
+     * argv, which lives as long as main does; nothing is copied or freed. */
+    const char *config_path;
+    const char *save_path;
+    const char *load_path;
 } Options;
 
 /* Parses "WxH", two whole numbers from 1 to OPTIONS_MAX_SIDE joined by

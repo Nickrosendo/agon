@@ -1,9 +1,15 @@
 /*
  * settings: every tunable number in one struct, so no logic hides a bare
- * constant. Later lessons add fields and a settings file parser.
+ * constant, and the settings file that can change them. One table in
+ * settings.c lists every field; the parser, the range checks, the printed
+ * list and the save file all walk it.
  */
 #ifndef AGON_SETTINGS_H
 #define AGON_SETTINGS_H
+
+#include <stdbool.h>
+#include <stddef.h> /* size_t */
+#include <stdio.h>  /* FILE */
 
 /* Room for a brain's name, the terminating '\0' included. */
 #define BRAIN_NAME_MAX 32
@@ -200,5 +206,46 @@ typedef struct {
 } Settings;
 
 Settings settings_default(void);
+
+/* The longest line a settings file may have, its newline and the
+ * terminating '\0' included. A longer line is an error. */
+#define SETTINGS_LINE_MAX 256
+
+typedef enum { SETTING_INT, SETTING_FLOAT, SETTING_TEXT } SettingType;
+
+/* One row of the table: a field of Settings, described as data. offset is
+ * where the field sits, in bytes from the start of the struct. min and max
+ * are doubles because a double holds every int and every float exactly. */
+typedef struct {
+    const char *name;
+    SettingType type;
+    size_t offset;
+    double min, max; /* inclusive; unused for SETTING_TEXT */
+    const char *help;
+} SettingInfo;
+
+/* The table, row by row. i runs from 0 to settings_count() - 1. */
+int settings_count(void);
+const SettingInfo *settings_info(int i);
+/* Where one setting lives inside *s, as a pointer of the right type. The
+ * caller must use the one that matches info->type. */
+int *settings_int(Settings *s, const SettingInfo *info);
+float *settings_float(Settings *s, const SettingInfo *info);
+char *settings_text(Settings *s, const SettingInfo *info);
+
+/* Changes *s by a settings file: lines of "name = value", # comments,
+ * blank lines, and [section] lines, which are accepted and ignored. If a
+ * name appears twice the later line wins. False on any mistake, with a
+ * one-line message (no newline) in err, naming the line; *s is then
+ * unchanged, whatever lines came before the mistake. */
+bool settings_load(Settings *s, const char *path, char *err, size_t errlen);
+
+/* True when every field is inside its range and the brain's name is a
+ * proper string. False with a message otherwise. */
+bool settings_check(const Settings *s, char *err, size_t errlen);
+
+/* Writes every setting as a commented "name = value" line: a settings
+ * file that gives back *s when loaded. */
+void settings_print(FILE *out, const Settings *s);
 
 #endif

@@ -206,7 +206,9 @@ static int run_once(const Options *o, const Settings *settings,
     int h = o->size_given ? o->height : ONCE_HEIGHT;
     Sim sim;
     if (!sim_init(&sim, settings, seed, w, h)) {
-        fprintf(stderr, "agon: could not start: out of memory\n");
+        fprintf(stderr, "agon: could not start: out of memory, or no brain "
+                        "called '%s'\n",
+                settings->brain_name);
         return EXIT_FAILED;
     }
     for (long i = 0; i < o->ticks; i++) {
@@ -224,7 +226,7 @@ static int run_once(const Options *o, const Settings *settings,
 int main(int argc, char **argv)
 {
     Options opt;
-    char err[160];
+    char err[512]; /* room for a long path in a message */
     /* Bad options are reported before the screen is taken over, so the
      * message stays visible. */
     if (!options_parse(argc, argv, &opt, err, sizeof(err))) {
@@ -240,7 +242,19 @@ int main(int argc, char **argv)
         return EXIT_FINE;
     }
     uint64_t seed = opt.seed_given ? opt.seed : seed_from_clock();
+    if (opt.list_settings) {
+        Settings defaults = settings_default();
+        settings_print(stdout, &defaults);
+        return EXIT_FINE;
+    }
     Settings settings = settings_default();
+    /* The file first, then the options: the command line has the last
+     * word, as with most Unix tools. */
+    if (opt.config_path != NULL &&
+        !settings_load(&settings, opt.config_path, err, sizeof(err))) {
+        fprintf(stderr, "agon: %s\n", err);
+        return EXIT_USAGE;
+    }
     if (opt.no_floor) {
         settings.min_creatures = 0;
     }

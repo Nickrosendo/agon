@@ -135,6 +135,36 @@ static void test_mistakes(void)
     CHECK(fails_with(extra, "world"));
 }
 
+static void test_file_options(void)
+{
+    char *argv[] = {"agon", "--config", "a.conf", "--save", "b.save", NULL};
+    Options o;
+    char err[128];
+    CHECK(parse(argv, &o, err, sizeof(err)));
+    CHECK(strcmp(o.config_path, "a.conf") == 0);
+    CHECK(strcmp(o.save_path, "b.save") == 0);
+    CHECK(o.load_path == NULL);
+
+    char *resume[] = {"agon", "--load", "b.save", "--speed", "5", NULL};
+    CHECK(parse(resume, &o, err, sizeof(err)));
+    CHECK(strcmp(o.load_path, "b.save") == 0);
+    CHECK(o.config_path == NULL);
+
+    char *list[] = {"agon", "--settings", NULL};
+    CHECK(parse(list, &o, err, sizeof(err)) && o.list_settings);
+
+    char *with_seed[] = {"agon", "--load", "x", "--seed", "1", NULL};
+    CHECK(fails_with(with_seed, "--load"));
+    char *with_size[] = {"agon", "--load", "x", "--size", "8x8", NULL};
+    CHECK(fails_with(with_size, "--load"));
+    char *with_config[] = {"agon", "--load", "x", "--config", "y", NULL};
+    CHECK(fails_with(with_config, "--load"));
+    char *with_floor[] = {"agon", "--no-floor", "--load", "x", NULL};
+    CHECK(fails_with(with_floor, "--load"));
+    char *no_path[] = {"agon", "--config", NULL};
+    CHECK(fails_with(no_path, "--config"));
+}
+
 static void test_parse_twice(void)
 {
     /* getopt_long keeps its place in global variables. A second parse
@@ -155,6 +185,7 @@ int main(void)
     test_defaults();
     test_every_option();
     test_mistakes();
+    test_file_options();
     test_parse_twice();
     TEST_SUMMARY();
 }
