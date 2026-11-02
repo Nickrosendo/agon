@@ -47,6 +47,10 @@ typedef struct {
 /* The level of a creature that has eaten nothing yet and has no parent:
  * counted as a plant-eater. */
 #define LEVEL_START 2.0f
+/* From this level on, more than half of a creature's food was meat: a
+ * meat-eater. The panel's bands and the plant-eater cap (with
+ * cap_by_level) both use it. */
+#define LEVEL_MEAT 2.5f
 
 /* Below 0 and above 1 are not possible, but a sum of 0.25f four times is
  * exactly 1 while a sum of 0.1f ten times is 0.99999994. A move is
@@ -78,10 +82,14 @@ bool pool_init(Pool *p, int capacity);
 /* Empties every slot and starts ids from 0 again, without reallocating.
  * Does not touch any world: clear the world's occupant layer too. */
 void pool_clear(Pool *p);
-/* Counts the living plant-eaters into p->plant_eaters. The simulation
- * calls it once per tick, before anyone acts; a split checks the count
- * against max_plant_eaters and adds its child to it. */
-void pool_count_plant_eaters(Pool *p);
+/* Counts the living plant-eaters (creature_counts_as_plant_eater) into
+ * p->plant_eaters. The simulation calls it once per tick, before anyone
+ * acts; a split checks the count against max_plant_eaters and adds its
+ * child to it. */
+void pool_count_plant_eaters(Pool *p, const Settings *s);
+/* Whether c counts towards max_plant_eaters: by its food-chain level
+ * when s->cap_by_level is set, else by its genes (not a hunter). */
+bool creature_counts_as_plant_eater(const Creature *c, const Settings *s);
 /* Frees the slots and empties *p; safe to call twice. */
 void pool_free(Pool *p);
 /* Places a new creature at (x, y), heading north, with energy 0, age 0

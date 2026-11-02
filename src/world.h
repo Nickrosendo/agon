@@ -92,6 +92,20 @@ static inline int veg_rule_crowd_max(uint8_t rule)
                  VEG_RULE_CROWD_MASK);
 }
 
+/* How aggressive a rule is, 0..1: 0 for the most modest rule (born only
+ * with exactly 4 planted neighbours, grows only with none), 1 for the
+ * most aggressive (born with 1 to 4, grows whatever the crowding). Each
+ * of the three numbers counts by how far it is from modest: birth low
+ * below 4 (0..3), width (0..3), crowd limit (0..7); 13 at most. The
+ * starting rule (3-4 / 3) is 5 / 13, about 0.38. */
+static inline float veg_rule_vigour(uint8_t rule)
+{
+    int lo = veg_rule_birth_lo(rule);
+    int width = veg_rule_birth_hi(rule) - lo;
+    int points = (4 - lo) + width + veg_rule_crowd_max(rule);
+    return (float)points / 13.0f;
+}
+
 /* Clamps v into lo..hi. */
 static inline int veg_rule_clamp(int v, int lo, int hi)
 {

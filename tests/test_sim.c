@@ -16,9 +16,11 @@
  * round and lets hunters hunt; then the hunter ray value, which adds
  * three network inputs and so 18 genes, changing every random genome;
  * then heritable plant rules: a third random draw per soil cell each
- * tick, and the rule layer hashed.
+ * tick, and the rule layer hashed; then the costs of vigorous plant
+ * rules (less food, earlier withering) and the plant-eater cap counted
+ * by food-chain level, all three on by default.
  */
-#define SEED_7_AFTER_500 0x453ef41d2fcbe5bbULL
+#define SEED_7_AFTER_500 0xea886784f201d55bULL
 
 static void test_same_seed_same_checksum(void)
 {

@@ -14,6 +14,8 @@ Settings settings_default(void)
         .veg_birth_hi = 4,
         .veg_crowd_max = 3,
         .veg_mutation = 0.02f,
+        .veg_vigour_food = 0.6f,
+        .veg_vigour_ageing = 0.6f,
         .veg_sprout_rate = 0.4f,
         .veg_grow_chance = 0.05f,
         .veg_seed_chance = 0.0002f,
@@ -44,6 +46,7 @@ Settings settings_default(void)
         .max_age = 1500,
         /* Hunters survived on all five seeds of a quick check with it. */
         .max_plant_eaters = 500,
+        .cap_by_level = 1,
         .mutation_rate = 0.05f,
         .mutation_spread = 0.05f,
         .weight_limit = 4.0f,

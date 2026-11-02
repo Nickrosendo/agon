@@ -51,6 +51,14 @@ typedef struct {
     int veg_birth_hi;
     int veg_crowd_max;
     float veg_mutation;     /* chance a sprout's rule has one bit flipped */
+    /* Costs of an aggressive rule, by its vigour (0..1, see
+     * veg_rule_vigour in world.h). A bite of the plant gives
+     * bite_veg_energy * (1 - veg_vigour_food * vigour): fast growers are
+     * less nourishing. The plant may start withering from
+     * veg_mature_age * (1 - veg_vigour_ageing * vigour), at least 1:
+     * fast growers die young. 0 turns either cost off. */
+    float veg_vigour_food;
+    float veg_vigour_ageing;
     float veg_sprout_rate;  /* scales the chance to sprout beside plants */
     float veg_grow_chance;  /* chance per tick that a plant thickens */
     float veg_seed_chance;
@@ -97,6 +105,12 @@ typedef struct {
      * alive (see pool_count_plant_eaters). Hunters are limited only by
      * the pool's capacity. 0: no cap. */
     int max_plant_eaters;
+    /* How max_plant_eaters tells a plant-eater: 1 by its food-chain level
+     * (below LEVEL_MEAT, as the panel counts), 0 by its genes (plant
+     * digestion gene above the meat one). By genes, a creature with
+     * hunter genes that lives on plants is never capped. An int, like
+     * pack_defence. */
+    int cap_by_level;
 
     /* Inheritance. A child's genome is its parent's with each value, with
      * probability mutation_rate, moved by a normal step whose spread is

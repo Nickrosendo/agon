@@ -45,11 +45,12 @@ void pool_clear(Pool *p)
     p->plant_eaters = 0;
 }
 
-void pool_count_plant_eaters(Pool *p)
+void pool_count_plant_eaters(Pool *p, const Settings *s)
 {
     int n = 0;
     for (int i = 0; i < p->capacity; i++) {
-        if (p->items[i].alive && !creature_is_hunter(&p->items[i])) {
+        if (p->items[i].alive &&
+            creature_counts_as_plant_eater(&p->items[i], s)) {
             n++;
         }
     }
@@ -339,9 +340,12 @@ static float meat_gain(const Creature *c, float take, const Settings *s)
     return take * digest_eff(c->genome.g[GENE_MEAT], s);
 }
 
-static float plant_gain(const Creature *c, const Settings *s)
+/* What a bite of a plant with the given rule gives c: less for a
+ * vigorous rule (veg_vigour_food), less for a weak plant gene. */
+static float plant_gain(const Creature *c, uint8_t rule, const Settings *s)
 {
-    return s->bite_veg_energy * digest_eff(c->genome.g[GENE_PLANT], s);
+    float food = 1.0f - s->veg_vigour_food * veg_rule_vigour(rule);
+    return s->bite_veg_energy * food * digest_eff(c->genome.g[GENE_PLANT], s);
 }
 
 /* Eats up to bite_meat_energy of the carrion ahead. */
@@ -364,7 +368,7 @@ static void eat_carrion(World *w, Creature *c, int ahead, const Settings *s)
 static void eat_plant(World *w, Creature *c, int ahead, const Settings *s)
 {
     w->veg[ahead]--;
-    float gain = plant_gain(c, s);
+    float gain = plant_gain(c, w->veg_rule[ahead], s);
     c->energy += gain;
     creature_ate(c, gain, 1.0f); /* plants are level 1 */
 }
@@ -372,6 +376,14 @@ static void eat_plant(World *w, Creature *c, int ahead, const Settings *s)
 bool creature_is_hunter(const Creature *c)
 {
     return c->genome.g[GENE_MEAT] > c->genome.g[GENE_PLANT];
+}
+
+bool creature_counts_as_plant_eater(const Creature *c, const Settings *s)
+{
+    if (s->cap_by_level) {
+        return c->level < LEVEL_MEAT;
+    }
+    return !creature_is_hunter(c);
 }
 
 /* A bite looks at the eight cells around the creature, starting with the
@@ -426,7 +438,7 @@ static void act_bite(World *w, Pool *p, int idx, const Settings *s, Rng *r)
             }
         }
         if (w->veg[cell] > 0) {
-            float gain = plant_gain(c, s);
+            float gain = plant_gain(c, w->veg_rule[cell], s);
             if (gain > best_gain) {
                 best_gain = gain;
                 food_cell = cell;
@@ -456,7 +468,8 @@ static int act_split(World *w, Pool *p, int idx, const Settings *s, Rng *r)
     if (parent->energy < split_needs(parent, s)) {
         return -1;
     }
-    if (s->max_plant_eaters > 0 && !creature_is_hunter(parent) &&
+    if (s->max_plant_eaters > 0 &&
+        creature_counts_as_plant_eater(parent, s) &&
         p->plant_eaters >= s->max_plant_eaters) {
         return -1; /* too many plant-eaters already */
     }
@@ -482,7 +495,7 @@ static int act_split(World *w, Pool *p, int idx, const Settings *s, Rng *r)
          * the child's in place, reading the parent's. */
         genome_copy_mutated(&child->genome, &parent->genome, r, s);
         /* Read after the mutation: a child can differ from its parent. */
-        if (!creature_is_hunter(child)) {
+        if (creature_counts_as_plant_eater(child, s)) {
             p->plant_eaters++;
         }
         return child_idx;

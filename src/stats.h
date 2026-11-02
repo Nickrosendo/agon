@@ -19,7 +19,7 @@
  * (below STATS_MEAT_LEVEL: more than half their food was plants),
  * meat-eaters (from STATS_MEAT_LEVEL to below STATS_TOP_LEVEL), and top
  * hunters (STATS_TOP_LEVEL and up: they mostly eat meat-eaters). */
-#define STATS_MEAT_LEVEL 2.5f
+#define STATS_MEAT_LEVEL LEVEL_MEAT
 #define STATS_TOP_LEVEL 3.5f
 enum { BAND_PLANT, BAND_MEAT, BAND_TOP, BAND_COUNT };
 

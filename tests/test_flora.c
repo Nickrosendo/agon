@@ -30,6 +30,7 @@ static Settings rule(int birth_lo, int birth_hi, int crowd_max)
     s.veg_crowd_max = crowd_max;
     s.veg_seed_chance = 0.0f;
     s.veg_mutation = 0.0f;
+    s.veg_vigour_ageing = 0.0f; /* every rule matures at veg_mature_age */
     /* Out of reach: these tests are about the neighbour rule alone. */
     s.veg_capacity = 1000.0f;
     s.veg_wither_chance = 0.0f; /* plants never wither */
@@ -679,6 +680,68 @@ static void test_plant_reads_its_own_rule(void)
     world_free(&w);
 }
 
+static void test_rule_vigour(void)
+{
+    /* The most modest rule is 0, the most aggressive 1, the starting
+     * rule 5 / 13, and every rule lies in between. */
+    CHECK(veg_rule_vigour(veg_rule_pack(4, 4, 0)) == 0.0f);
+    CHECK(veg_rule_vigour(veg_rule_pack(1, 4, 7)) == 1.0f);
+    CHECK(fabsf(veg_rule_vigour(veg_rule_pack(3, 4, 3)) - 5.0f / 13.0f) <
+          1e-6f);
+    int outside = 0;
+    for (int b = 0; b <= (int)VEG_RULE_USED_MASK; b++) {
+        float v = veg_rule_vigour((uint8_t)b);
+        outside += v < 0.0f || v > 1.0f;
+    }
+    CHECK(outside == 0);
+}
+
+static void test_vigorous_plants_die_young(void)
+{
+    /* Mature age 10, ageing cost 0.5, withering certain once mature. A
+     * plant with the most aggressive rule (vigour 1) matures at
+     * 10 * (1 - 0.5) = 5; one with the most modest rule (vigour 0) at
+     * 10. A sprout rate of 0 keeps the cells around them empty, so the
+     * two plants stay alone. */
+    World w;
+    make_world(&w, 16, 16);
+    Settings s = rule(4, 4, 0);
+    s.veg_sprout_rate = 0.0f;
+    s.veg_mature_age = 10;
+    s.veg_wither_chance = 1.0f;
+    s.veg_vigour_ageing = 0.5f;
+    Rng r;
+    rng_seed(&r, 20);
+    int fast = world_idx(&w, 3, 3), slow = world_idx(&w, 11, 11);
+    w.veg[fast] = 1;
+    w.veg[slow] = 1;
+    w.veg_rule[fast] = veg_rule_pack(1, 4, 7);
+    w.veg_rule[slow] = veg_rule_pack(4, 4, 0);
+    for (int step = 0; step < 5; step++) {
+        flora_step(&w, &r, &s);
+    }
+    CHECK(w.veg_wither[fast] == 1); /* started at age 5 */
+    CHECK(w.veg_wither[slow] == 0);
+    for (int step = 0; step < 5; step++) {
+        flora_step(&w, &r, &s);
+    }
+    CHECK(w.veg_wither[slow] == 1); /* started at age 10 */
+
+    /* With the cost off, both mature at 10. */
+    world_free(&w);
+    make_world(&w, 16, 16);
+    s.veg_vigour_ageing = 0.0f;
+    w.veg[fast] = 1;
+    w.veg_rule[fast] = veg_rule_pack(1, 4, 7);
+    for (int step = 0; step < 9; step++) {
+        flora_step(&w, &r, &s);
+    }
+    CHECK(w.veg_wither[fast] == 0);
+    flora_step(&w, &r, &s);
+    CHECK(w.veg_wither[fast] == 1);
+    world_free(&w);
+}
+
 static void test_carrion_merges(void)
 {
     World w;
@@ -779,6 +842,8 @@ int main(void)
     test_mutation_flips_one_bit();
     test_lone_sprouts_get_random_rules();
     test_plant_reads_its_own_rule();
+    test_rule_vigour();
+    test_vigorous_plants_die_young();
     test_carrion_merges();
     test_carrion_rots_into_soil();
     test_carrion_disappears();

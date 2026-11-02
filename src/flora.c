@@ -162,6 +162,17 @@ static uint8_t next_density(uint8_t density, uint8_t rule, int n, int mass,
     return (uint8_t)(density - 1); /* density >= 1 here, so no wrap */
 }
 
+/* The age from which a plant with this rule may start withering:
+ * veg_mature_age, shortened for vigorous rules by veg_vigour_ageing,
+ * never below 1. The float result is converted back to int, dropping the
+ * fraction; it lies between 0 and veg_mature_age, so it fits. */
+static int mature_age(uint8_t rule, const Settings *s)
+{
+    float scale = 1.0f - s->veg_vigour_ageing * veg_rule_vigour(rule);
+    int age = (int)((float)s->veg_mature_age * scale);
+    return age < 1 ? 1 : age;
+}
+
 /* veg_wither is a uint8_t, so withering can last at most 255 ticks; a
  * larger setting would make the counter wrap back to 0 ("healthy"). */
 static int wither_limit(const Settings *s)
@@ -308,7 +319,7 @@ void flora_step(World *w, Rng *r, const Settings *s)
                 if (w->veg_age[i] < UINT16_MAX) {
                     w->veg_age[i]++;
                 }
-                if (w->veg_age[i] >= s->veg_mature_age &&
+                if (w->veg_age[i] >= mature_age(w->veg_rule[i], s) &&
                     draw < s->veg_wither_chance) {
                     w->veg_wither[i] = 1;
                     w->veg_next[i] = w->veg[i];

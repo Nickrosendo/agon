@@ -170,6 +170,9 @@ static void test_bite(void)
     CHECK(pool_init(&p, 1));
     int i = spawn(&p, &w, 3, 3);
     p.items[i].energy = 10.0f;
+    /* Every plant gives the full bite_veg_energy, whatever its rule;
+     * test_vigorous_plants_feed_less covers the food cost. */
+    s.veg_vigour_food = 0.0f;
     w.veg[world_idx(&w, 3, 2)] = 3; /* ahead, to the north */
     creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
     CHECK(w.veg[world_idx(&w, 3, 2)] == 2);
@@ -233,6 +236,9 @@ static void test_plant_eater_cap(void)
     World w;
     make_world(&w, 8, 8);
     Settings s = settings_default();
+    /* Plant-eaters told by their genes; test_cap_by_level covers the
+     * count by food-chain level. */
+    s.cap_by_level = 0;
     Rng r;
     rng_seed(&r, 1);
     Pool p;
@@ -241,7 +247,7 @@ static void test_plant_eater_cap(void)
     int b = spawn(&p, &w, 5, 5);
     p.items[a].energy = 100.0f;
     p.items[b].energy = 100.0f;
-    pool_count_plant_eaters(&p);
+    pool_count_plant_eaters(&p, &s);
     CHECK(p.plant_eaters == 2);
 
     /* Two alive and a cap of 2: no split. */
@@ -264,6 +270,89 @@ static void test_plant_eater_cap(void)
     s.max_plant_eaters = 0;
     p.items[a].energy = 100.0f;
     CHECK(creature_act(&w, &p, a, (Action){ACT_SPLIT, 1}, &s, &r) >= 0);
+    pool_free(&p);
+    world_free(&w);
+}
+
+static void test_vigorous_plants_feed_less(void)
+{
+    /* veg_vigour_food 0.5: a bite of the most aggressive rule (vigour 1)
+     * gives half of bite_veg_energy, one of the most modest (vigour 0)
+     * all of it. */
+    World w;
+    make_world(&w, 8, 8);
+    Settings s = settings_default();
+    s.veg_vigour_food = 0.5f;
+    Rng r;
+    rng_seed(&r, 1);
+    Pool p;
+    CHECK(pool_init(&p, 1));
+    int i = spawn(&p, &w, 3, 3);
+    int ahead = world_idx(&w, 3, 2);
+
+    p.items[i].energy = 10.0f;
+    w.veg[ahead] = 1;
+    w.veg_rule[ahead] = veg_rule_pack(1, 4, 7);
+    creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
+    CHECK(fabsf(p.items[i].energy - (10.0f + 0.5f * s.bite_veg_energy)) <
+          1e-5f);
+
+    p.items[i].energy = 10.0f;
+    w.veg[ahead] = 1;
+    w.veg_rule[ahead] = veg_rule_pack(4, 4, 0);
+    creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
+    CHECK(fabsf(p.items[i].energy - (10.0f + s.bite_veg_energy)) < 1e-5f);
+
+    /* Given the choice, a bite takes the more nourishing plant. */
+    int behind = world_idx(&w, 3, 4);
+    w.veg[ahead] = 1;
+    w.veg_rule[ahead] = veg_rule_pack(1, 4, 7);
+    w.veg[behind] = 1;
+    w.veg_rule[behind] = veg_rule_pack(4, 4, 0);
+    creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
+    CHECK(w.veg[behind] == 0 && w.veg[ahead] == 1);
+    pool_free(&p);
+    world_free(&w);
+}
+
+static void test_cap_by_level(void)
+{
+    /* Two creatures that live on plants (level 2), one with hunter
+     * genes. By genes only one counts as a plant-eater; by level both
+     * do. A third with plant genes that has eaten meat (level 3) counts
+     * by genes but not by level. */
+    World w;
+    make_world(&w, 12, 12);
+    Settings s = settings_default();
+    Pool p;
+    CHECK(pool_init(&p, 8));
+    int grazer = spawn(&p, &w, 1, 1);
+    int grazing_hunter = spawn(&p, &w, 5, 5);
+    int meat_grazer = spawn(&p, &w, 9, 9);
+    make_hunter(&p.items[grazing_hunter]);
+    p.items[grazer].level = 2.0f;
+    p.items[grazing_hunter].level = 2.0f;
+    p.items[meat_grazer].level = 3.0f;
+
+    s.cap_by_level = 0;
+    pool_count_plant_eaters(&p, &s);
+    CHECK(p.plant_eaters == 2); /* grazer and meat_grazer */
+    CHECK(creature_counts_as_plant_eater(&p.items[meat_grazer], &s));
+    CHECK(!creature_counts_as_plant_eater(&p.items[grazing_hunter], &s));
+
+    s.cap_by_level = 1;
+    pool_count_plant_eaters(&p, &s);
+    CHECK(p.plant_eaters == 2); /* grazer and grazing_hunter */
+    CHECK(!creature_counts_as_plant_eater(&p.items[meat_grazer], &s));
+    CHECK(creature_counts_as_plant_eater(&p.items[grazing_hunter], &s));
+
+    /* By level, the grazing hunter is capped like any plant-eater. */
+    Rng r;
+    rng_seed(&r, 2);
+    s.max_plant_eaters = 2;
+    p.items[grazing_hunter].energy = 100.0f;
+    CHECK(creature_act(&w, &p, grazing_hunter, (Action){ACT_SPLIT, 1}, &s,
+                       &r) == -1);
     pool_free(&p);
     world_free(&w);
 }
@@ -882,6 +971,8 @@ int main(void)
     test_bite();
     test_split();
     test_plant_eater_cap();
+    test_vigorous_plants_feed_less();
+    test_cap_by_level();
     test_split_needs_room();
     test_sense();
     test_level();
