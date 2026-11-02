@@ -78,7 +78,23 @@ run-slow-tests: $(SLOW_BIN)
 	for t in $(SLOW_BIN); do ./$$t || failed=1; done; \
 	exit $$failed
 
+# Where make install puts things: PREFIX is the usual setting, and DESTDIR
+# (empty unless a packager sets it) goes in front of it, to build a package
+# without touching the real system.
+PREFIX ?= /usr/local
+
+install: release
+	install -d $(DESTDIR)$(PREFIX)/bin $(DESTDIR)$(PREFIX)/share/doc/agon
+	install -m 755 build/release/agon $(DESTDIR)$(PREFIX)/bin/agon
+	install -m 644 agon.conf.example $(DESTDIR)$(PREFIX)/share/doc/agon/
+
+uninstall:
+	rm -f $(DESTDIR)$(PREFIX)/bin/agon
+	rm -f $(DESTDIR)$(PREFIX)/share/doc/agon/agon.conf.example
+	-rmdir $(DESTDIR)$(PREFIX)/share/doc/agon
+
 clean:
 	rm -rf build
 
-.PHONY: all release test run-tests test-slow run-slow-tests clean
+.PHONY: all release test run-tests test-slow run-slow-tests install uninstall \
+	clean

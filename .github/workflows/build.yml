@@ -1,0 +1,24 @@
+name: build
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        cc: [gcc, clang]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install clang
+        if: matrix.cc == 'clang'
+        run: sudo apt-get update && sudo apt-get install -y clang
+      - name: Tests, with every warning an error and the memory checkers on
+        run: make test CC=${{ matrix.cc }}
+      - name: Optimised build
+        run: make release CC=${{ matrix.cc }}
+      - name: The program runs
+        run: ./build/release/agon --once --seed 1 --ticks 200 --save world.save && ./build/release/agon --once --load world.save --ticks 0
