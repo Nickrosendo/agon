@@ -8,6 +8,8 @@ with inherited neural-network brains graze, hunt, scavenge, reproduce and die.
 Food chains, population swings and families of related creatures are not
 programmed in; they emerge.
 
+![A new world, seed 3, at 120 ticks per second: plants spread and coloured families of creatures take over the soil, while the panel tracks the population.](docs/agon.gif)
+
 Written in C11 with no dependencies beyond the C standard library and POSIX.
 Leave it running in a terminal, or have it print one snapshot of a world and
 exit.

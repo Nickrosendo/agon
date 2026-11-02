@@ -26,7 +26,7 @@ static const int SPEEDS[] = {1, 2, 5, 10, 15, 30, 60, 120};
 #define SPEED_COUNT ((int)(sizeof(SPEEDS) / sizeof(SPEEDS[0])))
 #define DEFAULT_SPEED 3 /* 10 ticks per second */
 
-#define AGON_VERSION "0.1.0-dev"
+#define AGON_VERSION "0.1.0"
 
 /* How long a message stays on the title line: two seconds. */
 #define NOTICE_FRAMES (2 * FRAMES_PER_SECOND)
