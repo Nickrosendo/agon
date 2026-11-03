@@ -24,9 +24,10 @@
  * of splitting: six more senses and so 36 more genes, a crossing's draws, and
  * the wish to mate hashed; then limits off: no floor, no age limit, no plant
  * cap, no plants from nothing, and founders by share of the soil; then
- * starting plants with mixed ages and a rule that can sprout from one plant.
+ * starting plants with mixed ages and a rule that can sprout from one plant;
+ * then the mating season: one more sense, so 6 more genes, and more mating.
  */
-#define SEED_7_AFTER_500 0x1e56f73e65b50cdbULL
+#define SEED_7_AFTER_500 0x6d7cd6d20691fa17ULL
 
 static void test_same_seed_same_checksum(void)
 {
@@ -228,6 +229,41 @@ static void test_plants_alone_survive(void)
     }
 }
 
+static void test_season_calendar(void)
+{
+    Settings set = settings_default();
+    set.season_every = 100;
+    set.season_ticks = 25;
+    CHECK(sim_in_season(0, &set));
+    CHECK(sim_in_season(24, &set));
+    CHECK(!sim_in_season(25, &set));
+    CHECK(!sim_in_season(99, &set));
+    CHECK(sim_in_season(100, &set));
+    CHECK(sim_in_season(100000000000ULL, &set));
+    set.season_ticks = 0; /* no season at all */
+    CHECK(!sim_in_season(0, &set));
+    set.season_every = 10; /* longer than a cycle: always */
+    set.season_ticks = 10;
+    CHECK(sim_in_season(7, &set));
+}
+
+/* The Sim keeps the pool's flag to the calendar, and a saved world's future
+ * does not depend on it being saved: it comes from the tick. */
+static void test_sim_follows_the_season(void)
+{
+    Settings set = settings_default();
+    set.season_every = 10;
+    set.season_ticks = 3;
+    Sim s;
+    CHECK(sim_init(&s, &set, 4, 64, 32));
+    for (int t = 0; t < 40; t++) {
+        bool expected = sim_in_season(s.tick, &s.set);
+        sim_step(&s);
+        CHECK(s.pool.in_season == expected);
+    }
+    sim_free(&s);
+}
+
 int main(void)
 {
     test_same_seed_same_checksum();
@@ -238,5 +274,7 @@ int main(void)
     test_empty_world_steps_safely();
     test_founders_scale_with_soil();
     test_plants_alone_survive();
+    test_season_calendar();
+    test_sim_follows_the_season();
     TEST_SUMMARY();
 }

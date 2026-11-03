@@ -205,6 +205,13 @@ static void take_turn(Sim *s, int idx)
     }
 }
 
+bool sim_in_season(uint64_t tick, const Settings *set)
+{
+    /* Both settings are at least 0 and 1 by the table's check, so the casts
+     * cannot turn a negative into a huge number, and % never divides by 0. */
+    return tick % (uint64_t)set->season_every < (uint64_t)set->season_ticks;
+}
+
 /* Every creature alive at the start of the tick acts once, in an order
  * shuffled anew each tick, so no slot is always first to the food. */
 static void creatures_act(Sim *s)
@@ -218,6 +225,7 @@ static void creatures_act(Sim *s)
     }
     shuffle(s->turns, n, &s->rng);
     pool_count_plant_eaters(&s->pool, &s->set);
+    s->pool.in_season = sim_in_season(s->tick, &s->set);
     for (int k = 0; k < n; k++) {
         const Creature *c = &s->pool.items[s->turns[k].idx];
         /* Children born this tick are not in the list. A slot that holds

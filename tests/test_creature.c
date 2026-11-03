@@ -451,6 +451,105 @@ static void test_senses_ready_and_alike(void)
     world_free(&w);
 }
 
+/* In season a fed adult is willing with no choice made: whatever it does, it
+ * wishes, and two such neighbours have a child. */
+static void test_season_drives_fed_adults(void)
+{
+    World w;
+    Pool p;
+    int a, b;
+    Settings s = settings_default();
+    Rng r;
+    rng_seed(&r, 8);
+    adult_pair(&w, &p, &a, &b, &s, &r);
+    p.in_season = true;
+    Action rest = {ACT_REST, 1};
+    CHECK(creature_act(&w, &p, a, rest, &s, &r) == -1);
+    CHECK(p.items[a].mate_wish == s.mate_window);
+    int child = creature_act(&w, &p, b, rest, &s, &r);
+    CHECK(child >= 0);
+    CHECK(p.count == 3);
+    pool_free(&p);
+    world_free(&w);
+
+    /* The season does not excuse being young or hungry. */
+    adult_pair(&w, &p, &a, &b, &s, &r);
+    p.in_season = true;
+    p.items[a].age = (uint32_t)s.mate_age - 1;
+    p.items[b].energy = s.mate_threshold / 2.0f;
+    CHECK(creature_act(&w, &p, a, rest, &s, &r) == -1);
+    CHECK(creature_act(&w, &p, b, rest, &s, &r) == -1);
+    CHECK(p.items[a].mate_wish == 0 && p.items[b].mate_wish == 0);
+    CHECK(p.count == 2);
+    pool_free(&p);
+    world_free(&w);
+}
+
+/* A willing creature still does what its brain said: a season must not stop
+ * anyone eating or walking towards a mate. */
+static void test_season_leaves_the_action(void)
+{
+    World w;
+    Pool p;
+    int a, b;
+    Settings s = settings_default();
+    Rng r;
+    rng_seed(&r, 9);
+    adult_pair(&w, &p, &a, &b, &s, &r);
+    p.in_season = true;
+    p.items[b].energy = 1.0f; /* the neighbour is no partner */
+    p.items[a].heading = HEADING_NORTH;
+    p.items[a].move_points = 1.0f;
+    CHECK(creature_act(&w, &p, a, (Action){ACT_MOVE, 1}, &s, &r) == -1);
+    CHECK(p.items[a].y == 2);
+    CHECK(p.items[a].mate_wish == s.mate_window);
+    pool_free(&p);
+    world_free(&w);
+}
+
+/* Out of season nothing is automatic: resting never starts a wish, and a child
+ * still needs both to choose. */
+static void test_out_of_season_needs_a_choice(void)
+{
+    World w;
+    Pool p;
+    int a, b;
+    Settings s = settings_default();
+    Rng r;
+    rng_seed(&r, 10);
+    adult_pair(&w, &p, &a, &b, &s, &r);
+    p.in_season = false;
+    Action rest = {ACT_REST, 1};
+    Action mate = {ACT_MATE, 1};
+    CHECK(creature_act(&w, &p, a, rest, &s, &r) == -1);
+    CHECK(creature_act(&w, &p, b, rest, &s, &r) == -1);
+    CHECK(p.items[a].mate_wish == 0 && p.items[b].mate_wish == 0);
+    CHECK(creature_act(&w, &p, a, mate, &s, &r) == -1);
+    CHECK(creature_act(&w, &p, b, mate, &s, &r) >= 0);
+    pool_free(&p);
+    world_free(&w);
+}
+
+static void test_senses_season(void)
+{
+    World w;
+    Pool p;
+    int a, b;
+    Settings s = settings_default();
+    Rng r;
+    rng_seed(&r, 11);
+    adult_pair(&w, &p, &a, &b, &s, &r);
+    Senses in;
+    p.in_season = false;
+    creature_sense(&w, &p, a, &s, &in);
+    CHECK(in.v[SENSE_SEASON] == 0.0f);
+    p.in_season = true;
+    creature_sense(&w, &p, a, &s, &in);
+    CHECK(in.v[SENSE_SEASON] == 1.0f);
+    pool_free(&p);
+    world_free(&w);
+}
+
 static void test_plant_eater_cap(void)
 {
     World w;
@@ -1086,6 +1185,10 @@ int main(void)
     test_mate_no_room();
     test_pool_full_counts_refused();
     test_senses_ready_and_alike();
+    test_season_drives_fed_adults();
+    test_season_leaves_the_action();
+    test_out_of_season_needs_a_choice();
+    test_senses_season();
     test_plant_eater_cap();
     test_vigorous_plants_feed_less();
     test_cap_by_level();

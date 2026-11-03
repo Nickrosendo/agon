@@ -43,7 +43,7 @@ typedef struct {
     float level;
     float eaten;
     /* Stored inside the creature, not behind a pointer: GENOME_LEN floats
-     * (744 bytes) in every slot, allocated with the pool and never freed
+     * (912 bytes) in every slot, allocated with the pool and never freed
      * on its own. */
     Genome genome;
 } Creature;
@@ -81,6 +81,10 @@ typedef struct {
      * a safety limit and not a rule of the world, so this should stay 0: it
      * is counted so that reaching the limit is never quiet. */
     uint32_t births_refused;
+    /* Whether this tick is in the mating season. Worked out from the tick by
+     * the Sim before anyone acts, so it is neither saved nor hashed: the tick
+     * is both. */
+    bool in_season;
 } Pool;
 
 /* Allocates capacity empty slots. False for a capacity below 1 or when
@@ -109,8 +113,8 @@ int pool_spawn(Pool *p, World *w, int x, int y);
  * frees the slot. Does nothing to a slot that is already free. */
 void pool_kill(Pool *p, World *w, int idx, const Settings *s);
 
-/* Fills *out with what creature idx senses: its energy, age, size and
- * meat digestion gene; and along each of its three rays (ahead, left,
+/* Fills *out with what creature idx senses: its energy, age, size, meat
+ * digestion gene and whether it is the mating season; and along each of its three rays (ahead, left,
  * right) the vegetation and the scent of carrion in the first cell, and
  * the nearest creature within sight: its closeness, its size relative to
  * the viewer, its kinship, whether it is a hunter, whether it wishes to mate
@@ -136,7 +140,11 @@ BiteChoice creature_bite_choice(const World *w, const Pool *p, int idx,
  * starts wishing to mate for mate_window ticks. If an adult beside it is
  * wishing too, and a cell beside either is free soil, a child is born there:
  * each parent gives mate_share of its energy, and the child's genome is
- * genome_cross of the two. */
+ * genome_cross of the two.
+ *
+ * In the mating season (p->in_season) every adult tries this first, whatever
+ * its action: a birth takes up its tick; otherwise it goes on to act as usual.
+ * Out of season only ACT_MATE tries. */
 int creature_act(World *w, Pool *p, int idx, Action a, const Settings *s,
                  Rng *r);
 /* Charges one tick of upkeep and ages the creature by one tick. Returns

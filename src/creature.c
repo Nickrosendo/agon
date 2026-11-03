@@ -253,6 +253,7 @@ void creature_sense(const World *w, const Pool *p, int idx,
     out->v[SENSE_AGE] = age / (age + s->sense_age_half);
     out->v[SENSE_SIZE] = c->genome.g[GENE_SIZE];
     out->v[SENSE_DIET] = c->genome.g[GENE_MEAT]; /* how much a hunter */
+    out->v[SENSE_SEASON] = p->in_season ? 1.0f : 0.0f;
 
     /* The directions of the three rays, in RAY_ order. */
     const uint8_t ray_heading[RAY_COUNT] = {
@@ -577,6 +578,14 @@ int creature_act(World *w, Pool *p, int idx, Action a, const Settings *s,
     c->move_points += creature_speed(c, s);
     if (c->move_points > 1.0f) {
         c->move_points = 1.0f;
+    }
+    /* The season's drive: no choice needed. ACT_MATE below would only try a
+     * second time in one tick, so it is left to the switch. */
+    if (p->in_season && a.kind != ACT_MATE) {
+        int child = act_mate(w, p, idx, s, r);
+        if (child >= 0) {
+            return child;
+        }
     }
     switch (a.kind) {
     case ACT_TURN_LEFT:

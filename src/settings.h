@@ -102,6 +102,13 @@ typedef struct {
     float mate_share;        /* 0..1 */
     int mate_window;         /* ticks a wish to mate lasts */
     int mate_age;            /* ticks before a creature can mate */
+    /* The mating season: for the first season_ticks of every season_every
+     * ticks, every fed adult is willing with no choice made. Outside it, a
+     * child still needs both parents' brains to choose ACT_MATE. Random brains
+     * almost never do, so a world with no season stops breeding: see the
+     * tables in the plan. season_ticks 0: no season. */
+    int season_every;
+    int season_ticks;
     float sense_age_half;    /* the age sensed as 0.5 */
     /* A fixed death age: a creature dies on reaching max_age ticks, whatever
      * its energy. 0, the default, means no such age. Kept so that runs with

@@ -61,6 +61,8 @@ Settings settings_default(void)
         .mate_share = 0.5f,
         .mate_window = 5,
         .mate_age = 50,
+        .season_every = 100,
+        .season_ticks = 25,
         .sense_age_half = 200.0f,
         .max_age = 0,
         .max_plant_eaters = 0,
@@ -171,6 +173,8 @@ static const SettingInfo TABLE[] = {
     FLOAT_ROW(mate_share, 0, 1, "share of its energy each parent gives"),
     INT_ROW(mate_window, 1, 65535, "ticks a wish to mate lasts"),
     INT_ROW(mate_age, 0, INT_MAX, "ticks before a creature can mate"),
+    INT_ROW(season_every, 1, INT_MAX, "ticks from one mating season to the next"),
+    INT_ROW(season_ticks, 0, INT_MAX, "ticks a mating season lasts (0: none)"),
     FLOAT_ROW(sense_age_half, 1, BIG, "the age sensed as 0.5"),
     INT_ROW(max_age, 0, INT_MAX, "a fixed death age, in ticks (0: none)"),
     INT_ROW(max_plant_eaters, 0, POOL_MAX, "plant-eaters cannot mate above "

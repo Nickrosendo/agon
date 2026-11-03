@@ -60,6 +60,9 @@ bool sim_resume(Sim *s);
  * fails, and the Sim must then be freed. */
 bool sim_reseed(Sim *s, uint64_t seed);
 void sim_step(Sim *s);
+/* Whether a tick falls in the mating season. Pure arithmetic on the tick, so
+ * the drawing side can ask too without touching the world. */
+bool sim_in_season(uint64_t tick, const Settings *set);
 void sim_free(Sim *s);
 /* A fingerprint of the whole state: equal for equal states, and almost
  * certainly different otherwise. */

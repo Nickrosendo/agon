@@ -98,6 +98,12 @@ mate_window = 5
 # ticks before a creature can mate (0 to 2147483647)
 mate_age = 50
 
+# ticks from one mating season to the next (1 to 2147483647)
+season_every = 100
+
+# ticks a mating season lasts (0: none) (0 to 2147483647)
+season_ticks = 25
+
 # the age sensed as 0.5 (1 to 1e+06)
 sense_age_half = 200
 

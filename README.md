@@ -172,7 +172,9 @@ for the build that wrote them; a build with a different format refuses them.
 7. Two grown creatures side by side that both choose to mate have a child, and
    each pays for it with energy. Each part of its genome comes from one parent
    or the other, with small changes. No fitness function exists: what lives
-   long enough to have children spreads.
+   long enough to have children spreads. During the mating season, a quarter of
+   each year, every fed adult is willing without choosing to be; outside it, both
+   must choose, which is rarer.
 8. Hunters attack plant-eaters, and bigger attackers hit more often. Kills
    become carrion, which rots away and sends out a scent.
 9. A creature's food-chain level is measured from what it actually eats: a
