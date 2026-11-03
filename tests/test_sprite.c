@@ -138,7 +138,7 @@ static void test_walk_frames_differ(void)
     CHECK(memcmp(&m[FRAME_WALK1], &m[FRAME_WALK3], sizeof(m[0])) != 0);
     CHECK(memcmp(&m[FRAME_REST0], &m[FRAME_REST1], sizeof(m[0])) != 0);
     CHECK(memcmp(&m[FRAME_REST0], &m[FRAME_BITE], sizeof(m[0])) != 0);
-    CHECK(memcmp(&m[FRAME_REST0], &m[FRAME_SPLIT], sizeof(m[0])) != 0);
+    CHECK(memcmp(&m[FRAME_REST0], &m[FRAME_MATE], sizeof(m[0])) != 0);
 }
 
 static void test_every_frame_stays_in_tile(void)

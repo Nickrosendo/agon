@@ -18,8 +18,9 @@ enum { RAY_AHEAD, RAY_LEFT, RAY_RIGHT, RAY_COUNT };
 /* What each ray reports: the vegetation and the scent of carrion in the
  * first cell, the closeness of the nearest creature (1 next to the
  * viewer, falling with distance, 0 for none in sight), that creature's
- * size relative to the viewer's, its kinship, and whether it is a hunter
- * (1) or not (0). */
+ * size relative to the viewer's, its kinship, whether it is a hunter
+ * (1) or not (0), whether it wishes to mate right now (1) or not (0), and
+ * how alike its body looks (genome_body_likeness). */
 enum {
     RAY_VEG,
     RAY_CARRION,
@@ -27,13 +28,15 @@ enum {
     RAY_RELSIZE,
     RAY_KIN,
     RAY_HUNTER,
+    RAY_READY,
+    RAY_ALIKE,
     RAY_VALUES
 };
 
 /* The senses, as positions in Senses.v. After the four single values come
  * the rays: ray k's value j is at SENSE_RAYS + k * RAY_VALUES + j. The
  * neural network of lesson 6 has one input per sense, so its NET_IN must
- * equal SENSE_COUNT (22). */
+ * equal SENSE_COUNT (28). */
 enum {
     SENSE_ENERGY,
     SENSE_AGE,
@@ -49,7 +52,7 @@ enum {
     ACT_TURN_RIGHT,
     ACT_MOVE,
     ACT_BITE, /* eat the best food around, or hunt (creature.c) */
-    ACT_SPLIT,
+    ACT_MATE, /* wish to mate, with anyone beside it who wishes too */
     ACT_COUNT
 };
 

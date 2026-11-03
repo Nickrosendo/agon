@@ -2,8 +2,8 @@
  * genome: everything a creature inherits, as one flat array of floats.
  * The first GENE_TRAITS values are traits (size, speed, sight, plant and
  * meat digestion, hue);
- * the rest are the weights of the creature's neural network. A child gets
- * a copy of its parent's genome with small random changes.
+ * the rest are the weights of the creature's neural network. A child takes
+ * each part from one of its two parents, with small random changes.
  */
 #ifndef AGON_GENOME_H
 #define AGON_GENOME_H
@@ -29,7 +29,7 @@ enum {
  * values, which plus a constant 1 feed NET_OUT outputs, one per action.
  * NET_IN must equal SENSE_COUNT and NET_OUT ACT_COUNT (brain.h); brain_net.c
  * checks both when it is compiled. */
-#define NET_IN 22
+#define NET_IN 28
 #define NET_HIDDEN 6
 #define NET_OUT 6
 /* The parentheses matter: a macro is pasted as text, and without them
@@ -51,15 +51,23 @@ typedef struct Genome {
 /* Random traits in 0..1 and random weights, normally spread with spread
  * weight_start_spread and clamped to plus or minus weight_limit. */
 void genome_random(Genome *g, Rng *r, const Settings *s);
-/* Writes into *child a copy of *parent in which each value, with
- * probability mutation_rate, moved by a normal step of mutation_spread
- * times the value's range. Traits are clamped to 0..1, hue wraps round,
- * weights are clamped to plus or minus weight_limit. */
-void genome_copy_mutated(Genome *child, const Genome *parent, Rng *r,
-                         const Settings *s);
+/* Writes into *child a mix of two parents. Each trait comes whole from one
+ * of them; so does each hidden value, with every weight into it and out of
+ * it, because a hidden value only means something together with its own
+ * weights, and mixing single weights tends to break both networks; and each
+ * output's bias. Then each value, with probability mutation_rate, moves by a
+ * normal step of mutation_spread times the value's range. Traits are clamped
+ * to 0..1, hue wraps round, weights are clamped to plus or minus
+ * weight_limit. Crossing a genome with itself gives a mutated copy. */
+void genome_cross(Genome *child, const Genome *a, const Genome *b, Rng *r,
+                  const Settings *s);
 /* How related two genomes look: the share of values that nearly match,
  * from 1 (identical) down towards 0. The same either way round. */
 float genome_kinship(const Genome *a, const Genome *b);
+/* How alike two bodies look: 1 for identical traits, falling to 0 for opposite
+ * ones. Only the traits count, never the network weights. Hue is a distance
+ * round the colour wheel. The same either way round. */
+float genome_body_likeness(const Genome *a, const Genome *b);
 
 /* Where a weight sits in Genome.g. From input i (NET_IN for the constant
  * 1, the bias) into hidden value h; from hidden value j (NET_HIDDEN for

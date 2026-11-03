@@ -20,9 +20,11 @@
  * rules (less food, earlier withering) and the plant-eater cap counted
  * by food-chain level, all three on by default; then slower, sparser,
  * more nourishing plants (sprout rate, capacity, bite energy); then
- * carrion no longer feeding the soil by default.
+ * carrion no longer feeding the soil by default; then two parents in place
+ * of splitting: six more senses and so 36 more genes, a crossing's draws, and
+ * the wish to mate hashed.
  */
-#define SEED_7_AFTER_500 0x5d2acadc4d55dbc1ULL
+#define SEED_7_AFTER_500 0xca624a2b6fad321eULL
 
 static void test_same_seed_same_checksum(void)
 {

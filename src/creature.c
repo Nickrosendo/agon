@@ -43,6 +43,7 @@ void pool_clear(Pool *p)
     p->count = 0;
     p->next_id = 0;
     p->plant_eaters = 0;
+    p->births_refused = 0;
 }
 
 void pool_count_plant_eaters(Pool *p, const Settings *s)
@@ -169,10 +170,10 @@ float creature_upkeep_cost(const Creature *c, const Settings *s)
            s->digest_upkeep * digest * digest;
 }
 
-/* The energy at which this creature may split: bigger bodies need more. */
-static float split_needs(const Creature *c, const Settings *s)
+/* The energy at which this creature may mate: bigger bodies need more. */
+static float mate_needs(const Creature *c, const Settings *s)
 {
-    return s->split_threshold * creature_size(c, s);
+    return s->mate_threshold * creature_size(c, s);
 }
 
 float attack_chance(float a, float t, float k)
@@ -204,7 +205,8 @@ void creature_ate(Creature *c, float energy, float source_level)
 /* What one ray senses, written into its RAY_VALUES slots of out. The
  * first cell gives the vegetation and the scent of carrion. Then the ray
  * walks up to sight cells, stopping at rock, and reports the nearest
- * creature: its closeness, relative size, kinship and whether it hunts. */
+ * creature: its closeness, relative size, kinship, whether it hunts, whether
+ * it wishes to mate and how alike it looks. */
 static void sense_ray(const World *w, const Pool *p, const Creature *c,
                       uint8_t heading, const Settings *s, float *out)
 {
@@ -231,6 +233,8 @@ static void sense_ray(const World *w, const Pool *p, const Creature *c,
             out[RAY_KIN] = genome_kinship(&c->genome, &seen->genome);
             /* A bool converted to float is exactly 0.0f or 1.0f. */
             out[RAY_HUNTER] = (float)creature_is_hunter(seen);
+            out[RAY_READY] = seen->mate_wish > 0 ? 1.0f : 0.0f;
+            out[RAY_ALIKE] = genome_body_likeness(&c->genome, &seen->genome);
             return;
         }
     }
@@ -242,7 +246,7 @@ void creature_sense(const World *w, const Pool *p, int idx,
     const Creature *c = &p->items[idx];
     /* Every sense starts at 0, including those not filled in yet. */
     *out = (Senses){0};
-    out->v[SENSE_ENERGY] = clamp01(c->energy / split_needs(c, s));
+    out->v[SENSE_ENERGY] = clamp01(c->energy / mate_needs(c, s));
     /* age / (age + half) rises from 0 towards 1 and is 0.5 at half: no
      * upper limit on age is needed. */
     float age = (float)c->age;
@@ -293,30 +297,6 @@ static void attack(Creature *c, Creature *target, const Settings *s, Rng *r)
                                  s->attack_steepness);
     if (rng_unit(r) < chance) {
         target->energy -= s->bite_damage * a;
-    }
-}
-
-/* Pack defence (see Settings): after a hunter attacks victim, the
- * victim's kin among the plant-eaters around the hunter strike back, in
- * clockwise order from north. A defender already at 0 energy is dying and
- * does not join; once the hunter is at 0 the rest need not. */
-static void pack_defend(World *w, Pool *p, int hunter, int victim,
-                        const Settings *s, Rng *r)
-{
-    Creature *h = &p->items[hunter];
-    const Creature *v = &p->items[victim];
-    for (int k = 0; k < 8 && h->energy > 0.0f; k++) {
-        int cell = world_idx(w, h->x + AROUND_X[k], h->y + AROUND_Y[k]);
-        int other = w->occupant[cell];
-        if (other < 0 || other == victim) {
-            continue;
-        }
-        Creature *d = &p->items[other];
-        if (creature_is_hunter(d) || d->energy <= 0.0f ||
-            genome_kinship(&d->genome, &v->genome) < s->pack_kinship) {
-            continue;
-        }
-        attack(d, h, s, r);
     }
 }
 
@@ -398,8 +378,7 @@ bool creature_counts_as_plant_eater(const Creature *c, const Settings *s)
  *
  * A hunter (meat gene above plant gene) with no carrion on any of the
  * eight cells attacks instead: the neighbouring plant-eater it is most
- * likely to hit. Plant-eaters never attack, except to defend their kin
- * (pack_defend). */
+ * likely to hit. Plant-eaters never attack. */
 BiteChoice creature_bite_choice(const World *w, const Pool *p, int idx,
                                 const Settings *s)
 {
@@ -471,9 +450,6 @@ static void act_bite(World *w, Pool *p, int idx, const Settings *s, Rng *r)
     switch (choice.kind) {
     case BITE_ATTACK:
         attack(c, &p->items[choice.prey], s, r);
-        if (s->pack_defence) {
-            pack_defend(w, p, idx, choice.prey, s, r);
-        }
         break;
     case BITE_CARRION:
         eat_carrion(w, c, choice.cell, s);
@@ -486,48 +462,110 @@ static void act_bite(World *w, Pool *p, int idx, const Settings *s, Rng *r)
     }
 }
 
-/* Splits into two when energy allows and a neighbouring cell is free.
- * The search starts at a random neighbour, so children do not always
- * appear on the same side. */
-static int act_split(World *w, Pool *p, int idx, const Settings *s, Rng *r)
+/* Grown up and fed enough to have a child. mate_age is an int checked to be
+ * 0 or more when settings load, so the cast cannot make a huge number of it.
+ * The check for energy above 0 is for a mate_threshold of 0: a creature an
+ * attack has just taken to 0 is dying, and must not become a parent. */
+static bool can_mate(const Creature *c, const Settings *s)
 {
-    Creature *parent = &p->items[idx];
-    if (parent->energy < split_needs(parent, s)) {
-        return -1;
-    }
-    if (s->max_plant_eaters > 0 &&
-        creature_counts_as_plant_eater(parent, s) &&
-        p->plant_eaters >= s->max_plant_eaters) {
-        return -1; /* too many plant-eaters already */
-    }
+    return c->age >= (uint32_t)s->mate_age && c->energy > 0.0f &&
+           c->energy >= mate_needs(c, s);
+}
+
+/* The slot of a neighbour that wishes to mate and still can, looking round
+ * from a random start so that no side is favoured; -1 for none. */
+static int find_partner(const World *w, const Pool *p, const Creature *c,
+                        const Settings *s, Rng *r)
+{
     int start = (int)rng_below(r, 8);
     for (int k = 0; k < 8; k++) {
         int dir = (start + k) % 8;
-        int child_idx = pool_spawn(p, w, parent->x + AROUND_X[dir],
-                                   parent->y + AROUND_Y[dir]);
-        if (child_idx < 0) {
-            continue; /* not free soil, or the pool is full */
+        int cell = world_idx(w, c->x + AROUND_X[dir], c->y + AROUND_Y[dir]);
+        int other = w->occupant[cell];
+        if (other >= 0 && p->items[other].mate_wish > 0 &&
+            can_mate(&p->items[other], s)) {
+            return other;
         }
-        /* parent is still valid here: spawning never moves the array,
-         * which was allocated once. Had items been reallocated to grow,
-         * parent would now point at freed memory. */
-        Creature *child = &p->items[child_idx];
-        float share = parent->energy * s->split_share;
-        child->energy = share;
-        parent->energy -= share;
-        child->lineage = parent->lineage;
-        child->level = parent->level; /* until its own first meal */
-        child->heading = (uint8_t)rng_below(r, HEADING_COUNT);
-        /* Pointers to the two genomes, not copies: the function writes
-         * the child's in place, reading the parent's. */
-        genome_copy_mutated(&child->genome, &parent->genome, r, s);
-        /* Read after the mutation: a child can differ from its parent. */
-        if (creature_counts_as_plant_eater(child, s)) {
-            p->plant_eaters++;
-        }
-        return child_idx;
     }
     return -1;
+}
+
+/* A free soil cell beside c, looking round from start; -1 for none. */
+static int free_cell_around(const World *w, const Creature *c, int start)
+{
+    for (int k = 0; k < 8; k++) {
+        int dir = (start + k) % 8;
+        int cell = world_idx(w, c->x + AROUND_X[dir], c->y + AROUND_Y[dir]);
+        if (w->terrain[cell] == TERRAIN_SOIL && w->occupant[cell] < 0) {
+            return cell;
+        }
+    }
+    return -1;
+}
+
+/* Fills in a newborn from its parents. Both pay here, together, so the energy
+ * is only moved: the three of them hold afterwards what the two held before.
+ * a and b stay valid across the pool_spawn before this: spawning never moves
+ * the array, which was allocated once. Had items been reallocated to grow,
+ * they would now point at freed memory. */
+static void make_child(Creature *child, Creature *a, Creature *b,
+                       const Settings *s, Rng *r)
+{
+    float from_a = a->energy * s->mate_share;
+    float from_b = b->energy * s->mate_share;
+    a->energy -= from_a;
+    b->energy -= from_b;
+    child->energy = from_a + from_b;
+    /* Each is a separate statement, so the draws have a fixed order. */
+    child->lineage = rng_below(r, 2) == 0 ? a->lineage : b->lineage;
+    child->heading = (uint8_t)rng_below(r, HEADING_COUNT);
+    child->level = (a->level + b->level) / 2.0f; /* until its first meal */
+    /* Pointers to the three genomes, not copies: the function writes the
+     * child's in place, reading its parents'. */
+    genome_cross(&child->genome, &a->genome, &b->genome, r, s);
+    a->mate_wish = 0;
+    b->mate_wish = 0;
+}
+
+/* See creature_act in creature.h. */
+static int act_mate(World *w, Pool *p, int idx, const Settings *s, Rng *r)
+{
+    Creature *a = &p->items[idx];
+    if (!can_mate(a, s)) {
+        return -1;
+    }
+    /* mate_window is at most 65535 (the settings table), so this fits. */
+    a->mate_wish = (uint16_t)s->mate_window;
+    int partner = find_partner(w, p, a, s, r);
+    if (partner < 0) {
+        return -1;
+    }
+    if (s->max_plant_eaters > 0 && creature_counts_as_plant_eater(a, s) &&
+        p->plant_eaters >= s->max_plant_eaters) {
+        return -1; /* too many plant-eaters already */
+    }
+    Creature *b = &p->items[partner];
+    int start = (int)rng_below(r, 8);
+    int cell = free_cell_around(w, a, start);
+    if (cell < 0) {
+        cell = free_cell_around(w, b, start);
+    }
+    if (cell < 0) {
+        return -1; /* no room: nobody pays, and they can try again */
+    }
+    int child_idx = pool_spawn(p, w, cell % w->w, cell / w->w);
+    if (child_idx < 0) {
+        /* The cell is free soil, so only a full pool can have said no. */
+        p->births_refused++;
+        return -1;
+    }
+    Creature *child = &p->items[child_idx];
+    make_child(child, a, b, s, r);
+    /* Read after the crossing: a child can differ from both parents. */
+    if (creature_counts_as_plant_eater(child, s)) {
+        p->plant_eaters++;
+    }
+    return child_idx;
 }
 
 int creature_act(World *w, Pool *p, int idx, Action a, const Settings *s,
@@ -553,8 +591,8 @@ int creature_act(World *w, Pool *p, int idx, Action a, const Settings *s,
     case ACT_BITE:
         act_bite(w, p, idx, s, r);
         break;
-    case ACT_SPLIT:
-        return act_split(w, p, idx, s, r);
+    case ACT_MATE:
+        return act_mate(w, p, idx, s, r);
     default:
         break; /* ACT_REST, or a kind no brain should send */
     }
@@ -566,6 +604,9 @@ bool creature_upkeep(Creature *c, const Settings *s)
     c->energy -= creature_upkeep_cost(c, s);
     if (c->age < UINT32_MAX) {
         c->age++;
+    }
+    if (c->mate_wish > 0) {
+        c->mate_wish--;
     }
     /* max_age is an int and age a uint32_t: comparing them directly would
      * convert the int to unsigned (a negative one to a huge number), which

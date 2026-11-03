@@ -89,6 +89,17 @@ static void test_later_line_wins(void)
     CHECK(s.max_age == 20);
 }
 
+/* Settings that used to exist are ordinary mistakes now: a file still naming
+ * them says which line, so nobody thinks they still do something. */
+static void test_removed_settings_are_errors(void)
+{
+    CHECK(fails_with("pack_defence = 1\n", "line 1", "pack_defence"));
+    CHECK(fails_with("# old\nsplit_threshold = 3\n", "line 2",
+                     "split_threshold"));
+    CHECK(fails_with("split_share = 0.5\n", "line 1", "split_share"));
+    CHECK(fails_with("pack_kinship = 0.5\n", "line 1", "pack_kinship"));
+}
+
 static void test_mistakes_name_the_line(void)
 {
     CHECK(fails_with("max_age = 5\n\nbanana = 3\n", "line 3", "banana"));
@@ -102,7 +113,7 @@ static void test_mistakes_name_the_line(void)
     CHECK(fails_with("upkeep_base = 1.0x\n", "line 1", "upkeep_base"));
     CHECK(fails_with("upkeep_base = nan\n", "line 1", "upkeep_base"));
     CHECK(fails_with("upkeep_base = inf\n", "line 1", "upkeep_base"));
-    CHECK(fails_with("split_share = 2\n", "line 1", "split_share"));
+    CHECK(fails_with("mate_share = 2\n", "line 1", "mate_share"));
     CHECK(fails_with("[brain\n", "line 1", "]"));
     /* One character more than brain_name holds, its '\0' included. */
     char name[BRAIN_NAME_MAX + 16] = "brain = ";
@@ -240,6 +251,7 @@ int main(void)
     test_comments_blanks_spaces_sections();
     test_later_line_wins();
     test_mistakes_name_the_line();
+    test_removed_settings_are_errors();
     test_too_long_line_fails();
     test_missing_file_names_the_path();
     test_table_covers_every_field();

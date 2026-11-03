@@ -173,6 +173,36 @@ static bool load_fails(const unsigned char *bytes, size_t size,
     return strstr(err, piece) != NULL;
 }
 
+/* A wish to mate and the births a full pool refused are state: without them a
+ * loaded world would go on differently. */
+static void test_mate_wish_survives_save(void)
+{
+    Settings set = settings_default();
+    set.start_creatures = 2;
+    set.min_creatures = 0;
+    Sim a;
+    CHECK(sim_init(&a, &set, 21, 32, 32));
+    int slot = -1;
+    for (int i = 0; i < a.pool.capacity && slot < 0; i++) {
+        if (a.pool.items[i].alive) {
+            slot = i;
+        }
+    }
+    CHECK(slot >= 0);
+    a.pool.items[slot].mate_wish = 3;
+    a.pool.births_refused = 7;
+    char err[256] = "";
+    CHECK(save_write(&a, SAVE_FILE, err, sizeof(err)));
+    Sim b;
+    CHECK(save_read(&b, SAVE_FILE, err, sizeof(err)));
+    CHECK(b.pool.items[slot].mate_wish == 3);
+    CHECK(b.pool.births_refused == 7);
+    CHECK(sim_checksum(&a) == sim_checksum(&b));
+    sim_free(&a);
+    sim_free(&b);
+    remove(SAVE_FILE);
+}
+
 static void test_wrong_magic_and_version(void)
 {
     size_t size = 0;
@@ -187,6 +217,11 @@ static void test_wrong_magic_and_version(void)
     bytes[8] ^= 0x40; /* the version comes right after the 8-byte magic */
     CHECK(load_fails(bytes, size, "version"));
     bytes[8] ^= 0x40;
+    /* An old save says which version it is, little end first. */
+    unsigned char kept = bytes[8];
+    bytes[8] = 1;
+    CHECK(load_fails(bytes, size, "version 1"));
+    bytes[8] = kept;
     /* And the same bytes, untouched, are fine: the failures above came
      * from the changes. */
     write_whole(BROKEN_FILE, bytes, size);
@@ -326,10 +361,11 @@ enum {
     AT_HOLD = 27,
     AT_HOLD_LEFT = 29,
     AT_MOVE_POINTS = 31,
-    AT_LEVEL = 35,
-    AT_EATEN = 39,
-    AT_GENOME = 43,
-    SLOT_LIVING_BYTES = 43 + 4 * GENOME_LEN,
+    AT_MATE_WISH = 35,
+    AT_LEVEL = 37,
+    AT_EATEN = 41,
+    AT_GENOME = 45,
+    SLOT_LIVING_BYTES = 45 + 4 * GENOME_LEN,
 };
 
 typedef struct {
@@ -389,7 +425,7 @@ static Tiny tiny_save(void)
      * carrion_level, scent, for 64 cells. */
     t.histories = t.layers + 64 * (1 + 4 + 1 + 2 + 1 + 1 + 4 + 4 + 4);
     t.pool = t.histories + 3 * (HISTORY * 4 + 8);
-    t.living = t.pool + 8;
+    t.living = t.pool + 12; /* free_head, next_id, births_refused */
     t.free_slot = t.living + SLOT_LIVING_BYTES;
     CHECK(t.size == t.free_slot + OFF_SIZE_FREE_SLOT);
     return t;
@@ -701,6 +737,7 @@ int main(void)
     test_settings_travel_with_the_file();
     test_random_brain_reopens();
     test_wrong_magic_and_version();
+    test_mate_wish_survives_save();
     test_cut_short();
     test_extra_bytes();
     test_missing_file_and_bad_path();

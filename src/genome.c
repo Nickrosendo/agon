@@ -62,13 +62,8 @@ static float gene_fix(int i, float v, float before, const Settings *s)
     return clamp(v, -s->weight_limit, s->weight_limit);
 }
 
-void genome_copy_mutated(Genome *child, const Genome *parent, Rng *r,
-                         const Settings *s)
+static void genome_mutate(Genome *g, Rng *r, const Settings *s)
 {
-    /* One assignment copies the whole struct, array included: here
-     * GENOME_LEN * 4 bytes. (For a bare array, = would not compile.) The
-     * copy comes first, so child and parent may even be the same genome. */
-    *child = *parent;
     for (int i = 0; i < GENOME_LEN; i++) {
         /* One draw per value whether or not it mutates, so the number of
          * draws, and with it every later random number, does not depend
@@ -76,10 +71,43 @@ void genome_copy_mutated(Genome *child, const Genome *parent, Rng *r,
         if (rng_unit(r) >= s->mutation_rate) {
             continue;
         }
-        float before = child->g[i];
+        float before = g->g[i];
         float step = rng_normal(r) * s->mutation_spread * gene_range(i, s);
-        child->g[i] = gene_fix(i, before + step, before, s);
+        g->g[i] = gene_fix(i, before + step, before, s);
     }
+}
+
+/* One draw: which parent this part comes from. */
+static const Genome *pick_parent(const Genome *a, const Genome *b, Rng *r)
+{
+    return rng_below(r, 2) == 0 ? a : b;
+}
+
+void genome_cross(Genome *child, const Genome *a, const Genome *b, Rng *r,
+                  const Settings *s)
+{
+    for (int i = 0; i < GENE_TRAITS; i++) {
+        child->g[i] = pick_parent(a, b, r)->g[i];
+    }
+    /* A hidden value's group: its row of weights in, bias included (so <=),
+     * and one weight out to each output. */
+    for (int h = 0; h < NET_HIDDEN; h++) {
+        const Genome *from = pick_parent(a, b, r);
+        for (int i = 0; i <= NET_IN; i++) {
+            int at = net_hidden_weight(h, i);
+            child->g[at] = from->g[at];
+        }
+        for (int o = 0; o < NET_OUT; o++) {
+            int at = net_out_weight(o, h);
+            child->g[at] = from->g[at];
+        }
+    }
+    /* The outputs' biases belong to no hidden value. */
+    for (int o = 0; o < NET_OUT; o++) {
+        int at = net_out_weight(o, NET_HIDDEN);
+        child->g[at] = pick_parent(a, b, r)->g[at];
+    }
+    genome_mutate(child, r, s);
 }
 
 float genome_kinship(const Genome *a, const Genome *b)
@@ -97,6 +125,21 @@ float genome_kinship(const Genome *a, const Genome *b)
     /* Counting is symmetric because fabsf(a - b) == fabsf(b - a) exactly:
      * a - b and b - a are the same number with opposite signs. */
     return (float)matches / (float)GENOME_LEN;
+}
+
+float genome_body_likeness(const Genome *a, const Genome *b)
+{
+    float total = 0.0f;
+    for (int i = 0; i < GENE_TRAITS; i++) {
+        float d = fabsf(a->g[i] - b->g[i]);
+        if (i == GENE_HUE) {
+            /* Round the wheel the short way, at most 0.5; doubled, so that
+             * half way round counts as fully different, as 0 and 1 do. */
+            d = (d > 0.5f ? 1.0f - d : d) * 2.0f;
+        }
+        total += 1.0f - d;
+    }
+    return total / (float)GENE_TRAITS;
 }
 
 /* The weights start after the traits: first every hidden value's NET_IN

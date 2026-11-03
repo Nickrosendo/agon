@@ -24,7 +24,10 @@ typedef struct {
     bool alive;
     int32_t next_free;  /* while dead: the next free slot, or -1 */
     uint32_t id;        /* unique for the whole run, never reused */
-    uint32_t lineage;   /* id of the founding ancestor */
+    /* The family name: a founder's own id, and for a child the name of one
+     * parent, chosen at random, like a surname. Not a measure of relatedness:
+     * with two parents, most of a child's genes can come from the other side. */
+    uint32_t lineage;
     int x, y;
     uint8_t heading;    /* a HEADING_ value */
     float energy;
@@ -32,10 +35,11 @@ typedef struct {
     Action current;     /* what the brain last said */
     uint16_t hold_left; /* ticks of current still to do */
     float move_points;  /* a move needs 1; gains speed per tick, up to 1 */
+    uint16_t mate_wish; /* ticks left of wanting to mate; 0 when it does not */
     /* Food-chain level: 1 + the energy-weighted average level of what it
      * has eaten (plants are level 1, so a pure plant-eater is at 2). eaten
      * is the energy those meals gave, the weight of the average. Until
-     * the first meal, level is LEVEL_START or the parent's level. */
+     * the first meal, level is LEVEL_START or the mean of its parents'. */
     float level;
     float eaten;
     /* Stored inside the creature, not behind a pointer: GENOME_LEN floats
@@ -71,9 +75,12 @@ typedef struct {
     int32_t free_head;
     uint32_t next_id;
     /* Plant-eaters alive as counted by pool_count_plant_eaters, plus
-     * those born by splitting since. Deaths are not taken off until the
-     * next count. */
+     * those born since. Deaths are not taken off until the next count. */
     int plant_eaters;
+    /* Births that could not happen because every slot was taken. The pool is
+     * a safety limit and not a rule of the world, so this should stay 0: it
+     * is counted so that reaching the limit is never quiet. */
+    uint32_t births_refused;
 } Pool;
 
 /* Allocates capacity empty slots. False for a capacity below 1 or when
@@ -84,7 +91,7 @@ bool pool_init(Pool *p, int capacity);
 void pool_clear(Pool *p);
 /* Counts the living plant-eaters (creature_counts_as_plant_eater) into
  * p->plant_eaters. The simulation calls it once per tick, before anyone
- * acts; a split checks the count against max_plant_eaters and adds its
+ * acts; a birth checks the count against max_plant_eaters and adds its
  * child to it. */
 void pool_count_plant_eaters(Pool *p, const Settings *s);
 /* Whether c counts towards max_plant_eaters: by its food-chain level
@@ -106,8 +113,8 @@ void pool_kill(Pool *p, World *w, int idx, const Settings *s);
  * meat digestion gene; and along each of its three rays (ahead, left,
  * right) the vegetation and the scent of carrion in the first cell, and
  * the nearest creature within sight: its closeness, its size relative to
- * the viewer, its kinship and whether it is a hunter. A ray stops at
- * rock. */
+ * the viewer, its kinship, whether it is a hunter, whether it wishes to mate
+ * and how alike its body looks. A ray stops at rock. */
 void creature_sense(const World *w, const Pool *p, int idx,
                     const Settings *s, Senses *out);
 /* What a bite by creature idx would do right now. Reads only, and uses no
@@ -123,8 +130,13 @@ typedef struct {
 BiteChoice creature_bite_choice(const World *w, const Pool *p, int idx,
                                 const Settings *s);
 /* Carries out one tick of action a for creature idx. Returns the slot of
- * a child born by splitting, or -1 when none was. A child inherits its
- * parent's lineage and a mutated copy of its genome. */
+ * a child born from it, or -1 when none was.
+ *
+ * ACT_MATE: an adult (see Settings: mate_age, and mate_threshold by size)
+ * starts wishing to mate for mate_window ticks. If an adult beside it is
+ * wishing too, and a cell beside either is free soil, a child is born there:
+ * each parent gives mate_share of its energy, and the child's genome is
+ * genome_cross of the two. */
 int creature_act(World *w, Pool *p, int idx, Action a, const Settings *s,
                  Rng *r);
 /* Charges one tick of upkeep and ages the creature by one tick. Returns

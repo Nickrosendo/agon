@@ -166,12 +166,13 @@ for the build that wrote them; a build with a different format refuses them.
 4. Each creature inherits a genome: its size, speed, sight, digestion of
    plants and of meat, its colour, and the weights of a small neural network.
 5. Each tick, the network turns what the creature senses into one action: rest,
-   turn left, turn right, move, bite or split.
+   turn left, turn right, move, bite or mate.
 6. Energy is the only currency. Living costs energy, and bigger, faster,
    farther-seeing bodies cost more. At zero, a creature dies and leaves carrion.
-7. A creature with enough energy can split. The child gets a mutated copy of
-   its genome. No fitness function exists: what lives long enough to split
-   spreads.
+7. Two grown creatures side by side that both choose to mate have a child, and
+   each pays for it with energy. Each part of its genome comes from one parent
+   or the other, with small changes. No fitness function exists: what lives
+   long enough to have children spreads.
 8. Hunters attack plant-eaters, and bigger attackers hit more often. Kills
    become carrion, which rots away and sends out a scent.
 9. A creature's food-chain level is measured from what it actually eats: a

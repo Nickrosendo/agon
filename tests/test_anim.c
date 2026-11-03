@@ -266,18 +266,18 @@ static void test_rest_breathing_offset(void)
     sim_free(&s);
 }
 
-static void test_split_frame(void)
+static void test_mate_frame(void)
 {
     Sim s;
     empty_sim(&s, 64, 32);
     int slot = pool_spawn(&s.pool, &s.world, 10, 10);
-    s.pool.items[slot].current.kind = ACT_SPLIT;
+    s.pool.items[slot].current.kind = ACT_MATE;
     Anim a;
     CHECK(anim_init(&a, s.pool.capacity));
     anim_update(&a, &s, 10);
     AnimPose p;
     anim_pose(&a, &s, slot, 0.0f, 0, &p);
-    CHECK(p.frame == FRAME_SPLIT);
+    CHECK(p.frame == FRAME_MATE);
     CHECK(p.bite == BITE_NOTHING);
     anim_free(&a);
     sim_free(&s);
@@ -423,7 +423,7 @@ int main(void)
     test_reset_after_ids_restart();
     test_facing_north_keeps_last();
     test_rest_breathing_offset();
-    test_split_frame();
+    test_mate_frame();
     test_bite_at_nothing_shows_no_bite();
     test_eating_a_plant_chomps_and_faces_it();
     test_bite_straight_up_keeps_facing();

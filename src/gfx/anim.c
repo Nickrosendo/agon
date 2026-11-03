@@ -148,8 +148,8 @@ void anim_pose(const Anim *a, const Sim *s, int slot, float tick_fraction,
         /* Mouth open, mouth shut. The id keeps a crowd out of step. */
         bool open = (now_ms / CHOMP_MS + c->id) % 2u == 0;
         out->frame = open ? FRAME_BITE : FRAME_REST0;
-    } else if (c->current.kind == ACT_SPLIT) {
-        out->frame = FRAME_SPLIT;
+    } else if (c->current.kind == ACT_MATE) {
+        out->frame = FRAME_MATE;
     } else {
         out->frame = idle_or_walk_frame(a, m, s, t, moved, now_ms);
     }

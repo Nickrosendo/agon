@@ -357,7 +357,7 @@ static uint64_t hash_canvas(const Canvas *c)
 static void test_known_world_pixels(void)
 {
     static const uint64_t EXPECTED[CAMERA_LEVELS] = {
-        0x2ff27f9f210e01a5u, 0x996cbe6d86deb305u, 0xc772ddf573ec4c43u, 0x89794e72e7efcc25u,
+        0x2ff27f9f210e01a5u, 0x996cbe6d86deb305u, 0x2bffdbcf2e65dfbau, 0xb56b6ac5afbd1db5u,
     };
     Settings set = settings_default();
     Sim s;

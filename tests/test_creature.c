@@ -44,6 +44,11 @@ static void make_hunter(Creature *c)
     c->genome.g[GENE_PLANT] = 0.0f;
 }
 
+static bool near(float a, float b)
+{
+    return fabsf(a - b) < 1e-4f;
+}
+
 static void test_pool_slots_and_ids(void)
 {
     World w;
@@ -192,41 +197,256 @@ static void test_bite(void)
     world_free(&w);
 }
 
-static void test_split(void)
+/* Two grown creatures with plenty of energy, side by side at (3, 3) and
+ * (4, 3), each with its own random genome. */
+static void adult_pair(World *w, Pool *p, int *a, int *b, const Settings *s,
+                       Rng *r)
+{
+    make_world(w, 8, 8);
+    CHECK(pool_init(p, 8));
+    *a = spawn(p, w, 3, 3);
+    *b = spawn(p, w, 4, 3);
+    for (int k = 0; k < 2; k++) {
+        Creature *c = &p->items[k == 0 ? *a : *b];
+        genome_random(&c->genome, r, s);
+        c->genome.g[GENE_SIZE] = 0.5f; /* size 1 */
+        c->age = (uint32_t)s->mate_age;
+        c->energy = s->mate_threshold + 10.0f;
+    }
+}
+
+static void test_mate_needs_both(void)
 {
     World w;
-    make_world(&w, 8, 8);
+    Pool p;
+    int a, b;
     Settings s = settings_default();
     Rng r;
     rng_seed(&r, 1);
-    Pool p;
-    CHECK(pool_init(&p, 4));
-    int i = spawn(&p, &w, 3, 3);
-    float before = s.split_threshold + 10.0f;
-    p.items[i].energy = before;
-    genome_random(&p.items[i].genome, &r, &s);
-    int child = creature_act(&w, &p, i, (Action){ACT_SPLIT, 1}, &s, &r);
-    CHECK(child >= 0 && child != i);
+    Action mate = {ACT_MATE, 1};
+
+    /* One willing, the other not asked: no child and no energy spent. */
+    adult_pair(&w, &p, &a, &b, &s, &r);
+    float before = p.items[a].energy;
+    CHECK(creature_act(&w, &p, a, mate, &s, &r) == -1);
     CHECK(p.count == 2);
-    /* Parent and child together hold what the parent held. Floats are
-     * compared with a small tolerance, not ==: see the study doc. */
-    float total = p.items[i].energy + p.items[child].energy;
-    CHECK(fabsf(total - before) < 1e-4f);
-    CHECK(p.items[child].lineage == p.items[i].lineage);
-    /* The child's genome is a close but not exact copy. */
-    const Genome *pg = &p.items[i].genome;
-    const Genome *cg = &p.items[child].genome;
-    CHECK(genome_kinship(pg, cg) > 0.9f);
-    CHECK(genome_kinship(pg, cg) < 1.0f);
-    /* The child is on one of the eight neighbouring cells. */
+    CHECK(p.items[a].energy == before);
+    CHECK(p.items[a].mate_wish == s.mate_window);
+
+    /* The second chooses inside the window: one child. Upkeep is what counts
+     * the wish down, one tick each. */
+    creature_upkeep(&p.items[a], &s);
+    CHECK(p.items[a].mate_wish == s.mate_window - 1);
+    int child = creature_act(&w, &p, b, mate, &s, &r);
+    CHECK(child >= 0);
+    CHECK(p.count == 3);
+    /* A birth clears both wishes. */
+    CHECK(p.items[a].mate_wish == 0 && p.items[b].mate_wish == 0);
+    pool_free(&p);
+    world_free(&w);
+
+    /* The second chooses after the window closed: nothing. */
+    adult_pair(&w, &p, &a, &b, &s, &r);
+    CHECK(creature_act(&w, &p, a, mate, &s, &r) == -1);
+    for (int t = 0; t < s.mate_window; t++) {
+        creature_upkeep(&p.items[a], &s);
+    }
+    CHECK(p.items[a].mate_wish == 0);
+    CHECK(creature_act(&w, &p, b, mate, &s, &r) == -1);
+    CHECK(p.count == 2);
+    pool_free(&p);
+    world_free(&w);
+}
+
+static void test_mate_costs_both_parents(void)
+{
+    World w;
+    Pool p;
+    int a, b;
+    Settings s = settings_default();
+    Rng r;
+    rng_seed(&r, 2);
+    adult_pair(&w, &p, &a, &b, &s, &r);
+    p.items[a].energy = 100.0f;
+    p.items[b].energy = 60.0f;
+    Action mate = {ACT_MATE, 1};
+    CHECK(creature_act(&w, &p, a, mate, &s, &r) == -1);
+    int child = creature_act(&w, &p, b, mate, &s, &r);
+    CHECK(child >= 0);
+    CHECK(near(p.items[a].energy, 100.0f * (1.0f - s.mate_share)));
+    CHECK(near(p.items[b].energy, 60.0f * (1.0f - s.mate_share)));
+    CHECK(near(p.items[child].energy, 160.0f * s.mate_share));
+    CHECK(near(p.items[a].energy + p.items[b].energy + p.items[child].energy,
+               160.0f));
+    /* The child is on a neighbouring cell of its parents, with no age. */
+    CHECK(p.items[child].age == 0);
     int dx = p.items[child].x - 3;
     int dy = p.items[child].y - 3;
-    CHECK(dx >= -1 && dx <= 1 && dy >= -1 && dy <= 1 && (dx || dy));
+    CHECK(dx >= -1 && dx <= 2 && dy >= -1 && dy <= 1);
+    pool_free(&p);
+    world_free(&w);
+}
 
-    /* Below the threshold: nothing happens. */
-    int count = p.count;
-    CHECK(creature_act(&w, &p, i, (Action){ACT_SPLIT, 1}, &s, &r) == -1);
-    CHECK(p.count == count);
+static void test_mate_needs_adults(void)
+{
+    World w;
+    Pool p;
+    int a, b;
+    Settings s = settings_default();
+    Rng r;
+    rng_seed(&r, 3);
+    Action mate = {ACT_MATE, 1};
+
+    /* Too young. */
+    adult_pair(&w, &p, &a, &b, &s, &r);
+    p.items[a].age = (uint32_t)s.mate_age - 1;
+    CHECK(creature_act(&w, &p, a, mate, &s, &r) == -1);
+    CHECK(p.items[a].mate_wish == 0);
+    pool_free(&p);
+    world_free(&w);
+
+    /* Too little energy for its size: a bigger body needs more. */
+    adult_pair(&w, &p, &a, &b, &s, &r);
+    p.items[a].genome.g[GENE_SIZE] = 1.0f; /* size 1.5 */
+    p.items[a].energy = s.mate_threshold * 1.25f;
+    CHECK(creature_act(&w, &p, a, mate, &s, &r) == -1);
+    CHECK(p.items[a].mate_wish == 0);
+    pool_free(&p);
+    world_free(&w);
+
+    /* A partner that has wished but has since spent its energy is no use. */
+    adult_pair(&w, &p, &a, &b, &s, &r);
+    CHECK(creature_act(&w, &p, a, mate, &s, &r) == -1);
+    p.items[a].energy = 1.0f;
+    CHECK(creature_act(&w, &p, b, mate, &s, &r) == -1);
+    CHECK(p.count == 2);
+    pool_free(&p);
+    world_free(&w);
+}
+
+static void test_child_surname_from_a_parent(void)
+{
+    World w;
+    Pool p;
+    int a, b;
+    Settings s = settings_default();
+    Rng r;
+    rng_seed(&r, 4);
+    int from_a = 0;
+    int from_b = 0;
+    int neither = 0;
+    Action mate = {ACT_MATE, 1};
+    for (int k = 0; k < 100; k++) {
+        adult_pair(&w, &p, &a, &b, &s, &r);
+        p.items[a].level = 2.0f;
+        p.items[b].level = 3.0f;
+        creature_act(&w, &p, a, mate, &s, &r);
+        int child = creature_act(&w, &p, b, mate, &s, &r);
+        CHECK(child >= 0);
+        CHECK(near(p.items[child].level, 2.5f)); /* the mean of its parents */
+        uint32_t name = p.items[child].lineage;
+        if (name == p.items[a].lineage) {
+            from_a++;
+        } else if (name == p.items[b].lineage) {
+            from_b++;
+        } else {
+            neither++;
+        }
+        pool_free(&p);
+        world_free(&w);
+    }
+    CHECK(neither == 0);
+    CHECK(from_a > 0 && from_b > 0);
+}
+
+/* Water everywhere except the two parents' own cells. */
+static void drown_around_pair(World *w)
+{
+    for (int i = 0; i < w->w * w->h; i++) {
+        w->terrain[i] = TERRAIN_WATER;
+    }
+    w->terrain[world_idx(w, 3, 3)] = TERRAIN_SOIL;
+    w->terrain[world_idx(w, 4, 3)] = TERRAIN_SOIL;
+}
+
+static void test_mate_no_room(void)
+{
+    World w;
+    Pool p;
+    int a, b;
+    Settings s = settings_default();
+    Rng r;
+    rng_seed(&r, 5);
+    adult_pair(&w, &p, &a, &b, &s, &r);
+    drown_around_pair(&w);
+    float before_a = p.items[a].energy;
+    float before_b = p.items[b].energy;
+    Action mate = {ACT_MATE, 1};
+    CHECK(creature_act(&w, &p, a, mate, &s, &r) == -1);
+    CHECK(creature_act(&w, &p, b, mate, &s, &r) == -1);
+    CHECK(p.count == 2);
+    CHECK(p.items[a].energy == before_a && p.items[b].energy == before_b);
+    CHECK(p.births_refused == 0); /* no room is not a full pool */
+
+    /* Room only beside the partner: the child goes there. */
+    w.terrain[world_idx(&w, 5, 3)] = TERRAIN_SOIL;
+    int child = creature_act(&w, &p, a, mate, &s, &r);
+    CHECK(child >= 0);
+    CHECK(child >= 0 && p.items[child].x == 5 && p.items[child].y == 3);
+    pool_free(&p);
+    world_free(&w);
+}
+
+static void test_pool_full_counts_refused(void)
+{
+    World w;
+    Pool p;
+    Settings s = settings_default();
+    Rng r;
+    rng_seed(&r, 6);
+    make_world(&w, 8, 8);
+    CHECK(pool_init(&p, 2));
+    int a = spawn(&p, &w, 3, 3);
+    int b = spawn(&p, &w, 4, 3);
+    for (int k = 0; k < 2; k++) {
+        p.items[k].age = (uint32_t)s.mate_age;
+        p.items[k].energy = 100.0f;
+    }
+    Action mate = {ACT_MATE, 1};
+    CHECK(creature_act(&w, &p, a, mate, &s, &r) == -1);
+    CHECK(p.births_refused == 0);
+    CHECK(creature_act(&w, &p, b, mate, &s, &r) == -1);
+    CHECK(p.births_refused == 1);
+    CHECK(p.count == 2);
+    CHECK(p.items[a].energy == 100.0f && p.items[b].energy == 100.0f);
+    pool_free(&p);
+    world_free(&w);
+}
+
+static void test_senses_ready_and_alike(void)
+{
+    World w;
+    Pool p;
+    int a, b;
+    Settings s = settings_default();
+    Rng r;
+    rng_seed(&r, 7);
+    adult_pair(&w, &p, &a, &b, &s, &r);
+    p.items[a].heading = HEADING_EAST; /* looking straight at b */
+    p.items[b].mate_wish = 3;
+    Senses in;
+    creature_sense(&w, &p, a, &s, &in);
+    const float *ahead = &in.v[SENSE_RAYS + RAY_AHEAD * RAY_VALUES];
+    CHECK(ahead[RAY_READY] == 1.0f);
+    CHECK(ahead[RAY_ALIKE] ==
+          genome_body_likeness(&p.items[a].genome, &p.items[b].genome));
+    /* Not wishing: not ready, however alike. */
+    p.items[b].mate_wish = 0;
+    creature_sense(&w, &p, a, &s, &in);
+    CHECK(ahead[RAY_READY] == 0.0f);
+    /* No creature on that ray: both 0. */
+    const float *left = &in.v[SENSE_RAYS + RAY_LEFT * RAY_VALUES];
+    CHECK(left[RAY_READY] == 0.0f && left[RAY_ALIKE] == 0.0f);
     pool_free(&p);
     world_free(&w);
 }
@@ -234,42 +454,41 @@ static void test_split(void)
 static void test_plant_eater_cap(void)
 {
     World w;
-    make_world(&w, 8, 8);
+    Pool p;
+    int a, b;
     Settings s = settings_default();
     /* Plant-eaters told by their genes; test_cap_by_level covers the
      * count by food-chain level. */
     s.cap_by_level = 0;
     Rng r;
     rng_seed(&r, 1);
-    Pool p;
-    CHECK(pool_init(&p, 6));
-    int a = spawn(&p, &w, 1, 1); /* plant-eaters, far enough apart */
-    int b = spawn(&p, &w, 5, 5);
-    p.items[a].energy = 100.0f;
-    p.items[b].energy = 100.0f;
+    adult_pair(&w, &p, &a, &b, &s, &r);
+    for (int k = 0; k < 2; k++) {
+        p.items[k].genome.g[GENE_PLANT] = 1.0f;
+        p.items[k].genome.g[GENE_MEAT] = 0.0f;
+        p.items[k].energy = 100.0f;
+    }
     pool_count_plant_eaters(&p, &s);
     CHECK(p.plant_eaters == 2);
+    Action mate = {ACT_MATE, 1};
 
-    /* Two alive and a cap of 2: no split. */
+    /* Two alive and a cap of 2: no birth. */
     s.max_plant_eaters = 2;
-    CHECK(creature_act(&w, &p, a, (Action){ACT_SPLIT, 1}, &s, &r) == -1);
+    CHECK(creature_act(&w, &p, a, mate, &s, &r) == -1);
+    CHECK(creature_act(&w, &p, b, mate, &s, &r) == -1);
     CHECK(p.count == 2);
 
-    /* A cap of 3: one split, which the count follows at once, so the
-     * second plant-eater cannot split in the same tick. */
+    /* A cap of 3: one birth, which the count follows at once. */
     s.max_plant_eaters = 3;
-    CHECK(creature_act(&w, &p, a, (Action){ACT_SPLIT, 1}, &s, &r) >= 0);
+    CHECK(creature_act(&w, &p, a, mate, &s, &r) >= 0);
     CHECK(p.plant_eaters == 3);
-    CHECK(creature_act(&w, &p, b, (Action){ACT_SPLIT, 1}, &s, &r) == -1);
-
-    /* Hunters are not capped. */
-    make_hunter(&p.items[b]);
-    CHECK(creature_act(&w, &p, b, (Action){ACT_SPLIT, 1}, &s, &r) >= 0);
 
     /* 0 means no cap. */
     s.max_plant_eaters = 0;
     p.items[a].energy = 100.0f;
-    CHECK(creature_act(&w, &p, a, (Action){ACT_SPLIT, 1}, &s, &r) >= 0);
+    p.items[b].energy = 100.0f;
+    creature_act(&w, &p, b, mate, &s, &r);
+    CHECK(creature_act(&w, &p, a, mate, &s, &r) >= 0);
     pool_free(&p);
     world_free(&w);
 }
@@ -346,39 +565,6 @@ static void test_cap_by_level(void)
     CHECK(!creature_counts_as_plant_eater(&p.items[meat_grazer], &s));
     CHECK(creature_counts_as_plant_eater(&p.items[grazing_hunter], &s));
 
-    /* By level, the grazing hunter is capped like any plant-eater. */
-    Rng r;
-    rng_seed(&r, 2);
-    s.max_plant_eaters = 2;
-    p.items[grazing_hunter].energy = 100.0f;
-    CHECK(creature_act(&w, &p, grazing_hunter, (Action){ACT_SPLIT, 1}, &s,
-                       &r) == -1);
-    pool_free(&p);
-    world_free(&w);
-}
-
-static void test_split_needs_room(void)
-{
-    World w;
-    make_world(&w, 8, 8);
-    Settings s = settings_default();
-    Rng r;
-    rng_seed(&r, 1);
-    Pool p;
-    CHECK(pool_init(&p, 16));
-    int i = spawn(&p, &w, 3, 3);
-    p.items[i].energy = s.split_threshold * 2.0f;
-    /* Water all around. */
-    for (int dy = -1; dy <= 1; dy++) {
-        for (int dx = -1; dx <= 1; dx++) {
-            if (dx || dy) {
-                w.terrain[world_idx(&w, 3 + dx, 3 + dy)] = TERRAIN_WATER;
-            }
-        }
-    }
-    CHECK(creature_act(&w, &p, i, (Action){ACT_SPLIT, 1}, &s, &r) == -1);
-    CHECK(p.count == 1);
-    CHECK(p.items[i].energy == s.split_threshold * 2.0f);
     pool_free(&p);
     world_free(&w);
 }
@@ -391,7 +577,7 @@ static void test_sense(void)
     Pool p;
     CHECK(pool_init(&p, 1));
     int i = spawn(&p, &w, 3, 3); /* heading north */
-    p.items[i].energy = s.split_threshold / 2.0f;
+    p.items[i].energy = s.mate_threshold / 2.0f;
     p.items[i].age = (uint32_t)s.sense_age_half;
     w.veg[world_idx(&w, 3, 2)] = VEG_MAX; /* ahead */
     w.veg[world_idx(&w, 2, 3)] = 2;       /* left: west */
@@ -425,11 +611,6 @@ static void make_sim(Sim *sim, Settings *set)
         sim->world.terrain[i] = TERRAIN_SOIL;
         sim->world.veg[i] = 0;
     }
-}
-
-static bool near(float a, float b)
-{
-    return fabsf(a - b) < 1e-4f;
 }
 
 static void test_level(void)
@@ -616,78 +797,6 @@ static void test_who_attacks(void)
         creature_act(&w, &p, a, (Action){ACT_BITE, 1}, &s, &r);
     }
     CHECK(p.items[t].energy == 100.0f);
-    pool_free(&p);
-    world_free(&w);
-}
-
-/* A hunter at (3, 3) with its victim north of it at (3, 2) and a third
- * creature, a plant-eater, west of the hunter at (2, 3). spawn gives all
- * three the same genome apart from the hunter's two diet genes, so the
- * victim and the third creature are identical: kinship 1. Every energy
- * starts at 100. */
-static void hunter_victim_and_friend(World *w, Pool *p, int *h, int *v,
-                                     int *f)
-{
-    make_world(w, 8, 8);
-    CHECK(pool_init(p, 3));
-    *h = spawn(p, w, 3, 3);
-    *v = spawn(p, w, 3, 2);
-    *f = spawn(p, w, 2, 3);
-    make_hunter(&p->items[*h]);
-    p->items[*h].energy = 100.0f;
-    p->items[*v].energy = 100.0f;
-    p->items[*f].energy = 100.0f;
-}
-
-static void test_pack_defence(void)
-{
-    Settings s = settings_default();
-    Rng r;
-    World w;
-    Pool p;
-    int h, v, f;
-    const int bites = 20;
-
-    /* Switched off: the friend does nothing, and the hunter pays only for
-     * its own attacks. 100 - 20 * 0.5 is exact in float. */
-    s.pack_defence = 0;
-    rng_seed(&r, 3);
-    hunter_victim_and_friend(&w, &p, &h, &v, &f);
-    for (int k = 0; k < bites; k++) {
-        creature_act(&w, &p, h, (Action){ACT_BITE, 1}, &s, &r);
-    }
-    CHECK(p.items[f].energy == 100.0f);
-    CHECK(p.items[h].energy == 100.0f - (float)bites * s.attack_cost);
-    pool_free(&p);
-    world_free(&w);
-
-    /* Switched on: the friend pays attack_cost once per attack on its
-     * kin, and its hits cost the hunter more than its own attacks did. */
-    s.pack_defence = 1;
-    rng_seed(&r, 3);
-    hunter_victim_and_friend(&w, &p, &h, &v, &f);
-    for (int k = 0; k < bites && p.items[h].energy > 0.0f; k++) {
-        creature_act(&w, &p, h, (Action){ACT_BITE, 1}, &s, &r);
-    }
-    CHECK(p.items[f].energy < 100.0f);
-    CHECK(p.items[h].energy < 100.0f - (float)bites * s.attack_cost);
-    pool_free(&p);
-    world_free(&w);
-
-    /* A neighbour that is not kin stays out of it: every weight of the
-     * friend differs from the victim's, so their kinship is 6 / 186. */
-    rng_seed(&r, 3);
-    hunter_victim_and_friend(&w, &p, &h, &v, &f);
-    for (int i = GENE_TRAITS; i < GENOME_LEN; i++) {
-        p.items[f].genome.g[i] = 1.0f;
-    }
-    CHECK(genome_kinship(&p.items[f].genome, &p.items[v].genome) <
-          s.pack_kinship);
-    for (int k = 0; k < bites; k++) {
-        creature_act(&w, &p, h, (Action){ACT_BITE, 1}, &s, &r);
-    }
-    CHECK(p.items[f].energy == 100.0f);
-    CHECK(p.items[h].energy == 100.0f - (float)bites * s.attack_cost);
     pool_free(&p);
     world_free(&w);
 }
@@ -929,17 +1038,18 @@ static void test_floor_restocks(void)
 
 static void test_full_pool_runs(void)
 {
-    /* The random brain splits whenever it can; with a pool of 8 started
-     * full, every birth must be refused without harm. The checkers in the
-     * test build report any out-of-bounds access. */
+    /* The random brain tries to mate often; with a pool of 8 started full on
+     * a small world, births must be refused without harm, and counted. The
+     * checkers in the test build report any out-of-bounds access. */
     Settings set = settings_default();
     snprintf(set.brain_name, sizeof(set.brain_name), "random");
     set.pool_capacity = 8;
     set.start_creatures = 8;
     set.min_creatures = 8;
-    set.split_threshold = 1.0f; /* everyone can split at once */
+    set.mate_threshold = 1.0f; /* everyone can mate at once */
+    set.mate_age = 0;
     Sim sim;
-    CHECK(sim_init(&sim, &set, 3, 32, 32));
+    CHECK(sim_init(&sim, &set, 3, 10, 10));
     CHECK(sim.pool.count == 8);
     int over = 0;
     for (int t = 0; t < 1000; t++) {
@@ -949,6 +1059,7 @@ static void test_full_pool_runs(void)
         }
     }
     CHECK(over == 0);
+    CHECK(sim.pool.births_refused > 0);
     sim_free(&sim);
 }
 
@@ -969,18 +1080,22 @@ int main(void)
     test_move_blocked();
     test_turns();
     test_bite();
-    test_split();
+    test_mate_needs_both();
+    test_mate_costs_both_parents();
+    test_mate_needs_adults();
+    test_child_surname_from_a_parent();
+    test_mate_no_room();
+    test_pool_full_counts_refused();
+    test_senses_ready_and_alike();
     test_plant_eater_cap();
     test_vigorous_plants_feed_less();
     test_cap_by_level();
-    test_split_needs_room();
     test_sense();
     test_level();
     test_bite_carrion();
     test_attack_chance();
     test_attacks_hit_half_the_time();
     test_who_attacks();
-    test_pack_defence();
     test_food_under_a_creature();
     test_slow_creature();
     test_ray_sees_creature();

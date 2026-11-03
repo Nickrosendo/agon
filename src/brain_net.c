@@ -4,7 +4,7 @@
  * keeps nothing: everything it needs arrives with each call, so it has no
  * state to create or destroy. Nothing here rewards a good network; better
  * networks become common only because their owners live long enough to
- * split more often.
+ * have more children.
  */
 #include <assert.h> /* static_assert */
 #include <math.h>   /* tanhf */

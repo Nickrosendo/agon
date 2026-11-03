@@ -270,10 +270,10 @@ static uint64_t fnv1a(uint64_t hash, const void *data, size_t len)
     return hash;
 }
 
-/* One living creature, field by field: Creature has 9 bytes of padding
- * (3 after alive, 3 after heading, 1 inside Action between kind and
- * hold, 2 after hold_left, so the genome's floats start at a multiple of
- * 4), so its raw bytes are not safe to hash. */
+/* One living creature, field by field: Creature has padding, unused bytes the
+ * compiler puts in so that floats start at a multiple of 4 (after alive, after
+ * heading, inside Action between kind and hold, and more), so its raw bytes
+ * are not safe to hash. */
 static uint64_t hash_creature(uint64_t hash, const Creature *c)
 {
     hash = fnv1a(hash, &c->id, sizeof(c->id));
@@ -287,6 +287,7 @@ static uint64_t hash_creature(uint64_t hash, const Creature *c)
     hash = fnv1a(hash, &c->current.hold, sizeof(c->current.hold));
     hash = fnv1a(hash, &c->hold_left, sizeof(c->hold_left));
     hash = fnv1a(hash, &c->move_points, sizeof(c->move_points));
+    hash = fnv1a(hash, &c->mate_wish, sizeof(c->mate_wish));
     hash = fnv1a(hash, &c->level, sizeof(c->level));
     hash = fnv1a(hash, &c->eaten, sizeof(c->eaten));
     /* sizeof of an array that is a struct field is the whole array,
@@ -324,6 +325,8 @@ uint64_t sim_checksum(const Sim *s)
     hash = fnv1a(hash, w->occupant, n * sizeof(int32_t));
     hash = fnv1a(hash, &s->pool.count, sizeof(s->pool.count));
     hash = fnv1a(hash, &s->pool.next_id, sizeof(s->pool.next_id));
+    hash = fnv1a(hash, &s->pool.births_refused,
+                 sizeof(s->pool.births_refused));
     for (int i = 0; i < s->pool.capacity; i++) {
         if (s->pool.items[i].alive) {
             hash = hash_creature(hash, &s->pool.items[i]);

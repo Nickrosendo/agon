@@ -25,13 +25,13 @@
  *   every setting, in the table's order;
  *   the world's layers;
  *   three histories;
- *   i32 free_head, u32 next_id; then every creature slot.
+ *   i32 free_head, u32 next_id, u32 births_refused; then every creature slot.
  *
  * Change anything here and SAVE_VERSION goes up by one.
  */
 #define SAVE_MAGIC "AGONSAVE"
 #define SAVE_MAGIC_LEN 8
-#define SAVE_VERSION 1u
+#define SAVE_VERSION 2u
 
 /* No value in a healthy world comes near this. Bounding them keeps sums
  * from reaching infinity, and float-to-int conversions defined. */
@@ -184,6 +184,7 @@ static void put_creature(Writer *w, const Creature *c)
     put_u16(w, c->current.hold);
     put_u16(w, c->hold_left);
     put_float(w, c->move_points);
+    put_u16(w, c->mate_wish);
     put_float(w, c->level);
     put_float(w, c->eaten);
     put_floats(w, c->genome.g, GENOME_LEN);
@@ -199,6 +200,7 @@ static void put_pool(Writer *w, const Pool *p)
 {
     put_i32(w, p->free_head);
     put_u32(w, p->next_id);
+    put_u32(w, p->births_refused);
     for (int i = 0; i < p->capacity; i++) {
         const Creature *c = &p->items[i];
         unsigned char alive = c->alive ? 1 : 0;
@@ -304,6 +306,9 @@ bool save_write(const Sim *s, const char *path, char *err, size_t errlen)
 typedef struct {
     FILE *f;
     const char *problem; /* NULL while all is well */
+    /* Room for the one message that has numbers in it. problem may point here:
+     * this lives as long as the Reader does, which is long enough. */
+    char version_problem[80];
 } Reader;
 
 static void fail(Reader *r, const char *problem)
@@ -480,6 +485,7 @@ static void get_creature(Reader *r, Creature *c, const Settings *set,
     c->current.hold = get_u16(r);
     c->hold_left = get_u16(r);
     c->move_points = get_float(r, -FLOAT_LIMIT, FLOAT_LIMIT);
+    c->mate_wish = get_u16(r);
     c->level = get_float(r, 0.0f, FLOAT_LIMIT);
     c->eaten = get_float(r, 0.0f, FLOAT_LIMIT);
     if (c->x < 0 || c->x >= w->w || c->y < 0 || c->y >= w->h ||
@@ -518,6 +524,7 @@ static void get_pool(Reader *r, Pool *p, World *w, const Settings *set)
 {
     p->free_head = get_i32(r);
     p->next_id = get_u32(r);
+    p->births_refused = get_u32(r);
     p->count = 0;
     for (int i = 0; i < p->capacity && r->problem == NULL; i++) {
         Creature *c = &p->items[i];
@@ -560,7 +567,12 @@ static bool get_header(Reader *r, int *width, int *height)
     }
     uint32_t version = get_u32(r);
     if (r->problem == NULL && version != SAVE_VERSION) {
-        fail(r, "the file has a different version");
+        /* problem points at text that must outlive this function, so the
+         * wording goes into the Reader, not into a local array. */
+        snprintf(r->version_problem, sizeof(r->version_problem),
+                 "the file is save version %u; this agon reads only version %u",
+                 (unsigned)version, SAVE_VERSION);
+        fail(r, r->version_problem);
         return false;
     }
     uint32_t count = get_u32(r);
@@ -605,7 +617,7 @@ static void get_body(Reader *r, Sim *s, uint64_t seed, uint64_t tick,
 bool save_read(Sim *s, const char *path, char *err, size_t errlen)
 {
     *s = (Sim){0};
-    Reader r = {fopen(path, "rb"), NULL};
+    Reader r = {.f = fopen(path, "rb")};
     if (r.f == NULL) {
         snprintf(err, errlen, "cannot open %s: %s", path, strerror(errno));
         return false;

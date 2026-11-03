@@ -396,7 +396,7 @@ void panel_draw(const Sim *s, int col, int row0, int rows)
 
 /* What the brain told a creature to do, by ACT_ value. */
 static const char *const ACTION_NAMES[] = {
-    "rest", "turn left", "turn right", "move", "bite", "split",
+    "rest", "turn left", "turn right", "move", "bite", "mate",
 };
 /* sizeof the whole array divided by sizeof one element is its length,
  * which only works on a real array (not on a pointer to one). */

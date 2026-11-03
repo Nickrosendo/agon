@@ -54,8 +54,10 @@ Settings settings_default(void)
         .upkeep_base = 0.1f,
         .move_cost = 0.3f,
         .bite_veg_energy = 40.0f,
-        .split_threshold = 30.0f,
-        .split_share = 0.5f,
+        .mate_threshold = 30.0f,
+        .mate_share = 0.5f,
+        .mate_window = 5,
+        .mate_age = 50,
         .sense_age_half = 200.0f,
         .max_age = 1500,
         /* Hunters survived on all five seeds of a quick check with it. */
@@ -78,11 +80,6 @@ Settings settings_default(void)
         .attack_steepness = 3.0f,
         .attack_cost = 0.5f,
         .bite_damage = 6.0f,
-        /* Off: in a quick check (five seeds, 20,000 ticks) hunters died out
-         * on 3 of 5 seeds with it on at kinship 0.5, on 2 of 5 at 0.8 and
-         * at 0.95, and on none with it off. */
-        .pack_defence = 0,
-        .pack_kinship = 0.5f,
         .body_energy = 10.0f,
         .carrion_decay = 0.01f,
         /* Off: at 0.002, rotting carrion slowly enriched the soil and plants
@@ -169,11 +166,13 @@ static const SettingInfo TABLE[] = {
     FLOAT_ROW(upkeep_base, 0, BIG, "energy every tick costs"),
     FLOAT_ROW(move_cost, 0, BIG, "extra energy a move costs"),
     FLOAT_ROW(bite_veg_energy, 0, BIG, "energy in a bite of plant"),
-    FLOAT_ROW(split_threshold, 0, BIG, "energy needed to split, by size"),
-    FLOAT_ROW(split_share, 0, 1, "share of its energy a parent gives"),
+    FLOAT_ROW(mate_threshold, 0, BIG, "energy needed to mate, by size"),
+    FLOAT_ROW(mate_share, 0, 1, "share of its energy each parent gives"),
+    INT_ROW(mate_window, 1, 65535, "ticks a wish to mate lasts"),
+    INT_ROW(mate_age, 0, INT_MAX, "ticks before a creature can mate"),
     FLOAT_ROW(sense_age_half, 1, BIG, "the age sensed as 0.5"),
     INT_ROW(max_age, 0, INT_MAX, "death by old age, in ticks (0: never)"),
-    INT_ROW(max_plant_eaters, 0, POOL_MAX, "plant-eaters cannot split above "
+    INT_ROW(max_plant_eaters, 0, POOL_MAX, "plant-eaters cannot mate above "
                                            "this (0: no cap)"),
     INT_ROW(cap_by_level, 0, 1, "count plant-eaters by level (1) or by "
                                 "genes (0)"),
@@ -194,9 +193,6 @@ static const SettingInfo TABLE[] = {
     FLOAT_ROW(attack_steepness, 0, 16, "how much size decides a fight"),
     FLOAT_ROW(attack_cost, 0, BIG, "energy an attack costs"),
     FLOAT_ROW(bite_damage, 0, BIG, "energy a hit takes, by attacker's size"),
-    INT_ROW(pack_defence, 0, 1, "family strikes back at hunters (1) or not "
-                                "(0)"),
-    FLOAT_ROW(pack_kinship, 0, 1, "kinship that counts as family"),
     FLOAT_ROW(body_energy, 0, BIG, "carrion a body leaves, by size"),
     FLOAT_ROW(carrion_decay, 0, 1, "share of carrion lost per tick"),
     FLOAT_ROW(carrion_to_fertility, 0, 1, "share of lost carrion that feeds "

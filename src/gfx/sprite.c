@@ -144,8 +144,8 @@ static void make_shape(Shape *s, const BodyTraits *t, int size, int frame)
     s->spots = t->plant >= 0.5f && size > 8;
     s->teeth = meat > 0.0f;
     s->open_mouth = frame == FRAME_BITE;
-    /* Splitting: the body stretches and pinches in at the middle. */
-    if (frame == FRAME_SPLIT) {
+    /* Wishing to mate: the body stretches and pinches in at the middle. */
+    if (frame == FRAME_MATE) {
         s->pinched = true;
         s->rx *= 1.15f;
         s->pinch_x = s->cx;
@@ -182,7 +182,7 @@ static bool part_body(const Shape *s, Point p)
     if (a * a + b * b >= 1.0f) {
         return false;
     }
-    /* The waist of a splitting body: a gap two pixels wide, top and bottom. */
+    /* The waist of a body wishing to mate: a gap two pixels wide, top and bottom. */
     return !(s->pinched && fabsf(p.u - s->pinch_x) < s->px &&
              fabsf(b) > 0.45f);
 }

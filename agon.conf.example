@@ -89,11 +89,17 @@ move_cost = 0.3
 # energy in a bite of plant (0 to 1e+06)
 bite_veg_energy = 40
 
-# energy needed to split, by size (0 to 1e+06)
-split_threshold = 30
+# energy needed to mate, by size (0 to 1e+06)
+mate_threshold = 30
 
-# share of its energy a parent gives (0 to 1)
-split_share = 0.5
+# share of its energy each parent gives (0 to 1)
+mate_share = 0.5
+
+# ticks a wish to mate lasts (1 to 65535)
+mate_window = 5
+
+# ticks before a creature can mate (0 to 2147483647)
+mate_age = 50
 
 # the age sensed as 0.5 (1 to 1e+06)
 sense_age_half = 200
@@ -101,7 +107,7 @@ sense_age_half = 200
 # death by old age, in ticks (0: never) (0 to 2147483647)
 max_age = 1500
 
-# plant-eaters cannot split above this (0: no cap) (0 to 1000000)
+# plant-eaters cannot mate above this (0: no cap) (0 to 1000000)
 max_plant_eaters = 500
 
 # count plant-eaters by level (1) or by genes (0) (0 to 1)
@@ -157,12 +163,6 @@ attack_cost = 0.5
 
 # energy a hit takes, by attacker's size (0 to 1e+06)
 bite_damage = 6
-
-# family strikes back at hunters (1) or not (0) (0 to 1)
-pack_defence = 0
-
-# kinship that counts as family (0 to 1)
-pack_kinship = 0.5
 
 # carrion a body leaves, by size (0 to 1e+06)
 body_energy = 10

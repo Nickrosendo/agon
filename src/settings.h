@@ -82,8 +82,10 @@ typedef struct {
     /* Creatures. Energy is the only currency: every tick costs
      * upkeep_base, a move costs move_cost more (even a blocked one), and
      * a bite of vegetation gains bite_veg_energy. At zero energy a
-     * creature dies. From split_threshold on it can split, handing
-     * split_share of its energy to the child. While fewer than
+     * creature dies. From mate_age ticks and mate_threshold * size energy
+     * it can wish to mate, for mate_window ticks; a child is born when two
+     * neighbours wish together, each handing mate_share of its energy to
+     * it. While fewer than
      * min_creatures are alive, new ones are placed at random (0 turns
      * this off). */
     int pool_capacity;       /* most creatures alive at once */
@@ -99,8 +101,10 @@ typedef struct {
     float upkeep_base;
     float move_cost;
     float bite_veg_energy;
-    float split_threshold;
-    float split_share;       /* 0..1 */
+    float mate_threshold;
+    float mate_share;        /* 0..1 */
+    int mate_window;         /* ticks a wish to mate lasts */
+    int mate_age;            /* ticks before a creature can mate */
     float sense_age_half;    /* the age sensed as 0.5 */
     /* Old age: a creature dies on reaching max_age ticks, whatever its
      * energy (0 turns this off). Without it, a creature that sits and
@@ -114,8 +118,8 @@ typedef struct {
     /* How max_plant_eaters tells a plant-eater: 1 by its food-chain level
      * (below LEVEL_MEAT, as the panel counts), 0 by its genes (plant
      * digestion gene above the meat one). By genes, a creature with
-     * hunter genes that lives on plants is never capped. An int, like
-     * pack_defence. */
+     * hunter genes that lives on plants is never capped. An int, not a bool,
+     * so the settings file can read it like every other whole number. */
     int cap_by_level;
 
     /* Inheritance. A child's genome is its parent's with each value, with
@@ -134,8 +138,8 @@ typedef struct {
      * tick) from speed_min to 1, sight from 1 to sight_max cells. A
      * creature may move only with at least 1 move point. Upkeep per
      * tick is upkeep_base + size_upkeep * size + speed_upkeep * speed +
-     * sight_upkeep * sight + the digestion cost (below), and splitting
-     * needs split_threshold * size. */
+     * sight_upkeep * sight + the digestion cost (below), and mating
+     * needs mate_threshold * size. */
     float size_min;
     float size_max;
     float speed_min;
@@ -169,17 +173,6 @@ typedef struct {
     float attack_steepness;
     float attack_cost;
     float bite_damage;
-
-    /* Pack defence. With pack_defence 1, every attack on a plant-eater
-     * draws in its family: each plant-eater on the eight cells around the
-     * hunter (the victim aside) whose genome_kinship with the victim is
-     * at least pack_kinship strikes back at once, in the same tick, with
-     * the same chance formula, damage and attack_cost as any attack.
-     * pack_defence 0 turns this off, so runs with and without it can be
-     * compared. An int, not a bool, so the settings file of lesson 10 can
-     * read it like every other whole number. */
-    int pack_defence;
-    float pack_kinship;
 
     /* Carrion. A death leaves body_energy * size plus any energy left.
      * Each tick carrion loses carrion_decay of itself; carrion_to_fertility

@@ -2,6 +2,7 @@
 
 #include <math.h>    /* isfinite, fabsf */
 #include <stdbool.h>
+#include <string.h>  /* memcmp */
 
 #include "genome.h"
 #include "rng.h"
@@ -56,7 +57,7 @@ static void test_rate_zero_copies_exactly(void)
     rng_seed(&r, 2);
     Genome parent, child;
     genome_random(&parent, &r, &set);
-    genome_copy_mutated(&child, &parent, &r, &set);
+    genome_cross(&child, &parent, &parent, &r, &set);
     int differ = 0;
     for (int i = 0; i < GENOME_LEN; i++) {
         /* Exact float comparison on purpose: a copy must be bit for bit. */
@@ -80,7 +81,7 @@ static void test_rate_one_mutates_within_range(void)
     long differ = 0;
     for (int k = 0; k < 1000; k++) {
         Genome child;
-        genome_copy_mutated(&child, &parent, &r, &set);
+        genome_cross(&child, &parent, &parent, &r, &set);
         if (!genome_in_range(&child, set.weight_limit)) {
             bad++;
         }
@@ -107,7 +108,7 @@ static void test_hue_wraps(void)
     int wrapped = 0, out_of_range = 0;
     for (int k = 0; k < 1000; k++) {
         Genome child;
-        genome_copy_mutated(&child, &parent, &r, &set);
+        genome_cross(&child, &parent, &parent, &r, &set);
         float hue = child.g[GENE_HUE];
         if (hue < 0.0f || hue >= 1.0f) {
             out_of_range++;
@@ -136,13 +137,164 @@ static void test_kinship(void)
 
     int close = 0;
     for (int k = 0; k < 100; k++) {
-        genome_copy_mutated(&child, &a, &r, &set);
+        genome_cross(&child, &a, &a, &r, &set);
         if (genome_kinship(&a, &child) > 0.9f) {
             close++;
         }
         CHECK(genome_kinship(&a, &child) == genome_kinship(&child, &a));
     }
     CHECK(close == 100);
+}
+
+/* Parents that can be told apart at a glance: traits and weights all one
+ * value in a, another in b. */
+static void two_parents(Genome *a, Genome *b)
+{
+    for (int i = 0; i < GENOME_LEN; i++) {
+        bool trait = i < GENE_TRAITS;
+        a->g[i] = trait ? 0.25f : 1.0f;
+        b->g[i] = trait ? 0.75f : -1.0f;
+    }
+}
+
+static void test_cross_takes_each_trait_from_a_parent(void)
+{
+    Settings set = settings_default();
+    set.mutation_rate = 0.0f;
+    Rng r;
+    rng_seed(&r, 11);
+    Genome a, b, child;
+    two_parents(&a, &b);
+    int strangers = 0;
+    int from_a = 0;
+    int from_b = 0;
+    for (int k = 0; k < 200; k++) {
+        genome_cross(&child, &a, &b, &r, &set);
+        for (int i = 0; i < GENE_TRAITS; i++) {
+            if (child.g[i] == a.g[i]) {
+                from_a++;
+            } else if (child.g[i] == b.g[i]) {
+                from_b++;
+            } else {
+                strangers++;
+            }
+        }
+    }
+    CHECK(strangers == 0);
+    CHECK(from_a > 0 && from_b > 0);
+}
+
+/* The sign every weight of hidden value h has, or 0 when they disagree. */
+static int hidden_group_sign(const Genome *g, int h)
+{
+    int sign = g->g[net_hidden_weight(h, 0)] > 0.0f ? 1 : -1;
+    for (int i = 0; i <= NET_IN; i++) {
+        if ((g->g[net_hidden_weight(h, i)] > 0.0f ? 1 : -1) != sign) {
+            return 0;
+        }
+    }
+    for (int o = 0; o < NET_OUT; o++) {
+        if ((g->g[net_out_weight(o, h)] > 0.0f ? 1 : -1) != sign) {
+            return 0;
+        }
+    }
+    return sign;
+}
+
+static void test_cross_keeps_hidden_groups_whole(void)
+{
+    Settings set = settings_default();
+    set.mutation_rate = 0.0f;
+    Rng r;
+    rng_seed(&r, 12);
+    Genome a, b, child;
+    two_parents(&a, &b);
+    int broken = 0;
+    int plus = 0;
+    int minus = 0;
+    for (int k = 0; k < 200; k++) {
+        genome_cross(&child, &a, &b, &r, &set);
+        for (int h = 0; h < NET_HIDDEN; h++) {
+            int sign = hidden_group_sign(&child, h);
+            broken += sign == 0;
+            plus += sign > 0;
+            minus += sign < 0;
+        }
+    }
+    CHECK(broken == 0);
+    CHECK(plus > 0 && minus > 0); /* the groups do come from both parents */
+}
+
+static void test_cross_child_can_differ_from_both(void)
+{
+    Settings set = settings_default();
+    set.mutation_rate = 1.0f;
+    Rng r;
+    rng_seed(&r, 13);
+    Genome a, b, child;
+    two_parents(&a, &b);
+    int moved = 0;
+    int bad = 0;
+    for (int k = 0; k < 100; k++) {
+        genome_cross(&child, &a, &b, &r, &set);
+        if (!genome_in_range(&child, set.weight_limit)) {
+            bad++;
+        }
+        for (int i = 0; i < GENE_TRAITS; i++) {
+            moved += child.g[i] != a.g[i] && child.g[i] != b.g[i];
+        }
+    }
+    CHECK(bad == 0);
+    CHECK(moved > 0);
+}
+
+/* Equal seeds and different parents must leave the generator in one state:
+ * otherwise what is in a genome would change every later random number. */
+static void test_cross_draws_the_same_count(void)
+{
+    Settings set = settings_default();
+    Rng seed_rng, one, two;
+    rng_seed(&seed_rng, 14);
+    rng_seed(&one, 15);
+    rng_seed(&two, 15);
+    Genome a, b, c, d, child;
+    genome_random(&a, &seed_rng, &set);
+    genome_random(&b, &seed_rng, &set);
+    genome_random(&c, &seed_rng, &set);
+    genome_random(&d, &seed_rng, &set);
+    genome_cross(&child, &a, &b, &one, &set);
+    genome_cross(&child, &c, &d, &two, &set);
+    CHECK(memcmp(one.s, two.s, sizeof(one.s)) == 0);
+}
+
+static void test_body_likeness(void)
+{
+    Settings set = settings_default();
+    Rng r;
+    rng_seed(&r, 16);
+    Genome a, b;
+    genome_random(&a, &r, &set);
+    b = a;
+    CHECK(genome_body_likeness(&a, &b) == 1.0f);
+    /* Opposite weights change nothing: only the body counts. */
+    for (int i = GENE_TRAITS; i < GENOME_LEN; i++) {
+        b.g[i] = -a.g[i];
+    }
+    CHECK(genome_body_likeness(&a, &b) == 1.0f);
+    /* Opposite bodies: 0 and 1 on every trait, half way round in hue. */
+    for (int i = 0; i < GENE_TRAITS; i++) {
+        a.g[i] = 0.0f;
+        b.g[i] = 1.0f;
+    }
+    a.g[GENE_HUE] = 0.0f;
+    b.g[GENE_HUE] = 0.5f;
+    CHECK(genome_body_likeness(&a, &b) < 0.5f);
+    CHECK(genome_body_likeness(&a, &b) == genome_body_likeness(&b, &a));
+    /* 0.98 and 0.01 are close on the wheel, so nearly alike in hue. */
+    b = a;
+    a.g[GENE_HUE] = 0.98f;
+    b.g[GENE_HUE] = 0.01f;
+    CHECK(genome_body_likeness(&a, &b) > 0.98f);
 }
 
 static void test_weight_positions(void)
@@ -177,6 +329,11 @@ int main(void)
     test_rate_one_mutates_within_range();
     test_hue_wraps();
     test_kinship();
+    test_cross_takes_each_trait_from_a_parent();
+    test_cross_keeps_hidden_groups_whole();
+    test_cross_child_can_differ_from_both();
+    test_cross_draws_the_same_count();
+    test_body_likeness();
     test_weight_positions();
     TEST_SUMMARY();
 }
