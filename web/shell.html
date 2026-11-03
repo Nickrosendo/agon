@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>agon</title>
+<link rel="icon" href="data:,">
+<style>
+  html, body { margin: 0; height: 100%; background: #000; color: #999; font: 13px monospace; }
+  body { display: flex; flex-direction: column; }
+  /* SDL follows this size: the canvas holds as many pixels as it shows. */
+  canvas { display: block; flex: 1; min-height: 0; width: 100%; outline: none; }
+  p { margin: 0; padding: 4px 8px; }
+</style>
+</head>
+<body>
+<canvas id="canvas" tabindex="0" oncontextmenu="event.preventDefault()"></canvas>
+<p id="note">agon runs only in this tab: refreshing the page loses the world.</p>
+<script>
+  // The page address chooses the world: ?seed=3. The C program reads it as an
+  // ordinary --seed option, and with none it takes a seed from the clock.
+  var seed = new URLSearchParams(location.search).get("seed");
+  var Module = {
+    canvas: document.getElementById("canvas"),
+    arguments: seed && /^(0x[0-9a-f]+|[0-9]+)$/i.test(seed) ? ["--seed", seed] : [],
+    onAbort: function (reason) {
+      document.getElementById("note").textContent =
+        "agon stopped: " + reason + ". Refreshing starts a new world.";
+    },
+  };
+  // Keys go to the world, not to the page, as soon as it is on screen.
+  Module.canvas.focus();
+</script>
+{{{ SCRIPT }}}
+</body>
+</html>

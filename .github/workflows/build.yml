@@ -66,3 +66,17 @@ jobs:
         with:
           name: agon-window-windows
           path: agon-window-windows.zip
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mymindstorm/setup-emsdk@v14
+      - name: The browser page
+        run: make web
+      - name: Under 2 MB compressed
+        run: test "$(cat build/web/* | gzip -c | wc -c)" -lt 2000000
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agon-web
+          path: build/web

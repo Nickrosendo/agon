@@ -12,6 +12,10 @@
 #include <windows.h> /* GetStdHandle */
 #endif
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h> /* emscripten_set_main_loop_arg */
+#endif
+
 /* static at file level: private to this file. There is only one window. */
 static SDL_Window *window;
 static SDL_Renderer *renderer;
@@ -178,6 +182,9 @@ uint64_t platform_now_ms(void)
 void platform_stop(void)
 {
     stop_requested = true;
+#ifdef __EMSCRIPTEN__
+    emscripten_cancel_main_loop();
+#endif
 }
 
 void platform_post_quit(void)
@@ -189,6 +196,14 @@ void platform_post_quit(void)
 void platform_run(void (*frame)(void *), void *arg, int frames_per_second)
 {
     stop_requested = false;
+#ifdef __EMSCRIPTEN__
+    /* A page must give control back to the browser between frames, or nothing
+     * is drawn and the tab hangs. So the browser calls frame, on its own timer.
+     * The last argument, true, makes this call never return: it abandons main
+     * where it stands, and main's local variables with it. */
+    emscripten_set_main_loop_arg(frame, arg, frames_per_second, true);
+    return; /* not reached; keeps the loop below out of this build's way */
+#endif
     uint64_t start = SDL_GetTicks64();
     uint64_t count = 0;
     while (!stop_requested) {

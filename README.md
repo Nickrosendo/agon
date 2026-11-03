@@ -79,6 +79,19 @@ is a windowed program with no console, so `--help` shows nothing when run from
 `cmd`: use `agon-window --help | more`. A save or a seed's world made on one
 system may not match another's, because maths functions differ between them.
 
+### In a browser
+
+With [Emscripten](https://emscripten.org) set up:
+
+```sh
+make web
+python3 -m http.server -d build/web 8000   # then open http://localhost:8000
+```
+
+The page needs a web server: browsers refuse to load its code from a plain file.
+Add `?seed=3` to the address for a particular world. There is no saving here, so
+refreshing loses the world, and a hidden tab runs slowly and does not catch up.
+
 ## Keys
 
 These are for the terminal program, `agon`.

@@ -138,7 +138,9 @@ static void handle_key(App *a, int key)
 {
     switch (key) {
     case 'q':
-        a->running = false;
+        if (!PLATFORM_IS_PAGE) { /* stopping a page would only freeze it */
+            a->running = false;
+        }
         break;
     case ' ':
         a->paused = !a->paused;
@@ -158,8 +160,11 @@ static void handle_key(App *a, int key)
         new_world(a);
         break;
     case 's':
-        app_save_now(&a->sim, a->opt->save_path, a->notice, sizeof(a->notice));
-        a->notice_frames = NOTICE_FRAMES;
+        if (!PLATFORM_IS_PAGE) {
+            app_save_now(&a->sim, a->opt->save_path, a->notice,
+                         sizeof(a->notice));
+            a->notice_frames = NOTICE_FRAMES;
+        }
         break;
     case ']':
         camera_zoom(&a->camera, 1, a->camera.view_w / 2, a->camera.view_h / 2);
@@ -246,10 +251,14 @@ static void draw_title(App *a, const Creature *followed)
 static void draw_help(App *a)
 {
     cells_canvas_set(&a->canvas, 0, a->layout.help_y);
-    render_text(0, 0,
-                " space pause | +/- speed | [ ] zoom | click follow | Esc let go"
-                " | r new world | s save | q quit",
-                a->canvas.w / FONT_W + 1);
+    /* Adjacent strings are one string, so each of these is one piece of text. */
+    const char *help =
+        PLATFORM_IS_PAGE
+            ? " space pause | +/- speed | [ ] zoom | click follow | Esc let go"
+              " | r new world"
+            : " space pause | +/- speed | [ ] zoom | click follow | Esc let go"
+              " | r new world | s save | q quit";
+    render_text(0, 0, help, a->canvas.w / FONT_W + 1);
 }
 
 /* The enlarged body, with a caption above it. */
@@ -501,7 +510,10 @@ static int app_leave(App *a)
 
 int main(int argc, char **argv)
 {
-    Options opt;
+    /* static, like app below: in a browser page main never finishes and its
+     * stack is reused, while frames keep reading the options through app.opt.
+     * A plain local here would be a pointer to memory that changes under us. */
+    static Options opt;
     char err[512];
     if (!options_parse(argc, argv, &opt, err, sizeof(err))) {
         char message[600];
@@ -519,6 +531,10 @@ int main(int argc, char **argv)
     }
     if (opt.once || opt.list_settings) {
         platform_error("--once and --settings are for agon");
+        return EXIT_USAGE;
+    }
+    if (PLATFORM_IS_PAGE && (opt.save_path != NULL || opt.load_path != NULL)) {
+        platform_error("a browser page has nowhere to save or load from");
         return EXIT_USAGE;
     }
     int zoom = CAMERA_NORMAL;

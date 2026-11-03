@@ -27,6 +27,11 @@ TERM_PROGRAM =
 WINDOW_LDFLAGS = -mwindows -static-libgcc
 endif
 
+ifeq ($(PLATFORM), web)
+# make web sets these; the objects stay apart so build/web holds only the page.
+OUT = build/web-objects
+endif
+
 ifeq ($(MODE), release)
 CFLAGS += -O2
 else
@@ -91,10 +96,30 @@ release:
 SDL_CFLAGS = $(patsubst -I%,-isystem %,$(shell sdl2-config --cflags))
 SDL_LIBS = $(shell sdl2-config --libs)
 
+ifeq ($(PLATFORM), web)
+# Emscripten carries its own SDL: this flag fetches and links it.
+SDL_CFLAGS = -sUSE_SDL=2
+SDL_LIBS = -sUSE_SDL=2
+endif
+
 window: $(OUT)/agon-window$(EXE)
 
 $(OUT)/agon-window$(EXE): $(CORE_OBJ) $(GFX_OBJ) $(WIN_OBJ)
 	$(CC) $(CFLAGS) $(WINDOW_LDFLAGS) $^ -o $@ $(SDL_LIBS) $(LDLIBS)
+
+# The browser page: emcc turns the same objects into WebAssembly. Its memory is
+# fixed, so nothing can grow without limit: enough for the 4,000-creature pool and
+# a canvas up to 4K. The stack gets 1 MB rather than Emscripten's 64 KB: agon has
+# some large local variables, and Linux gives programs 8 MB without asking.
+web:
+	$(MAKE) PLATFORM=web MODE=release CC=emcc build/web/index.html
+
+WEB_LDFLAGS = -sALLOW_MEMORY_GROWTH=0 -sINITIAL_MEMORY=128MB -sSTACK_SIZE=1MB
+
+build/web/index.html: $(CORE_OBJ) $(GFX_OBJ) $(WIN_OBJ) web/shell.html
+	@mkdir -p build/web
+	$(CC) $(CFLAGS) $(WEB_LDFLAGS) $(CORE_OBJ) $(GFX_OBJ) $(WIN_OBJ) \
+		--shell-file web/shell.html -o $@ $(SDL_LIBS) $(LDLIBS)
 
 # Only this one file sees SDL's headers.
 $(OUT)/window/platform_sdl.o: CFLAGS += $(SDL_CFLAGS)
@@ -174,5 +199,5 @@ clean:
 # else; a bare .SECONDARY: keeps them, so objects survive between runs.
 .SECONDARY:
 
-.PHONY: all release window test-window run-window-smoke test run-tests test-slow run-slow-tests install uninstall \
+.PHONY: all release window web test-window run-window-smoke test run-tests test-slow run-slow-tests install uninstall \
 	clean
