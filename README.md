@@ -164,11 +164,12 @@ for the build that wrote them; a build with a different format refuses them.
 3. Vigorous rules spread faster, but they feed less and die younger. Plants
    age, wither and leave bare soil.
 4. Each creature inherits a genome: its size, speed, sight, digestion of
-   plants and of meat, its colour, and the weights of a small neural network.
+   plants and of meat, its colour, how fast it ages, and the weights of a small neural network.
 5. Each tick, the network turns what the creature senses into one action: rest,
    turn left, turn right, move, bite or mate.
 6. Energy is the only currency. Living costs energy, and bigger, faster,
-   farther-seeing bodies cost more. At zero, a creature dies and leaves carrion.
+   farther-seeing bodies cost more, as does growing old, at a speed set by a
+   gene. At zero, a creature dies and leaves carrion.
 7. Two grown creatures side by side that both choose to mate have a child, and
    each pays for it with energy. Each part of its genome comes from one parent
    or the other, with small changes. No fitness function exists: what lives

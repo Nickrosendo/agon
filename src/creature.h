@@ -43,7 +43,7 @@ typedef struct {
     float level;
     float eaten;
     /* Stored inside the creature, not behind a pointer: GENOME_LEN floats
-     * (912 bytes) in every slot, allocated with the pool and never freed
+     * (916 bytes) in every slot, allocated with the pool and never freed
      * on its own. */
     Genome genome;
 } Creature;

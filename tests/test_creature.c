@@ -1,6 +1,6 @@
 #include "test.h"
 
-#include <math.h>  /* fabsf */
+#include <math.h>  /* fabsf, isfinite */
 #include <stdio.h> /* snprintf */
 
 #include "brain_script.h"
@@ -1082,9 +1082,67 @@ static void test_old_age(void)
     CHECK(!creature_upkeep(&c, &s)); /* turns 100: dies, energy or not */
     CHECK(c.energy > 0.0f);
 
-    s.max_age = 0; /* no limit */
+    /* No limit: only energy decides, and being this old costs a lot of it. */
+    s.max_age = 0;
     c.age = 1000000;
+    c.energy = 1e7f;
     CHECK(creature_upkeep(&c, &s));
+}
+
+static void test_upkeep_rises_with_age(void)
+{
+    Settings s = settings_default();
+    Creature c = {.alive = true};
+    c.genome.g[GENE_AGEING] = 0.5f;
+    c.age = 0;
+    float young = creature_upkeep_cost(&c, &s);
+    c.age = 500;
+    float middle = creature_upkeep_cost(&c, &s);
+    c.age = 5000;
+    float old = creature_upkeep_cost(&c, &s);
+    CHECK(young < middle);
+    CHECK(middle < old);
+}
+
+/* Slow ageing is a trade, not a gift: dearer while young, cheaper when old. */
+static void test_slow_ageing_pays_later(void)
+{
+    Settings s = settings_default();
+    Creature slow = {.alive = true};
+    Creature fast = {.alive = true};
+    slow.genome.g[GENE_AGEING] = 0.0f;
+    fast.genome.g[GENE_AGEING] = 1.0f;
+    CHECK(creature_upkeep_cost(&slow, &s) > creature_upkeep_cost(&fast, &s));
+    slow.age = 20000;
+    fast.age = 20000;
+    CHECK(creature_upkeep_cost(&slow, &s) < creature_upkeep_cost(&fast, &s));
+}
+
+/* No tick kills a fed creature: it outlives the old fixed limit by far, and
+ * what ends it is running out of energy. */
+static void test_no_fixed_death_age(void)
+{
+    Settings s = settings_default();
+    CHECK(s.max_age == 0);
+    Creature c = {.alive = true, .energy = 1e7f};
+    c.genome.g[GENE_AGEING] = 0.5f;
+    while (c.age < 6000) {
+        CHECK(creature_upkeep(&c, &s));
+    }
+    CHECK(c.energy > 0.0f);
+    c.energy = 0.01f;
+    CHECK(!creature_upkeep(&c, &s));
+}
+
+static void test_ageing_cost_stays_finite(void)
+{
+    Settings s = settings_default();
+    Creature c = {.alive = true, .energy = 100.0f, .age = UINT32_MAX};
+    c.genome.g[GENE_AGEING] = 1.0f;
+    CHECK(isfinite(creature_upkeep_cost(&c, &s)));
+    /* It stays at its top instead of wrapping back to young. */
+    creature_upkeep(&c, &s);
+    CHECK(c.age == UINT32_MAX);
 }
 
 static void test_hold_then_rest(void)
@@ -1206,6 +1264,10 @@ int main(void)
     test_killed_creature_leaves_carrion();
     test_digestion_costs();
     test_old_age();
+    test_upkeep_rises_with_age();
+    test_slow_ageing_pays_later();
+    test_no_fixed_death_age();
+    test_ageing_cost_stays_finite();
     test_hold_then_rest();
     test_floor_restocks();
     test_full_pool_runs();

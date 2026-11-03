@@ -25,9 +25,10 @@
  * the wish to mate hashed; then limits off: no floor, no age limit, no plant
  * cap, no plants from nothing, and founders by share of the soil; then
  * starting plants with mixed ages and a rule that can sprout from one plant;
- * then the mating season: one more sense, so 6 more genes, and more mating.
+ * then the mating season: one more sense, so 6 more genes, and more mating;
+ * then ageing: one more gene, and upkeep that rises with age.
  */
-#define SEED_7_AFTER_500 0x6d7cd6d20691fa17ULL
+#define SEED_7_AFTER_500 0x59af7c003573e41bULL
 
 static void test_same_seed_same_checksum(void)
 {

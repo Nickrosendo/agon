@@ -64,6 +64,10 @@ Settings settings_default(void)
         .season_every = 100,
         .season_ticks = 25,
         .sense_age_half = 200.0f,
+        .ageing_upkeep = 0.3f,
+        .ageing_span = 1500.0f,
+        .ageing_min_rate = 0.25f,
+        .slow_ageing_upkeep = 0.05f,
         .max_age = 0,
         .max_plant_eaters = 0,
         .cap_by_level = 1,
@@ -176,6 +180,11 @@ static const SettingInfo TABLE[] = {
     INT_ROW(season_every, 1, INT_MAX, "ticks from one mating season to the next"),
     INT_ROW(season_ticks, 0, INT_MAX, "ticks a mating season lasts (0: none)"),
     FLOAT_ROW(sense_age_half, 1, BIG, "the age sensed as 0.5"),
+    FLOAT_ROW(ageing_upkeep, 0, BIG, "what age costs at the span below"),
+    FLOAT_ROW(ageing_span, 1, BIG, "ticks for quick genes to reach that cost"),
+    FLOAT_ROW(ageing_min_rate, 0, 1, "how fast the slowest genes age, as a "
+                                     "share"),
+    FLOAT_ROW(slow_ageing_upkeep, 0, BIG, "upkeep paid for the slowest ageing"),
     INT_ROW(max_age, 0, INT_MAX, "a fixed death age, in ticks (0: none)"),
     INT_ROW(max_plant_eaters, 0, POOL_MAX, "plant-eaters cannot mate above "
                                            "this (0: no cap)"),

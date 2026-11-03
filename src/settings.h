@@ -110,6 +110,15 @@ typedef struct {
     int season_every;
     int season_ticks;
     float sense_age_half;    /* the age sensed as 0.5 */
+    /* Ageing, a cost in place of an age limit. Upkeep gains ageing_upkeep * e *
+     * e + slow_ageing_upkeep * (1 - gene), where e = age * rate / ageing_span
+     * and rate = ageing_min_rate + (1 - ageing_min_rate) * gene, for GENE_AGEING.
+     * A gene of 1 reaches e = 1 at ageing_span ticks; a gene of 0 ages at
+     * ageing_min_rate of that speed, but pays more all its life. */
+    float ageing_upkeep;
+    float ageing_span;       /* above 0: it is divided by */
+    float ageing_min_rate;
+    float slow_ageing_upkeep;
     /* A fixed death age: a creature dies on reaching max_age ticks, whatever
      * its energy. 0, the default, means no such age. Kept so that runs with
      * and without it can be compared. */

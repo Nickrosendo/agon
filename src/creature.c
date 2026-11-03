@@ -161,13 +161,27 @@ int creature_sight(const Creature *c, const Settings *s)
     return 1 + (int)(gene * (float)(s->sight_max - 1) + 0.5f);
 }
 
+/* What age costs this creature per tick. e is how far it has aged: its age
+ * scaled by how fast its genes age it. Squared, so that the cost is small for
+ * most of a life and then climbs until food cannot pay for it: a practical end
+ * set by genes and food, not a tick that kills a healthy creature. Slow ageing
+ * is paid for from birth. Floats, so a huge age gives a huge cost and not a
+ * wrapped one. */
+static float ageing_cost(const Creature *c, const Settings *s)
+{
+    float gene = c->genome.g[GENE_AGEING];
+    float rate = s->ageing_min_rate + (1.0f - s->ageing_min_rate) * gene;
+    float e = (float)c->age * rate / s->ageing_span;
+    return s->ageing_upkeep * e * e + s->slow_ageing_upkeep * (1.0f - gene);
+}
+
 float creature_upkeep_cost(const Creature *c, const Settings *s)
 {
     float digest = c->genome.g[GENE_PLANT] + c->genome.g[GENE_MEAT];
     return s->upkeep_base + s->size_upkeep * creature_size(c, s) +
            s->speed_upkeep * creature_speed(c, s) +
            s->sight_upkeep * (float)creature_sight(c, s) +
-           s->digest_upkeep * digest * digest;
+           s->digest_upkeep * digest * digest + ageing_cost(c, s);
 }
 
 /* The energy at which this creature may mate: bigger bodies need more. */

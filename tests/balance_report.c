@@ -50,6 +50,9 @@ typedef struct {
     uint64_t deaths;
     uint64_t starved, killed, old_age;
     double energy_at_death;
+    double age_at_death; /* of those who grew up: most deaths are infants */
+    uint64_t adult_deaths;
+    uint32_t oldest_at_death;
     uint64_t still_deaths;
     uint64_t still_by_action[ACT_COUNT];
     uint64_t ticks_at_plant_cap;
@@ -61,6 +64,13 @@ static void record_death(Report *rep, const Shadow *sh, const Settings *set)
 {
     rep->deaths++;
     rep->energy_at_death += (double)sh->energy;
+    if (sh->age >= (uint32_t)set->mate_age) {
+        rep->age_at_death += (double)sh->age;
+        rep->adult_deaths++;
+    }
+    if (sh->age > rep->oldest_at_death) {
+        rep->oldest_at_death = sh->age;
+    }
     /* The age check comes first: that death has nothing to do with energy.
      * sh->age is the age a tick ago, and upkeep adds one before comparing. */
     if (set->max_age > 0 && sh->age + 1 >= (uint32_t)set->max_age) {
@@ -131,7 +141,7 @@ static int percent(uint64_t part, uint64_t whole)
 
 static void print_header(void)
 {
-    printf("seed  final   peak extinct births lastbirth meat  Emean starv "
+    printf("seed  final   peak extinct births lastbirth meat  Emean adultA ageX starv "
            "kill  old still  rest left right move bite  mate  capt full\n");
 }
 
@@ -149,10 +159,14 @@ static void print_row(const Sim *s, const Report *rep)
     }
     double mean = rep->deaths == 0 ? 0.0
                                    : rep->energy_at_death / (double)rep->deaths;
+    double mean_age = rep->adult_deaths == 0
+                          ? 0.0
+                          : rep->age_at_death / (double)rep->adult_deaths;
     uint32_t births = s->pool.next_id - rep->first_born_id;
-    printf("%4llu %6d %6d %7s %6u %9s %4d %6.1f %4d%% %3d%% %3d%% %4d%%",
+    printf("%4llu %6d %6d %7s %6u %9s %4d %6.1f %6.0f %4u %4d%% %3d%% %3d%% %4d%%",
            (unsigned long long)s->seed, s->pool.count, rep->peak, extinct,
-           (unsigned)births, last, meat_eaters(s), mean,
+           (unsigned)births, last, meat_eaters(s), mean, mean_age,
+           (unsigned)rep->oldest_at_death,
            percent(rep->starved, rep->deaths), percent(rep->killed, rep->deaths),
            percent(rep->old_age, rep->deaths),
            percent(rep->still_deaths, rep->deaths));

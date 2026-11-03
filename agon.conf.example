@@ -107,6 +107,18 @@ season_ticks = 25
 # the age sensed as 0.5 (1 to 1e+06)
 sense_age_half = 200
 
+# what age costs at the span below (0 to 1e+06)
+ageing_upkeep = 0.3
+
+# ticks for quick genes to reach that cost (1 to 1e+06)
+ageing_span = 1500
+
+# how fast the slowest genes age, as a share (0 to 1)
+ageing_min_rate = 0.25
+
+# upkeep paid for the slowest ageing (0 to 1e+06)
+slow_ageing_upkeep = 0.05
+
 # a fixed death age, in ticks (0: none) (0 to 2147483647)
 max_age = 0
 

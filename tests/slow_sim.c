@@ -13,9 +13,12 @@
 
 /* True when the creature's energy and every value of its genome is an
  * ordinary number: not infinity and not NaN. */
-static bool creature_finite(const Creature *c)
+static bool creature_finite(const Creature *c, const Settings *set)
 {
     if (!isfinite(c->energy)) {
+        return false;
+    }
+    if (!isfinite(creature_upkeep_cost(c, set))) {
         return false;
     }
     for (int i = 0; i < GENOME_LEN; i++) {
@@ -28,9 +31,11 @@ static bool creature_finite(const Creature *c)
 
 static void test_long_run_stays_finite(void)
 {
-    /* 200,000 ticks is well over a hundred generations at the default
-     * max_age. Mutations add up over that many generations, and a NaN,
-     * once in a genome, would be inherited by every descendant. */
+    /* 200,000 ticks is many generations, with lives ended by what ageing costs
+     * and not by a fixed limit. Mutations add up over that many generations, and
+     * a NaN, once in a genome, would be inherited by every descendant. Very old
+     * creatures are where an ageing cost could run away, so ages are checked
+     * through their upkeep too. */
     Settings set = settings_default();
     Sim s;
     CHECK(sim_init(&s, &set, 7, 64, 32));
@@ -39,7 +44,7 @@ static void test_long_run_stays_finite(void)
     }
     int bad = 0;
     for (int i = 0; i < s.pool.capacity; i++) {
-        if (s.pool.items[i].alive && !creature_finite(&s.pool.items[i])) {
+        if (s.pool.items[i].alive && !creature_finite(&s.pool.items[i], &s.set)) {
             bad++;
         }
     }
