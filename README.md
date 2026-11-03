@@ -58,8 +58,10 @@ by both programs. `--zoom close|normal|far|world` picks the starting zoom.
 | wheel, `[` `]` | zoom |
 | dragging, arrows | move the view |
 | clicking a creature | follow it: the panel shows it, its body enlarged, and its family's bodies over time |
+| clicking "top hunter", "oldest" or the largest family's body on the panel | follow the highest on the food chain, the oldest, or that family's biggest |
 | Esc, clicking bare ground, moving the view | let go |
 | `r` | a new world from a new seed |
+| `n` | a new world, after game over |
 | `s` | save, if started with `--save` |
 | `q`, the window's X | quit (and save, if started with `--save`) |
 
@@ -101,6 +103,7 @@ These are for the terminal program, `agon`.
 | space | pause |
 | `+` `-` | faster, slower |
 | `r` | a new world from a new seed |
+| `n` | a new world, after game over |
 | `i` | inspect: arrows or `hjkl` move the cursor (`HJKL` by 5), and the panel shows the plant and creature under it |
 | `s` | save, if started with `--save` |
 | `q` | quit (and save, if started with `--save`) |
@@ -181,7 +184,13 @@ for the build that wrote them; a build with a different format refuses them.
 9. A creature's food-chain level is measured from what it actually eats: a
    plant-eater sits at about 2, something that eats plant-eaters at about 3.
 10. Random creatures appear only at the very start, and plants grow only from
-    other plants. Nothing tops a world up, so a world can die.
+    other plants. Nothing tops a world up, so a world can die. When the last
+    creature dies the world stops and shows a game over screen with its year,
+    seed and records. Nothing restarts by itself, so a world left overnight may
+    be found dead. Small worlds die every time, since they get too few first
+    creatures; `--size 256x144` gives a world a chance.
+11. Time is shown in years. A year is 100 ticks by default (`ticks_per_year`),
+    which is only a way of showing time and changes nothing in a world.
 
 ## Licence
 
