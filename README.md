@@ -197,7 +197,14 @@ for the build that wrote them; a build with a different format refuses them.
     seed and records. Nothing restarts by itself, so a world left overnight may
     be found dead. Small worlds die every time, since they get too few first
     creatures; `--size 256x144` gives a world a chance.
-11. Time is shown in years. A year is 100 ticks by default (`ticks_per_year`),
+11. A creature can grow. Energy well above what mating needs is surplus, and a
+    gene sets what share of it becomes body. There is no top size: bigger bodies
+    hit harder, bite more and hold more health, and cost more to keep. Armour and
+    a weapon are genes too, each with its own upkeep.
+12. A creature carries a few numbers from one decision to the next, its memory,
+    and also senses its hunger, its wounds, the relatives and strangers beside it
+    and a random number. What it does with them is left to selection.
+13. Time is shown in years. A year is 100 ticks by default (`ticks_per_year`),
     which is only a way of showing time and changes nothing in a world.
 
 ## Licence

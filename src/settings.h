@@ -77,10 +77,10 @@ typedef struct {
      * tick, so one tick of sprouting can overshoot it. 0: no cap. */
     int veg_max_cells;
 
-    /* Creatures. Energy is the only currency: every tick costs
+    /* Creatures. Energy pays for everything: every tick costs
      * upkeep_base, a move costs move_cost more (even a blocked one), and
      * a bite of vegetation gains bite_veg_energy. At zero energy a
-     * creature dies. From mate_age ticks and mate_threshold * size energy
+     * creature loses health, and at zero health it dies. From mate_age ticks and mate_threshold * size energy
      * it can wish to mate, for mate_window ticks; a child is born when two
      * neighbours wish together, each handing mate_share of its energy to
      * it. While fewer than min_creatures are alive, new ones are placed at
@@ -166,9 +166,8 @@ typedef struct {
     float sight_upkeep;      /* per cell of sight */
 
     /* Food. A bite looks at the eight cells around the creature and eats
-     * the food that gives it the most energy; a hunter (meat gene above
-     * plant gene) with no carrion around attacks a neighbouring
-     * plant-eater instead (see act_bite in creature.c). Energy gained
+     * the food that gives it the most energy, and never hurts anyone
+     * (see act_bite in creature.c). Energy gained
      * is what was taken times the efficiency for that food: digest_floor
      * + (1 - digest_floor) * gene, with GENE_PLANT or GENE_MEAT.
      * Digesting costs upkeep every tick: digest_upkeep * (plant +
