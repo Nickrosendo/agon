@@ -204,6 +204,73 @@ static void test_font_block_heights(void)
     canvas_free(&c);
 }
 
+static void test_copy_clips(void)
+{
+    Canvas to, from;
+    CHECK(canvas_init(&to, 4, 4));
+    CHECK(canvas_init(&from, 2, 2));
+    canvas_fill(&from, RED);
+    canvas_copy(&to, &from, 1, 1);
+    CHECK(to.px[1 * 4 + 1] == RED && to.px[2 * 4 + 2] == RED);
+    CHECK(to.px[0] == BLACK && to.px[3 * 4 + 3] == BLACK);
+    /* Over each edge, and wholly off: only what lands is written. */
+    canvas_fill(&to, BLACK);
+    canvas_copy(&to, &from, -1, -1);
+    CHECK(to.px[0] == RED && to.px[1] == BLACK && to.px[4] == BLACK);
+    canvas_fill(&to, BLACK);
+    canvas_copy(&to, &from, 3, 3);
+    CHECK(to.px[3 * 4 + 3] == RED && to.px[2 * 4 + 3] == BLACK);
+    canvas_fill(&to, BLACK);
+    canvas_copy(&to, &from, 100, 0);
+    canvas_copy(&to, &from, 0, 100);
+    canvas_copy(&to, &from, -100, 0);
+    canvas_copy(&to, &from, 0, -100);
+    CHECK(to.px[0] == BLACK && to.px[15] == BLACK);
+    /* Empty canvases at either end. */
+    Canvas empty;
+    CHECK(canvas_init(&empty, 0, 0));
+    canvas_copy(&empty, &from, 0, 0);
+    canvas_copy(&to, &empty, 0, 0);
+    canvas_free(&empty);
+    canvas_free(&from);
+    canvas_free(&to);
+}
+
+/* The quick way and the careful way must draw the same pixels: at every position
+ * round the canvas's edges, flipped or not, compared with drawing bit by bit. */
+static void test_mask_quick_path_matches_rects(void)
+{
+    enum { CW = 24, CH = 20 };
+    uint16_t rows[8] = {0x81, 0x42, 0x24, 0x18, 0x18, 0xE7, 0x00, 0xFF};
+    Canvas a, b;
+    CHECK(canvas_init(&a, CW, CH));
+    CHECK(canvas_init(&b, CW, CH));
+    for (int y = -9; y <= CH + 1; y++) {
+        for (int x = -9; x <= CW + 1; x++) {
+            for (int flip = 0; flip < 2; flip++) {
+                canvas_fill(&a, 0);
+                canvas_fill(&b, 0);
+                canvas_mask(&a, rows, 8, x, y, 1, flip != 0, RED);
+                for (int r = 0; r < 8; r++) {
+                    for (int i = 0; i < 8; i++) {
+                        if ((rows[r] >> (7 - i)) & 1) {
+                            int column = flip != 0 ? 7 - i : i;
+                            canvas_rect(&b, x + column, y + r, 1, 1, RED);
+                        }
+                    }
+                }
+                bool same = true;
+                for (int k = 0; k < CW * CH; k++) {
+                    same = same && a.px[k] == b.px[k];
+                }
+                CHECK(same);
+            }
+        }
+    }
+    canvas_free(&a);
+    canvas_free(&b);
+}
+
 int main(void)
 {
     test_rgb();
@@ -217,5 +284,7 @@ int main(void)
     test_ppm_unwritable_path();
     test_font_draws_inside_its_cell();
     test_font_block_heights();
+    test_mask_quick_path_matches_rects();
+    test_copy_clips();
     TEST_SUMMARY();
 }

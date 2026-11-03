@@ -35,7 +35,37 @@ sudo make uninstall
 The display uses 24-bit colour and two square pixels per character cell, so
 it wants a terminal with true colour and a font with the half-block character.
 
+## In a window
+
+`agon-window` shows the same simulation drawn in tiles, in the classic Dwarf
+Fortress style, with bodies generated from each creature's genes. It needs SDL 2;
+nothing else in agon does, and `make` and `make test` work without it.
+
+```sh
+sudo apt install libsdl2-dev   # on Debian and Ubuntu
+make window MODE=release
+./build/release/agon-window
+```
+
+The default world is 256x144 cells. `--seed`, `--size`, `--speed`, `--no-floor`,
+`--config`, `--save` and `--load` work as they do below, and save files are shared
+by both programs. `--zoom close|normal|far|world` picks the starting zoom.
+
+| Key or mouse | What it does |
+|---|---|
+| space | pause |
+| `+` `-` | faster, slower |
+| wheel, `[` `]` | zoom |
+| dragging, arrows | move the view |
+| clicking a creature | follow it: the panel shows it, its body enlarged, and its family's bodies over time |
+| Esc, clicking bare ground, moving the view | let go |
+| `r` | a new world from a new seed |
+| `s` | save, if started with `--save` |
+| `q`, the window's X | quit (and save, if started with `--save`) |
+
 ## Keys
+
+These are for the terminal program, `agon`.
 
 | Key | What it does |
 |---|---|

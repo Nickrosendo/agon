@@ -113,6 +113,23 @@ static void draw_glyph(Canvas *c, int x, int y, const uint8_t *glyph,
                        uint32_t fg, uint32_t bg)
 {
     canvas_rect(c, x, y, FONT_W, FONT_H, bg);
+    /* Wholly on the canvas: pixels written directly, as text is redrawn every
+     * frame and a window holds a thousand characters. */
+    if (x >= 0 && y >= 0 && x + FONT_W <= c->w && y + FONT_H <= c->h) {
+        uint32_t *line = c->px + y * c->w + x;
+        for (int row = 0; row < 8; row++) {
+            unsigned bits = glyph[row];
+            for (int i = 0; bits != 0; i++) { /* stops when no set bit is left */
+                if (bits & 1u) {
+                    line[i] = fg;
+                    line[c->w + i] = fg; /* each font row is drawn twice */
+                }
+                bits >>= 1;
+            }
+            line += 2 * c->w;
+        }
+        return;
+    }
     for (int row = 0; row < 8; row++) {
         unsigned bits = glyph[row];
         for (int i = 0; i < FONT_W; i++) {

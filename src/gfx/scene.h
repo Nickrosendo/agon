@@ -33,6 +33,13 @@ typedef struct {
     uint16_t carrion[2][TILE_VARIANTS][16];
     uint16_t slash[2][TILE_MARK_FRAMES][16];
     uint16_t crumbs[2][TILE_MARK_FRAMES][16];
+    /* The ground as last drawn, and what it was drawn from. Most frames fall
+     * between two ticks and have the same ground, so they only copy it. */
+    Canvas ground;
+    bool ground_valid;
+    uint64_t ground_tick;
+    int ground_water, ground_level;
+    float ground_cx, ground_cy;
 } Scene;
 
 /* How the window is divided, in pixels. */
@@ -73,6 +80,9 @@ bool scene_init(Scene *sc, const Sim *s);
 void scene_free(Scene *sc);
 /* After r: ids start again, so everything remembered is wrong. */
 void scene_reset(Scene *sc);
+/* Which picture the water shows at this time. While paused it is the only thing
+ * that moves, so a frame where it has not changed need not be drawn. */
+int scene_water_frame(uint64_t water_ms);
 /* Once per frame, after the frame's ticks. */
 void scene_update(Scene *sc, const Sim *s, int ticks_per_second);
 /*

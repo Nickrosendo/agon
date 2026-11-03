@@ -3,6 +3,7 @@
 #include <stddef.h> /* size_t */
 #include <stdio.h>  /* fopen, fprintf, fputc, fclose */
 #include <stdlib.h> /* malloc, free */
+#include <string.h> /* memcpy */
 
 uint32_t canvas_rgb(uint8_t r, uint8_t g, uint8_t b)
 {
@@ -78,9 +79,38 @@ void canvas_rect(Canvas *c, int x, int y, int w, int h, uint32_t colour)
     }
 }
 
+/*
+ * A mask at scale 1 that lies wholly on the canvas: no clipping is possible, so
+ * it writes pixels directly. This is the common case by far (most of a frame is
+ * symbols), and it is worth having: going through canvas_rect once per pixel
+ * cost a third of the program's time.
+ */
+static void mask_unclipped(Canvas *c, const uint16_t *rows, int size, int x,
+                           int y, bool flip, uint32_t colour)
+{
+    uint32_t *line = c->px + y * c->w + x; /* a pointer to the mask's corner */
+    for (int r = 0; r < size; r++) {
+        unsigned bits = rows[r];
+        if (bits != 0) {
+            for (int i = 0; i < size; i++) {
+                if ((bits >> (size - 1 - i)) & 1u) {
+                    line[flip ? size - 1 - i : i] = colour;
+                }
+            }
+        }
+        line += c->w; /* adding to a uint32_t * moves by whole pixels */
+    }
+}
+
 void canvas_mask(Canvas *c, const uint16_t *rows, int size, int x, int y,
                  int scale, bool flip, uint32_t colour)
 {
+    int extent = size * scale;
+    if (scale == 1 && x >= 0 && y >= 0 && x + extent <= c->w &&
+        y + extent <= c->h) {
+        mask_unclipped(c, rows, size, x, y, flip, colour);
+        return;
+    }
     for (int r = 0; r < size; r++) {
         /* The cast keeps the shift below unsigned: a uint16_t would become
          * a signed int first. */
@@ -95,6 +125,23 @@ void canvas_mask(Canvas *c, const uint16_t *rows, int size, int x, int y,
                             colour);
             }
         }
+    }
+}
+
+void canvas_copy(Canvas *c, const Canvas *from, int x, int y)
+{
+    /* The part of from that lands on c, worked out once for all rows. */
+    int left = x < 0 ? -x : 0;
+    int top = y < 0 ? -y : 0;
+    int right = x + from->w > c->w ? c->w - x : from->w;
+    int bottom = y + from->h > c->h ? c->h - y : from->h;
+    if (left >= right) {
+        return; /* also means nothing is read through a NULL px below */
+    }
+    for (int r = top; r < bottom; r++) {
+        /* memcpy counts bytes, not pixels. */
+        memcpy(c->px + (y + r) * c->w + x + left, from->px + r * from->w + left,
+               (size_t)(right - left) * sizeof(c->px[0]));
     }
 }
 

@@ -43,6 +43,8 @@ void canvas_rect(Canvas *c, int x, int y, int w, int h, uint32_t colour);
  */
 void canvas_mask(Canvas *c, const uint16_t *rows, int size, int x, int y,
                  int scale, bool flip, uint32_t colour);
+/* Copies all of from onto c with from's corner at (x, y), clipped. */
+void canvas_copy(Canvas *c, const Canvas *from, int x, int y);
 /* Writes the canvas as a PPM image, the simplest picture format there is:
  * a short text header, then three bytes per pixel. False if the file could
  * not be written. */

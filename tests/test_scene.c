@@ -335,6 +335,116 @@ static void test_layout_gives_the_panel_way_first(void)
     CHECK(l.too_small && l.view_w == 0 && l.view_h == 0);
 }
 
+/* FNV-1a, a simple hash: each pixel's bytes are mixed into a running number. */
+static uint64_t hash_canvas(const Canvas *c)
+{
+    uint64_t h = 14695981039346656037u;
+    for (int i = 0; i < c->w * c->h; i++) {
+        for (int shift = 0; shift < 32; shift += 8) {
+            h ^= (c->px[i] >> shift) & 0xFFu;
+            h *= 1099511628211u;
+        }
+    }
+    return h;
+}
+
+/*
+ * The look, pinned, like SEED_7_AFTER_500 in test_sim.c. If this fails, the
+ * picture changed: look at it first, and only then update the numbers, saying
+ * why in the commit. Symbols are computed with sinf, so another system's maths
+ * library may legitimately give other numbers.
+ */
+static void test_known_world_pixels(void)
+{
+    static const uint64_t EXPECTED[CAMERA_LEVELS] = {
+        0x2ff27f9f210e01a5u, 0x996cbe6d86deb305u, 0xc772ddf573ec4c43u, 0x89794e72e7efcc25u,
+    };
+    Settings set = settings_default();
+    Sim s;
+    CHECK(sim_init(&s, &set, 3, 64, 32));
+    Scene sc;
+    CHECK(scene_init(&sc, &s));
+    for (int t = 0; t < 300; t++) {
+        sim_step(&s);
+        scene_update(&sc, &s, 10);
+    }
+    Canvas c;
+    CHECK(canvas_init(&c, VIEW_W, VIEW_H));
+    Camera cam;
+    camera_init(&cam, 64, 32, VIEW_W, VIEW_H);
+    for (int level = 0; level < CAMERA_LEVELS; level++) {
+        cam.level = level;
+        canvas_fill(&c, canvas_rgb(255, 0, 255));
+        scene_draw_world(&sc, &c, &cam, &s, 0.5f, 1000, 1000, 0, 0);
+        uint64_t h = hash_canvas(&c);
+        if (h != EXPECTED[level]) {
+            printf("level %d: 0x%llxu\n", level, (unsigned long long)h);
+        }
+        CHECK(h == EXPECTED[level]);
+    }
+    canvas_free(&c);
+    scene_free(&sc);
+    sim_free(&s);
+}
+
+/* The ground is kept between frames: it must come back when, and only when,
+ * something it shows has changed. */
+static void test_ground_layer_refreshes_when_it_should(void)
+{
+    Sim s;
+    make_empty_sim(&s, 64, 64);
+    Scene sc;
+    CHECK(scene_init(&sc, &s));
+    scene_update(&sc, &s, 10);
+    Canvas c;
+    CHECK(canvas_init(&c, VIEW_W, VIEW_H));
+    Camera cam;
+    camera_init(&cam, 64, 64, VIEW_W, VIEW_H);
+    scene_draw_world(&sc, &c, &cam, &s, 0.0f, 0, 0, 0, 0);
+    uint64_t first = hash_canvas(&c);
+
+    /* Same tick, same view: not drawn again, so a change does not show yet. In
+     * the real program the world cannot change without a tick. */
+    for (int i = 0; i < 64 * 64; i++) {
+        s.world.terrain[i] = TERRAIN_WATER;
+    }
+    scene_draw_world(&sc, &c, &cam, &s, 0.0f, 0, 0, 0, 0);
+    CHECK(hash_canvas(&c) == first);
+
+    /* A tick shows it. */
+    s.tick++;
+    scene_draw_world(&sc, &c, &cam, &s, 0.0f, 0, 0, 0, 0);
+    uint64_t water0 = hash_canvas(&c);
+    CHECK(water0 != first);
+    /* The next picture of the water. */
+    scene_draw_world(&sc, &c, &cam, &s, 0.0f, 250, 0, 0, 0);
+    CHECK(hash_canvas(&c) != water0);
+    /* Moving or zooming the camera. */
+    scene_draw_world(&sc, &c, &cam, &s, 0.0f, 0, 0, 0, 0);
+    CHECK(hash_canvas(&c) == water0);
+    cam.level = CAMERA_FAR;
+    scene_draw_world(&sc, &c, &cam, &s, 0.0f, 0, 0, 0, 0);
+    CHECK(hash_canvas(&c) != water0);
+    cam.level = CAMERA_NORMAL;
+    /* A smaller view, then the frame is whatever size it is. */
+    camera_resize(&cam, VIEW_W / 2, VIEW_H / 2);
+    scene_draw_world(&sc, &c, &cam, &s, 0.0f, 0, 0, 0, 0);
+    CHECK(sc.ground.w == VIEW_W / 2);
+    /* r: the same tick number on a new world. */
+    camera_resize(&cam, VIEW_W, VIEW_H);
+    scene_draw_world(&sc, &c, &cam, &s, 0.0f, 0, 0, 0, 0);
+    for (int i = 0; i < 64 * 64; i++) {
+        s.world.terrain[i] = TERRAIN_ROCK;
+    }
+    scene_reset(&sc);
+    scene_update(&sc, &s, 10);
+    scene_draw_world(&sc, &c, &cam, &s, 0.0f, 0, 0, 0, 0);
+    CHECK(hash_canvas(&c) != water0);
+    canvas_free(&c);
+    scene_free(&sc);
+    sim_free(&s);
+}
+
 static void test_strip_and_enlarged_bodies(void)
 {
     Sim s;
@@ -446,6 +556,8 @@ int main(void)
     test_follow_across_the_edge_takes_the_short_way();
     test_layout_gives_the_panel_way_first();
     test_strip_and_enlarged_bodies();
+    test_known_world_pixels();
+    test_ground_layer_refreshes_when_it_should();
     test_layout_family_area();
     TEST_SUMMARY();
 }

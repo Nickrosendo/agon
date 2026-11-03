@@ -33,6 +33,14 @@ bool scene_init(Scene *sc, const Sim *s)
         sprite_cache_free(&sc->sprites);
         return false;
     }
+    /* Sized by the first frame. An empty canvas allocates nothing, so this
+     * cannot fail today; checked anyway, like every other allocation. */
+    if (!canvas_init(&sc->ground, 0, 0)) {
+        sprite_cache_free(&sc->sprites);
+        anim_free(&sc->anim);
+        return false;
+    }
+    sc->ground_valid = false;
     /* Every symbol once, here, so drawing a frame only copies bits. */
     for (int z = 0; z < 2; z++) {
         int size = z == 0 ? 16 : 8;
@@ -61,17 +69,25 @@ void scene_free(Scene *sc)
 {
     sprite_cache_free(&sc->sprites);
     anim_free(&sc->anim);
+    canvas_free(&sc->ground);
 }
 
 void scene_reset(Scene *sc)
 {
     sprite_cache_reset(&sc->sprites);
     anim_reset(&sc->anim);
+    sc->ground_valid = false; /* a new world can have the same tick number */
 }
 
 void scene_update(Scene *sc, const Sim *s, int ticks_per_second)
 {
     anim_update(&sc->anim, s, ticks_per_second);
+}
+
+int scene_water_frame(uint64_t water_ms)
+{
+    /* One clock for all water; each variant was drawn at its own phase. */
+    return (int)((water_ms / WATER_FRAME_MS) % TILE_WATER_FRAMES);
 }
 
 /* A plant's colour, turning to straw as it withers. */
@@ -160,8 +176,7 @@ static void draw_terrain(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
     int size = camera_sprite_size(cam);
     int scale = camera_sprite_scale(cam);
     int z = size == 16 ? 0 : 1;
-    /* One clock for all water; each variant was drawn at its own phase. */
-    int water_frame = (int)((water_ms / WATER_FRAME_MS) % TILE_WATER_FRAMES);
+    int water_frame = scene_water_frame(water_ms);
     for (int r = 0; r < v.rows; r++) {
         int y = (v.first_y + r) % w->h;
         int sy = view_y + v.screen_y + r * ppc;
@@ -301,6 +316,57 @@ static void draw_marks(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
     }
 }
 
+/* True when the ground layer already shows what this frame needs. */
+static bool ground_is_current(const Scene *sc, const Camera *cam, const Sim *s,
+                              int water)
+{
+    return sc->ground_valid && sc->ground.w == cam->view_w &&
+           sc->ground.h == cam->view_h && sc->ground_tick == s->tick &&
+           sc->ground_water == water && sc->ground_level == cam->level &&
+           sc->ground_cx == cam->cx && sc->ground_cy == cam->cy;
+}
+
+/* Draws the view's ground, black around a world smaller than the view, at
+ * (x, y). Both callers below need exactly this. */
+static void draw_ground(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
+                        uint64_t water_ms, int x, int y)
+{
+    /* True black for the whole view, near-black where the world is. */
+    canvas_rect(c, x, y, cam->view_w, cam->view_h, canvas_rgb(0, 0, 0));
+    CameraCells v;
+    camera_cells(cam, &v);
+    int ppc = camera_ppc(cam);
+    canvas_rect(c, x + v.screen_x, y + v.screen_y, v.cols * ppc, v.rows * ppc,
+                to_pixel(BACKGROUND));
+    draw_terrain(sc, c, cam, s, water_ms, x, y);
+}
+
+/* The ground into the frame, redrawn only when something in it has changed. */
+static void place_ground(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
+                         uint64_t water_ms, int view_x, int view_y)
+{
+    int water = scene_water_frame(water_ms);
+    if (ground_is_current(sc, cam, s, water)) {
+        canvas_copy(c, &sc->ground, view_x, view_y);
+        return;
+    }
+    /* Out of memory for the layer: draw straight into the frame instead. */
+    bool same_size = sc->ground.w == cam->view_w && sc->ground.h == cam->view_h;
+    if (!same_size && !canvas_resize(&sc->ground, cam->view_w, cam->view_h)) {
+        sc->ground_valid = false;
+        draw_ground(sc, c, cam, s, water_ms, view_x, view_y);
+        return;
+    }
+    draw_ground(sc, &sc->ground, cam, s, water_ms, 0, 0);
+    sc->ground_valid = true;
+    sc->ground_tick = s->tick;
+    sc->ground_water = water;
+    sc->ground_level = cam->level;
+    sc->ground_cx = cam->cx;
+    sc->ground_cy = cam->cy;
+    canvas_copy(c, &sc->ground, view_x, view_y);
+}
+
 void scene_draw_world(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
                       float tick_fraction, uint64_t water_ms, uint64_t body_ms,
                       int view_x, int view_y)
@@ -308,15 +374,7 @@ void scene_draw_world(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
     if (cam->view_w == 0 || cam->view_h == 0) {
         return;
     }
-    /* True black for the whole view, near-black where the world is. */
-    canvas_rect(c, view_x, view_y, cam->view_w, cam->view_h,
-                canvas_rgb(0, 0, 0));
-    CameraCells v;
-    camera_cells(cam, &v);
-    int ppc = camera_ppc(cam);
-    canvas_rect(c, view_x + v.screen_x, view_y + v.screen_y, v.cols * ppc,
-                v.rows * ppc, to_pixel(BACKGROUND));
-    draw_terrain(sc, c, cam, s, water_ms, view_x, view_y);
+    place_ground(sc, c, cam, s, water_ms, view_x, view_y);
     draw_creatures(sc, c, cam, s, tick_fraction, body_ms, view_x, view_y);
     draw_marks(sc, c, cam, s, tick_fraction, body_ms, view_x, view_y);
 }
