@@ -218,9 +218,10 @@ void creature_ate(Creature *c, float energy, float source_level)
 
 /* What one ray senses, written into its RAY_VALUES slots of out. The
  * first cell gives the vegetation and the scent of carrion. Then the ray
- * walks up to sight cells, stopping at rock, and reports the nearest
- * creature: its closeness, relative size, kinship, whether it hunts, whether
- * it wishes to mate and how alike it looks. */
+ * walks up to sight cells, stopping at rock, and reports the nearest plant's
+ * closeness and the nearest creature: its closeness, relative size, kinship,
+ * whether it hunts, whether it wishes to mate and how alike it looks. A creature
+ * blocks the view of whatever is behind it. */
 static void sense_ray(const World *w, const Pool *p, const Creature *c,
                       uint8_t heading, const Settings *s, float *out)
 {
@@ -237,6 +238,11 @@ static void sense_ray(const World *w, const Pool *p, const Creature *c,
                              c->y + d * STEP_Y[heading]);
         if (w->terrain[cell] == TERRAIN_ROCK) {
             return; /* rock blocks the view; water does not */
+        }
+        /* Still 0 means none seen yet, and a plant in sight always reads above
+         * 0: d - 1 is below sight. */
+        if (out[RAY_PLANT] == 0.0f && w->veg[cell] > 0) {
+            out[RAY_PLANT] = 1.0f - (float)(d - 1) / (float)sight;
         }
         if (w->occupant[cell] >= 0) {
             const Creature *seen = &p->items[w->occupant[cell]];

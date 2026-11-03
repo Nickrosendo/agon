@@ -29,9 +29,10 @@
  * then ageing: one more gene, and upkeep that rises with age; then the world's
  * records, added to the fingerprint: the world itself is unchanged, shown by
  * the pinned pictures in test_scene.c staying as they were; then the sense of
- * being blocked: one more sense, so 6 more genes, changing every random genome.
+ * being blocked: one more sense, so 6 more genes, changing every random genome;
+ * then the nearest plant along each ray: three more senses, so 18 more genes.
  */
-#define SEED_7_AFTER_500 0xe11852e771d8217bULL
+#define SEED_7_AFTER_500 0xff4ad0022fdacfa5ULL
 
 static void test_same_seed_same_checksum(void)
 {

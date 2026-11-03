@@ -116,7 +116,8 @@ void pool_kill(Pool *p, World *w, int idx, const Settings *s);
 /* Fills *out with what creature idx senses: its energy, age, size, meat
  * digestion gene, whether it is the mating season and whether the way ahead
  * is blocked; and along each of its three rays (ahead, left,
- * right) the vegetation and the scent of carrion in the first cell, and
+ * right) the vegetation and the scent of carrion in the first cell, the
+ * closeness of the nearest plant within sight, and
  * the nearest creature within sight: its closeness, its size relative to
  * the viewer, its kinship, whether it is a hunter, whether it wishes to mate
  * and how alike its body looks. A ray stops at rock. */

@@ -601,6 +601,69 @@ static void test_senses_blocked(void)
     world_free(&w);
 }
 
+/* How far along a ray the nearest plant is, within sight. */
+static void test_senses_plant_along_ray(void)
+{
+    World w;
+    make_world(&w, 32, 32);
+    Settings s = settings_default();
+    Pool p;
+    CHECK(pool_init(&p, 2));
+    int i = spawn(&p, &w, 16, 16); /* heading north */
+    p.items[i].genome.g[GENE_SIGHT] = 1.0f;
+    int sight = creature_sight(&p.items[i], &s);
+    CHECK(sight == s.sight_max);
+    Senses in;
+    const float *ahead = &in.v[SENSE_RAYS + RAY_AHEAD * RAY_VALUES];
+    const float *left = &in.v[SENSE_RAYS + RAY_LEFT * RAY_VALUES];
+
+    creature_sense(&w, &p, i, &s, &in);
+    CHECK(ahead[RAY_PLANT] == 0.0f); /* nothing to see */
+
+    /* Three cells ahead: seen, closer reads higher, and the first-cell value
+     * stays 0, since it is not within a bite. */
+    w.veg[world_idx(&w, 16, 13)] = 1;
+    creature_sense(&w, &p, i, &s, &in);
+    CHECK(near(ahead[RAY_PLANT], 1.0f - 2.0f / (float)sight));
+    CHECK(ahead[RAY_VEG] == 0.0f);
+    CHECK(left[RAY_PLANT] == 0.0f); /* the other rays see nothing */
+
+    /* The nearest of two counts. */
+    w.veg[world_idx(&w, 16, 15)] = 1;
+    creature_sense(&w, &p, i, &s, &in);
+    CHECK(near(ahead[RAY_PLANT], 1.0f));
+    w.veg[world_idx(&w, 16, 15)] = 0;
+
+    /* Water does not block the view; rock does. */
+    w.terrain[world_idx(&w, 16, 14)] = TERRAIN_WATER;
+    creature_sense(&w, &p, i, &s, &in);
+    CHECK(ahead[RAY_PLANT] > 0.0f);
+    w.terrain[world_idx(&w, 16, 14)] = TERRAIN_ROCK;
+    creature_sense(&w, &p, i, &s, &in);
+    CHECK(ahead[RAY_PLANT] == 0.0f);
+    w.terrain[world_idx(&w, 16, 14)] = TERRAIN_SOIL;
+
+    /* Neither does it see past a creature, but it sees up to one. */
+    int other = spawn(&p, &w, 16, 14);
+    creature_sense(&w, &p, i, &s, &in);
+    CHECK(ahead[RAY_PLANT] == 0.0f);
+    CHECK(ahead[RAY_NEAR] > 0.0f);
+    pool_kill(&p, &w, other, &s);
+
+    /* Past its sight, and with poor sight: unseen. */
+    w.veg[world_idx(&w, 16, 13)] = 0;
+    w.veg[world_idx(&w, 16, 16 - sight - 1)] = 1;
+    creature_sense(&w, &p, i, &s, &in);
+    CHECK(ahead[RAY_PLANT] == 0.0f);
+    w.veg[world_idx(&w, 16, 16 - sight - 1)] = 0;
+    w.veg[world_idx(&w, 16, 13)] = 1;
+    p.items[i].genome.g[GENE_SIGHT] = 0.0f; /* sight 1 */
+    creature_sense(&w, &p, i, &s, &in);
+    CHECK(ahead[RAY_PLANT] == 0.0f);
+    pool_free(&p);
+    world_free(&w);
+}
+
 /* A bite that finds nothing costs energy; one that finds food does not. */
 static void test_empty_bite_costs(void)
 {
@@ -1330,6 +1393,7 @@ int main(void)
     test_out_of_season_needs_a_choice();
     test_senses_season();
     test_senses_blocked();
+    test_senses_plant_along_ray();
     test_empty_bite_costs();
     test_plant_eater_cap();
     test_vigorous_plants_feed_less();

@@ -30,13 +30,14 @@ enum {
     RAY_HUNTER,
     RAY_READY,
     RAY_ALIKE,
+    RAY_PLANT, /* closeness of the nearest plant in sight: 1 beside, 0 for none */
     RAY_VALUES
 };
 
 /* The senses, as positions in Senses.v. After the six single values come
  * the rays: ray k's value j is at SENSE_RAYS + k * RAY_VALUES + j. The
  * neural network of lesson 6 has one input per sense, so its NET_IN must
- * equal SENSE_COUNT (30). */
+ * equal SENSE_COUNT (33). */
 enum {
     SENSE_ENERGY,
     SENSE_AGE,
