@@ -66,10 +66,10 @@ static void test_pool_slots_and_ids(void)
     CHECK(w.occupant[world_idx(&w, 2, 1)] == b);
 
     uint32_t old_id = p.items[b].id;
-    pool_kill(&p, &w, b, &s);
+    pool_kill(&p, &w, b, &s, DEATH_WOUNDS);
     CHECK(p.count == 2);
     CHECK(w.occupant[world_idx(&w, 2, 1)] == -1);
-    pool_kill(&p, &w, b, &s); /* killing a free slot changes nothing */
+    pool_kill(&p, &w, b, &s, DEATH_WOUNDS); /* killing a free slot changes nothing */
     CHECK(p.count == 2);
 
     int d = spawn(&p, &w, 5, 5);
@@ -584,7 +584,7 @@ static void test_senses_blocked(void)
     int other = spawn(&p, &w, 3, 2);
     creature_sense(&w, &p, i, &s, &in);
     CHECK(in.v[SENSE_BLOCKED] == 1.0f);
-    pool_kill(&p, &w, other, &s);
+    pool_kill(&p, &w, other, &s, DEATH_WOUNDS);
     creature_sense(&w, &p, i, &s, &in);
     CHECK(in.v[SENSE_BLOCKED] == 0.0f);
 
@@ -648,7 +648,7 @@ static void test_senses_plant_along_ray(void)
     creature_sense(&w, &p, i, &s, &in);
     CHECK(ahead[RAY_PLANT] == 0.0f);
     CHECK(ahead[RAY_NEAR] > 0.0f);
-    pool_kill(&p, &w, other, &s);
+    pool_kill(&p, &w, other, &s, DEATH_WOUNDS);
 
     /* Past its sight, and with poor sight: unseen. */
     w.veg[world_idx(&w, 16, 13)] = 0;
@@ -952,23 +952,24 @@ static void test_attacks_hit_half_the_time(void)
     CHECK(pool_init(&p, 2));
     int a = spawn(&p, &w, 3, 3);
     int t = spawn(&p, &w, 3, 2); /* right ahead, the same size */
-    /* Only hunters attack: the attacker digests meat better than plants. */
-    p.items[a].genome.g[GENE_MEAT] = 1.0f;
-    p.items[a].genome.g[GENE_PLANT] = 0.0f;
     p.items[a].energy = 1e6f;
+    p.items[t].energy = 50.0f;
+    /* The hit ring would otherwise change nothing, as a sole attacker is never
+     * one of the others; the health is reset by hand each time. */
     int hits = 0, misses_checked = 0;
     for (int k = 0; k < 10000; k++) {
-        p.items[t].energy = 1000.0f;
+        p.items[t].health = 1000.0f;
         float attacker_before = p.items[a].energy;
-        creature_act(&w, &p, a, (Action){ACT_BITE, 1}, &s, &r);
-        if (p.items[t].energy < 1000.0f) {
+        creature_act(&w, &p, a, (Action){ACT_ATTACK, 1}, &s, &r);
+        if (p.items[t].health < 1000.0f) {
             hits++;
-            CHECK(near(p.items[t].energy, 1000.0f - s.bite_damage * 1.0f));
+            CHECK(near(p.items[t].health, 1000.0f - s.bite_damage * 1.0f));
         } else if (misses_checked < 10) {
             /* A miss still costs the attacker; the target is untouched. */
-            CHECK(p.items[t].energy == 1000.0f);
+            CHECK(p.items[t].health == 1000.0f);
             misses_checked++;
         }
+        CHECK(p.items[t].energy == 50.0f);
         /* Every attack costs the same, hit or miss. The tolerance is
          * relative: at a million, a float's steps are 0.0625 apart. */
         CHECK(fabsf(attacker_before - p.items[a].energy - s.attack_cost) <
@@ -990,58 +991,6 @@ static void two_neighbours(World *w, Pool *p, int *a, int *t)
     *t = spawn(p, w, 3, 2);
     p->items[*a].energy = 100.0f;
     p->items[*t].energy = 100.0f;
-}
-
-static void test_who_attacks(void)
-{
-    Settings s = settings_default();
-    Rng r;
-    rng_seed(&r, 3);
-    World w;
-    Pool p;
-    int a, t;
-
-    /* A plant-eater never attacks: its bite does nothing here. */
-    two_neighbours(&w, &p, &a, &t);
-    for (int k = 0; k < 20; k++) {
-        creature_act(&w, &p, a, (Action){ACT_BITE, 1}, &s, &r);
-    }
-    CHECK(p.items[t].energy == 100.0f);
-    CHECK(p.items[a].energy == 100.0f);
-    pool_free(&p);
-    world_free(&w);
-
-    /* A hunter with no carrion around attacks the plant-eater. */
-    two_neighbours(&w, &p, &a, &t);
-    make_hunter(&p.items[a]);
-    for (int k = 0; k < 20; k++) {
-        creature_act(&w, &p, a, (Action){ACT_BITE, 1}, &s, &r);
-    }
-    CHECK(p.items[t].energy < 100.0f);
-    pool_free(&p);
-    world_free(&w);
-
-    /* With carrion beside it, the hunter eats that instead. */
-    two_neighbours(&w, &p, &a, &t);
-    make_hunter(&p.items[a]);
-    int beside = world_idx(&w, 4, 3); /* east */
-    carrion_add(&w, beside, 20.0f, 2.0f);
-    creature_act(&w, &p, a, (Action){ACT_BITE, 1}, &s, &r);
-    CHECK(p.items[t].energy == 100.0f);
-    CHECK(w.carrion[beside] < 20.0f);
-    pool_free(&p);
-    world_free(&w);
-
-    /* Hunters leave each other alone. */
-    two_neighbours(&w, &p, &a, &t);
-    make_hunter(&p.items[a]);
-    make_hunter(&p.items[t]);
-    for (int k = 0; k < 20; k++) {
-        creature_act(&w, &p, a, (Action){ACT_BITE, 1}, &s, &r);
-    }
-    CHECK(p.items[t].energy == 100.0f);
-    pool_free(&p);
-    world_free(&w);
 }
 
 static void test_food_under_a_creature(void)
@@ -1158,13 +1107,15 @@ static void test_starved_creature_dies(void)
     make_sim(&sim, &set);
     int i = spawn(&sim.pool, &sim.world, 4, 4);
     sim.pool.items[i].energy = set.upkeep_base / 2.0f;
+    /* Out of energy on this tick, and with less health than a tick of it takes. */
+    sim.pool.items[i].health = set.starve_damage / 2.0f;
     sim_step(&sim);
     CHECK(!sim.pool.items[i].alive);
     CHECK(sim.pool.count == 0);
     CHECK(sim.world.occupant[world_idx(&sim.world, 4, 4)] == -1);
     CHECK(brain_script_deaths(&sim.brain) == 1);
-    /* The body is left as carrion, at the creature's level. Energy left
-     * was below 0, so only the body counts. */
+    /* The body is left as carrion, at the creature's level. No energy was
+     * left, so only the body counts. */
     int cell = world_idx(&sim.world, 4, 4);
     CHECK(near(sim.world.carrion[cell], set.body_energy * 1.0f));
     CHECK(near(sim.world.carrion_level[cell], LEVEL_START));
@@ -1180,22 +1131,23 @@ static void test_killed_creature_leaves_carrion(void)
     int a = spawn(&sim.pool, &sim.world, 4, 6);
     int t = spawn(&sim.pool, &sim.world, 4, 5); /* ahead of a */
     sim.pool.items[a].genome.g[GENE_SIZE] = 1.0f; /* size 1.5 */
-    sim.pool.items[a].genome.g[GENE_MEAT] = 1.0f; /* a hunter */
-    sim.pool.items[a].genome.g[GENE_PLANT] = 0.0f;
     sim.pool.items[t].genome.g[GENE_SIZE] = 0.0f; /* size 0.5 */
     sim.pool.items[a].energy = 100.0f;
-    sim.pool.items[t].energy = 1.0f; /* one hit is enough */
+    sim.pool.items[a].health = 100.0f;
+    sim.pool.items[t].energy = 3.0f; /* its food is there for whoever eats it */
+    sim.pool.items[t].health = 1.0f; /* one hit is enough */
     sim.pool.items[t].level = 2.5f;
     uint32_t target_id = sim.pool.items[t].id;
-    /* Both answers are bites; the target's bites hit the empty cell
-     * ahead of it. */
-    Action script[] = {{ACT_BITE, 1}, {ACT_BITE, 1}};
+    /* Both answers are attacks; the target's swings at the empty cell ahead of it. */
+    Action script[] = {{ACT_ATTACK, 1}, {ACT_ATTACK, 1}};
     brain_script_load(&sim.brain, script, 2);
     sim_step(&sim);
     CHECK(!sim.pool.items[t].alive || sim.pool.items[t].id != target_id);
     int cell = world_idx(&sim.world, 4, 5);
     CHECK(sim.world.occupant[cell] == -1);
-    CHECK(near(sim.world.carrion[cell], set.body_energy * 0.5f));
+    /* The body, and what energy it had left after its own swing and upkeep. */
+    CHECK(sim.world.carrion[cell] > set.body_energy * 0.5f);
+    CHECK(sim.world.carrion[cell] < set.body_energy * 0.5f + 3.0f);
     CHECK(near(sim.world.carrion_level[cell], 2.5f));
     sim_free(&sim);
 }
@@ -1222,7 +1174,7 @@ static void test_old_age(void)
 {
     Settings s = settings_default();
     s.max_age = 100;
-    Creature c = {.alive = true, .energy = 1000.0f, .age = 98};
+    Creature c = {.alive = true, .energy = 1000.0f, .health = 1.0f, .age = 98};
     CHECK(creature_upkeep(&c, &s));  /* turns 99 */
     CHECK(!creature_upkeep(&c, &s)); /* turns 100: dies, energy or not */
     CHECK(c.energy > 0.0f);
@@ -1269,20 +1221,25 @@ static void test_no_fixed_death_age(void)
 {
     Settings s = settings_default();
     CHECK(s.max_age == 0);
-    Creature c = {.alive = true, .energy = 1e7f};
+    Creature c = {.alive = true, .energy = 1e7f, .health = 1.0f};
     c.genome.g[GENE_AGEING] = 0.5f;
-    while (c.age < 6000) {
+    /* A for and not a while: a creature that dies stops ageing, and a loop
+     * waiting for its age would then never end. */
+    for (int k = 0; k < 6000; k++) {
         CHECK(creature_upkeep(&c, &s));
     }
+    CHECK(c.age == 6000);
     CHECK(c.energy > 0.0f);
     c.energy = 0.01f;
+    c.health = s.starve_damage / 2.0f;
     CHECK(!creature_upkeep(&c, &s));
 }
 
 static void test_ageing_cost_stays_finite(void)
 {
     Settings s = settings_default();
-    Creature c = {.alive = true, .energy = 100.0f, .age = UINT32_MAX};
+    Creature c = {.alive = true, .energy = 100.0f, .health = 1.0f,
+                  .age = UINT32_MAX};
     c.genome.g[GENE_AGEING] = 1.0f;
     CHECK(isfinite(creature_upkeep_cost(&c, &s)));
     /* It stays at its top instead of wrapping back to young. */
@@ -1327,7 +1284,7 @@ static void test_floor_restocks(void)
     /* Every creature killed: the next step brings the count back up. */
     for (int i = 0; i < sim.pool.capacity; i++) {
         if (sim.pool.items[i].alive) {
-            pool_kill(&sim.pool, &sim.world, i, &sim.set);
+            pool_kill(&sim.pool, &sim.world, i, &sim.set, DEATH_WOUNDS);
         }
     }
     CHECK(sim.pool.count == 0);
@@ -1372,6 +1329,328 @@ static void test_bad_brain_name(void)
     CHECK(!sim_init(&sim, &set, 1, 16, 16));
 }
 
+/* A world with two creatures side by side, the first facing the second, both
+ * at full health and well fed: the scene for most fight tests. */
+static void fight_scene(World *w, Pool *p, const Settings *s, int *a, int *t)
+{
+    two_neighbours(w, p, a, t);
+    p->items[*a].health = creature_max_health(&p->items[*a], s);
+    p->items[*t].health = creature_max_health(&p->items[*t], s);
+}
+
+static void test_hit_takes_health_not_energy(void)
+{
+    Settings s = settings_default();
+    s.attack_steepness = 16.0f;
+    Rng r;
+    rng_seed(&r, 3);
+    World w;
+    Pool p;
+    int a, t;
+    fight_scene(&w, &p, &s, &a, &t);
+    p.items[a].genome.g[GENE_SIZE] = 1.0f; /* far larger: almost always hits */
+    p.items[t].genome.g[GENE_SIZE] = 0.0f;
+    float health = p.items[t].health;
+    for (int k = 0; k < 5 && p.items[t].health == health; k++) {
+        creature_act(&w, &p, a, (Action){ACT_ATTACK, 1}, &s, &r);
+    }
+    CHECK(near(p.items[t].health, health - s.bite_damage * 1.5f));
+    CHECK(p.items[t].energy == 100.0f);
+    pool_free(&p);
+    world_free(&w);
+}
+
+static void test_zero_energy_loses_health_slowly(void)
+{
+    Settings s = settings_default();
+    Creature c = {.alive = true, .energy = 0.0f, .health = 10.0f};
+    CHECK(creature_upkeep(&c, &s));
+    CHECK(near(c.health, 10.0f - s.starve_damage));
+    CHECK(c.energy == 0.0f); /* never below 0: a debt would outlive the hunger */
+}
+
+static void test_death_only_at_zero_health(void)
+{
+    Settings s = settings_default();
+    /* No energy, some health: alive. */
+    Creature c = {.alive = true, .energy = 0.0f,
+                  .health = s.starve_damage * 2.5f};
+    CHECK(creature_upkeep(&c, &s));
+    CHECK(creature_upkeep(&c, &s));
+    CHECK(!creature_upkeep(&c, &s));
+    /* Plenty of energy, no health: dead, and upkeep cannot heal it back. */
+    Creature d = {.alive = true, .energy = 1000.0f, .health = -1.0f};
+    CHECK(!creature_upkeep(&d, &s));
+    CHECK(d.health <= 0.0f);
+}
+
+static void test_healing_costs_energy(void)
+{
+    Settings s = settings_default();
+    Creature whole = {.alive = true, .energy = 100.0f};
+    whole.health = creature_max_health(&whole, &s);
+    Creature hurt = whole;
+    hurt.health = whole.health - 5.0f;
+    CHECK(creature_upkeep(&whole, &s));
+    CHECK(creature_upkeep(&hurt, &s));
+    CHECK(whole.health == creature_max_health(&whole, &s)); /* no higher */
+    CHECK(near(hurt.health, creature_max_health(&hurt, &s) - 5.0f + s.heal_rate));
+    CHECK(near(whole.energy - hurt.energy, s.heal_rate * s.heal_cost));
+    /* The last of a wound costs only what is left of it. */
+    Creature nearly = whole;
+    nearly.energy = 100.0f;
+    nearly.health = creature_max_health(&nearly, &s) - s.heal_rate / 2.0f;
+    Creature full = nearly;
+    full.health = creature_max_health(&full, &s);
+    CHECK(creature_upkeep(&nearly, &s));
+    CHECK(creature_upkeep(&full, &s));
+    CHECK(near(nearly.health, creature_max_health(&nearly, &s)));
+    CHECK(near(full.energy - nearly.energy, s.heal_rate / 2.0f * s.heal_cost));
+}
+
+static void test_no_healing_when_starving(void)
+{
+    Settings s = settings_default();
+    Creature c = {.alive = true, .energy = 0.0f, .health = 5.0f};
+    CHECK(creature_upkeep(&c, &s));
+    CHECK(c.health < 5.0f);
+    /* Healing never spends more energy than there is. */
+    s.upkeep_base = 0.0f;
+    s.size_upkeep = s.speed_upkeep = s.sight_upkeep = s.digest_upkeep = 0.0f;
+    s.slow_ageing_upkeep = 0.0f;
+    s.heal_cost = 100.0f;
+    Creature d = {.alive = true, .energy = 1.0f, .health = 5.0f};
+    CHECK(creature_upkeep(&d, &s));
+    CHECK(d.energy >= 0.0f);
+    CHECK(near(d.health, 5.0f + 1.0f / 100.0f));
+}
+
+static void test_prey_can_fight_back(void)
+{
+    Settings s = settings_default();
+    s.attack_steepness = 16.0f;
+    Rng r;
+    rng_seed(&r, 5);
+    World w;
+    Pool p;
+    int a, t;
+    fight_scene(&w, &p, &s, &a, &t);
+    /* t is the hunter; a, a plant-eater from spawn, is the one attacking. */
+    make_hunter(&p.items[t]);
+    p.items[a].genome.g[GENE_SIZE] = 1.0f;
+    float health = p.items[t].health;
+    for (int k = 0; k < 20; k++) {
+        creature_act(&w, &p, a, (Action){ACT_ATTACK, 1}, &s, &r);
+    }
+    CHECK(p.items[t].health < health);
+    pool_free(&p);
+    world_free(&w);
+}
+
+static void test_attack_needs_a_target_ahead(void)
+{
+    Settings s = settings_default();
+    Rng r;
+    rng_seed(&r, 5);
+    World w;
+    Pool p;
+    int a, t;
+    fight_scene(&w, &p, &s, &a, &t);
+    /* Beside it, not ahead: a keeps facing east, t is to the north. */
+    p.items[a].heading = HEADING_EAST;
+    float health = p.items[t].health;
+    uint64_t draws_before = r.s[0];
+    creature_act(&w, &p, a, (Action){ACT_ATTACK, 1}, &s, &r);
+    CHECK(p.items[t].health == health);
+    CHECK(near(p.items[a].energy, 100.0f - s.attack_cost));
+    CHECK(r.s[0] == draws_before); /* nothing to hit: no draw */
+    CHECK(creature_attack_target(&w, &p, a) == -1);
+    p.items[a].heading = HEADING_NORTH;
+    CHECK(creature_attack_target(&w, &p, a) == t);
+    /* One already at 0 this tick has nothing left to hit. */
+    p.items[t].health = 0.0f;
+    CHECK(creature_attack_target(&w, &p, a) == -1);
+    pool_free(&p);
+    world_free(&w);
+}
+
+static void test_bite_never_attacks(void)
+{
+    Settings s = settings_default();
+    Rng r;
+    rng_seed(&r, 3);
+    World w;
+    Pool p;
+    int a, t;
+    fight_scene(&w, &p, &s, &a, &t);
+    make_hunter(&p.items[a]);
+    float health = p.items[t].health;
+    for (int k = 0; k < 20; k++) {
+        creature_act(&w, &p, a, (Action){ACT_BITE, 1}, &s, &r);
+    }
+    CHECK(p.items[t].health == health);
+    CHECK(p.items[a].energy == 100.0f);
+    pool_free(&p);
+    world_free(&w);
+}
+
+static void test_odds_rise_with_others(void)
+{
+    float alone = attack_chance(1.0f, 1.0f, 3.0f);
+    CHECK(near(attack_odds(1.0f, 1.0f, 3.0f, 0, 0.5f), alone));
+    CHECK(near(attack_odds(2.0f, 1.0f, 3.0f, 0, 0.5f),
+               attack_chance(2.0f, 1.0f, 3.0f)));
+    float last = alone;
+    for (int others = 1; others <= 50; others++) {
+        float odds = attack_odds(1.0f, 1.0f, 3.0f, others, 0.5f);
+        CHECK(odds > last);
+        CHECK(odds < 1.0f);
+        last = odds;
+    }
+    /* No bonus, no change. */
+    CHECK(near(attack_odds(1.0f, 1.0f, 3.0f, 9, 0.0f), alone));
+    /* Sizes far apart at the steepest setting stay real numbers. */
+    float huge = attack_odds(1000000.0f, 0.5f, 16.0f, 3, 0.5f);
+    float tiny = attack_odds(0.5f, 1000000.0f, 16.0f, 3, 0.5f);
+    CHECK(huge > 0.99f && huge <= 1.0f);
+    CHECK(tiny >= 0.0f && tiny < 0.01f);
+}
+
+static void test_others_counts_distinct_recent(void)
+{
+    Creature t = {.alive = true};
+    Hit first = {.by = 7, .tick = 100};
+    t.recent_hits[0] = first;
+    t.hits_taken = 1;
+    /* A fresh ring is not a hit by creature 0 at tick 0. */
+    Creature fresh = {.alive = true};
+    CHECK(creature_others_recently(&fresh, 9, 0, 10) == 0);
+    /* Repeats by one attacker count once. */
+    t.recent_hits[1] = (Hit){.by = 7, .tick = 101};
+    t.recent_hits[2] = (Hit){.by = 8, .tick = 102};
+    t.hits_taken = 3;
+    CHECK(creature_others_recently(&t, 9, 102, 10) == 2);
+    /* The attacker itself does not count. */
+    CHECK(creature_others_recently(&t, 7, 102, 10) == 1);
+    /* Only what lies within the window. */
+    CHECK(creature_others_recently(&t, 9, 111, 10) == 2); /* 7 at 101 still is */
+    CHECK(creature_others_recently(&t, 9, 112, 10) == 1);
+    CHECK(creature_others_recently(&t, 9, 113, 10) == 0);
+    /* A window of 0 still counts this very tick. */
+    CHECK(creature_others_recently(&t, 9, 102, 0) == 1);
+}
+
+static void test_hits_fill_the_ring_and_wrap(void)
+{
+    Settings s = settings_default();
+    s.attack_steepness = 16.0f;
+    s.gang_window = 1000;
+    Rng r;
+    rng_seed(&r, 3);
+    World w;
+    Pool p;
+    int a, t;
+    fight_scene(&w, &p, &s, &a, &t);
+    p.items[a].genome.g[GENE_SIZE] = 1.0f;
+    p.items[t].genome.g[GENE_SIZE] = 0.0f;
+    p.items[t].health = 1e6f;
+    for (int k = 0; k < HITS_KEPT * 3; k++) {
+        p.now = (uint32_t)k;
+        creature_act(&w, &p, a, (Action){ACT_ATTACK, 1}, &s, &r);
+    }
+    CHECK(p.items[t].hits_taken > (uint32_t)HITS_KEPT);
+    for (int k = 0; k < HITS_KEPT; k++) {
+        CHECK(p.items[t].recent_hits[k].by == p.items[a].id);
+    }
+    pool_free(&p);
+    world_free(&w);
+}
+
+static void test_rule_never_asks_who_is_related(void)
+{
+    /* Attackers identical to the target, then strangers to it, by genome: the
+     * rule sees only ids and ticks, so the same hits give the same count. */
+    Settings s = settings_default();
+    (void)s;
+    Creature kin = {.alive = true, .hits_taken = 2};
+    kin.recent_hits[0] = (Hit){.by = 1, .tick = 50};
+    kin.recent_hits[1] = (Hit){.by = 2, .tick = 50};
+    Creature stranger = kin;
+    for (int i = 0; i < GENOME_LEN; i++) {
+        stranger.genome.g[i] = 1.0f - kin.genome.g[i];
+    }
+    CHECK(creature_others_recently(&kin, 3, 50, 10) ==
+          creature_others_recently(&stranger, 3, 50, 10));
+}
+
+static void test_death_causes_counted(void)
+{
+    Sim sim;
+    Settings set;
+    make_sim(&sim, &set);
+    sim.set.attack_steepness = 16.0f;
+    int a = spawn(&sim.pool, &sim.world, 4, 6);
+    int t = spawn(&sim.pool, &sim.world, 4, 5); /* ahead of a */
+    int hungry = spawn(&sim.pool, &sim.world, 1, 1);
+    Creature *pa = &sim.pool.items[a];
+    pa->genome.g[GENE_SIZE] = 1.0f;
+    pa->energy = 100.0f;
+    pa->health = 100.0f;
+    sim.pool.items[t].genome.g[GENE_SIZE] = 0.0f;
+    sim.pool.items[t].energy = 100.0f;
+    sim.pool.items[t].health = 0.01f;
+    sim.pool.items[hungry].energy = 0.0f;
+    sim.pool.items[hungry].health = sim.set.starve_damage / 2.0f;
+    Action script[] = {{ACT_ATTACK, 1}, {ACT_ATTACK, 1}, {ACT_ATTACK, 1}};
+    brain_script_load(&sim.brain, script, 3);
+    for (int k = 0; k < 10 && sim.pool.deaths[DEATH_WOUNDS] == 0; k++) {
+        sim_step(&sim);
+    }
+    CHECK(sim.pool.deaths[DEATH_WOUNDS] == 1);
+    CHECK(sim.pool.deaths[DEATH_HUNGER] == 1);
+    CHECK(sim.pool.deaths[DEATH_AGE] == 0);
+    sim_free(&sim);
+}
+
+static void test_age_limit_is_its_own_cause(void)
+{
+    Sim sim;
+    Settings set;
+    make_sim(&sim, &set);
+    sim.set.max_age = 1;
+    int i = spawn(&sim.pool, &sim.world, 2, 2);
+    sim.pool.items[i].energy = 100.0f;
+    sim.pool.items[i].health = 100.0f;
+    Action script[] = {{ACT_REST, 1}};
+    brain_script_load(&sim.brain, script, 1);
+    sim_step(&sim);
+    CHECK(sim.pool.deaths[DEATH_AGE] == 1);
+    sim_free(&sim);
+}
+
+static void test_born_at_full_health(void)
+{
+    Settings s = settings_default();
+    Rng r;
+    rng_seed(&r, 3);
+    World w;
+    Pool p;
+    int a, t;
+    make_world(&w, 8, 8);
+    CHECK(pool_init(&p, 3)); /* room for the child */
+    a = spawn(&p, &w, 3, 3);
+    t = spawn(&p, &w, 3, 2);
+    p.items[a].energy = p.items[t].energy = 100.0f;
+    p.items[a].age = p.items[t].age = (uint32_t)s.mate_age;
+    p.items[t].mate_wish = 5;
+    int child = creature_act(&w, &p, a, (Action){ACT_MATE, 1}, &s, &r);
+    CHECK(child >= 0);
+    CHECK(near(p.items[child].health,
+               creature_max_health(&p.items[child], &s)));
+    pool_free(&p);
+    world_free(&w);
+}
+
 int main(void)
 {
     CHECK(brain_register(&BRAIN_SCRIPT));
@@ -1403,7 +1682,6 @@ int main(void)
     test_bite_carrion();
     test_attack_chance();
     test_attacks_hit_half_the_time();
-    test_who_attacks();
     test_food_under_a_creature();
     test_slow_creature();
     test_ray_sees_creature();
@@ -1420,5 +1698,20 @@ int main(void)
     test_floor_restocks();
     test_full_pool_runs();
     test_bad_brain_name();
+    test_hit_takes_health_not_energy();
+    test_zero_energy_loses_health_slowly();
+    test_death_only_at_zero_health();
+    test_healing_costs_energy();
+    test_no_healing_when_starving();
+    test_prey_can_fight_back();
+    test_attack_needs_a_target_ahead();
+    test_bite_never_attacks();
+    test_odds_rise_with_others();
+    test_others_counts_distinct_recent();
+    test_hits_fill_the_ring_and_wrap();
+    test_rule_never_asks_who_is_related();
+    test_death_causes_counted();
+    test_age_limit_is_its_own_cause();
+    test_born_at_full_health();
     TEST_SUMMARY();
 }

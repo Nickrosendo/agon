@@ -282,7 +282,7 @@ static void draw_mark(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
     int f = (int)((body_ms / MARK_FRAME_MS + cr->id) % TILE_MARK_FRAMES);
     const uint16_t *rows = sc->crumbs[z][f];
     Colour colour = MEAT_CRUMB;
-    if (p->bite == BITE_ATTACK) {
+    if (p->bite == POSE_ATTACK) {
         rows = sc->slash[z][f];
         colour = SLASH;
     } else if (p->bite == BITE_PLANT) {
@@ -309,7 +309,7 @@ static void draw_marks(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
         /* Tested first: most creatures are not biting, and this saves
          * working out their pose a second time. */
         if (!cr->alive || !sc->anim.slots[i].seen ||
-            cr->current.kind != ACT_BITE) {
+            (cr->current.kind != ACT_BITE && cr->current.kind != ACT_ATTACK)) {
             continue;
         }
         AnimPose p;

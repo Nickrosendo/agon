@@ -199,7 +199,7 @@ static void test_panel_and_family_on_dead_world(void)
     in.id = s.pool.items[followed].id;
     for (int i = 0; i < s.pool.capacity; i++) {
         if (s.pool.items[i].alive) {
-            pool_kill(&s.pool, &s.world, i, &s.set);
+            pool_kill(&s.pool, &s.world, i, &s.set, DEATH_WOUNDS);
         }
     }
     sim_step(&s);

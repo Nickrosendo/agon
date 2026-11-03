@@ -58,6 +58,7 @@ static int place_creature(Sim *s)
             /* A placed creature has no parent: a random genome, and the
              * lineage pool_spawn gave it (its own id) starts a new line. */
             genome_random(&c->genome, &s->rng, &s->set);
+            c->health = creature_max_health(c, &s->set); /* needs the genes */
             s->brain.on_birth(&s->brain, c->id, &c->genome);
             return idx;
         }
@@ -253,19 +254,33 @@ static void creatures_act(Sim *s)
     shuffle(s->turns, n, &s->rng);
     pool_count_plant_eaters(&s->pool, &s->set);
     s->pool.in_season = sim_in_season(s->tick, &s->set);
+    /* The conversion keeps the low 32 bits, which is defined for an unsigned
+     * target, and all that comparing two recent ticks needs. */
+    s->pool.now = (uint32_t)s->tick;
     for (int k = 0; k < n; k++) {
         const Creature *c = &s->pool.items[s->turns[k].idx];
         /* Children born this tick are not in the list. A slot that holds
          * a newborn with another id is skipped. So is a creature whose
-         * energy an attack took to 0 or below earlier in this tick: it is
+         * health an attack took to 0 or below earlier in this tick: it is
          * dying, and the accounting removes it. */
-        if (c->alive && c->id == s->turns[k].id && c->energy > 0.0f) {
+        if (c->alive && c->id == s->turns[k].id && c->health > 0.0f) {
             take_turn(s, s->turns[k].idx);
         }
     }
 }
 
-/* Upkeep for everyone, in slot order; those left without energy die. The
+/* Why a creature found dying in the accounting died. The last blow decides:
+ * health already gone before upkeep means an attack took it, and health still
+ * there after upkeep means only the age limit can have ended it. */
+static DeathCause death_cause(bool hit_to_death, const Creature *c)
+{
+    if (hit_to_death) {
+        return DEATH_WOUNDS;
+    }
+    return c->health > 0.0f ? DEATH_AGE : DEATH_HUNGER;
+}
+
+/* Upkeep for everyone, in slot order; those left without health die. The
  * records are read here because this already visits every creature, after this
  * tick's births and before this tick's deaths, so a creature's last age counts. */
 static void accounting(Sim *s)
@@ -278,11 +293,13 @@ static void accounting(Sim *s)
         if (!c->alive) {
             continue;
         }
+        bool hit_to_death = c->health <= 0.0f; /* read before upkeep changes it */
         bool lives = creature_upkeep(c, &s->set);
         records_note(&s->records, c, &s->set);
         if (!lives) {
             s->brain.on_death(&s->brain, c->id);
-            pool_kill(&s->pool, &s->world, i, &s->set);
+            pool_kill(&s->pool, &s->world, i, &s->set,
+                      death_cause(hit_to_death, c));
         }
     }
 }
@@ -379,6 +396,11 @@ static uint64_t hash_creature(uint64_t hash, const Creature *c)
     hash = fnv1a(hash, &c->y, sizeof(c->y));
     hash = fnv1a(hash, &c->heading, sizeof(c->heading));
     hash = fnv1a(hash, &c->energy, sizeof(c->energy));
+    hash = fnv1a(hash, &c->health, sizeof(c->health));
+    hash = fnv1a(hash, &c->hits_taken, sizeof(c->hits_taken));
+    /* Hit is two uint32_t, so no padding: its raw bytes are safe to hash. Only
+     * the used entries are always zero or real, and all of them are hashed. */
+    hash = fnv1a(hash, c->recent_hits, sizeof(c->recent_hits));
     hash = fnv1a(hash, &c->age, sizeof(c->age));
     hash = fnv1a(hash, &c->current.kind, sizeof(c->current.kind));
     hash = fnv1a(hash, &c->current.hold, sizeof(c->current.hold));
@@ -433,6 +455,7 @@ uint64_t sim_checksum(const Sim *s)
     hash = fnv1a(hash, &s->pool.next_id, sizeof(s->pool.next_id));
     hash = fnv1a(hash, &s->pool.births_refused,
                  sizeof(s->pool.births_refused));
+    hash = fnv1a(hash, s->pool.deaths, sizeof(s->pool.deaths));
     for (int i = 0; i < s->pool.capacity; i++) {
         if (s->pool.items[i].alive) {
             hash = hash_creature(hash, &s->pool.items[i]);

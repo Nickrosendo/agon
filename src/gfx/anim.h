@@ -17,6 +17,10 @@
 #define ANIM_GLIDE_MAX_SPEED 15
 
 /* One pool slot's memory. */
+/* Fighting looks like biting, with a slash for a mark. The rules have no such
+ * bite, so this value belongs to the drawing side, after the rules' own values. */
+enum { POSE_ATTACK = BITE_PLANT + 1 };
+
 typedef struct {
     uint32_t id;
     bool seen;            /* false until this slot's creature was looked at */
@@ -42,7 +46,7 @@ typedef struct {
     int frame;   /* a FRAME_ value (sprite.h) */
     bool flip;   /* true when facing left */
     float pop;   /* 0..1; 1 is full size */
-    int bite;    /* a BITE_ value (creature.h): what it is doing right now */
+    int bite;    /* a BITE_ value (creature.h), or POSE_ATTACK: what its mouth is doing */
     int target_x, target_y; /* the cell it is biting, unless BITE_NOTHING */
 } AnimPose;
 

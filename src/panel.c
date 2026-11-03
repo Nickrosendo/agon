@@ -419,7 +419,7 @@ void panel_draw(const Sim *s, int col, int row0, int rows)
 
 /* What the brain told a creature to do, by ACT_ value. */
 static const char *const ACTION_NAMES[] = {
-    "rest", "turn left", "turn right", "move", "bite", "mate",
+    "rest", "turn left", "turn right", "move", "bite", "mate", "attack",
 };
 /* sizeof the whole array divided by sizeof one element is its length,
  * which only works on a real array (not on a pointer to one). */
@@ -526,6 +526,7 @@ static void describe_creature(Lines *l, const Sim *s, const Creature *c)
     snprintf(text, sizeof(text), " family   #%u", (unsigned)c->lineage);
     add_text(l, text);
     add_float(l, "energy", c->energy, 1);
+    add_float(l, "health", c->health, 1);
     char age[32];
     years_format(age, sizeof(age), c->age, set->ticks_per_year);
     add_pair(l, "age", age);

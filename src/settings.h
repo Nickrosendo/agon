@@ -179,11 +179,21 @@ typedef struct {
 
     /* Attack. Every attack costs attack_cost. It hits with chance
      * a^k / (a^k + t^k), for attacker size a, target size t and k =
-     * attack_steepness; a hit takes bite_damage * a from the target's
-     * energy. The attacker gains nothing directly: the kill becomes
-     * carrion. */
+     * attack_steepness, better for each other creature that hit the target
+     * within gang_window ticks (see attack_odds); a hit takes bite_damage * a
+     * from the target's health. The attacker gains nothing directly: the kill
+     * becomes carrion. */
     float attack_steepness;
     float attack_cost;
+    float gang_bonus;
+    int gang_window;
+    /* Health. A body holds health_per_size * size. Fed creatures heal heal_rate
+     * per tick at heal_cost energy per point; at 0 energy a creature loses
+     * starve_damage per tick instead. Death comes only at 0 health. */
+    float health_per_size;
+    float heal_rate;
+    float heal_cost;
+    float starve_damage;
     /* What a bite that finds nothing costs. Without this, waiting beside bare
      * ground costs less than walking to food a few cells away. */
     float bite_empty_cost;

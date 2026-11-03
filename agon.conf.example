@@ -176,10 +176,28 @@ attack_steepness = 3
 # energy an attack costs (0 to 1e+06)
 attack_cost = 0.5
 
+# better odds per other recent attacker (0 to 1e+06)
+gang_bonus = 0.5
+
+# ticks a hit counts towards those odds (0 to 65535)
+gang_window = 10
+
+# health of an unhurt body, by size (0.001 to 1e+06)
+health_per_size = 30
+
+# health healed per tick when fed (0 to 1e+06)
+heal_rate = 0.1
+
+# energy per point of health healed (0 to 1e+06)
+heal_cost = 1
+
+# health lost per tick at zero energy (0 to 1e+06)
+starve_damage = 0.5
+
 # energy a bite that finds nothing costs (0 to 1e+06)
 bite_empty_cost = 0
 
-# energy a hit takes, by attacker's size (0 to 1e+06)
+# health a hit takes, by attacker's size (0 to 1e+06)
 bite_damage = 6
 
 # carrion a body leaves, by size (0 to 1e+06)

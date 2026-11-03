@@ -20,6 +20,28 @@
 enum { HEADING_NORTH, HEADING_EAST, HEADING_SOUTH, HEADING_WEST,
        HEADING_COUNT };
 
+/* One hit a creature took: who landed it and when. tick is the low 32 bits of
+ * the Sim's tick. Comparing two by unsigned subtraction stays right across the
+ * wrap at 2^32, which is the one thing done with them. */
+typedef struct {
+    uint32_t by;
+    uint32_t tick;
+} Hit;
+
+/* How many hits a creature remembers. At most four creatures can have it dead
+ * ahead at once, since headings go four ways, so eight leaves room for repeats. */
+#define HITS_KEPT 8
+
+/* What ended a life. A typedef of an enum: the name reads as a type in a
+ * parameter list, though C stores and accepts it as a plain integer, with no
+ * check that a value is one of these. */
+typedef enum {
+    DEATH_WOUNDS, /* health taken to 0 by an attack */
+    DEATH_HUNGER, /* health taken to 0 by having no energy */
+    DEATH_AGE,    /* reached max_age, a limit that is off by default */
+    DEATH_COUNT
+} DeathCause;
+
 typedef struct {
     bool alive;
     int32_t next_free;  /* while dead: the next free slot, or -1 */
@@ -31,6 +53,15 @@ typedef struct {
     int x, y;
     uint8_t heading;    /* a HEADING_ value */
     float energy;
+    /* Death comes only at 0 health. Hits take it, healing restores it up to
+     * creature_max_health, and having no energy drains it. */
+    float health;
+    /* Hits taken in this whole life. The newest is at
+     * recent_hits[(hits_taken - 1) % HITS_KEPT], and only the first hits_taken
+     * entries mean anything: a fresh ring is all zeroes, which would otherwise
+     * read as a hit by creature 0 on tick 0. */
+    uint32_t hits_taken;
+    Hit recent_hits[HITS_KEPT];
     uint32_t age;       /* ticks lived */
     Action current;     /* what the brain last said */
     uint16_t hold_left; /* ticks of current still to do */
@@ -81,10 +112,16 @@ typedef struct {
      * a safety limit and not a rule of the world, so this should stay 0: it
      * is counted so that reaching the limit is never quiet. */
     uint32_t births_refused;
+    /* Deaths so far, by cause. An array with an enum as its index: the enum's
+     * values are plain numbers from 0, and DEATH_COUNT is how many there are. */
+    uint32_t deaths[DEATH_COUNT];
     /* Whether this tick is in the mating season. Worked out from the tick by
      * the Sim before anyone acts, so it is neither saved nor hashed: the tick
      * is both. */
     bool in_season;
+    /* The low 32 bits of the current tick, set the same way and for the same
+     * reason: the rules for hits need the date, and creature_act has no Sim. */
+    uint32_t now;
 } Pool;
 
 /* Allocates capacity empty slots. False for a capacity below 1 or when
@@ -103,15 +140,17 @@ void pool_count_plant_eaters(Pool *p, const Settings *s);
 bool creature_counts_as_plant_eater(const Creature *c, const Settings *s);
 /* Frees the slots and empties *p; safe to call twice. */
 void pool_free(Pool *p);
-/* Places a new creature at (x, y), heading north, with energy 0, age 0
- * and an all-zero genome. Returns its slot index, or -1 when the pool is
- * full or the cell is not free soil; nothing changes then. The caller
- * sets the energy and the genome. */
+/* Places a new creature at (x, y), heading north, with energy 0, age 0,
+ * health 1 and an all-zero genome. Returns its slot index, or -1 when the pool
+ * is full or the cell is not free soil; nothing changes then. The caller sets
+ * the energy and the genome, and then the health, which depends on the body:
+ * it starts at 1 only because a living creature must never hold 0. */
 int pool_spawn(Pool *p, World *w, int x, int y);
 /* Removes the creature in slot idx from the world, leaves its body as
- * carrion (body_energy * size plus any energy left, at its level) and
- * frees the slot. Does nothing to a slot that is already free. */
-void pool_kill(Pool *p, World *w, int idx, const Settings *s);
+ * carrion (body_energy * size plus any energy left, at its level), counts the
+ * death under cause and frees the slot. Does nothing to a slot that is already
+ * free. */
+void pool_kill(Pool *p, World *w, int idx, const Settings *s, DeathCause cause);
 
 /* Fills *out with what creature idx senses: its energy, age, size, meat
  * digestion gene, whether it is the mating season and whether the way ahead
@@ -125,16 +164,18 @@ void creature_sense(const World *w, const Pool *p, int idx,
                     const Settings *s, Senses *out);
 /* What a bite by creature idx would do right now. Reads only, and uses no
  * random numbers, so the drawing side can ask too and show the same thing the
- * simulation does. cell is the target's cell (world_idx), -1 for
- * BITE_NOTHING; prey is the target's pool slot, for BITE_ATTACK only. */
-enum { BITE_NOTHING, BITE_ATTACK, BITE_CARRION, BITE_PLANT };
+ * simulation does. cell is the food's cell (world_idx), -1 for BITE_NOTHING. */
+enum { BITE_NOTHING, BITE_CARRION, BITE_PLANT };
 typedef struct {
     int kind; /* a BITE_ value */
     int cell;
-    int prey;
 } BiteChoice;
 BiteChoice creature_bite_choice(const World *w, const Pool *p, int idx,
                                 const Settings *s);
+/* The slot of the creature an ACT_ATTACK by creature idx would strike: whoever
+ * stands on the cell ahead, of any kind, unless an earlier hit this tick has
+ * already taken it to 0. -1 for nobody. Reads only, for the drawing side too. */
+int creature_attack_target(const World *w, const Pool *p, int idx);
 /* Carries out one tick of action a for creature idx. Returns the slot of
  * a child born from it, or -1 when none was.
  *
@@ -149,9 +190,11 @@ BiteChoice creature_bite_choice(const World *w, const Pool *p, int idx,
  * Out of season only ACT_MATE tries. */
 int creature_act(World *w, Pool *p, int idx, Action a, const Settings *s,
                  Rng *r);
-/* Charges one tick of upkeep and ages the creature by one tick. Returns
- * false when its energy is gone or it has reached max_age: it must then
- * be killed. */
+/* Charges one tick of upkeep and ages the creature by one tick. With energy
+ * left it heals, paying for it; with none, it stays at exactly 0 and loses
+ * starve_damage health instead. Returns false when its health is gone or it has
+ * reached max_age: it must then be killed. One an attack already took to 0 stays
+ * there: nothing is charged, and it does not heal. */
 bool creature_upkeep(Creature *c, const Settings *s);
 
 /* The body the genes describe (see Settings): size from size_min to
@@ -159,11 +202,13 @@ bool creature_upkeep(Creature *c, const Settings *s);
 float creature_size(const Creature *c, const Settings *s);
 float creature_speed(const Creature *c, const Settings *s);
 int creature_sight(const Creature *c, const Settings *s);
+/* The health of an unhurt body. */
+float creature_max_health(const Creature *c, const Settings *s);
 /* Energy one tick of life costs this creature. */
 float creature_upkeep_cost(const Creature *c, const Settings *s);
 
-/* True for a creature that digests meat better than plants. Only
- * hunters attack, and only plant-eaters are attacked. */
+/* True for a creature that digests meat better than plants. Says nothing
+ * about who may attack whom: anyone may attack anyone. */
 bool creature_is_hunter(const Creature *c);
 
 /* Chance that an attacker of size a hits a target of size t:
@@ -171,6 +216,17 @@ bool creature_is_hunter(const Creature *c);
  * more. A pure function (no state, no randomness), so tests can check it
  * exactly. */
 float attack_chance(float a, float t, float k);
+/* The same chance when others_recently other creatures have just hit the same
+ * target: each adds gang_bonus to the attacker's weight, so
+ * (1 + others * bonus) / (1 + others * bonus + (t/a)^k). Equal to attack_chance
+ * at 0 others. It climbs towards 1 and only rounding can reach it, when the
+ * sizes are enormously far apart. Asks nothing about who is related to whom. */
+float attack_odds(float a, float t, float k, int others_recently,
+                  float gang_bonus);
+/* How many different creatures other than attacker have hit target within the
+ * last window ticks. A hit exactly window ticks ago still counts. */
+int creature_others_recently(const Creature *target, uint32_t attacker,
+                             uint32_t now, int window);
 
 /* Records a meal that gave energy from a source at source_level (1 for
  * plants, the carrion's level for meat): updates level and eaten. Does

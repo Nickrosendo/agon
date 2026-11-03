@@ -27,13 +27,14 @@
  *   three histories;
  *   the records: i32 peak, u32 oldest id, u32 oldest age, u32 largest id,
  *   float largest size, u64 ended_at;
- *   i32 free_head, u32 next_id, u32 births_refused; then every creature slot.
+ *   i32 free_head, u32 next_id, u32 births_refused, u32 deaths per cause;
+ *   then every creature slot.
  *
  * Change anything here and SAVE_VERSION goes up by one.
  */
 #define SAVE_MAGIC "AGONSAVE"
 #define SAVE_MAGIC_LEN 8
-#define SAVE_VERSION 3u
+#define SAVE_VERSION 4u
 
 /* No value in a healthy world comes near this. Bounding them keeps sums
  * from reaching infinity, and float-to-int conversions defined. */
@@ -191,6 +192,12 @@ static void put_creature(Writer *w, const Creature *c)
     put_i32(w, c->y);
     put_bytes(w, &c->heading, 1);
     put_float(w, c->energy);
+    put_float(w, c->health);
+    put_u32(w, c->hits_taken);
+    for (int i = 0; i < HITS_KEPT; i++) {
+        put_u32(w, c->recent_hits[i].by);
+        put_u32(w, c->recent_hits[i].tick);
+    }
     put_u32(w, c->age);
     put_bytes(w, &c->current.kind, 1);
     put_u16(w, c->current.hold);
@@ -213,6 +220,9 @@ static void put_pool(Writer *w, const Pool *p)
     put_i32(w, p->free_head);
     put_u32(w, p->next_id);
     put_u32(w, p->births_refused);
+    for (int i = 0; i < DEATH_COUNT; i++) {
+        put_u32(w, p->deaths[i]);
+    }
     for (int i = 0; i < p->capacity; i++) {
         const Creature *c = &p->items[i];
         unsigned char alive = c->alive ? 1 : 0;
@@ -493,6 +503,12 @@ static void get_creature(Reader *r, Creature *c, const Settings *set,
     c->y = get_i32(r);
     c->heading = get_byte(r);
     c->energy = get_float(r, -FLOAT_LIMIT, FLOAT_LIMIT);
+    c->health = get_float(r, -FLOAT_LIMIT, FLOAT_LIMIT);
+    c->hits_taken = get_u32(r);
+    for (int i = 0; i < HITS_KEPT; i++) {
+        c->recent_hits[i].by = get_u32(r);
+        c->recent_hits[i].tick = get_u32(r);
+    }
     c->age = get_u32(r);
     c->current.kind = get_byte(r);
     c->current.hold = get_u16(r);
@@ -538,6 +554,9 @@ static void get_pool(Reader *r, Pool *p, World *w, const Settings *set)
     p->free_head = get_i32(r);
     p->next_id = get_u32(r);
     p->births_refused = get_u32(r);
+    for (int i = 0; i < DEATH_COUNT; i++) {
+        p->deaths[i] = get_u32(r);
+    }
     p->count = 0;
     for (int i = 0; i < p->capacity && r->problem == NULL; i++) {
         Creature *c = &p->items[i];

@@ -37,7 +37,7 @@ static void kill_all(Sim *s)
 {
     for (int i = 0; i < s->pool.capacity; i++) {
         if (s->pool.items[i].alive) {
-            pool_kill(&s->pool, &s->world, i, &s->set);
+            pool_kill(&s->pool, &s->world, i, &s->set, DEATH_WOUNDS);
         }
     }
 }
@@ -184,7 +184,7 @@ static void test_family_dying_out_is_forgotten(void)
     CHECK(find(&f, 5) != NULL);
     for (int i = 0; i < s.pool.capacity; i++) {
         if (s.pool.items[i].alive && s.pool.items[i].lineage == 5) {
-            pool_kill(&s.pool, &s.world, i, &s.set);
+            pool_kill(&s.pool, &s.world, i, &s.set, DEATH_WOUNDS);
         }
     }
     pass(&f, &s);

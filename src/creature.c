@@ -2,6 +2,7 @@
 
 #include <math.h>   /* powf */
 #include <stdlib.h> /* malloc, free */
+#include <string.h> /* memset */
 
 #include "flora.h" /* carrion_add, CARRION_MIN */
 
@@ -44,6 +45,8 @@ void pool_clear(Pool *p)
     p->next_id = 0;
     p->plant_eaters = 0;
     p->births_refused = 0;
+    /* The struct's array itself, so this clears every cause, however many. */
+    memset(p->deaths, 0, sizeof(p->deaths));
 }
 
 void pool_count_plant_eaters(Pool *p, const Settings *s)
@@ -88,6 +91,7 @@ int pool_spawn(Pool *p, World *w, int x, int y)
         .y = cell / w->w,
         .heading = HEADING_NORTH,
         .level = LEVEL_START,
+        .health = 1.0f,
     };
     /* An unsigned counter: after 2^32 - 1 it wraps to 0, which is defined
      * in C (unlike signed overflow). At 1,000 births a second that takes
@@ -98,16 +102,15 @@ int pool_spawn(Pool *p, World *w, int x, int y)
     return idx;
 }
 
-void pool_kill(Pool *p, World *w, int idx, const Settings *s)
+void pool_kill(Pool *p, World *w, int idx, const Settings *s, DeathCause cause)
 {
     Creature *c = &p->items[idx];
     if (!c->alive) {
         return;
     }
     int cell = world_idx(w, c->x, c->y);
-    /* The body, plus whatever energy was left: a starved or killed
-     * creature has none (its energy is 0 or below), one dying of old age
-     * may have plenty. */
+    /* The body, plus whatever energy was left: a starved creature has none,
+     * one killed by wounds may have plenty, and all of it lands on the cell. */
     float left = c->energy > 0.0f ? c->energy : 0.0f;
     carrion_add(w, cell, s->body_energy * creature_size(c, s) + left,
                 c->level);
@@ -118,6 +121,7 @@ void pool_kill(Pool *p, World *w, int idx, const Settings *s)
     c->next_free = p->free_head;
     p->free_head = idx;
     p->count--;
+    p->deaths[cause]++;
 }
 
 /* The heading after turning: turns is 1 for right, 3 for left. heading
@@ -161,6 +165,11 @@ int creature_sight(const Creature *c, const Settings *s)
     return 1 + (int)(gene * (float)(s->sight_max - 1) + 0.5f);
 }
 
+float creature_max_health(const Creature *c, const Settings *s)
+{
+    return s->health_per_size * creature_size(c, s);
+}
+
 /* What age costs this creature per tick. e is how far it has aged: its age
  * scaled by how fast its genes age it. Squared, so that the cost is small for
  * most of a life and then climbs until food cannot pay for it: a practical end
@@ -192,14 +201,51 @@ static float mate_needs(const Creature *c, const Settings *s)
 
 float attack_chance(float a, float t, float k)
 {
-    float ak = powf(a, k);
-    float tk = powf(t, k);
-    /* Both are positive for positive sizes; the guard keeps a zero size
-     * from dividing 0 by 0, which would give NaN. */
-    if (ak + tk <= 0.0f) {
-        return 0.5f;
+    return attack_odds(a, t, k, 0, 0.0f);
+}
+
+float attack_odds(float a, float t, float k, int others_recently,
+                  float gang_bonus)
+{
+    /* a^k / (a^k + t^k), divided through by a^k. Raising the ratio instead of
+     * each size keeps this a real number for sizes far apart: 1000000^16
+     * overflows a float to infinity, and infinity / infinity is NaN, which a
+     * comparison with a random draw would quietly read as a miss for ever. */
+    float t_over_a = 1.0f;
+    if (a > 0.0f || t > 0.0f) { /* both 0 would divide 0 by 0: then, even odds */
+        t_over_a = powf(t / a, k);
     }
-    return ak / (ak + tk);
+    float weight = 1.0f + (float)others_recently * gang_bonus;
+    return weight / (weight + t_over_a);
+}
+
+int creature_others_recently(const Creature *target, uint32_t attacker,
+                             uint32_t now, int window)
+{
+    uint32_t kept = target->hits_taken < HITS_KEPT ? target->hits_taken
+                                                   : HITS_KEPT;
+    int others = 0;
+    for (uint32_t i = 0; i < kept; i++) {
+        const Hit *h = &target->recent_hits[i];
+        /* Unsigned subtraction wraps modulo 2^32, so this is the true distance
+         * in ticks even if the counter passed 2^32 between the two. window is
+         * checked to be 0 or more when settings load. */
+        if (h->by == attacker || now - h->tick > (uint32_t)window) {
+            continue;
+        }
+        /* Seen already, earlier in the ring? Repeats by one creature count once. */
+        bool repeat = false;
+        for (uint32_t j = 0; j < i; j++) {
+            const Hit *e = &target->recent_hits[j];
+            if (e->by == h->by && now - e->tick <= (uint32_t)window) {
+                repeat = true;
+            }
+        }
+        if (!repeat) {
+            others++;
+        }
+    }
+    return others;
 }
 
 void creature_ate(Creature *c, float energy, float source_level)
@@ -311,17 +357,45 @@ static void act_move(World *w, Creature *c, int idx, const Settings *s)
     c->y = to / w->w;
 }
 
-/* An attack by c on target. The target is only hurt: if its
- * energy reaches 0 it stops acting, and the end-of-tick accounting kills
- * it and leaves its body as carrion. */
-static void attack(Creature *c, Creature *target, const Settings *s, Rng *r)
+int creature_attack_target(const World *w, const Pool *p, int idx)
 {
+    const Creature *c = &p->items[idx];
+    int other = w->occupant[cell_towards(w, c->x, c->y, c->heading)];
+    /* other == idx only in a world one cell across, where ahead wraps to itself. */
+    if (other < 0 || other == idx || p->items[other].health <= 0.0f) {
+        return -1;
+    }
+    return other;
+}
+
+/* Adds a hit to the target's ring, over its oldest once the ring is full. */
+static void note_hit(Creature *target, uint32_t by, uint32_t now)
+{
+    target->recent_hits[target->hits_taken % HITS_KEPT] = (Hit){by, now};
+    target->hits_taken++;
+}
+
+/* An attack on whatever stands ahead. It costs the same hit, miss or swing at
+ * nothing. The target is only hurt: if its health reaches 0 it stops acting, and
+ * the end-of-tick accounting kills it and leaves its body as carrion, so the
+ * attacker gains nothing directly. */
+static void act_attack(const World *w, Pool *p, int idx, const Settings *s,
+                       Rng *r)
+{
+    Creature *c = &p->items[idx];
     c->energy -= s->attack_cost;
+    int slot = creature_attack_target(w, p, idx);
+    if (slot < 0) {
+        return;
+    }
+    Creature *target = &p->items[slot];
     float a = creature_size(c, s);
-    float chance = attack_chance(a, creature_size(target, s),
-                                 s->attack_steepness);
+    int others = creature_others_recently(target, c->id, p->now, s->gang_window);
+    float chance = attack_odds(a, creature_size(target, s), s->attack_steepness,
+                               others, s->gang_bonus);
     if (rng_unit(r) < chance) {
-        target->energy -= s->bite_damage * a;
+        target->health -= s->bite_damage * a;
+        note_hit(target, c->id, p->now);
     }
 }
 
@@ -399,46 +473,24 @@ bool creature_counts_as_plant_eater(const Creature *c, const Settings *s)
  * Food on a cell holding a creature is covered by it and is not eaten.
  * Among the free cells, the bite takes the food (plants or carrion) that
  * gives this creature the most energy, carrion first on a tie; a bite
- * that would gain nothing does nothing.
- *
- * A hunter (meat gene above plant gene) with no carrion on any of the
- * eight cells attacks instead: the neighbouring plant-eater it is most
- * likely to hit. Plant-eaters never attack. */
+ * that would gain nothing does nothing. Hurting anyone takes ACT_ATTACK. */
 BiteChoice creature_bite_choice(const World *w, const Pool *p, int idx,
                                 const Settings *s)
 {
     const Creature *c = &p->items[idx];
-    bool hunter = creature_is_hunter(c);
-    float my_size = creature_size(c, s);
     int food_cell = -1;
     bool food_is_carrion = false;
     float best_gain = 0.0f;
-    bool carrion_near = false;
-    int prey = -1;
-    int prey_cell = -1;
-    float best_chance = 0.0f;
 
     /* AROUND_ is clockwise from north, two steps per heading. */
     int start = 2 * c->heading;
     for (int k = 0; k < 8; k++) {
         int dir = (start + k) % 8;
         int cell = world_idx(w, c->x + AROUND_X[dir], c->y + AROUND_Y[dir]);
-        int other = w->occupant[cell];
-        if (other >= 0) {
-            const Creature *o = &p->items[other];
-            if (hunter && !creature_is_hunter(o) && o->energy > 0.0f) {
-                float chance = attack_chance(my_size, creature_size(o, s),
-                                             s->attack_steepness);
-                if (chance > best_chance) {
-                    best_chance = chance;
-                    prey = other;
-                    prey_cell = cell;
-                }
-            }
+        if (w->occupant[cell] >= 0) {
             continue; /* the food under a creature is covered */
         }
         if (w->carrion[cell] > 0.0f) {
-            carrion_near = true;
             float gain = meat_gain(c, carrion_take(w, cell, s), s);
             if (gain > best_gain) {
                 best_gain = gain;
@@ -456,26 +508,19 @@ BiteChoice creature_bite_choice(const World *w, const Pool *p, int idx,
         }
     }
 
-    BiteChoice choice = {BITE_NOTHING, -1, -1};
-    if (hunter && !carrion_near && prey >= 0) {
-        choice.kind = BITE_ATTACK;
-        choice.cell = prey_cell;
-        choice.prey = prey;
-    } else if (food_cell >= 0) {
+    BiteChoice choice = {BITE_NOTHING, -1};
+    if (food_cell >= 0) {
         choice.kind = food_is_carrion ? BITE_CARRION : BITE_PLANT;
         choice.cell = food_cell;
     }
     return choice;
 }
 
-static void act_bite(World *w, Pool *p, int idx, const Settings *s, Rng *r)
+static void act_bite(World *w, Pool *p, int idx, const Settings *s)
 {
     Creature *c = &p->items[idx];
     BiteChoice choice = creature_bite_choice(w, p, idx, s);
     switch (choice.kind) {
-    case BITE_ATTACK:
-        attack(c, &p->items[choice.prey], s, r);
-        break;
     case BITE_CARRION:
         eat_carrion(w, c, choice.cell, s);
         break;
@@ -491,12 +536,12 @@ static void act_bite(World *w, Pool *p, int idx, const Settings *s, Rng *r)
 
 /* Grown up and fed enough to have a child. mate_age is an int checked to be
  * 0 or more when settings load, so the cast cannot make a huge number of it.
- * The check for energy above 0 is for a mate_threshold of 0: a creature an
- * attack has just taken to 0 is dying, and must not become a parent. */
+ * A creature an attack has just taken to 0 is dying, and must not become a
+ * parent; the check for energy above 0 is for a mate_threshold of 0. */
 static bool can_mate(const Creature *c, const Settings *s)
 {
-    return c->age >= (uint32_t)s->mate_age && c->energy > 0.0f &&
-           c->energy >= mate_needs(c, s);
+    return c->age >= (uint32_t)s->mate_age && c->health > 0.0f &&
+           c->energy > 0.0f && c->energy >= mate_needs(c, s);
 }
 
 /* The slot of a neighbour that wishes to mate and still can, looking round
@@ -550,6 +595,7 @@ static void make_child(Creature *child, Creature *a, Creature *b,
     /* Pointers to the three genomes, not copies: the function writes the
      * child's in place, reading its parents'. */
     genome_cross(&child->genome, &a->genome, &b->genome, r, s);
+    child->health = creature_max_health(child, s); /* needs the genes above */
     a->mate_wish = 0;
     b->mate_wish = 0;
 }
@@ -624,7 +670,10 @@ int creature_act(World *w, Pool *p, int idx, Action a, const Settings *s,
         act_move(w, c, idx, s);
         break;
     case ACT_BITE:
-        act_bite(w, p, idx, s, r);
+        act_bite(w, p, idx, s);
+        break;
+    case ACT_ATTACK:
+        act_attack(w, p, idx, s, r);
         break;
     case ACT_MATE:
         return act_mate(w, p, idx, s, r);
@@ -634,8 +683,29 @@ int creature_act(World *w, Pool *p, int idx, Action a, const Settings *s,
     return -1;
 }
 
+/* Heals one tick's worth, or what is left of the wound, or what energy can pay
+ * for, whichever is least. Called only with energy above 0. */
+static void heal(Creature *c, const Settings *s)
+{
+    float amount = creature_max_health(c, s) - c->health;
+    if (amount > s->heal_rate) {
+        amount = s->heal_rate;
+    }
+    /* The check also keeps a heal_cost of 0 from being divided by. */
+    if (s->heal_cost > 0.0f && amount * s->heal_cost > c->energy) {
+        amount = c->energy / s->heal_cost;
+    }
+    if (amount > 0.0f) {
+        c->health += amount;
+        c->energy -= amount * s->heal_cost;
+    }
+}
+
 bool creature_upkeep(Creature *c, const Settings *s)
 {
+    if (c->health <= 0.0f) {
+        return false;
+    }
     c->energy -= creature_upkeep_cost(c, s);
     if (c->age < UINT32_MAX) {
         c->age++;
@@ -649,5 +719,13 @@ bool creature_upkeep(Creature *c, const Settings *s)
     if (s->max_age > 0 && c->age >= (uint32_t)s->max_age) {
         return false;
     }
-    return c->energy > 0.0f;
+    if (c->energy > 0.0f) {
+        heal(c, s);
+    } else {
+        /* Exactly 0, not below: a debt would have to be eaten off before the
+         * first meal did any good, and starving is already the price. */
+        c->energy = 0.0f;
+        c->health -= s->starve_damage;
+    }
+    return c->health > 0.0f;
 }

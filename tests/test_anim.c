@@ -16,7 +16,7 @@ static void empty_sim(Sim *s, int w, int h)
     CHECK(sim_init(s, &set, 1, w, h));
     for (int i = 0; i < s->pool.capacity; i++) {
         if (s->pool.items[i].alive) {
-            pool_kill(&s->pool, &s->world, i, &s->set);
+            pool_kill(&s->pool, &s->world, i, &s->set, DEATH_WOUNDS);
         }
     }
     /* Every cell free, bare soil, so any position is allowed and nothing is
@@ -176,7 +176,7 @@ static void test_new_id_in_slot_forgets_old(void)
     anim_pose(&a, &s, slot, 0.0f, 0, &p);
     CHECK(p.flip);
 
-    pool_kill(&s.pool, &s.world, slot, &s.set);
+    pool_kill(&s.pool, &s.world, slot, &s.set, DEATH_WOUNDS);
     s.world.carrion[world_idx(&s.world, 10, 10)] = 0.0f;
     int again = pool_spawn(&s.pool, &s.world, 50, 25);
     CHECK(again == slot); /* the free list hands the same slot back */
@@ -368,30 +368,33 @@ static void test_bite_target_across_wrap(void)
     sim_free(&s);
 }
 
-static void test_hunter_beside_prey_fights(void)
+static void test_attacker_faces_what_it_attacks(void)
 {
     Sim s;
     empty_sim(&s, 64, 32);
-    int hunter = pool_spawn(&s.pool, &s.world, 10, 10);
-    int prey = pool_spawn(&s.pool, &s.world, 11, 10);
-    s.pool.items[hunter].current.kind = ACT_BITE;
-    s.pool.items[hunter].genome.g[GENE_MEAT] = 1.0f;
-    s.pool.items[prey].genome.g[GENE_PLANT] = 1.0f;
-    s.pool.items[prey].energy = 10.0f;
+    int attacker = pool_spawn(&s.pool, &s.world, 10, 10);
+    int target = pool_spawn(&s.pool, &s.world, 11, 10);
+    s.pool.items[attacker].current.kind = ACT_ATTACK;
+    s.pool.items[attacker].heading = HEADING_EAST;
     Anim a;
     CHECK(anim_init(&a, s.pool.capacity));
     anim_update(&a, &s, 10);
     AnimPose p;
-    anim_pose(&a, &s, hunter, 0.0f, 0, &p);
-    CHECK(p.bite == BITE_ATTACK);
+    anim_pose(&a, &s, attacker, 0.0f, 0, &p);
+    CHECK(p.bite == POSE_ATTACK);
     CHECK(p.target_x == 11 && p.target_y == 10);
+    /* Nobody ahead: a swing at nothing does not look like a fight. */
+    s.pool.items[attacker].heading = HEADING_WEST;
+    anim_pose(&a, &s, attacker, 0.0f, 0, &p);
+    CHECK(p.bite == BITE_NOTHING);
+    (void)target;
     anim_free(&a);
     sim_free(&s);
 }
 
-static void test_hunter_beside_carrion_eats_it(void)
+static void test_biter_beside_creature_and_carrion_eats(void)
 {
-    /* The simulation's rule: carrion in reach comes before attacking. */
+    /* A bite is only ever a meal, whatever stands beside it. */
     Sim s;
     empty_sim(&s, 64, 32);
     int hunter = pool_spawn(&s.pool, &s.world, 10, 10);
@@ -399,7 +402,6 @@ static void test_hunter_beside_carrion_eats_it(void)
     s.pool.items[hunter].current.kind = ACT_BITE;
     s.pool.items[hunter].genome.g[GENE_MEAT] = 1.0f;
     s.pool.items[prey].genome.g[GENE_PLANT] = 1.0f;
-    s.pool.items[prey].energy = 10.0f;
     s.world.carrion[world_idx(&s.world, 9, 10)] = 5.0f;
     Anim a;
     CHECK(anim_init(&a, s.pool.capacity));
@@ -428,7 +430,7 @@ int main(void)
     test_eating_a_plant_chomps_and_faces_it();
     test_bite_straight_up_keeps_facing();
     test_bite_target_across_wrap();
-    test_hunter_beside_prey_fights();
-    test_hunter_beside_carrion_eats_it();
+    test_attacker_faces_what_it_attacks();
+    test_biter_beside_creature_and_carrion_eats();
     TEST_SUMMARY();
 }

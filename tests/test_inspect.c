@@ -90,7 +90,7 @@ static void test_follows_until_death(void)
     CHECK(in.x == 6 && in.y == 5);
 
     /* It dies: the cursor stays where it was, following nobody. */
-    pool_kill(&sim.pool, &sim.world, idx, &sim.set);
+    pool_kill(&sim.pool, &sim.world, idx, &sim.set, DEATH_WOUNDS);
     inspect_update(&in, &sim);
     CHECK(!in.following);
     CHECK(in.x == 6 && in.y == 5);
@@ -139,7 +139,7 @@ static void test_picks_for_the_panel(void)
     CHECK(inspect_largest_of_family(&sim, 7) == -1);
 
     /* A dead one's old numbers do not count. */
-    pool_kill(&sim.pool, &sim.world, inspect_highest_level(&sim), &sim.set);
+    pool_kill(&sim.pool, &sim.world, inspect_highest_level(&sim), &sim.set, DEATH_WOUNDS);
     CHECK(&sim.pool.items[inspect_highest_level(&sim)] == c);
     sim_free(&sim);
 }

@@ -206,12 +206,21 @@ static void test_mate_wish_survives_save(void)
     CHECK(slot >= 0);
     a.pool.items[slot].mate_wish = 3;
     a.pool.births_refused = 7;
+    a.pool.deaths[DEATH_HUNGER] = 11;
+    a.pool.items[slot].health = 12.5f;
+    a.pool.items[slot].hits_taken = 2;
+    a.pool.items[slot].recent_hits[1] = (Hit){.by = 42, .tick = 77};
     char err[256] = "";
     CHECK(save_write(&a, SAVE_FILE, err, sizeof(err)));
     Sim b;
     CHECK(save_read(&b, SAVE_FILE, err, sizeof(err)));
     CHECK(b.pool.items[slot].mate_wish == 3);
     CHECK(b.pool.births_refused == 7);
+    CHECK(b.pool.deaths[DEATH_HUNGER] == 11);
+    CHECK(b.pool.items[slot].health == 12.5f);
+    CHECK(b.pool.items[slot].hits_taken == 2);
+    CHECK(b.pool.items[slot].recent_hits[1].by == 42);
+    CHECK(b.pool.items[slot].recent_hits[1].tick == 77);
     CHECK(sim_checksum(&a) == sim_checksum(&b));
     sim_free(&a);
     sim_free(&b);
@@ -372,16 +381,19 @@ enum {
     AT_Y = 13,
     AT_HEADING = 17,
     AT_ENERGY = 18,
-    AT_AGE = 22,
-    AT_KIND = 26,
-    AT_HOLD = 27,
-    AT_HOLD_LEFT = 29,
-    AT_MOVE_POINTS = 31,
-    AT_MATE_WISH = 35,
-    AT_LEVEL = 37,
-    AT_EATEN = 41,
-    AT_GENOME = 45,
-    SLOT_LIVING_BYTES = 45 + 4 * GENOME_LEN,
+    AT_HEALTH = 22,
+    AT_HITS_TAKEN = 26,
+    AT_RECENT_HITS = 30, /* HITS_KEPT pairs of u32: 64 bytes */
+    AT_AGE = 94,
+    AT_KIND = 98,
+    AT_HOLD = 99,
+    AT_HOLD_LEFT = 101,
+    AT_MOVE_POINTS = 103,
+    AT_MATE_WISH = 107,
+    AT_LEVEL = 109,
+    AT_EATEN = 113,
+    AT_GENOME = 117,
+    SLOT_LIVING_BYTES = 117 + 4 * GENOME_LEN,
 };
 
 typedef struct {
@@ -445,7 +457,8 @@ static Tiny tiny_save(void)
     t.records = t.histories + 3 * (HISTORY * 4 + 8);
     /* peak, oldest id and age, largest id and size, then the u64 ended_at. */
     t.pool = t.records + 5 * 4 + 8;
-    t.living = t.pool + 12; /* free_head, next_id, births_refused */
+    /* free_head, next_id, births_refused, deaths by cause */
+    t.living = t.pool + 12 + 4 * DEATH_COUNT;
     t.free_slot = t.living + SLOT_LIVING_BYTES;
     CHECK(t.size == t.free_slot + OFF_SIZE_FREE_SLOT);
     return t;
@@ -643,7 +656,7 @@ static void test_dead_world_round_trip(void)
     CHECK(sim_init(&a, &set, 5, 64, 32));
     for (int i = 0; i < a.pool.capacity; i++) {
         if (a.pool.items[i].alive) {
-            pool_kill(&a.pool, &a.world, i, &a.set);
+            pool_kill(&a.pool, &a.world, i, &a.set, DEATH_WOUNDS);
         }
     }
     sim_step(&a);
@@ -683,6 +696,7 @@ static void test_refuses_impossible_creature(void)
     refuses_byte(&t, c + AT_KIND, ACT_COUNT, "creature");
     refuses_u32(&t, c + AT_ENERGY, BITS_NAN, "out of range");
     refuses_u32(&t, c + AT_ENERGY, BITS_HUGE, "out of range");
+    refuses_u32(&t, c + AT_HEALTH, BITS_NAN, "out of range");
     refuses_u32(&t, c + AT_MOVE_POINTS, BITS_NAN, "out of range");
     refuses_u32(&t, c + AT_LEVEL, BITS_NAN, "out of range");
     refuses_u32(&t, c + AT_EATEN, BITS_NAN, "out of range");

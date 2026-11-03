@@ -183,8 +183,12 @@ for the build that wrote them; a build with a different format refuses them.
    long enough to have children spreads. During the mating season, a quarter of
    each year, every fed adult is willing without choosing to be; outside it, both
    must choose, which is rarer.
-8. Hunters attack plant-eaters, and bigger attackers hit more often. Kills
-   become carrion, which rots away and sends out a scent.
+8. Any creature can attack whatever stands right ahead of it, and biting only
+   eats. Bigger attackers hit more often, and the odds rise for each other
+   creature that has just hit the same target. A hit takes health, not energy.
+   Wounds heal slowly and cost energy; with no energy left a creature loses health
+   instead, and only health at zero kills. Kills become carrion, which rots away
+   and sends out a scent.
 9. A creature's food-chain level is measured from what it actually eats: a
    plant-eater sits at about 2, something that eats plant-eaters at about 3.
 10. Random creatures appear only at the very start, and plants grow only from

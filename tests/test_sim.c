@@ -30,9 +30,11 @@
  * records, added to the fingerprint: the world itself is unchanged, shown by
  * the pinned pictures in test_scene.c staying as they were; then the sense of
  * being blocked: one more sense, so 6 more genes, changing every random genome;
- * then the nearest plant along each ray: three more senses, so 18 more genes.
+ * then the nearest plant along each ray: three more senses, so 18 more genes;
+ * then fights: one more action, so 7 more genes, a bite that only eats, and
+ * health and hits in the fingerprint.
  */
-#define SEED_7_AFTER_500 0xff4ad0022fdacfa5ULL
+#define SEED_7_AFTER_500 0x0a1be8aa283e5153ULL
 
 static void test_same_seed_same_checksum(void)
 {
@@ -114,7 +116,7 @@ static void kill_everyone(Sim *s)
 {
     for (int i = 0; i < s->pool.capacity; i++) {
         if (s->pool.items[i].alive) {
-            pool_kill(&s->pool, &s->world, i, &s->set);
+            pool_kill(&s->pool, &s->world, i, &s->set, DEATH_WOUNDS);
         }
     }
 }
@@ -375,6 +377,7 @@ static void test_is_over(void)
     CHECK(s.records.ended_at == 0);
 
     c->energy = 0.000001f;
+    c->health = s.set.starve_damage / 2.0f;
     uint64_t last_tick = s.tick;
     sim_step(&s);
     CHECK(sim_is_over(&s));

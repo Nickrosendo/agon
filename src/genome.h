@@ -32,7 +32,7 @@ enum {
  * checks both when it is compiled. */
 #define NET_IN 33
 #define NET_HIDDEN 6
-#define NET_OUT 6
+#define NET_OUT 7
 /* The parentheses matter: a macro is pasted as text, and without them
  * "2 * NET_WEIGHTS" would multiply only the first term. */
 #define NET_WEIGHTS ((NET_IN + 1) * NET_HIDDEN + (NET_HIDDEN + 1) * NET_OUT)

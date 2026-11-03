@@ -132,7 +132,14 @@ void anim_pose(const Anim *a, const Sim *s, int slot, float tick_fraction,
     }
 
     out->bite = BITE_NOTHING;
-    if (c->current.kind == ACT_BITE) {
+    if (c->current.kind == ACT_ATTACK) {
+        int target = creature_attack_target(w, &s->pool, slot);
+        if (target >= 0) {
+            out->bite = POSE_ATTACK;
+            out->target_x = s->pool.items[target].x;
+            out->target_y = s->pool.items[target].y;
+        }
+    } else if (c->current.kind == ACT_BITE) {
         /* The simulation's own answer, so what is shown cannot drift from
          * the rules. It describes the next bite, so it can differ for a tick
          * from the one just taken, which nobody could see at this speed. */

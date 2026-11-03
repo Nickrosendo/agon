@@ -8,7 +8,7 @@
  * slot: who was there at the end of the last tick, and what they had. A slot
  * whose creature has gone dead, or now holds another id, means that creature
  * died during this tick. The shadow's energy is therefore the energy just
- * before death.
+ * before death. What killed it comes from the Pool's own count.
  */
 #include <stdbool.h>
 #include <stdint.h>
@@ -19,10 +19,6 @@
 #include "settings.h"
 #include "sim.h"
 
-/* Below this energy at the end of its last full tick, a creature counts as
- * starved; above it, as killed by something else. Rough: the same split the
- * design's table used. */
-#define STARVED_BELOW 3.0f
 /* A creature that had not changed cell for this many ticks counts as still. */
 #define STILL_TICKS 200
 /* Deaths before this tick are not counted: they are the founders' die-off.
@@ -48,7 +44,8 @@ typedef struct {
     uint32_t first_born_id; /* ids below this were there at tick 0 */
     bool pool_filled;
     uint64_t deaths;
-    uint64_t starved, killed, old_age;
+    uint32_t deaths_at_start[DEATH_COUNT]; /* the Pool's count when counting began */
+    bool started_counting;
     double energy_at_death;
     double age_at_death; /* of those who grew up: most deaths are infants */
     uint64_t adult_deaths;
@@ -70,15 +67,6 @@ static void record_death(Report *rep, const Shadow *sh, const Settings *set)
     }
     if (sh->age > rep->oldest_at_death) {
         rep->oldest_at_death = sh->age;
-    }
-    /* The age check comes first: that death has nothing to do with energy.
-     * sh->age is the age a tick ago, and upkeep adds one before comparing. */
-    if (set->max_age > 0 && sh->age + 1 >= (uint32_t)set->max_age) {
-        rep->old_age++;
-    } else if (sh->energy < STARVED_BELOW) {
-        rep->starved++;
-    } else {
-        rep->killed++;
     }
     if (sh->still_ticks >= STILL_TICKS) {
         rep->still_deaths++;
@@ -141,8 +129,8 @@ static int percent(uint64_t part, uint64_t whole)
 
 static void print_header(void)
 {
-    printf("seed  final   peak extinct births lastbirth meat  Emean adultA ageX starv "
-           "kill  old still  rest left right move bite  mate  capt full\n");
+    printf("seed  final   peak extinct births lastbirth meat  Emean adultA ageX hungr "
+           "woun  old still  rest left right move bite  mate atck  capt full\n");
 }
 
 static void print_row(const Sim *s, const Report *rep)
@@ -167,8 +155,12 @@ static void print_row(const Sim *s, const Report *rep)
            (unsigned long long)s->seed, s->pool.count, rep->peak, extinct,
            (unsigned)births, last, meat_eaters(s), mean, mean_age,
            (unsigned)rep->oldest_at_death,
-           percent(rep->starved, rep->deaths), percent(rep->killed, rep->deaths),
-           percent(rep->old_age, rep->deaths),
+           percent(s->pool.deaths[DEATH_HUNGER] - rep->deaths_at_start[DEATH_HUNGER],
+                   rep->deaths),
+           percent(s->pool.deaths[DEATH_WOUNDS] - rep->deaths_at_start[DEATH_WOUNDS],
+                   rep->deaths),
+           percent(s->pool.deaths[DEATH_AGE] - rep->deaths_at_start[DEATH_AGE],
+                   rep->deaths),
            percent(rep->still_deaths, rep->deaths));
     /* The last action of the still ones, as shares of them, in ACT_ order. */
     for (int a = 0; a < ACT_COUNT; a++) {
@@ -185,6 +177,11 @@ static void run(Sim *s, long ticks, Shadow *shadow, Report *rep)
     watch_slots(s, shadow, rep);
     rep->peak = s->pool.count;
     for (long t = 0; t < ticks; t++) {
+        /* Before the step that can first count a death, to match watch_slots. */
+        if (!rep->started_counting && s->tick >= COUNT_DEATHS_FROM) {
+            rep->started_counting = true;
+            memcpy(rep->deaths_at_start, s->pool.deaths, sizeof(s->pool.deaths));
+        }
         sim_step(s);
         watch_slots(s, shadow, rep);
         if (s->pool.next_id != seen_id) {

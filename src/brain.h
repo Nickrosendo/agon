@@ -54,8 +54,9 @@ enum {
     ACT_TURN_LEFT,
     ACT_TURN_RIGHT,
     ACT_MOVE,
-    ACT_BITE, /* eat the best food around, or hunt (creature.c) */
+    ACT_BITE, /* eat the best food around; never hurts anyone (creature.c) */
     ACT_MATE, /* wish to mate, with anyone beside it who wishes too */
+    ACT_ATTACK, /* attack whatever creature is on the cell ahead, of any kind */
     ACT_COUNT
 };
 

@@ -90,6 +90,12 @@ Settings settings_default(void)
         .digest_upkeep = 0.05f,
         .attack_steepness = 3.0f,
         .attack_cost = 0.5f,
+        .gang_bonus = 0.5f,
+        .gang_window = 10,
+        .health_per_size = 30.0f,
+        .heal_rate = 0.1f,
+        .heal_cost = 1.0f,
+        .starve_damage = 0.5f,
         /* Off: measured on seeds 1 to 5 it made worlds die without reducing how much
          * creatures stand still (2 to 3 of 5 alive at 0.05 and above). */
         .bite_empty_cost = 0.0f,
@@ -213,8 +219,14 @@ static const SettingInfo TABLE[] = {
     FLOAT_ROW(digest_upkeep, 0, BIG, "upkeep of digesting"),
     FLOAT_ROW(attack_steepness, 0, 16, "how much size decides a fight"),
     FLOAT_ROW(attack_cost, 0, BIG, "energy an attack costs"),
+    FLOAT_ROW(gang_bonus, 0, BIG, "better odds per other recent attacker"),
+    INT_ROW(gang_window, 0, 65535, "ticks a hit counts towards those odds"),
+    FLOAT_ROW(health_per_size, 0.001, BIG, "health of an unhurt body, by size"),
+    FLOAT_ROW(heal_rate, 0, BIG, "health healed per tick when fed"),
+    FLOAT_ROW(heal_cost, 0, BIG, "energy per point of health healed"),
+    FLOAT_ROW(starve_damage, 0, BIG, "health lost per tick at zero energy"),
     FLOAT_ROW(bite_empty_cost, 0, BIG, "energy a bite that finds nothing costs"),
-    FLOAT_ROW(bite_damage, 0, BIG, "energy a hit takes, by attacker's size"),
+    FLOAT_ROW(bite_damage, 0, BIG, "health a hit takes, by attacker's size"),
     FLOAT_ROW(body_energy, 0, BIG, "carrion a body leaves, by size"),
     FLOAT_ROW(carrion_decay, 0, 1, "share of carrion lost per tick"),
     FLOAT_ROW(carrion_to_fertility, 0, 1, "share of lost carrion that feeds "

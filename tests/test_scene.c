@@ -116,7 +116,7 @@ static int red_pixels(int action)
     CHECK(sim_init(&s, &set, 3, 16, 16));
     for (int i = 0; i < s.pool.capacity; i++) {
         if (s.pool.items[i].alive) {
-            pool_kill(&s.pool, &s.world, i, &s.set);
+            pool_kill(&s.pool, &s.world, i, &s.set, DEATH_WOUNDS);
         }
     }
     for (int i = 0; i < 16 * 16; i++) {
@@ -127,6 +127,7 @@ static int red_pixels(int action)
     int hunter = pool_spawn(&s.pool, &s.world, 8, 8);
     int prey = pool_spawn(&s.pool, &s.world, 9, 8);
     s.pool.items[hunter].current.kind = (uint8_t)action;
+    s.pool.items[hunter].heading = HEADING_EAST; /* the prey is ahead */
     s.pool.items[hunter].genome.g[GENE_MEAT] = 1.0f;
     s.pool.items[prey].genome.g[GENE_PLANT] = 1.0f;
     s.pool.items[prey].energy = 10.0f;
@@ -151,7 +152,8 @@ static int red_pixels(int action)
 static void test_fight_draws_a_mark(void)
 {
     CHECK(red_pixels(ACT_REST) == 0);
-    CHECK(red_pixels(ACT_BITE) > 0);
+    CHECK(red_pixels(ACT_BITE) == 0); /* a bite is only ever a meal */
+    CHECK(red_pixels(ACT_ATTACK) > 0);
 }
 
 /* A world of bare soil with nobody in it, for placing creatures by hand. */
@@ -239,7 +241,7 @@ static void test_followed_creature_dies_camera_stays(void)
 
     /* It dies, and a newborn takes its slot somewhere else: a different id, so
      * the camera must not fly off after the newborn. */
-    pool_kill(&s.pool, &s.world, slot, &s.set);
+    pool_kill(&s.pool, &s.world, slot, &s.set, DEATH_WOUNDS);
     int newborn = pool_spawn(&s.pool, &s.world, 50, 5);
     CHECK(newborn == slot);
     s.tick++;
@@ -359,7 +361,7 @@ static uint64_t hash_canvas(const Canvas *c)
 static void test_known_world_pixels(void)
 {
     static const uint64_t EXPECTED[CAMERA_LEVELS] = {
-        0x2ff27f9f210e01a5u, 0x996cbe6d86deb305u, 0xa2a026e2b34e417au, 0xd44a075cae065ac5u,
+        0x2ff27f9f210e01a5u, 0x996cbe6d86deb305u, 0xd1b63ec7cd47e20eu, 0x9e0fcb869d3e42e5u,
     };
     Settings set = settings_default();
     Sim s;
