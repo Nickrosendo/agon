@@ -15,25 +15,47 @@ fail() {
     failed=1
 }
 
-# 1. The window's own path gives the same world as a plain run.
+# Windows has no terminal program, so the checks against it have a stand-in.
+if [ -x "$OUT/agon" ]; then
+    HAVE_AGON=1
+else
+    HAVE_AGON=0
+fi
+
+# 1. The window's own path gives the same world as a plain run. Without one to
+# compare with: the same world as a second run of itself.
 window=$("$OUT/agon-window" --seed 3 --size 64x32 --speed 30 --frames 500 --checksum)
-plain=$("$OUT/agon" --once --seed 3 --size 64x32 --ticks 500 --checksum | grep '^checksum')
+if [ $HAVE_AGON -eq 1 ]; then
+    plain=$("$OUT/agon" --once --seed 3 --size 64x32 --ticks 500 --checksum | grep '^checksum')
+else
+    plain=$("$OUT/agon-window" --seed 3 --size 64x32 --speed 30 --frames 500 --checksum)
+fi
 [ -n "$window" ] && [ "$window" = "$plain" ] ||
     fail "checksums differ: window '$window', plain '$plain'"
 
-# 2. Quitting saves, by the same path as the window's X button.
-"$OUT/agon-window" --seed 3 --size 64x32 --frames 10 --save "$TMP/w.save" ||
-    fail "the run with --save failed"
-"$OUT/agon" --load "$TMP/w.save" --once --ticks 0 >/dev/null ||
-    fail "the saved world did not load"
+# 2. Quitting saves, by the same path as the window's X button. Twice, because
+# replacing an existing file is what Windows does differently.
+for attempt in 1 2; do
+    "$OUT/agon-window" --seed 3 --size 64x32 --frames 10 --save "$TMP/w.save" ||
+        fail "the run with --save failed (attempt $attempt)"
+done
+if [ $HAVE_AGON -eq 1 ]; then
+    "$OUT/agon" --load "$TMP/w.save" --once --ticks 0 >/dev/null ||
+        fail "the saved world did not load"
+else
+    "$OUT/agon-window" --load "$TMP/w.save" --frames 1 >/dev/null ||
+        fail "the saved world did not load"
+fi
 
 # 3. --once is refused, with the command-line mistake exit code.
 "$OUT/agon-window" --once >/dev/null 2>&1
 [ $? -eq 2 ] || fail "--once was not refused with exit code 2"
 
 # 4. And the terminal program refuses the window's options.
-"$OUT/agon" --frames 5 >/dev/null 2>&1
-[ $? -eq 2 ] || fail "agon accepted --frames"
+if [ $HAVE_AGON -eq 1 ]; then
+    "$OUT/agon" --frames 5 >/dev/null 2>&1
+    [ $? -eq 2 ] || fail "agon accepted --frames"
+fi
 
 # 5. Every zoom step draws, and writes a picture of the right size.
 for zoom in close normal far world; do

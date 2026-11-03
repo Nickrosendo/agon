@@ -63,6 +63,22 @@ by both programs. `--zoom close|normal|far|world` picks the starting zoom.
 | `s` | save, if started with `--save` |
 | `q`, the window's X | quit (and save, if started with `--save`) |
 
+### On Windows
+
+Each automated build makes `agon-window-windows.zip`: unpack it and run
+`agon-window.exe`; the DLLs it needs are beside it. To build it yourself, in
+MSYS2's MINGW64 shell with `mingw-w64-x86_64-gcc`, `mingw-w64-x86_64-SDL2` and
+`make` installed:
+
+```sh
+make window MODE=release PLATFORM=windows
+```
+
+Only the window program exists on Windows; the terminal program needs POSIX. It
+is a windowed program with no console, so `--help` shows nothing when run from
+`cmd`: use `agon-window --help | more`. A save or a seed's world made on one
+system may not match another's, because maths functions differ between them.
+
 ## Keys
 
 These are for the terminal program, `agon`.

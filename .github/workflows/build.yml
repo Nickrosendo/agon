@@ -26,3 +26,43 @@ jobs:
         run: make release CC=${{ matrix.cc }} && make window MODE=release CC=${{ matrix.cc }}
       - name: The program runs
         run: ./build/release/agon --once --seed 1 --ticks 200 --save world.save && ./build/release/agon --once --load world.save --ticks 0
+
+  windows:
+    runs-on: windows-latest
+    # The MSYS2 shell, with its own gcc and SDL: "shell: msys2 {0}" runs each
+    # step's commands there instead of in PowerShell.
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          install: >-
+            make
+            zip
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-SDL2
+      - name: Tests
+        run: make test PLATFORM=windows
+      - name: The window program, on SDL's dummy video driver
+        run: make test-window PLATFORM=windows
+      - name: Optimised build
+        run: make window MODE=release PLATFORM=windows
+      - name: Package it with every DLL it needs from MSYS2
+        run: |
+          mkdir agon-window
+          cp build/release/agon-window.exe agon-window/
+          ldd build/release/agon-window.exe | awk '/mingw64/ {print $3}' | xargs -I{} cp {} agon-window/
+          ls agon-window
+          test -f agon-window/SDL2.dll
+          zip -r agon-window-windows.zip agon-window
+      - name: The packaged program runs by itself
+        run: |
+          cd agon-window
+          SDL_VIDEODRIVER=dummy ./agon-window.exe --seed 3 --size 64x32 --frames 50 --checksum
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agon-window-windows
+          path: agon-window-windows.zip

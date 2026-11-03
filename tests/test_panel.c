@@ -1,6 +1,7 @@
 #include "test.h"
 
 #include <math.h>   /* fabsf */
+#include <stdint.h> /* int64_t, INT64_C */
 #include <string.h> /* strcmp */
 
 #include "brain_script.h"
@@ -8,7 +9,7 @@
 #include "settings.h"
 #include "sim.h"
 
-static int formats_as(long n, const char *expected)
+static int formats_as(int64_t n, const char *expected)
 {
     char out[32];
     panel_format_count(out, sizeof(out), n);
@@ -24,6 +25,21 @@ static void test_format_count(void)
     CHECK(formats_as(12345, "12,345"));
     CHECK(formats_as(1234567, "1,234,567"));
     CHECK(formats_as(-1234, "-1,234"));
+}
+
+/*
+ * A tick count past 2^32. long is 64 bits on Linux, so there this passes with
+ * long or without it; the check that can really fail runs on Windows, where
+ * long is 32 bits and these numbers would come out cut.
+ */
+static void test_large_tick_count_not_cut(void)
+{
+    CHECK(formats_as(INT64_C(5000000000), "5,000,000,000"));
+    CHECK(formats_as(INT64_MAX, "9,223,372,036,854,775,807"));
+    Sim sim = {.tick = UINT64_C(4294967296) + 7};
+    char out[32];
+    panel_format_count(out, sizeof(out), (int64_t)sim.tick);
+    CHECK(strcmp(out, "4,294,967,303") == 0);
 }
 
 static void test_format_count_small_buffer(void)
@@ -185,6 +201,7 @@ int main(void)
 {
     CHECK(brain_register(&BRAIN_SCRIPT));
     test_format_count();
+    test_large_tick_count_not_cut();
     test_format_count_small_buffer();
     test_sparkline_empty();
     test_sparkline_newest_on_the_right();

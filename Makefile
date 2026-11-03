@@ -10,10 +10,27 @@ LDLIBS = -lm
 MODE ?=  debug
 OUT = build/$(MODE)
 
+# linux or windows. On Windows the memory checkers do not exist in this
+# compiler, programs end in .exe, and only the window program is built: the
+# terminal program is POSIX.
+PLATFORM ?= linux
+SANITIZE = -fsanitize=address,undefined
+EXE =
+TERM_PROGRAM = $(OUT)/agon
+# Keeps a window program from opening a console, and links gcc's support code
+# into the program rather than needing one more DLL beside it.
+WINDOW_LDFLAGS =
+ifeq ($(PLATFORM), windows)
+SANITIZE =
+EXE = .exe
+TERM_PROGRAM =
+WINDOW_LDFLAGS = -mwindows -static-libgcc
+endif
+
 ifeq ($(MODE), release)
 CFLAGS += -O2
 else
-CFLAGS += -g -fsanitize=address,undefined
+CFLAGS += -g $(SANITIZE)
 endif
 
 # The test build is the debug build with every warning turned into an error.
@@ -35,24 +52,34 @@ TERM_OBJ = $(TERM_SRC:src/%.c=$(OUT)/%.o)
 GFX_OBJ = $(GFX_SRC:src/%.c=$(OUT)/%.o)
 WIN_OBJ = $(WIN_SRC:src/%.c=$(OUT)/%.o)
 OBJ = $(CORE_OBJ) $(TERM_OBJ)
-# What a test program links against: everything except main.o.
+# What a test program links against: everything except main.o. Windows has no
+# terminal files, so panel.c's drawing calls link to the window's version.
 LIB_OBJ = $(filter-out $(OUT)/main.o, $(OBJ)) $(GFX_OBJ)
-
 TEST_SRC = $(wildcard tests/test_*.c)
-TEST_BIN = $(TEST_SRC:tests/%.c=$(OUT)/tests/%)
+ifeq ($(PLATFORM), windows)
+LIB_OBJ = $(CORE_OBJ) $(GFX_OBJ) $(OUT)/window/cells_canvas.o
+# It checks the characters the terminal program sends, which Windows lacks.
+TEST_SRC := $(filter-out tests/test_render.c, $(TEST_SRC))
+endif
+
+TEST_BIN = $(TEST_SRC:tests/%.c=$(OUT)/tests/%$(EXE))
 # Tests too slow for every run: built the same way, run by test-slow.
 SLOW_SRC = $(wildcard tests/slow_*.c)
-SLOW_BIN = $(SLOW_SRC:tests/%.c=$(OUT)/tests/%)
+SLOW_BIN = $(SLOW_SRC:tests/%.c=$(OUT)/tests/%$(EXE))
 # Code only the tests use, linked into every test program: the scripted
 # brain. The program itself never contains it.
 TEST_SUPPORT_OBJ = $(OUT)/tests/brain_script.o
 # Tests of the window's own cells, linked with its version of them. None of
 # these see SDL: cells_canvas.c draws into a block of pixels and nothing more.
 WTEST_SRC = $(wildcard tests/wtest_*.c)
-WTEST_BIN = $(WTEST_SRC:tests/%.c=$(OUT)/tests/%)
+WTEST_BIN = $(WTEST_SRC:tests/%.c=$(OUT)/tests/%$(EXE))
 WTEST_OBJ = $(CORE_OBJ) $(GFX_OBJ) $(OUT)/window/cells_canvas.o
 
+ifeq ($(PLATFORM), windows)
+all: $(OUT)/agon-window$(EXE)
+else
 all: $(OUT)/agon
+endif
 
 release:
 	$(MAKE) MODE=release
@@ -64,10 +91,10 @@ release:
 SDL_CFLAGS = $(patsubst -I%,-isystem %,$(shell sdl2-config --cflags))
 SDL_LIBS = $(shell sdl2-config --libs)
 
-window: $(OUT)/agon-window
+window: $(OUT)/agon-window$(EXE)
 
-$(OUT)/agon-window: $(CORE_OBJ) $(GFX_OBJ) $(WIN_OBJ)
-	$(CC) $(CFLAGS) $^ -o $@ $(SDL_LIBS) $(LDLIBS)
+$(OUT)/agon-window$(EXE): $(CORE_OBJ) $(GFX_OBJ) $(WIN_OBJ)
+	$(CC) $(CFLAGS) $(WINDOW_LDFLAGS) $^ -o $@ $(SDL_LIBS) $(LDLIBS)
 
 # Only this one file sees SDL's headers.
 $(OUT)/window/platform_sdl.o: CFLAGS += $(SDL_CFLAGS)
@@ -76,7 +103,7 @@ $(OUT)/window/platform_sdl.o: CFLAGS += $(SDL_CFLAGS)
 test-window:
 	$(MAKE) MODE=test run-window-smoke
 
-run-window-smoke: $(OUT)/agon $(OUT)/agon-window
+run-window-smoke: $(TERM_PROGRAM) $(OUT)/agon-window$(EXE)
 	sh tests/window_smoke.sh $(OUT)
 
 $(OUT)/agon: $(OBJ)
@@ -94,15 +121,15 @@ $(OUT)/tests/brain_script.o: tests/brain_script.c | $(OUT)/tests
 	$(CC) $(CFLAGS) -MMD -MP -c $< -o $@
 
 # More specific than the rule below, so make prefers it for wtest_ programs.
-$(OUT)/tests/wtest_%: tests/wtest_%.c $(WTEST_OBJ) | $(OUT)/tests
+$(OUT)/tests/wtest_%$(EXE): tests/wtest_%.c $(WTEST_OBJ) | $(OUT)/tests
 	$(CC) $(CFLAGS) -MMD -MP $< $(WTEST_OBJ) -o $@ $(LDLIBS)
 
 # One program per test file.
-$(OUT)/tests/%: tests/%.c $(LIB_OBJ) $(TEST_SUPPORT_OBJ) | $(OUT)/tests
+$(OUT)/tests/%$(EXE): tests/%.c $(LIB_OBJ) $(TEST_SUPPORT_OBJ) | $(OUT)/tests
 	$(CC) $(CFLAGS) -MMD -MP $< $(LIB_OBJ) $(TEST_SUPPORT_OBJ) \
 		-o $@ $(LDLIBS)
 
--include $(OBJ:.o=.d) $(GFX_OBJ:.o=.d) $(WIN_OBJ:.o=.d) $(TEST_BIN:=.d) $(WTEST_BIN:=.d) $(SLOW_BIN:=.d) \
+-include $(OBJ:.o=.d) $(GFX_OBJ:.o=.d) $(WIN_OBJ:.o=.d) $(TEST_BIN:$(EXE)=.d) $(WTEST_BIN:$(EXE)=.d) $(SLOW_BIN:$(EXE)=.d) \
 	$(TEST_SUPPORT_OBJ:.o=.d)
 
 $(OUT)/tests:

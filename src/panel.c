@@ -1,7 +1,8 @@
 #include "panel.h"
 
-#include <assert.h> /* static_assert */
-#include <stdio.h>  /* snprintf */
+#include <assert.h>   /* static_assert */
+#include <inttypes.h> /* PRId64 */
+#include <stdio.h>    /* snprintf */
 
 #include "cells.h"
 #include "palette.h"
@@ -79,16 +80,17 @@ int panel_colour_groups(const Sim *s, ColourGroup *groups, int n)
     return written;
 }
 
-void panel_format_count(char *out, size_t size, long n)
+void panel_format_count(char *out, size_t size, int64_t n)
 {
     if (size == 0) {
         return;
     }
-    /* The plain digits first. A long has at most 19 digits and a sign,
+    /* The plain digits first. An int64_t has at most 19 digits and a sign,
      * so 24 bytes always fit; snprintf returns how many characters it
-     * wrote (not counting the '\0'). */
+     * wrote (not counting the '\0'). PRId64 is the right printf letters for
+     * an int64_t on this system: "ld" on Linux, "lld" on Windows. */
     char digits[24];
-    int len = snprintf(digits, sizeof(digits), "%ld", n);
+    int len = snprintf(digits, sizeof(digits), "%" PRId64, n);
     int first = digits[0] == '-' ? 1 : 0; /* where the digits start */
 
     size_t o = 0;
@@ -128,7 +130,9 @@ static int column_average(const History *h, int c, int cols)
     if (end <= 0) {
         return -1;
     }
-    long sum = 0;
+    /* Not long: that is 32 bits on Windows, and a big world's plant counts
+     * added up would pass 2 billion. */
+    int64_t sum = 0;
     for (int k = start; k < end; k++) {
         sum += history_at(h, k);
     }
@@ -194,7 +198,7 @@ typedef struct {
     float hue, hue2; /* for HUE_SWATCH cells */
     float meat;      /* for HUE_SWATCH cells: 0 plant-eater .. 1 meat */
     const char *label;
-    long count;
+    int64_t count;
     const History *graph; /* NULL for an ordinary line */
 } PanelLine;
 
@@ -261,7 +265,7 @@ static PanelLine graph_line(const History *h)
 }
 
 /* A label and a count with no colour cells. */
-static PanelLine count_line(const char *label, long count)
+static PanelLine count_line(const char *label, int64_t count)
 {
     return (PanelLine){
         .swatch = BLANK_SWATCH, .swatch2 = BLANK_SWATCH, .label = label,
@@ -270,7 +274,7 @@ static PanelLine count_line(const char *label, long count)
 
 /* A line with two fixed colours. */
 static PanelLine swatch_line(int swatch, int swatch2, const char *label,
-                             long count)
+                             int64_t count)
 {
     return (PanelLine){
         .swatch = swatch, .swatch2 = swatch2, .label = label, .count = count};
@@ -279,7 +283,7 @@ static PanelLine swatch_line(int swatch, int swatch2, const char *label,
 /* The creatures line: its cells show the two largest colour groups (the
  * same colour twice when there is one group, blank when there is none). */
 static PanelLine creatures_line(const ColourGroup *groups, int n_groups,
-                                long count)
+                                int64_t count)
 {
     PanelLine line = swatch_line(BLANK_SWATCH, BLANK_SWATCH, "creatures",
                                  count);
@@ -295,7 +299,7 @@ static PanelLine creatures_line(const ColourGroup *groups, int n_groups,
 
 /* A line whose two cells show a creature colour. */
 static PanelLine creature_colour_line(float hue, float meat,
-                                      const char *label, long count)
+                                      const char *label, int64_t count)
 {
     PanelLine line = swatch_line(HUE_SWATCH, HUE_SWATCH, label, count);
     line.hue = line.hue2 = hue;
@@ -362,8 +366,8 @@ void panel_draw(const Sim *s, int col, int row0, int rows)
              swatch_line(RENDER_SWATCH_CARRION, RENDER_SWATCH_CARRION,
                          "carrion", st->carrion_cells));
     add_line(lines, &n, count_line("families", st->lineages));
-    /* uint32_t into long: every uint32_t value fits in a 64-bit long. */
-    add_line(lines, &n, count_line("oldest", (long)st->oldest_age));
+    /* uint32_t into int64_t: every uint32_t value fits, on every system. */
+    add_line(lines, &n, count_line("oldest", (int64_t)st->oldest_age));
     add_line(lines, &n, heading(""));
     add_line(lines, &n, heading(" map"));
     add_line(lines, &n,
@@ -451,7 +455,7 @@ static void add_float(Lines *l, const char *key, float v, int decimals)
     add_pair(l, key, value);
 }
 
-static void add_long(Lines *l, const char *key, long v)
+static void add_count(Lines *l, const char *key, int64_t v)
 {
     char value[24];
     panel_format_count(value, sizeof(value), v);
@@ -471,7 +475,7 @@ static void describe_cell(Lines *l, const Sim *s, const Inspect *in)
         add_pair(l, "ground", "rock");
     } else {
         add_float(l, "fertility", w->fertility[i], 2);
-        add_long(l, "plants", w->veg[i]);
+        add_count(l, "plants", w->veg[i]);
         if (w->veg[i] > 0) {
             /* The cell's rule, unpacked: e.g. "3-4 / 3" for born with 3
              * or 4 planted neighbours, grows with at most 3. */
@@ -499,13 +503,13 @@ static void describe_creature(Lines *l, const Sim *s, const Creature *c)
     snprintf(text, sizeof(text), " family   #%u", (unsigned)c->lineage);
     add_text(l, text);
     add_float(l, "energy", c->energy, 1);
-    add_long(l, "age", (long)c->age);
+    add_count(l, "age", (int64_t)c->age);
     add_float(l, "level", c->level, 2);
     add_float(l, "food eaten", c->eaten, 0);
     add_pair(l, "hunter", creature_is_hunter(c) ? "yes" : "no");
     add_float(l, "size", creature_size(c, set), 2);
     add_float(l, "speed", creature_speed(c, set), 2);
-    add_long(l, "sight", creature_sight(c, set));
+    add_count(l, "sight", creature_sight(c, set));
     add_float(l, "plant gene", c->genome.g[GENE_PLANT], 2);
     add_float(l, "meat gene", c->genome.g[GENE_MEAT], 2);
     add_float(l, "upkeep", creature_upkeep_cost(c, set), 2);

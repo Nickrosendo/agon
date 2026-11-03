@@ -7,6 +7,7 @@
 #define AGON_PANEL_H
 
 #include <stddef.h> /* size_t */
+#include <stdint.h> /* int64_t */
 
 #include "inspect.h"
 #include "sim.h"
@@ -41,8 +42,9 @@ const char *panel_band_name(int band);
 
 /* Writes n with a comma every three digits ("12,345") into out, a buffer
  * of size bytes. Always ends out with '\0', cutting the text short if it
- * does not fit; does nothing when size is 0. */
-void panel_format_count(char *out, size_t size, long n);
+ * does not fit; does nothing when size is 0. int64_t rather than long: long
+ * is 64 bits on Linux but 32 on Windows, where a tick count would be cut. */
+void panel_format_count(char *out, size_t size, int64_t n);
 
 /* How many screen columns a history graph takes. Each column shows the
  * average of HISTORY / PANEL_GRAPH_COLS samples. */

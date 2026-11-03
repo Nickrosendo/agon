@@ -67,8 +67,8 @@ static void draw_title(int cols, const Sim *sim, int speed, int paused,
                        bool inspecting, const char *notice)
 {
     char tick[32];
-    /* tick is a uint64_t; every value a run reaches fits in a long. */
-    panel_format_count(tick, sizeof(tick), (long)sim->tick);
+    /* tick is a uint64_t; every value a run reaches fits in an int64_t. */
+    panel_format_count(tick, sizeof(tick), (int64_t)sim->tick);
     char text[320];
     /* PRIx64 expands to the right printf letters for a uint64_t on this
      * platform ("lx" here); writing %llx would be wrong on some systems.
@@ -164,9 +164,9 @@ static void print_summary(const Sim *sim)
 {
     const Stats *st = &sim->stats;
     char tick[32], plants[32], oldest[32];
-    panel_format_count(tick, sizeof(tick), (long)sim->tick);
+    panel_format_count(tick, sizeof(tick), (int64_t)sim->tick);
     panel_format_count(plants, sizeof(plants), st->planted);
-    panel_format_count(oldest, sizeof(oldest), (long)st->oldest_age);
+    panel_format_count(oldest, sizeof(oldest), (int64_t)st->oldest_age);
     printf("agon | seed 0x%" PRIx64 " | tick %s | world %d x %d\n", sim->seed,
            tick, sim->world.w, sim->world.h);
     printf("creatures %d: %d eat plants, %d eat meat (%d top hunters) | "

@@ -6,6 +6,13 @@
 #include <stdio.h>
 #include <string.h> /* memcpy, memcmp, memset, strlen, strerror */
 
+#ifdef _WIN32
+/* Asks the huge windows.h for its core only. Must come before the include:
+ * a header is pasted text, and this changes what the text says. */
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h> /* MoveFileExA */
+#endif
+
 #include "options.h" /* OPTIONS_MAX_SIDE */
 
 /*
@@ -226,6 +233,27 @@ static void put_everything(Writer *w, const Sim *s)
     put_pool(w, &s->pool);
 }
 
+/*
+ * Moves the finished file over the old save, as one step. Standard C leaves
+ * open what rename does when the new name is taken: Linux replaces the old
+ * file, and Windows refuses. So Windows gets its own call; only one of these
+ * two bodies is compiled.
+ */
+static bool replace_file(const char *from, const char *to)
+{
+#ifdef _WIN32
+    if (MoveFileExA(from, to, MOVEFILE_REPLACE_EXISTING)) {
+        return true;
+    }
+    /* Windows calls report through GetLastError, and leave errno alone. The
+     * caller prints errno, so it needs a meaningful value. */
+    errno = EACCES;
+    return false;
+#else
+    return rename(from, to) == 0;
+#endif
+}
+
 bool save_write(const Sim *s, const char *path, char *err, size_t errlen)
 {
     /* The file is built under another name and renamed when complete. On
@@ -257,7 +285,7 @@ bool save_write(const Sim *s, const char *path, char *err, size_t errlen)
         remove(tmp);
         return false;
     }
-    if (rename(tmp, path) != 0) {
+    if (!replace_file(tmp, path)) {
         snprintf(err, errlen, "cannot write %s: %s", path, strerror(errno));
         remove(tmp);
         return false;

@@ -2,8 +2,17 @@
 
 #include <stdlib.h> /* malloc, free */
 #include <string.h> /* strstr, memcmp */
+#ifdef _WIN32
+#include <direct.h> /* _mkdir, _rmdir: Windows's own names */
+/* Windows's mkdir has no permissions argument, so one name cannot do for both. */
+#define make_folder(path) _mkdir(path)
+#define remove_folder(path) _rmdir(path)
+#else
 #include <sys/stat.h> /* mkdir (POSIX) */
 #include <unistd.h>   /* rmdir (POSIX) */
+#define make_folder(path) mkdir(path, 0700)
+#define remove_folder(path) rmdir(path)
+#endif
 
 #include "genome.h"
 #include "rng.h"
@@ -251,7 +260,7 @@ static void test_failed_write_keeps_old_file(void)
     }
     char tmp_path[128];
     snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", SAVE_FILE);
-    CHECK(mkdir(tmp_path, 0700) == 0);
+    CHECK(make_folder(tmp_path) == 0);
 
     Settings set = settings_default();
     Sim a;
@@ -259,7 +268,7 @@ static void test_failed_write_keeps_old_file(void)
     CHECK(sim_init(&a, &set, 5, 8, 8));
     CHECK(!save_write(&a, SAVE_FILE, err, sizeof(err)));
     sim_free(&a);
-    CHECK(rmdir(tmp_path) == 0);
+    CHECK(remove_folder(tmp_path) == 0);
 
     size_t after_size = 0;
     unsigned char *after = read_whole(SAVE_FILE, &after_size);
@@ -267,6 +276,28 @@ static void test_failed_write_keeps_old_file(void)
     CHECK(after != NULL && memcmp(after, before, size) == 0);
     free(before);
     free(after);
+}
+
+/*
+ * Saving twice to one path: the second replaces the first. Linux's rename does
+ * that by itself; Windows's refuses when the name is taken, so this test is
+ * here for Windows.
+ */
+static void test_save_over_existing_file(void)
+{
+    Settings set = settings_default();
+    Sim first, second, loaded;
+    char err[256] = "";
+    CHECK(sim_init(&first, &set, 5, 8, 8));
+    CHECK(sim_init(&second, &set, 6, 8, 8));
+    CHECK(save_write(&first, SAVE_FILE, err, sizeof(err)));
+    CHECK(save_write(&second, SAVE_FILE, err, sizeof(err)));
+    CHECK(save_read(&loaded, SAVE_FILE, err, sizeof(err)));
+    CHECK(sim_checksum(&loaded) == sim_checksum(&second));
+    CHECK(sim_checksum(&loaded) != sim_checksum(&first));
+    sim_free(&loaded);
+    sim_free(&second);
+    sim_free(&first);
 }
 
 /*
@@ -674,6 +705,7 @@ int main(void)
     test_extra_bytes();
     test_missing_file_and_bad_path();
     test_failed_write_keeps_old_file();
+    test_save_over_existing_file();
     test_layout_is_as_documented();
     test_refuses_impossible_header();
     test_refuses_impossible_settings();

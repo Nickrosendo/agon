@@ -228,7 +228,7 @@ static void handle_event(App *a, const Event *e)
 static void draw_title(App *a, const Creature *followed)
 {
     char tick[32];
-    panel_format_count(tick, sizeof(tick), (long)a->sim.tick);
+    panel_format_count(tick, sizeof(tick), (int64_t)a->sim.tick);
     char who[32] = "";
     if (followed != NULL) {
         snprintf(who, sizeof(who), " | following #%u", (unsigned)followed->id);
@@ -504,7 +504,9 @@ int main(int argc, char **argv)
     Options opt;
     char err[512];
     if (!options_parse(argc, argv, &opt, err, sizeof(err))) {
-        fprintf(stderr, "agon-window: %s (see agon-window --help)\n", err);
+        char message[600];
+        snprintf(message, sizeof(message), "%s (see agon-window --help)", err);
+        platform_error(message);
         return EXIT_USAGE;
     }
     if (opt.help) {
@@ -516,18 +518,17 @@ int main(int argc, char **argv)
         return EXIT_FINE;
     }
     if (opt.once || opt.list_settings) {
-        fprintf(stderr, "agon-window: --once and --settings are for agon\n");
+        platform_error("--once and --settings are for agon");
         return EXIT_USAGE;
     }
     int zoom = CAMERA_NORMAL;
     if (opt.zoom_name != NULL && !zoom_from_name(opt.zoom_name, &zoom)) {
-        fprintf(stderr, "agon-window: --zoom needs close, normal, far or "
-                        "world\n");
+        platform_error("--zoom needs close, normal, far or world");
         return EXIT_USAGE;
     }
     Settings settings;
     if (!read_settings(&opt, &settings, err, sizeof(err))) {
-        fprintf(stderr, "agon-window: %s\n", err);
+        platform_error(err);
         return EXIT_USAGE;
     }
 

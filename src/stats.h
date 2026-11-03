@@ -41,7 +41,7 @@ typedef struct {
     int by_level[BAND_COUNT];
     uint32_t oldest_age;
     int planted;        /* cells with any vegetation */
-    long veg_total;     /* the sum of every cell's density */
+    int64_t veg_total;  /* the sum of every cell's density */
     int withering;      /* planted cells that are withering */
     int carrion_cells;
     float carrion_total;

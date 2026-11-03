@@ -7,6 +7,11 @@
 #define SDL_MAIN_HANDLED
 #include <SDL.h>
 
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h> /* GetStdHandle */
+#endif
+
 /* static at file level: private to this file. There is only one window. */
 static SDL_Window *window;
 static SDL_Renderer *renderer;
@@ -153,10 +158,16 @@ void platform_present(const Canvas *c)
 void platform_error(const char *message)
 {
 #ifdef _WIN32
-    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "agon", message, NULL);
-#else
-    fprintf(stderr, "agon-window: %s\n", message);
+    /* A program started by double-click has no standard error at all, so it
+     * gets a box. One whose errors go somewhere (a pipe, a file, the automated
+     * build) writes there: a box would wait for a click nobody will make. */
+    HANDLE errors = GetStdHandle(STD_ERROR_HANDLE);
+    if (errors == NULL || errors == INVALID_HANDLE_VALUE) {
+        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "agon", message, NULL);
+        return;
+    }
 #endif
+    fprintf(stderr, "agon-window: %s\n", message);
 }
 
 uint64_t platform_now_ms(void)
