@@ -177,6 +177,15 @@ run-slow-tests: $(SLOW_BIN)
 	for t in $(SLOW_BIN); do ./$$t || failed=1; done; \
 	exit $$failed
 
+# The measuring tool for balance runs: optimised, because a run is 20,000 ticks
+# on a large world, and never part of "make test". It is one more program over
+# the same objects as the tests, so it cannot run different rules from the real thing.
+balance:
+	$(MAKE) MODE=release build/release/balance_report
+
+$(OUT)/balance_report$(EXE): tests/balance_report.c $(LIB_OBJ)
+	$(CC) $(CFLAGS) -MMD -MP $< $(LIB_OBJ) -o $@ $(LDLIBS)
+
 # Where make install puts things: PREFIX is the usual setting, and DESTDIR
 # (empty unless a packager sets it) goes in front of it, to build a package
 # without touching the real system.
@@ -199,5 +208,5 @@ clean:
 # else; a bare .SECONDARY: keeps them, so objects survive between runs.
 .SECONDARY:
 
-.PHONY: all release window web test-window run-window-smoke test run-tests test-slow run-slow-tests install uninstall \
+.PHONY: all release balance window web test-window run-window-smoke test run-tests test-slow run-slow-tests install uninstall \
 	clean
