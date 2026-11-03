@@ -170,10 +170,11 @@ for the build that wrote them; a build with a different format refuses them.
    neighbour's rule, sometimes with one bit flipped.
 3. Vigorous rules spread faster, but they feed less and die younger. Plants
    age, wither and leave bare soil.
-4. Each creature inherits a genome: its size, speed, sight, digestion of
-   plants and of meat, its colour, how fast it ages, and the weights of a small neural network.
+4. Each creature inherits a genome: its size at birth, speed, sight, digestion of
+   plants and of meat, its colour, how fast it ages, its armour, weapon and growth,
+   and the weights of a small neural network.
 5. Each tick, the network turns what the creature senses into one action: rest,
-   turn left, turn right, move, bite or mate.
+   turn left, turn right, move, bite, mate or attack.
 6. Energy is the only currency. Living costs energy, and bigger, faster,
    farther-seeing bodies cost more, as does growing old, at a speed set by a
    gene. At zero, a creature dies and leaves carrion.
