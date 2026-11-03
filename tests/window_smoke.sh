@@ -70,16 +70,17 @@ done
 # 6. A world that dies. A small world has too few founders to last: all six seeds
 # tried at 40x20 were empty by tick 5,000. The world stops on the tick it ended,
 # so more frames must not change it, and its save loads to the same dead world.
-"$OUT/agon-window" --seed 1 --size 40x20 --speed 120 --frames 2500 \
-    --save "$TMP/dead.save" --screenshot "$TMP/dead.ppm" --checksum >"$TMP/dead.a" ||
+dead_a=$("$OUT/agon-window" --seed 1 --size 40x20 --speed 120 --frames 2500 \
+    --save "$TMP/dead.save" --screenshot "$TMP/dead.ppm" --checksum) ||
     fail "the dying world's run failed"
-"$OUT/agon-window" --seed 1 --size 40x20 --speed 120 --frames 3000 --checksum >"$TMP/dead.b" ||
+dead_b=$("$OUT/agon-window" --seed 1 --size 40x20 --speed 120 --frames 3000 --checksum) ||
     fail "the longer dying world's run failed"
-[ -s "$TMP/dead.a" ] && cmp -s "$TMP/dead.a" "$TMP/dead.b" ||
-    fail "a dead world went on changing"
-"$OUT/agon-window" --load "$TMP/dead.save" --frames 3 --checksum >"$TMP/dead.c" ||
+[ -n "$dead_a" ] && [ "$dead_a" = "$dead_b" ] ||
+    fail "a dead world went on changing: '$dead_a', then '$dead_b'"
+dead_c=$("$OUT/agon-window" --load "$TMP/dead.save" --frames 3 --checksum) ||
     fail "the dead save did not load"
-cmp -s "$TMP/dead.a" "$TMP/dead.c" || fail "the dead save came back different"
+[ "$dead_a" = "$dead_c" ] ||
+    fail "the dead save came back different: '$dead_a', then '$dead_c'"
 if [ $HAVE_AGON -eq 1 ]; then
     text=$("$OUT/agon" --load "$TMP/dead.save" --once --ticks 100 | tail -6)
     [ $? -eq 0 ] || fail "--once on a dead world did not exit 0"
