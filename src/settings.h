@@ -146,14 +146,19 @@ typedef struct {
     float weight_start_spread;
 
     /* Traits. Each gene is 0..1; the body uses it as a physical value:
-     * size from size_min to size_max, speed (move points gained per
+     * size at birth from size_min to birth_size_max, speed (move points gained per
      * tick) from speed_min to 1, sight from 1 to sight_max cells. A
      * creature may move only with at least 1 move point. Upkeep per
      * tick is upkeep_base + size_upkeep * size + speed_upkeep * speed +
      * sight_upkeep * sight + the digestion cost (below), and mating
-     * needs mate_threshold * size. */
+     * needs mate_threshold * size.
+     * Growth: energy above growth_surplus * mate_threshold * size is surplus. The
+     * growth gene's share of it goes into body, at growth_cost energy per unit of
+     * size, with no top size. */
     float size_min;
-    float size_max;
+    float birth_size_max;
+    float growth_surplus;
+    float growth_cost;
     float speed_min;
     int sight_max;
     float size_upkeep;

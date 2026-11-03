@@ -11,11 +11,12 @@
 #include "settings.h"
 #include "sim.h"
 
-/* True when the creature's energy and every value of its genome is an
+/* True when the creature's energy, health, body and every value of its genome is an
  * ordinary number: not infinity and not NaN. */
 static bool creature_finite(const Creature *c, const Settings *set)
 {
-    if (!isfinite(c->energy)) {
+    if (!isfinite(c->energy) || !isfinite(c->health) || !isfinite(c->grown) ||
+        !isfinite(creature_size(c, set))) {
         return false;
     }
     if (!isfinite(creature_upkeep_cost(c, set))) {

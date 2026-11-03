@@ -541,6 +541,7 @@ static void describe_creature(Lines *l, const Sim *s, const Creature *c)
     add_float(l, "ageing gene", c->genome.g[GENE_AGEING], 2);
     add_float(l, "armour gene", c->genome.g[GENE_ARMOUR], 2);
     add_float(l, "weapon gene", c->genome.g[GENE_WEAPON], 2);
+    add_float(l, "growth gene", c->genome.g[GENE_GROWTH], 2);
     add_float(l, "upkeep", creature_upkeep_cost(c, set), 2);
     /* kind comes from a brain; checked before indexing the array. */
     const char *doing =

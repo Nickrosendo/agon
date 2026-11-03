@@ -193,6 +193,7 @@ static void put_creature(Writer *w, const Creature *c)
     put_bytes(w, &c->heading, 1);
     put_float(w, c->energy);
     put_float(w, c->health);
+    put_float(w, c->grown);
     put_u32(w, c->hits_taken);
     for (int i = 0; i < HITS_KEPT; i++) {
         put_u32(w, c->recent_hits[i].by);
@@ -504,6 +505,7 @@ static void get_creature(Reader *r, Creature *c, const Settings *set,
     c->heading = get_byte(r);
     c->energy = get_float(r, -FLOAT_LIMIT, FLOAT_LIMIT);
     c->health = get_float(r, -FLOAT_LIMIT, FLOAT_LIMIT);
+    c->grown = get_float(r, 0.0f, FLOAT_LIMIT);
     c->hits_taken = get_u32(r);
     for (int i = 0; i < HITS_KEPT; i++) {
         c->recent_hits[i].by = get_u32(r);

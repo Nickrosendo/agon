@@ -208,6 +208,7 @@ static void test_mate_wish_survives_save(void)
     a.pool.births_refused = 7;
     a.pool.deaths[DEATH_HUNGER] = 11;
     a.pool.items[slot].health = 12.5f;
+    a.pool.items[slot].grown = 3.25f;
     a.pool.items[slot].hits_taken = 2;
     a.pool.items[slot].recent_hits[1] = (Hit){.by = 42, .tick = 77};
     char err[256] = "";
@@ -218,6 +219,7 @@ static void test_mate_wish_survives_save(void)
     CHECK(b.pool.births_refused == 7);
     CHECK(b.pool.deaths[DEATH_HUNGER] == 11);
     CHECK(b.pool.items[slot].health == 12.5f);
+    CHECK(b.pool.items[slot].grown == 3.25f);
     CHECK(b.pool.items[slot].hits_taken == 2);
     CHECK(b.pool.items[slot].recent_hits[1].by == 42);
     CHECK(b.pool.items[slot].recent_hits[1].tick == 77);
@@ -382,18 +384,19 @@ enum {
     AT_HEADING = 17,
     AT_ENERGY = 18,
     AT_HEALTH = 22,
-    AT_HITS_TAKEN = 26,
-    AT_RECENT_HITS = 30, /* HITS_KEPT pairs of u32: 64 bytes */
-    AT_AGE = 94,
-    AT_KIND = 98,
-    AT_HOLD = 99,
-    AT_HOLD_LEFT = 101,
-    AT_MOVE_POINTS = 103,
-    AT_MATE_WISH = 107,
-    AT_LEVEL = 109,
-    AT_EATEN = 113,
-    AT_GENOME = 117,
-    SLOT_LIVING_BYTES = 117 + 4 * GENOME_LEN,
+    AT_GROWN = 26,
+    AT_HITS_TAKEN = 30,
+    AT_RECENT_HITS = 34, /* HITS_KEPT pairs of u32: 64 bytes */
+    AT_AGE = 98,
+    AT_KIND = 102,
+    AT_HOLD = 103,
+    AT_HOLD_LEFT = 105,
+    AT_MOVE_POINTS = 107,
+    AT_MATE_WISH = 111,
+    AT_LEVEL = 113,
+    AT_EATEN = 117,
+    AT_GENOME = 121,
+    SLOT_LIVING_BYTES = 121 + 4 * GENOME_LEN,
 };
 
 typedef struct {
@@ -697,6 +700,8 @@ static void test_refuses_impossible_creature(void)
     refuses_u32(&t, c + AT_ENERGY, BITS_NAN, "out of range");
     refuses_u32(&t, c + AT_ENERGY, BITS_HUGE, "out of range");
     refuses_u32(&t, c + AT_HEALTH, BITS_NAN, "out of range");
+    refuses_u32(&t, c + AT_GROWN, BITS_NAN, "out of range");
+    refuses_u32(&t, c + AT_GROWN, 0xBF800000u /* -1.0 */, "out of range");
     refuses_u32(&t, c + AT_MOVE_POINTS, BITS_NAN, "out of range");
     refuses_u32(&t, c + AT_LEVEL, BITS_NAN, "out of range");
     refuses_u32(&t, c + AT_EATEN, BITS_NAN, "out of range");

@@ -149,7 +149,18 @@ static float clamp01(float v)
 float creature_size(const Creature *c, const Settings *s)
 {
     float gene = c->genome.g[GENE_SIZE];
-    return s->size_min + gene * (s->size_max - s->size_min);
+    return s->size_min + gene * (s->birth_size_max - s->size_min) + c->grown;
+}
+
+int bite_steps(float size)
+{
+    /* Compared as a float before converting: converting a float too large for
+     * int is undefined behaviour, and size has no top. */
+    if (size >= (float)VEG_MAX) {
+        return VEG_MAX;
+    }
+    int steps = (int)(size + 0.5f);
+    return steps < 1 ? 1 : steps;
 }
 
 float creature_speed(const Creature *c, const Settings *s)
@@ -319,7 +330,10 @@ void creature_sense(const World *w, const Pool *p, int idx,
      * upper limit on age is needed. */
     float age = (float)c->age;
     out->v[SENSE_AGE] = age / (age + s->sense_age_half);
-    out->v[SENSE_SIZE] = c->genome.g[GENE_SIZE];
+    /* The same shape as age: 0.5 at size 1, and below 1 at any size, however
+     * large, since size has no top. */
+    float size = creature_size(c, s);
+    out->v[SENSE_SIZE] = size / (size + 1.0f);
     out->v[SENSE_DIET] = c->genome.g[GENE_MEAT]; /* how much a hunter */
     out->v[SENSE_SEASON] = p->in_season ? 1.0f : 0.0f;
     /* The same test act_move makes, so the sense cannot disagree with walking. */
@@ -413,12 +427,20 @@ static void act_attack(const World *w, Pool *p, int idx, const Settings *s,
     }
 }
 
-/* How much one bite of carrion on cell i would take, and give this
- * creature. */
-static float carrion_take(const World *w, int i, const Settings *s)
+/* How much one bite of carrion on cell i would take. A larger mouth takes more. */
+static float carrion_take(const World *w, int i, const Creature *c,
+                          const Settings *s)
 {
-    return w->carrion[i] < s->bite_meat_energy ? w->carrion[i]
-                                                 : s->bite_meat_energy;
+    float mouth = s->bite_meat_energy * creature_size(c, s);
+    return w->carrion[i] < mouth ? w->carrion[i] : mouth;
+}
+
+/* How many density steps a bite by c would take from plant cell i: what its
+ * mouth can take, up to what the plant holds. */
+static int plant_take(const World *w, int i, const Creature *c, const Settings *s)
+{
+    int mouth = bite_steps(creature_size(c, s));
+    return w->veg[i] < mouth ? w->veg[i] : mouth;
 }
 
 /* The share of a food's energy a digestion gene of this value gets out
@@ -433,7 +455,7 @@ static float meat_gain(const Creature *c, float take, const Settings *s)
     return take * digest_eff(c->genome.g[GENE_MEAT], s);
 }
 
-/* What a bite of a plant with the given rule gives c: less for a
+/* What one density step of a plant with the given rule gives c: less for a
  * vigorous rule (veg_vigour_food), less for a weak plant gene. */
 static float plant_gain(const Creature *c, uint8_t rule, const Settings *s)
 {
@@ -441,10 +463,10 @@ static float plant_gain(const Creature *c, uint8_t rule, const Settings *s)
     return s->bite_veg_energy * food * digest_eff(c->genome.g[GENE_PLANT], s);
 }
 
-/* Eats up to bite_meat_energy of the carrion ahead. */
+/* Eats what its mouth can take of the carrion ahead. */
 static void eat_carrion(World *w, Creature *c, int ahead, const Settings *s)
 {
-    float take = carrion_take(w, ahead, s);
+    float take = carrion_take(w, ahead, c, s);
     float level = w->carrion_level[ahead]; /* read before it may be reset */
     w->carrion[ahead] -= take;
     if (w->carrion[ahead] < CARRION_MIN) {
@@ -456,12 +478,15 @@ static void eat_carrion(World *w, Creature *c, int ahead, const Settings *s)
     creature_ate(c, gain, level);
 }
 
-/* Eats one step of density from the vegetation ahead. When that leaves
+/* Eats what its mouth can take of the vegetation ahead. When that leaves
  * the cell bare, flora_step resets the cell's age on the next tick. */
 static void eat_plant(World *w, Creature *c, int ahead, const Settings *s)
 {
-    w->veg[ahead]--;
-    float gain = plant_gain(c, w->veg_rule[ahead], s);
+    int take = plant_take(w, ahead, c, s);
+    /* veg is a uint8_t, promoted to int for the subtraction. The result is
+     * between 0 and what it held, so the cast back loses nothing. */
+    w->veg[ahead] = (uint8_t)(w->veg[ahead] - take);
+    float gain = (float)take * plant_gain(c, w->veg_rule[ahead], s);
     c->energy += gain;
     creature_ate(c, gain, 1.0f); /* plants are level 1 */
 }
@@ -505,7 +530,7 @@ BiteChoice creature_bite_choice(const World *w, const Pool *p, int idx,
             continue; /* the food under a creature is covered */
         }
         if (w->carrion[cell] > 0.0f) {
-            float gain = meat_gain(c, carrion_take(w, cell, s), s);
+            float gain = meat_gain(c, carrion_take(w, cell, c, s), s);
             if (gain > best_gain) {
                 best_gain = gain;
                 food_cell = cell;
@@ -513,7 +538,8 @@ BiteChoice creature_bite_choice(const World *w, const Pool *p, int idx,
             }
         }
         if (w->veg[cell] > 0) {
-            float gain = plant_gain(c, w->veg_rule[cell], s);
+            float gain = (float)plant_take(w, cell, c, s) *
+                         plant_gain(c, w->veg_rule[cell], s);
             if (gain > best_gain) {
                 best_gain = gain;
                 food_cell = cell;
@@ -715,6 +741,20 @@ static void heal(Creature *c, const Settings *s)
     }
 }
 
+/* Turns the growth gene's share of any surplus energy into body. Surplus is
+ * energy above growth_surplus * what mating needs, so a creature always keeps
+ * enough to mate. growth_cost is at least a small number, by the table's check. */
+static void grow(Creature *c, const Settings *s)
+{
+    float surplus = c->energy - s->growth_surplus * mate_needs(c, s);
+    if (surplus <= 0.0f) {
+        return;
+    }
+    float spent = surplus * c->genome.g[GENE_GROWTH];
+    c->energy -= spent;
+    c->grown += spent / s->growth_cost;
+}
+
 bool creature_upkeep(Creature *c, const Settings *s)
 {
     if (c->health <= 0.0f) {
@@ -735,6 +775,7 @@ bool creature_upkeep(Creature *c, const Settings *s)
     }
     if (c->energy > 0.0f) {
         heal(c, s);
+        grow(c, s);
     } else {
         /* Exactly 0, not below: a debt would have to be eaten off before the
          * first meal did any good, and starving is already the price. */

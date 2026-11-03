@@ -56,6 +56,9 @@ typedef struct {
     /* Death comes only at 0 health. Hits take it, healing restores it up to
      * creature_max_health, and having no energy drains it. */
     float health;
+    /* Size gained since birth, on top of the size the genes gave at birth. See
+     * creature_size. There is no top to it: upkeep and food limit it. */
+    float grown;
     /* Hits taken in this whole life. The newest is at
      * recent_hits[(hits_taken - 1) % HITS_KEPT], and only the first hits_taken
      * entries mean anything: a fresh ring is all zeroes, which would otherwise
@@ -191,15 +194,20 @@ int creature_attack_target(const World *w, const Pool *p, int idx);
 int creature_act(World *w, Pool *p, int idx, Action a, const Settings *s,
                  Rng *r);
 /* Charges one tick of upkeep and ages the creature by one tick. With energy
- * left it heals, paying for it; with none, it stays at exactly 0 and loses
+ * left it heals, paying for it, and then turns the growth gene's share of any
+ * surplus into body (growth_surplus, growth_cost); with none, it stays at exactly 0 and loses
  * starve_damage health instead. Returns false when its health is gone or it has
  * reached max_age: it must then be killed. One an attack already took to 0 stays
  * there: nothing is charged, and it does not heal. */
 bool creature_upkeep(Creature *c, const Settings *s);
 
-/* The body the genes describe (see Settings): size from size_min to
- * size_max, speed in move points per tick, sight in cells. */
+/* The body (see Settings): size is what the genes gave at birth, from size_min
+ * to birth_size_max, plus what has grown since; speed in move points per tick
+ * and sight in cells come from the genes alone. */
 float creature_size(const Creature *c, const Settings *s);
+/* How many density steps of a plant one bite takes at this size: the size to the
+ * nearest whole number, at least 1, and at most a whole plant. */
+int bite_steps(float size);
 float creature_speed(const Creature *c, const Settings *s);
 int creature_sight(const Creature *c, const Settings *s);
 /* The health of an unhurt body. */

@@ -194,6 +194,30 @@ static void test_slot_rebuilds_on_new_id(void)
     sprite_cache_free(&c);
 }
 
+/* The body drawn is still a single tile, so a huge size must only stay inside
+ * it, for every frame and at both pixel sizes. */
+static void test_sprite_any_size(void)
+{
+    BodyTraits t = {1000000.0f, 0.5f, 0.5f, 0.5f, 0.5f};
+    for (int f = 0; f < FRAME_COUNT; f++) {
+        SpriteMask large, small;
+        sprite_build(&large, &t, 16, f);
+        sprite_build(&small, &t, 8, f);
+        int on = 0;
+        for (int row = 0; row < 16; row++) {
+            on += large.body[row] != 0;
+        }
+        CHECK(on > 0);
+        /* An 8-pixel picture uses only its low 8 bits, and rows up to 8. */
+        for (int row = 0; row < 16; row++) {
+            CHECK((small.body[row] & 0xFF00u) == 0);
+            if (row >= 8) {
+                CHECK(small.body[row] == 0);
+            }
+        }
+    }
+}
+
 int main(void)
 {
     test_same_traits_same_pixels();
@@ -206,5 +230,6 @@ int main(void)
     test_walk_frames_differ();
     test_every_frame_stays_in_tile();
     test_slot_rebuilds_on_new_id();
+    test_sprite_any_size();
     TEST_SUMMARY();
 }

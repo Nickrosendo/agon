@@ -33,9 +33,10 @@
  * then the nearest plant along each ray: three more senses, so 18 more genes;
  * then fights: one more action, so 7 more genes, a bite that only eats, and
  * health and hits in the fingerprint; then armour and weapon: two more genes,
- * changing every random genome.
+ * changing every random genome; then growth: one more gene, bites that scale with
+ * size, and a size that goes on rising.
  */
-#define SEED_7_AFTER_500 0xee0aca5b8247357fULL
+#define SEED_7_AFTER_500 0x501a8606f063173bULL
 
 static void test_same_seed_same_checksum(void)
 {

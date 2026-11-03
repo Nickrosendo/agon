@@ -21,7 +21,7 @@ static void make_world(World *w, int width, int height)
 }
 
 /* pool_spawn, then a standard body: size 1 and full speed (with the
- * default size_min 0.5 and size_max 1.5), sight 1, a plant-eater. Tests
+ * default size_min 0.5 and birth_size_max 1.5), sight 1, a plant-eater. Tests
  * that are about one trait change it afterwards. */
 static int spawn(Pool *p, World *w, int x, int y)
 {
@@ -1711,6 +1711,153 @@ static void test_damage_never_below_zero(void)
     CHECK(damage_with(0.0f, 1.0f, &s) == 0.0f);
 }
 
+/* A creature fed by hand: energy well above what growth needs. */
+static void test_growth_needs_surplus(void)
+{
+    Settings s = settings_default();
+    Creature c = {.alive = true, .health = 1.0f};
+    c.genome.g[GENE_GROWTH] = 1.0f;
+    float size = creature_size(&c, &s);
+    /* Below the line: nothing goes into body. */
+    c.energy = s.growth_surplus * s.mate_threshold * size - 5.0f;
+    CHECK(creature_upkeep(&c, &s));
+    CHECK(creature_size(&c, &s) == size);
+    /* Well above it: some does, and it is paid for. */
+    c.energy = s.growth_surplus * s.mate_threshold * size + 50.0f;
+    float before = c.energy;
+    CHECK(creature_upkeep(&c, &s));
+    float gained = creature_size(&c, &s) - size;
+    CHECK(gained > 0.0f);
+    CHECK(c.energy < before - gained * s.growth_cost + 1e-3f);
+}
+
+static void test_growth_follows_gene(void)
+{
+    Settings s = settings_default();
+    Creature keeper = {.alive = true, .energy = 1000.0f, .health = 1.0f};
+    Creature grower = keeper;
+    keeper.genome.g[GENE_GROWTH] = 0.0f;
+    grower.genome.g[GENE_GROWTH] = 1.0f;
+    float start = creature_size(&keeper, &s);
+    for (int k = 0; k < 10; k++) {
+        keeper.energy = grower.energy = 1000.0f;
+        CHECK(creature_upkeep(&keeper, &s));
+        CHECK(creature_upkeep(&grower, &s));
+    }
+    CHECK(creature_size(&keeper, &s) == start);
+    CHECK(creature_size(&grower, &s) > start);
+    /* A middle gene grows by the matching share, on the same surplus. */
+    Creature half = {.alive = true, .energy = 1000.0f, .health = 1.0f};
+    Creature full = half;
+    half.genome.g[GENE_GROWTH] = 0.5f;
+    full.genome.g[GENE_GROWTH] = 1.0f;
+    CHECK(creature_upkeep(&half, &s));
+    CHECK(creature_upkeep(&full, &s));
+    CHECK(near((creature_size(&full, &s) - start) / 2.0f,
+               creature_size(&half, &s) - start));
+}
+
+static void test_no_top_size(void)
+{
+    Settings s = settings_default();
+    Creature c = {.alive = true, .health = 1.0f};
+    c.genome.g[GENE_GROWTH] = 1.0f;
+    float young = creature_upkeep_cost(&c, &s);
+    for (int k = 0; k < 20000; k++) {
+        c.age = 0; /* so that what rises below is the body's cost, not age's */
+        c.energy = 1e6f;
+        CHECK(creature_upkeep(&c, &s));
+    }
+    float size = creature_size(&c, &s);
+    CHECK(size > s.birth_size_max * 100.0f);
+    CHECK(isfinite(size));
+    c.age = 0;
+    CHECK(creature_upkeep_cost(&c, &s) > young + s.size_upkeep * 99.0f);
+    /* Everything built on size stays a real number. */
+    CHECK(isfinite(creature_max_health(&c, &s)));
+    CHECK(isfinite(attack_chance(size, 0.5f, 16.0f)));
+    CHECK(isfinite(attack_chance(0.5f, size, 16.0f)));
+}
+
+static void test_big_bites_more(void)
+{
+    Settings s = settings_default();
+    Rng r;
+    rng_seed(&r, 3);
+    World w;
+    make_world(&w, 8, 8);
+    Pool p;
+    CHECK(pool_init(&p, 2));
+    int i = spawn(&p, &w, 3, 3);
+    p.items[i].energy = 0.0f;
+    int ahead = world_idx(&w, 3, 2);
+    /* Size 1: one step of the plant. */
+    w.veg[ahead] = VEG_MAX;
+    creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
+    CHECK(w.veg[ahead] == VEG_MAX - 1);
+    float small_gain = p.items[i].energy;
+    /* Size 3: three steps, three times the food. */
+    p.items[i].grown = 2.0f;
+    p.items[i].energy = 0.0f;
+    w.veg[ahead] = VEG_MAX;
+    creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
+    CHECK(w.veg[ahead] == VEG_MAX - 3);
+    CHECK(near(p.items[i].energy, 3.0f * small_gain));
+    /* No more than the plant holds. */
+    p.items[i].grown = 1000.0f;
+    p.items[i].energy = 0.0f;
+    w.veg[ahead] = 2;
+    creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
+    CHECK(w.veg[ahead] == 0);
+    CHECK(near(p.items[i].energy, 2.0f * small_gain));
+    /* Meat: a bite scales with size, up to what lies there. */
+    p.items[i].grown = 2.0f;
+    p.items[i].energy = 0.0f;
+    p.items[i].genome.g[GENE_MEAT] = 1.0f;
+    carrion_add(&w, ahead, 100.0f, 2.0f);
+    creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
+    CHECK(near(w.carrion[ahead], 100.0f - s.bite_meat_energy * 3.0f));
+    p.items[i].grown = 1000.0f;
+    creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
+    CHECK(w.carrion[ahead] == 0.0f);
+    pool_free(&p);
+    world_free(&w);
+}
+
+static void test_bite_steps_any_size(void)
+{
+    /* Converting a float too large for int is undefined, so this must stop
+     * before the conversion. */
+    CHECK(bite_steps(0.5f) == 1);
+    CHECK(bite_steps(1.0f) == 1);
+    CHECK(bite_steps(3.0f) == 3);
+    CHECK(bite_steps(1e30f) == VEG_MAX);
+}
+
+static void test_senses_handle_any_size(void)
+{
+    Settings s = settings_default();
+    World w;
+    Pool p;
+    int a, t;
+    two_neighbours(&w, &p, &a, &t);
+    Senses in;
+    float sizes[] = {0.0f, 1.0f, 1000.0f, 1e9f};
+    /* sizeof the whole array over sizeof one element: only works here, where
+     * the array has not decayed to a pointer. */
+    for (size_t k = 0; k < sizeof(sizes) / sizeof(sizes[0]); k++) {
+        p.items[a].grown = sizes[k];
+        p.items[t].grown = 1e9f - sizes[k];
+        creature_sense(&w, &p, a, &s, &in);
+        float own = in.v[SENSE_SIZE];
+        float rel = in.v[SENSE_RAYS + RAY_AHEAD * RAY_VALUES + RAY_RELSIZE];
+        CHECK(own >= 0.0f && own <= 1.0f);
+        CHECK(rel >= 0.0f && rel <= 1.0f);
+    }
+    pool_free(&p);
+    world_free(&w);
+}
+
 int main(void)
 {
     CHECK(brain_register(&BRAIN_SCRIPT));
@@ -1777,5 +1924,11 @@ int main(void)
     test_weapon_raises_damage();
     test_both_cost_upkeep();
     test_damage_never_below_zero();
+    test_growth_needs_surplus();
+    test_growth_follows_gene();
+    test_no_top_size();
+    test_big_bites_more();
+    test_bite_steps_any_size();
+    test_senses_handle_any_size();
     TEST_SUMMARY();
 }

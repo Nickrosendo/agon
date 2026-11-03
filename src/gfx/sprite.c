@@ -40,6 +40,11 @@ enum { PAINT_BODY, PAINT_WHITE, PAINT_HOLE };
 /* A trait cut into steps, as 0..1: 4 steps gives 0, 1/3, 2/3 or 1. */
 static float round_to_steps(float value, int steps)
 {
+    /* Before the cast below: converting a float too large for int is undefined,
+     * and a trait built from a body's real size has no top. */
+    if (value >= 1.0f) {
+        return 1.0f;
+    }
     int step = (int)(value * (float)steps); /* a cast drops the fraction */
     step = step > steps - 1 ? steps - 1 : step;
     step = step < 0 ? 0 : step;

@@ -127,10 +127,26 @@ static int percent(uint64_t part, uint64_t whole)
     return whole == 0 ? 0 : (int)(100.0 * (double)part / (double)whole + 0.5);
 }
 
+/* The largest body alive and the mean size, for watching growth. */
+static void sizes(const Sim *s, float *largest, float *mean)
+{
+    double total = 0.0;
+    *largest = 0.0f;
+    for (int i = 0; i < s->pool.capacity; i++) {
+        const Creature *c = &s->pool.items[i];
+        if (c->alive) {
+            float size = creature_size(c, &s->set);
+            total += (double)size;
+            *largest = size > *largest ? size : *largest;
+        }
+    }
+    *mean = s->pool.count > 0 ? (float)(total / (double)s->pool.count) : 0.0f;
+}
+
 static void print_header(void)
 {
     printf("seed  final   peak extinct births lastbirth meat  Emean adultA ageX hungr "
-           "woun  old still  rest left right move bite  mate atck  capt full\n");
+           "woun  old still  rest left right move bite  mate atck  capt full  szmax szmean\n");
 }
 
 static void print_row(const Sim *s, const Report *rep)
@@ -166,8 +182,11 @@ static void print_row(const Sim *s, const Report *rep)
     for (int a = 0; a < ACT_COUNT; a++) {
         printf(" %4d%%", percent(rep->still_by_action[a], rep->still_deaths));
     }
-    printf(" %4d%% %4s\n", percent(rep->ticks_at_plant_cap, rep->ticks_counted),
-           rep->pool_filled ? "YES" : "no");
+    float largest, mean_size;
+    sizes(s, &largest, &mean_size);
+    printf(" %4d%% %4s %6.1f %6.2f\n",
+           percent(rep->ticks_at_plant_cap, rep->ticks_counted),
+           rep->pool_filled ? "YES" : "no", (double)largest, (double)mean_size);
 }
 
 /* Runs the world. The Sim is changed only by sim_step. */

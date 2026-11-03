@@ -79,7 +79,14 @@ Settings settings_default(void)
         .weight_limit = 4.0f,
         .weight_start_spread = 1.0f,
         .size_min = 0.5f,
-        .size_max = 1.5f,
+        .birth_size_max = 1.5f,
+        /* The energy kept back is what carries a creature between meals. Measured
+         * on seeds 1 to 15, 20,000 ticks: alive on 0 of 15 at 1.5, 3 at 6, 12 at 10,
+         * 11 at 15 and 12 at 25. Burning the surplus with almost no body to show for
+         * it ended worlds as fast, so the reserve is what matters, not the body. This
+         * is the lowest value on the plateau. */
+        .growth_surplus = 10.0f,
+        .growth_cost = 50.0f,
         .speed_min = 0.25f,
         .sight_max = 6,
         .size_upkeep = 0.1f,
@@ -212,7 +219,9 @@ static const SettingInfo TABLE[] = {
     FLOAT_ROW(weight_limit, 0, 1000, "largest network weight"),
     FLOAT_ROW(weight_start_spread, 0, 1000, "spread of random weights"),
     FLOAT_ROW(size_min, 0.01, 1000, "smallest body"),
-    FLOAT_ROW(size_max, 0.01, 1000, "largest body"),
+    FLOAT_ROW(birth_size_max, 0.01, 1000, "largest body at birth"),
+    FLOAT_ROW(growth_surplus, 0, BIG, "surplus begins at this share of mating's need"),
+    FLOAT_ROW(growth_cost, 0.001, BIG, "energy per unit of size grown"),
     FLOAT_ROW(speed_min, 0, 1, "slowest speed, in move points per tick"),
     INT_ROW(sight_max, 1, 64, "farthest sight, in cells"),
     FLOAT_ROW(size_upkeep, 0, BIG, "upkeep per unit of size"),

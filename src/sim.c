@@ -397,6 +397,7 @@ static uint64_t hash_creature(uint64_t hash, const Creature *c)
     hash = fnv1a(hash, &c->heading, sizeof(c->heading));
     hash = fnv1a(hash, &c->energy, sizeof(c->energy));
     hash = fnv1a(hash, &c->health, sizeof(c->health));
+    hash = fnv1a(hash, &c->grown, sizeof(c->grown));
     hash = fnv1a(hash, &c->hits_taken, sizeof(c->hits_taken));
     /* Hit is two uint32_t, so no padding: its raw bytes are safe to hash. Only
      * the used entries are always zero or real, and all of them are hashed. */
