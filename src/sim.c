@@ -2,6 +2,7 @@
 
 #include <stddef.h> /* size_t */
 #include <stdlib.h> /* malloc, free */
+#include <string.h> /* memcpy */
 
 #include "flora.h"
 #include "terrain.h"
@@ -206,6 +207,22 @@ static void shuffle(Turn *turns, int n, Rng *r)
     }
 }
 
+/* Stores what the brain chose to remember, held to -1..1. The brain is not
+ * trusted: a NaN fails the first comparison and so becomes -1, which keeps it
+ * out of the creature and out of every sense and save after this. */
+static void keep_memory(Creature *c, const Action *a)
+{
+    for (int m = 0; m < MEMORY_VALUES; m++) {
+        float v = a->memory[m];
+        if (!(v > -1.0f)) {
+            v = -1.0f;
+        } else if (v > 1.0f) {
+            v = 1.0f;
+        }
+        c->memory[m] = v;
+    }
+}
+
 /* One creature's turn: ask the brain if the last answer has run out,
  * then do one tick of the current action. */
 static void take_turn(Sim *s, int idx)
@@ -213,14 +230,21 @@ static void take_turn(Sim *s, int idx)
     Creature *c = &s->pool.items[idx];
     if (c->hold_left == 0) {
         Senses in;
-        Action a;
+        /* Every field not named is 0. An array cannot be assigned as a whole,
+         * though a struct holding one can: hence memcpy for the memory here. */
+        Action a = {.kind = ACT_REST, .hold = 1};
+        memcpy(a.memory, c->memory, sizeof(a.memory));
         creature_sense(&s->world, &s->pool, idx, &s->set, &in);
+        /* Here and not in creature_sense, which must draw no random numbers. */
+        in.v[SENSE_RANDOM] = rng_unit(&s->rng);
         bool ready = s->brain.decide(&s->brain, c->id, &c->genome, &in, &a);
         /* The brain is not trusted: an unknown kind counts as resting,
          * like a brain that is not ready. */
         if (!ready || a.kind >= ACT_COUNT) {
-            a = (Action){ACT_REST, 1};
+            a.kind = ACT_REST;
+            a.hold = 1;
         }
+        keep_memory(c, &a);
         c->current = a;
         c->hold_left = a.hold > 0 ? a.hold : 1;
     }
@@ -402,6 +426,7 @@ static uint64_t hash_creature(uint64_t hash, const Creature *c)
     /* Hit is two uint32_t, so no padding: its raw bytes are safe to hash. Only
      * the used entries are always zero or real, and all of them are hashed. */
     hash = fnv1a(hash, c->recent_hits, sizeof(c->recent_hits));
+    hash = fnv1a(hash, c->memory, sizeof(c->memory));
     hash = fnv1a(hash, &c->age, sizeof(c->age));
     hash = fnv1a(hash, &c->current.kind, sizeof(c->current.kind));
     hash = fnv1a(hash, &c->current.hold, sizeof(c->current.hold));

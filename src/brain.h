@@ -12,6 +12,10 @@
 
 #include "settings.h"
 
+/* How many numbers a creature carries from one decision to the next. Without
+ * them nothing a creature senses can last longer than a tick. */
+#define MEMORY_VALUES 3
+
 /* The three directions a creature looks in, relative to its heading. */
 enum { RAY_AHEAD, RAY_LEFT, RAY_RIGHT, RAY_COUNT };
 
@@ -35,9 +39,11 @@ enum {
 };
 
 /* The senses, as positions in Senses.v. After the six single values come
- * the rays: ray k's value j is at SENSE_RAYS + k * RAY_VALUES + j. The
- * neural network of lesson 6 has one input per sense, so its NET_IN must
- * equal SENSE_COUNT (33). */
+ * the rays: ray k's value j is at SENSE_RAYS + k * RAY_VALUES + j. After the
+ * rays come the drives, then the memory values, the last ones between -1 and 1.
+ * The neural network has one input per sense, so its NET_IN must equal
+ * SENSE_COUNT (41). An enum value may be set from earlier ones, and the next
+ * goes on counting from there. */
 enum {
     SENSE_ENERGY,
     SENSE_AGE,
@@ -46,7 +52,16 @@ enum {
     SENSE_SEASON, /* 1 during the mating season, 0 outside it */
     SENSE_BLOCKED, /* 1 when a step ahead cannot succeed: water, rock or a creature */
     SENSE_RAYS,
-    SENSE_COUNT = SENSE_RAYS + RAY_COUNT * RAY_VALUES
+    SENSE_HUNGER = SENSE_RAYS + RAY_COUNT * RAY_VALUES, /* 1 with no energy */
+    SENSE_PAIN, /* the share of its health it has lost */
+    SENSE_KIN_NEAR, /* the share of the 8 cells around holding relatives */
+    SENSE_STRANGERS_NEAR, /* the share holding anyone else */
+    /* A fresh draw for each decision, written by the Sim and left 0 by
+     * creature_sense, which the drawing side calls too and which must not
+     * change the random generator. */
+    SENSE_RANDOM,
+    SENSE_MEMORY,
+    SENSE_COUNT = SENSE_MEMORY + MEMORY_VALUES
 };
 
 enum {
@@ -65,11 +80,14 @@ typedef struct {
     float v[SENSE_COUNT];
 } Senses;
 
-/* An answer from a brain: what to do (an ACT_ value) and for how many
- * ticks to keep doing it. A hold of 0 counts as 1. */
+/* An answer from a brain: what to do (an ACT_ value), for how many ticks to
+ * keep doing it, and what to remember. A hold of 0 counts as 1. memory arrives
+ * holding the creature's present values, so a brain that writes none leaves
+ * them as they are. */
 typedef struct {
     uint8_t kind;
     uint16_t hold;
+    float memory[MEMORY_VALUES];
 } Action;
 
 /* An incomplete type: the compiler learns that a struct Genome exists,

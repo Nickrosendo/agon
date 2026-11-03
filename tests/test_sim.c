@@ -34,9 +34,10 @@
  * then fights: one more action, so 7 more genes, a bite that only eats, and
  * health and hits in the fingerprint; then armour and weapon: two more genes,
  * changing every random genome; then growth: one more gene, bites that scale with
- * size, and a size that goes on rising.
+ * size, and a size that goes on rising; then memory and drives: eight more senses
+ * and three more outputs, and one more random draw per decision.
  */
-#define SEED_7_AFTER_500 0x501a8606f063173bULL
+#define SEED_7_AFTER_500 0x5fccf55d0c89b45bULL
 
 static void test_same_seed_same_checksum(void)
 {

@@ -72,7 +72,7 @@ static void test_script_plays_back(void)
     Settings set = settings_default();
     Brain b;
     CHECK(brain_open(&b, "script", &set, 0));
-    Action script[] = {{ACT_MOVE, 3}, {ACT_BITE, 1}, {ACT_TURN_LEFT, 2}};
+    Action script[] = {{.kind = ACT_MOVE, .hold = 3}, {.kind = ACT_BITE, .hold = 1}, {.kind = ACT_TURN_LEFT, .hold = 2}};
     brain_script_load(&b, script, 3);
     Senses in = {0};
     Action out;
@@ -140,6 +140,44 @@ static void test_net_sees_vegetation(void)
     brain_close(&b);
 }
 
+static void test_memory_changes_a_decision(void)
+{
+    Settings set = settings_default();
+    Brain b;
+    CHECK(brain_open(&b, "net", &set, 1));
+    /* One path: the first memory value into hidden value 0, and that into bite. */
+    Genome g = zero_genome();
+    g.g[net_hidden_weight(0, SENSE_MEMORY)] = 2.0f;
+    g.g[net_out_weight(ACT_BITE, 0)] = 2.0f;
+    /* The same world senses, all zero; only what it remembers differs. */
+    Senses in = {0};
+    Action a = {0};
+    in.v[SENSE_MEMORY] = 1.0f;
+    CHECK(b.decide(&b, 1, &g, &in, &a) && a.kind == ACT_BITE);
+    in.v[SENSE_MEMORY] = -1.0f;
+    CHECK(b.decide(&b, 1, &g, &in, &a) && a.kind != ACT_BITE);
+    brain_close(&b);
+}
+
+static void test_net_writes_memory_and_it_never_chooses(void)
+{
+    Settings set = settings_default();
+    Brain b;
+    CHECK(brain_open(&b, "net", &set, 1));
+    Genome g = zero_genome();
+    /* A huge output for the second memory value. Were the memory outputs in the
+     * race for the strongest, this would pick an action past the last. */
+    g.g[net_out_weight(ACT_COUNT + 1, NET_HIDDEN)] = 4.0f;
+    Senses in = {0};
+    Action a = {0};
+    CHECK(b.decide(&b, 1, &g, &in, &a));
+    CHECK(a.kind == ACT_REST);
+    CHECK(a.memory[0] == 0.0f);
+    CHECK(a.memory[1] > 0.99f && a.memory[1] <= 1.0f); /* through tanh */
+    CHECK(a.memory[2] == 0.0f);
+    brain_close(&b);
+}
+
 static void test_net_needs_a_genome(void)
 {
     Settings set = settings_default();
@@ -162,6 +200,8 @@ int main(void)
     test_script_plays_back();
     test_net_bias_decides();
     test_net_sees_vegetation();
+    test_memory_changes_a_decision();
+    test_net_writes_memory_and_it_never_chooses();
     test_net_needs_a_genome();
     TEST_SUMMARY();
 }

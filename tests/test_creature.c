@@ -107,7 +107,7 @@ static void test_move_wraps(void)
     CHECK(pool_init(&p, 4));
     int i = spawn(&p, &w, 0, 0); /* heading north */
     p.items[i].energy = 10.0f;
-    creature_act(&w, &p, i, (Action){ACT_MOVE, 1}, &s, &r);
+    creature_act(&w, &p, i, (Action){.kind = ACT_MOVE, .hold = 1}, &s, &r);
     CHECK(p.items[i].x == 0 && p.items[i].y == 5);
     CHECK(w.occupant[world_idx(&w, 0, 0)] == -1);
     CHECK(w.occupant[world_idx(&w, 0, 5)] == i);
@@ -128,17 +128,17 @@ static void test_move_blocked(void)
     int i = spawn(&p, &w, 3, 3);
     p.items[i].energy = 10.0f;
     CHECK(spawn(&p, &w, 3, 2) >= 0); /* someone to the north */
-    creature_act(&w, &p, i, (Action){ACT_MOVE, 1}, &s, &r);
+    creature_act(&w, &p, i, (Action){.kind = ACT_MOVE, .hold = 1}, &s, &r);
     CHECK(p.items[i].x == 3 && p.items[i].y == 3);
     CHECK(fabsf(p.items[i].energy - (10.0f - s.move_cost)) < 1e-6f);
 
     /* Turn right to face east, where there is water, then rock. */
-    creature_act(&w, &p, i, (Action){ACT_TURN_RIGHT, 1}, &s, &r);
+    creature_act(&w, &p, i, (Action){.kind = ACT_TURN_RIGHT, .hold = 1}, &s, &r);
     CHECK(p.items[i].heading == HEADING_EAST);
     w.terrain[world_idx(&w, 4, 3)] = TERRAIN_WATER;
-    creature_act(&w, &p, i, (Action){ACT_MOVE, 1}, &s, &r);
+    creature_act(&w, &p, i, (Action){.kind = ACT_MOVE, .hold = 1}, &s, &r);
     w.terrain[world_idx(&w, 4, 3)] = TERRAIN_ROCK;
-    creature_act(&w, &p, i, (Action){ACT_MOVE, 1}, &s, &r);
+    creature_act(&w, &p, i, (Action){.kind = ACT_MOVE, .hold = 1}, &s, &r);
     CHECK(p.items[i].x == 3 && p.items[i].y == 3);
     CHECK(fabsf(p.items[i].energy - (10.0f - 3 * s.move_cost)) < 1e-5f);
     pool_free(&p);
@@ -155,10 +155,10 @@ static void test_turns(void)
     Pool p;
     CHECK(pool_init(&p, 1));
     int i = spawn(&p, &w, 3, 3);
-    creature_act(&w, &p, i, (Action){ACT_TURN_LEFT, 1}, &s, &r);
+    creature_act(&w, &p, i, (Action){.kind = ACT_TURN_LEFT, .hold = 1}, &s, &r);
     CHECK(p.items[i].heading == HEADING_WEST); /* left of north */
-    creature_act(&w, &p, i, (Action){ACT_TURN_RIGHT, 1}, &s, &r);
-    creature_act(&w, &p, i, (Action){ACT_TURN_RIGHT, 1}, &s, &r);
+    creature_act(&w, &p, i, (Action){.kind = ACT_TURN_RIGHT, .hold = 1}, &s, &r);
+    creature_act(&w, &p, i, (Action){.kind = ACT_TURN_RIGHT, .hold = 1}, &s, &r);
     CHECK(p.items[i].heading == HEADING_EAST);
     pool_free(&p);
     world_free(&w);
@@ -179,19 +179,19 @@ static void test_bite(void)
      * test_vigorous_plants_feed_less covers the food cost. */
     s.veg_vigour_food = 0.0f;
     w.veg[world_idx(&w, 3, 2)] = 3; /* ahead, to the north */
-    creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
+    creature_act(&w, &p, i, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
     CHECK(w.veg[world_idx(&w, 3, 2)] == 2);
     CHECK(fabsf(p.items[i].energy - (10.0f + s.bite_veg_energy)) < 1e-6f);
 
     /* A plant beside the creature, not ahead, is eaten just the same. */
     w.veg[world_idx(&w, 3, 2)] = 0;
     w.veg[world_idx(&w, 2, 4)] = 1; /* behind, to the left */
-    creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
+    creature_act(&w, &p, i, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
     CHECK(w.veg[world_idx(&w, 2, 4)] == 0);
 
     /* With nothing to eat around, a bite gains nothing. */
     float before = p.items[i].energy;
-    creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
+    creature_act(&w, &p, i, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
     CHECK(p.items[i].energy == before);
     pool_free(&p);
     world_free(&w);
@@ -223,7 +223,7 @@ static void test_mate_needs_both(void)
     Settings s = settings_default();
     Rng r;
     rng_seed(&r, 1);
-    Action mate = {ACT_MATE, 1};
+    Action mate = {.kind = ACT_MATE, .hold = 1};
 
     /* One willing, the other not asked: no child and no energy spent. */
     adult_pair(&w, &p, &a, &b, &s, &r);
@@ -269,7 +269,7 @@ static void test_mate_costs_both_parents(void)
     adult_pair(&w, &p, &a, &b, &s, &r);
     p.items[a].energy = 100.0f;
     p.items[b].energy = 60.0f;
-    Action mate = {ACT_MATE, 1};
+    Action mate = {.kind = ACT_MATE, .hold = 1};
     CHECK(creature_act(&w, &p, a, mate, &s, &r) == -1);
     int child = creature_act(&w, &p, b, mate, &s, &r);
     CHECK(child >= 0);
@@ -295,7 +295,7 @@ static void test_mate_needs_adults(void)
     Settings s = settings_default();
     Rng r;
     rng_seed(&r, 3);
-    Action mate = {ACT_MATE, 1};
+    Action mate = {.kind = ACT_MATE, .hold = 1};
 
     /* Too young. */
     adult_pair(&w, &p, &a, &b, &s, &r);
@@ -335,7 +335,7 @@ static void test_child_surname_from_a_parent(void)
     int from_a = 0;
     int from_b = 0;
     int neither = 0;
-    Action mate = {ACT_MATE, 1};
+    Action mate = {.kind = ACT_MATE, .hold = 1};
     for (int k = 0; k < 100; k++) {
         adult_pair(&w, &p, &a, &b, &s, &r);
         p.items[a].level = 2.0f;
@@ -381,7 +381,7 @@ static void test_mate_no_room(void)
     drown_around_pair(&w);
     float before_a = p.items[a].energy;
     float before_b = p.items[b].energy;
-    Action mate = {ACT_MATE, 1};
+    Action mate = {.kind = ACT_MATE, .hold = 1};
     CHECK(creature_act(&w, &p, a, mate, &s, &r) == -1);
     CHECK(creature_act(&w, &p, b, mate, &s, &r) == -1);
     CHECK(p.count == 2);
@@ -412,7 +412,7 @@ static void test_pool_full_counts_refused(void)
         p.items[k].age = (uint32_t)s.mate_age;
         p.items[k].energy = 100.0f;
     }
-    Action mate = {ACT_MATE, 1};
+    Action mate = {.kind = ACT_MATE, .hold = 1};
     CHECK(creature_act(&w, &p, a, mate, &s, &r) == -1);
     CHECK(p.births_refused == 0);
     CHECK(creature_act(&w, &p, b, mate, &s, &r) == -1);
@@ -463,7 +463,7 @@ static void test_season_drives_fed_adults(void)
     rng_seed(&r, 8);
     adult_pair(&w, &p, &a, &b, &s, &r);
     p.in_season = true;
-    Action rest = {ACT_REST, 1};
+    Action rest = {.kind = ACT_REST, .hold = 1};
     CHECK(creature_act(&w, &p, a, rest, &s, &r) == -1);
     CHECK(p.items[a].mate_wish == s.mate_window);
     int child = creature_act(&w, &p, b, rest, &s, &r);
@@ -500,7 +500,7 @@ static void test_season_leaves_the_action(void)
     p.items[b].energy = 1.0f; /* the neighbour is no partner */
     p.items[a].heading = HEADING_NORTH;
     p.items[a].move_points = 1.0f;
-    CHECK(creature_act(&w, &p, a, (Action){ACT_MOVE, 1}, &s, &r) == -1);
+    CHECK(creature_act(&w, &p, a, (Action){.kind = ACT_MOVE, .hold = 1}, &s, &r) == -1);
     CHECK(p.items[a].y == 2);
     CHECK(p.items[a].mate_wish == s.mate_window);
     pool_free(&p);
@@ -519,8 +519,8 @@ static void test_out_of_season_needs_a_choice(void)
     rng_seed(&r, 10);
     adult_pair(&w, &p, &a, &b, &s, &r);
     p.in_season = false;
-    Action rest = {ACT_REST, 1};
-    Action mate = {ACT_MATE, 1};
+    Action rest = {.kind = ACT_REST, .hold = 1};
+    Action mate = {.kind = ACT_MATE, .hold = 1};
     CHECK(creature_act(&w, &p, a, rest, &s, &r) == -1);
     CHECK(creature_act(&w, &p, b, rest, &s, &r) == -1);
     CHECK(p.items[a].mate_wish == 0 && p.items[b].mate_wish == 0);
@@ -678,18 +678,18 @@ static void test_empty_bite_costs(void)
     CHECK(pool_init(&p, 1));
     int i = spawn(&p, &w, 3, 3);
     p.items[i].energy = 10.0f;
-    creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
+    creature_act(&w, &p, i, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
     CHECK(near(p.items[i].energy, 9.75f));
 
     w.veg[world_idx(&w, 3, 2)] = 3;
-    creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
+    creature_act(&w, &p, i, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
     CHECK(near(p.items[i].energy, 9.75f + s.bite_veg_energy));
 
     /* Off is off. */
     w.veg[world_idx(&w, 3, 2)] = 0;
     s.bite_empty_cost = 0.0f;
     float before = p.items[i].energy;
-    creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
+    creature_act(&w, &p, i, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
     CHECK(near(p.items[i].energy, before));
     pool_free(&p);
     world_free(&w);
@@ -714,7 +714,7 @@ static void test_plant_eater_cap(void)
     }
     pool_count_plant_eaters(&p, &s);
     CHECK(p.plant_eaters == 2);
-    Action mate = {ACT_MATE, 1};
+    Action mate = {.kind = ACT_MATE, .hold = 1};
 
     /* Two alive and a cap of 2: no birth. */
     s.max_plant_eaters = 2;
@@ -756,14 +756,14 @@ static void test_vigorous_plants_feed_less(void)
     p.items[i].energy = 10.0f;
     w.veg[ahead] = 1;
     w.veg_rule[ahead] = veg_rule_pack(1, 4, 7);
-    creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
+    creature_act(&w, &p, i, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
     CHECK(fabsf(p.items[i].energy - (10.0f + 0.5f * s.bite_veg_energy)) <
           1e-5f);
 
     p.items[i].energy = 10.0f;
     w.veg[ahead] = 1;
     w.veg_rule[ahead] = veg_rule_pack(4, 4, 0);
-    creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
+    creature_act(&w, &p, i, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
     CHECK(fabsf(p.items[i].energy - (10.0f + s.bite_veg_energy)) < 1e-5f);
 
     /* Given the choice, a bite takes the more nourishing plant. */
@@ -772,7 +772,7 @@ static void test_vigorous_plants_feed_less(void)
     w.veg_rule[ahead] = veg_rule_pack(1, 4, 7);
     w.veg[behind] = 1;
     w.veg_rule[behind] = veg_rule_pack(4, 4, 0);
-    creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
+    creature_act(&w, &p, i, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
     CHECK(w.veg[behind] == 0 && w.veg[ahead] == 1);
     pool_free(&p);
     world_free(&w);
@@ -887,13 +887,13 @@ static void test_bite_carrion(void)
     p.items[i].energy = 10.0f;
     int ahead = world_idx(&w, 3, 2);
     carrion_add(&w, ahead, 5.0f, 2.0f);
-    creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
+    creature_act(&w, &p, i, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
     CHECK(near(p.items[i].energy, 15.0f));
     CHECK(w.carrion[ahead] == 0.0f);
     CHECK(near(p.items[i].level, 3.0f)); /* 1 + level of the meal */
 
     carrion_add(&w, ahead, 20.0f, 2.0f);
-    creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
+    creature_act(&w, &p, i, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
     CHECK(near(p.items[i].energy, 23.0f)); /* at most one bite of 8 */
     CHECK(near(w.carrion[ahead], 12.0f));
 
@@ -902,13 +902,13 @@ static void test_bite_carrion(void)
     p.items[i].genome.g[GENE_PLANT] = 1.0f;
     w.veg[ahead] = 2;
     float carrion_before = w.carrion[ahead];
-    creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
+    creature_act(&w, &p, i, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
     CHECK(w.veg[ahead] == 1);
     CHECK(w.carrion[ahead] == carrion_before);
     /* A meat-eater, the carrion. */
     p.items[i].genome.g[GENE_MEAT] = 1.0f;
     p.items[i].genome.g[GENE_PLANT] = 0.0f;
-    creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
+    creature_act(&w, &p, i, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
     CHECK(w.veg[ahead] == 1);
     CHECK(w.carrion[ahead] < carrion_before);
     w.veg[ahead] = 0;
@@ -918,7 +918,7 @@ static void test_bite_carrion(void)
     p.items[i].genome.g[GENE_PLANT] = 1.0f;
     float before = p.items[i].energy;
     float level_before = p.items[i].level;
-    creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
+    creature_act(&w, &p, i, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
     CHECK(near(p.items[i].energy, before));
     CHECK(p.items[i].level == level_before);
 
@@ -927,7 +927,7 @@ static void test_bite_carrion(void)
     s.digest_floor = 0.25f;
     carrion_add(&w, ahead, 20.0f, 4.0f); /* a full bite of 8 */
     before = p.items[i].energy;
-    creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
+    creature_act(&w, &p, i, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
     CHECK(near(p.items[i].energy, before + 0.25f * 8.0f));
     CHECK(p.items[i].level != level_before);
     pool_free(&p);
@@ -960,7 +960,7 @@ static void test_attacks_hit_half_the_time(void)
     for (int k = 0; k < 10000; k++) {
         p.items[t].health = 1000.0f;
         float attacker_before = p.items[a].energy;
-        creature_act(&w, &p, a, (Action){ACT_ATTACK, 1}, &s, &r);
+        creature_act(&w, &p, a, (Action){.kind = ACT_ATTACK, .hold = 1}, &s, &r);
         if (p.items[t].health < 1000.0f) {
             hits++;
             CHECK(near(p.items[t].health, 1000.0f - s.bite_damage * 1.0f));
@@ -1003,7 +1003,7 @@ static void test_food_under_a_creature(void)
     int a, t;
     two_neighbours(&w, &p, &a, &t);
     w.veg[world_idx(&w, 3, 2)] = 3; /* under t: covered */
-    creature_act(&w, &p, a, (Action){ACT_BITE, 1}, &s, &r);
+    creature_act(&w, &p, a, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
     CHECK(w.veg[world_idx(&w, 3, 2)] == 3);
     CHECK(p.items[a].energy == 100.0f);
     pool_free(&p);
@@ -1025,7 +1025,7 @@ static void test_slow_creature(void)
     p.items[i].energy = 100.0f;
     int moves = 0, y = p.items[i].y;
     for (int t = 0; t < 8; t++) {
-        creature_act(&w, &p, i, (Action){ACT_MOVE, 1}, &s, &r);
+        creature_act(&w, &p, i, (Action){.kind = ACT_MOVE, .hold = 1}, &s, &r);
         if (p.items[i].y != y) {
             moves++;
             y = p.items[i].y;
@@ -1139,7 +1139,7 @@ static void test_killed_creature_leaves_carrion(void)
     sim.pool.items[t].level = 2.5f;
     uint32_t target_id = sim.pool.items[t].id;
     /* Both answers are attacks; the target's swings at the empty cell ahead of it. */
-    Action script[] = {{ACT_ATTACK, 1}, {ACT_ATTACK, 1}};
+    Action script[] = {{.kind = ACT_ATTACK, .hold = 1}, {.kind = ACT_ATTACK, .hold = 1}};
     brain_script_load(&sim.brain, script, 2);
     sim_step(&sim);
     CHECK(!sim.pool.items[t].alive || sim.pool.items[t].id != target_id);
@@ -1255,7 +1255,7 @@ static void test_hold_then_rest(void)
     int i = spawn(&sim.pool, &sim.world, 4, 4);
     sim.pool.items[i].energy = 100.0f;
     sim.pool.items[i].heading = HEADING_EAST;
-    Action script[] = {{ACT_MOVE, 3}};
+    Action script[] = {{.kind = ACT_MOVE, .hold = 3}};
     brain_script_load(&sim.brain, script, 1);
 
     int xs[5];
@@ -1352,7 +1352,7 @@ static void test_hit_takes_health_not_energy(void)
     p.items[t].genome.g[GENE_SIZE] = 0.0f;
     float health = p.items[t].health;
     for (int k = 0; k < 5 && p.items[t].health == health; k++) {
-        creature_act(&w, &p, a, (Action){ACT_ATTACK, 1}, &s, &r);
+        creature_act(&w, &p, a, (Action){.kind = ACT_ATTACK, .hold = 1}, &s, &r);
     }
     CHECK(near(p.items[t].health, health - s.bite_damage * 1.5f));
     CHECK(p.items[t].energy == 100.0f);
@@ -1440,7 +1440,7 @@ static void test_prey_can_fight_back(void)
     p.items[a].genome.g[GENE_SIZE] = 1.0f;
     float health = p.items[t].health;
     for (int k = 0; k < 20; k++) {
-        creature_act(&w, &p, a, (Action){ACT_ATTACK, 1}, &s, &r);
+        creature_act(&w, &p, a, (Action){.kind = ACT_ATTACK, .hold = 1}, &s, &r);
     }
     CHECK(p.items[t].health < health);
     pool_free(&p);
@@ -1460,7 +1460,7 @@ static void test_attack_needs_a_target_ahead(void)
     p.items[a].heading = HEADING_EAST;
     float health = p.items[t].health;
     uint64_t draws_before = r.s[0];
-    creature_act(&w, &p, a, (Action){ACT_ATTACK, 1}, &s, &r);
+    creature_act(&w, &p, a, (Action){.kind = ACT_ATTACK, .hold = 1}, &s, &r);
     CHECK(p.items[t].health == health);
     CHECK(near(p.items[a].energy, 100.0f - s.attack_cost));
     CHECK(r.s[0] == draws_before); /* nothing to hit: no draw */
@@ -1486,7 +1486,7 @@ static void test_bite_never_attacks(void)
     make_hunter(&p.items[a]);
     float health = p.items[t].health;
     for (int k = 0; k < 20; k++) {
-        creature_act(&w, &p, a, (Action){ACT_BITE, 1}, &s, &r);
+        creature_act(&w, &p, a, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
     }
     CHECK(p.items[t].health == health);
     CHECK(p.items[a].energy == 100.0f);
@@ -1556,7 +1556,7 @@ static void test_hits_fill_the_ring_and_wrap(void)
     p.items[t].health = 1e6f;
     for (int k = 0; k < HITS_KEPT * 3; k++) {
         p.now = (uint32_t)k;
-        creature_act(&w, &p, a, (Action){ACT_ATTACK, 1}, &s, &r);
+        creature_act(&w, &p, a, (Action){.kind = ACT_ATTACK, .hold = 1}, &s, &r);
     }
     CHECK(p.items[t].hits_taken > (uint32_t)HITS_KEPT);
     for (int k = 0; k < HITS_KEPT; k++) {
@@ -1601,7 +1601,7 @@ static void test_death_causes_counted(void)
     sim.pool.items[t].health = 0.01f;
     sim.pool.items[hungry].energy = 0.0f;
     sim.pool.items[hungry].health = sim.set.starve_damage / 2.0f;
-    Action script[] = {{ACT_ATTACK, 1}, {ACT_ATTACK, 1}, {ACT_ATTACK, 1}};
+    Action script[] = {{.kind = ACT_ATTACK, .hold = 1}, {.kind = ACT_ATTACK, .hold = 1}, {.kind = ACT_ATTACK, .hold = 1}};
     brain_script_load(&sim.brain, script, 3);
     for (int k = 0; k < 10 && sim.pool.deaths[DEATH_WOUNDS] == 0; k++) {
         sim_step(&sim);
@@ -1621,7 +1621,7 @@ static void test_age_limit_is_its_own_cause(void)
     int i = spawn(&sim.pool, &sim.world, 2, 2);
     sim.pool.items[i].energy = 100.0f;
     sim.pool.items[i].health = 100.0f;
-    Action script[] = {{ACT_REST, 1}};
+    Action script[] = {{.kind = ACT_REST, .hold = 1}};
     brain_script_load(&sim.brain, script, 1);
     sim_step(&sim);
     CHECK(sim.pool.deaths[DEATH_AGE] == 1);
@@ -1643,7 +1643,7 @@ static void test_born_at_full_health(void)
     p.items[a].energy = p.items[t].energy = 100.0f;
     p.items[a].age = p.items[t].age = (uint32_t)s.mate_age;
     p.items[t].mate_wish = 5;
-    int child = creature_act(&w, &p, a, (Action){ACT_MATE, 1}, &s, &r);
+    int child = creature_act(&w, &p, a, (Action){.kind = ACT_MATE, .hold = 1}, &s, &r);
     CHECK(child >= 0);
     CHECK(near(p.items[child].health,
                creature_max_health(&p.items[child], &s)));
@@ -1665,7 +1665,7 @@ static float damage_with(float weapon, float armour, const Settings *s)
     p.items[t].health = 1000.0f;
     /* Attacks until one lands: even odds, so this ends after a few. */
     for (int k = 0; k < 200 && p.items[t].health == 1000.0f; k++) {
-        creature_act(&w, &p, a, (Action){ACT_ATTACK, 1}, s, &r);
+        creature_act(&w, &p, a, (Action){.kind = ACT_ATTACK, .hold = 1}, s, &r);
     }
     float damage = 1000.0f - p.items[t].health;
     pool_free(&p);
@@ -1793,21 +1793,21 @@ static void test_big_bites_more(void)
     int ahead = world_idx(&w, 3, 2);
     /* Size 1: one step of the plant. */
     w.veg[ahead] = VEG_MAX;
-    creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
+    creature_act(&w, &p, i, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
     CHECK(w.veg[ahead] == VEG_MAX - 1);
     float small_gain = p.items[i].energy;
     /* Size 3: three steps, three times the food. */
     p.items[i].grown = 2.0f;
     p.items[i].energy = 0.0f;
     w.veg[ahead] = VEG_MAX;
-    creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
+    creature_act(&w, &p, i, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
     CHECK(w.veg[ahead] == VEG_MAX - 3);
     CHECK(near(p.items[i].energy, 3.0f * small_gain));
     /* No more than the plant holds. */
     p.items[i].grown = 1000.0f;
     p.items[i].energy = 0.0f;
     w.veg[ahead] = 2;
-    creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
+    creature_act(&w, &p, i, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
     CHECK(w.veg[ahead] == 0);
     CHECK(near(p.items[i].energy, 2.0f * small_gain));
     /* Meat: a bite scales with size, up to what lies there. */
@@ -1815,10 +1815,10 @@ static void test_big_bites_more(void)
     p.items[i].energy = 0.0f;
     p.items[i].genome.g[GENE_MEAT] = 1.0f;
     carrion_add(&w, ahead, 100.0f, 2.0f);
-    creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
+    creature_act(&w, &p, i, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
     CHECK(near(w.carrion[ahead], 100.0f - s.bite_meat_energy * 3.0f));
     p.items[i].grown = 1000.0f;
-    creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
+    creature_act(&w, &p, i, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
     CHECK(w.carrion[ahead] == 0.0f);
     pool_free(&p);
     world_free(&w);
@@ -1856,6 +1856,151 @@ static void test_senses_handle_any_size(void)
     }
     pool_free(&p);
     world_free(&w);
+}
+
+static void test_memory_persists(void)
+{
+    Sim sim;
+    Settings set;
+    make_sim(&sim, &set);
+    int i = spawn(&sim.pool, &sim.world, 4, 4);
+    sim.pool.items[i].energy = 100.0f;
+    Action script[] = {
+        {.kind = ACT_REST, .hold = 1, .memory = {0.5f, -0.25f, 1.0f}},
+        {.kind = ACT_REST, .hold = 1, .memory = {0.0f, 0.0f, 0.0f}},
+    };
+    brain_script_load(&sim.brain, script, 2);
+    sim_step(&sim);
+    Senses in;
+    creature_sense(&sim.world, &sim.pool, i, &sim.set, &in);
+    CHECK(in.v[SENSE_MEMORY + 0] == 0.5f);
+    CHECK(in.v[SENSE_MEMORY + 1] == -0.25f);
+    CHECK(in.v[SENSE_MEMORY + 2] == 1.0f);
+    /* Next tick the brain is shown it. */
+    sim_step(&sim);
+    CHECK(brain_script_last_senses(&sim.brain).v[SENSE_MEMORY] == 0.5f);
+    sim_free(&sim);
+}
+
+static void test_memory_from_a_bad_brain_is_held(void)
+{
+    Sim sim;
+    Settings set;
+    make_sim(&sim, &set);
+    int i = spawn(&sim.pool, &sim.world, 4, 4);
+    sim.pool.items[i].energy = 100.0f;
+    Action script[] = {
+        {.kind = ACT_REST, .hold = 1, .memory = {NAN, 5.0f, -5.0f}},
+    };
+    brain_script_load(&sim.brain, script, 1);
+    sim_step(&sim);
+    CHECK(sim.pool.items[i].memory[0] == -1.0f);
+    CHECK(sim.pool.items[i].memory[1] == 1.0f);
+    CHECK(sim.pool.items[i].memory[2] == -1.0f);
+    sim_free(&sim);
+}
+
+static void test_child_memory_starts_empty(void)
+{
+    Settings s = settings_default();
+    Rng r;
+    rng_seed(&r, 3);
+    World w;
+    make_world(&w, 8, 8);
+    Pool p;
+    CHECK(pool_init(&p, 3));
+    int a = spawn(&p, &w, 3, 3);
+    int t = spawn(&p, &w, 3, 2);
+    p.items[a].energy = p.items[t].energy = 100.0f;
+    p.items[a].age = p.items[t].age = (uint32_t)s.mate_age;
+    p.items[a].memory[0] = 0.75f;
+    p.items[t].memory[0] = 0.75f;
+    p.items[t].mate_wish = 5;
+    int child = creature_act(&w, &p, a, (Action){.kind = ACT_MATE, .hold = 1},
+                             &s, &r);
+    CHECK(child >= 0);
+    for (int m = 0; m < MEMORY_VALUES; m++) {
+        CHECK(p.items[child].memory[m] == 0.0f);
+    }
+    pool_free(&p);
+    world_free(&w);
+}
+
+static void test_senses_hunger_pain_near(void)
+{
+    Settings s = settings_default();
+    World w;
+    make_world(&w, 8, 8);
+    Pool p;
+    CHECK(pool_init(&p, 5));
+    int c = spawn(&p, &w, 3, 3);
+    p.items[c].energy = s.mate_threshold / 4.0f; /* a quarter of mating's need */
+    p.items[c].health = creature_max_health(&p.items[c], &s) * 0.75f;
+    Senses in;
+    creature_sense(&w, &p, c, &s, &in);
+    CHECK(near(in.v[SENSE_HUNGER], 0.75f));
+    CHECK(near(in.v[SENSE_PAIN], 0.25f));
+    CHECK(in.v[SENSE_KIN_NEAR] == 0.0f && in.v[SENSE_STRANGERS_NEAR] == 0.0f);
+    CHECK(in.v[SENSE_RANDOM] == 0.0f); /* creature_sense never draws */
+
+    /* A twin one way and two strangers the other, one of them diagonal. */
+    int twin = spawn(&p, &w, 3, 2);
+    p.items[twin].genome = p.items[c].genome;
+    int far1 = spawn(&p, &w, 4, 4);
+    int far2 = spawn(&p, &w, 2, 3);
+    for (int i = 0; i < GENOME_LEN; i++) {
+        p.items[far1].genome.g[i] = p.items[c].genome.g[i] + 2.0f;
+        p.items[far2].genome.g[i] = p.items[c].genome.g[i] - 2.0f;
+    }
+    /* Two cells away is not near. */
+    spawn(&p, &w, 5, 3);
+    creature_sense(&w, &p, c, &s, &in);
+    CHECK(in.v[SENSE_KIN_NEAR] == 1.0f / 8.0f);
+    CHECK(in.v[SENSE_STRANGERS_NEAR] == 2.0f / 8.0f);
+
+    /* Every one of them stays within 0..1 at the extremes. */
+    p.items[c].energy = 0.0f;
+    p.items[c].health = -5.0f;
+    creature_sense(&w, &p, c, &s, &in);
+    CHECK(in.v[SENSE_HUNGER] == 1.0f);
+    CHECK(in.v[SENSE_PAIN] == 1.0f);
+    p.items[c].energy = 1e6f;
+    p.items[c].health = 1e6f; /* above an unhurt body's: no negative pain */
+    creature_sense(&w, &p, c, &s, &in);
+    CHECK(in.v[SENSE_HUNGER] == 0.0f);
+    CHECK(in.v[SENSE_PAIN] == 0.0f);
+    pool_free(&p);
+    world_free(&w);
+}
+
+static void test_random_sense_is_seeded(void)
+{
+    /* Two runs of one seed see the same draws, and the draws change. */
+    float seen[2][8];
+    for (int run = 0; run < 2; run++) {
+        Sim sim;
+        Settings set;
+        make_sim(&sim, &set);
+        int i = spawn(&sim.pool, &sim.world, 4, 4);
+        sim.pool.items[i].energy = 100.0f;
+        Action script[8];
+        for (int k = 0; k < 8; k++) {
+            script[k] = (Action){.kind = ACT_REST, .hold = 1};
+        }
+        brain_script_load(&sim.brain, script, 8);
+        for (int k = 0; k < 8; k++) {
+            sim_step(&sim);
+            seen[run][k] = brain_script_last_senses(&sim.brain).v[SENSE_RANDOM];
+        }
+        sim_free(&sim);
+    }
+    bool varies = false;
+    for (int k = 0; k < 8; k++) {
+        CHECK(seen[0][k] == seen[1][k]);
+        CHECK(seen[0][k] >= 0.0f && seen[0][k] < 1.0f);
+        varies = varies || seen[0][k] != seen[0][0];
+    }
+    CHECK(varies);
 }
 
 int main(void)
@@ -1930,5 +2075,10 @@ int main(void)
     test_big_bites_more();
     test_bite_steps_any_size();
     test_senses_handle_any_size();
+    test_memory_persists();
+    test_memory_from_a_bad_brain_is_held();
+    test_child_memory_starts_empty();
+    test_senses_hunger_pain_near();
+    test_random_sense_is_seeded();
     TEST_SUMMARY();
 }

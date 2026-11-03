@@ -111,6 +111,7 @@ Settings settings_default(void)
          * creatures stand still (2 to 3 of 5 alive at 0.05 and above). */
         .bite_empty_cost = 0.0f,
         .bite_damage = 6.0f,
+        .kin_sense = 0.5f,
         .body_energy = 10.0f,
         .carrion_decay = 0.01f,
         /* Off: at 0.002, rotting carrion slowly enriched the soil and plants
@@ -244,6 +245,7 @@ static const SettingInfo TABLE[] = {
     FLOAT_ROW(starve_damage, 0, BIG, "health lost per tick at zero energy"),
     FLOAT_ROW(bite_empty_cost, 0, BIG, "energy a bite that finds nothing costs"),
     FLOAT_ROW(bite_damage, 0, BIG, "health a hit takes, by attacker's size"),
+    FLOAT_ROW(kin_sense, 0, 1, "kinship from which a neighbour counts as family"),
     FLOAT_ROW(body_energy, 0, BIG, "carrion a body leaves, by size"),
     FLOAT_ROW(carrion_decay, 0, 1, "share of carrion lost per tick"),
     FLOAT_ROW(carrion_to_fertility, 0, 1, "share of lost carrion that feeds "

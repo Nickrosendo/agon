@@ -210,6 +210,8 @@ typedef struct {
      * ground costs less than walking to food a few cells away. */
     float bite_empty_cost;
     float bite_damage;
+    /* A neighbour counts as a relative in the senses from this genome_kinship up. */
+    float kin_sense;
 
     /* Carrion. A death leaves body_energy * size plus any energy left.
      * Each tick carrion loses carrion_decay of itself; carrion_to_fertility

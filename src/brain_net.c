@@ -17,7 +17,8 @@
  * the build stops with the message. The network has one input per sense
  * and one output per action, and the two headers count them separately. */
 static_assert(NET_IN == SENSE_COUNT, "one network input per sense");
-static_assert(NET_OUT == ACT_COUNT, "one network output per action");
+static_assert(NET_OUT == ACT_COUNT + MEMORY_VALUES,
+              "one network output per action and per memory value");
 
 static bool net_create(Brain *b, const Settings *s, uint64_t seed)
 {
@@ -46,18 +47,26 @@ static void hidden_layer(const Genome *g, const Senses *in,
     }
 }
 
-/* The output layer: a weighted sum of the hidden values plus a bias, with
- * nothing squashing it. Returns the action whose output is largest; on a
- * tie, the first of them (ACT_REST when every output is 0). */
+/* One output: a weighted sum of the hidden values plus a bias, with nothing
+ * squashing it. */
+static float output(const Genome *g, const float hidden[NET_HIDDEN], int o)
+{
+    float sum = g->g[net_out_weight(o, NET_HIDDEN)];
+    for (int j = 0; j < NET_HIDDEN; j++) {
+        sum += g->g[net_out_weight(o, j)] * hidden[j];
+    }
+    return sum;
+}
+
+/* Returns the action whose output is largest; on a tie, the first of them
+ * (ACT_REST when every output is 0). The memory outputs, which come after the
+ * actions', have no say in this. */
 static uint8_t strongest_output(const Genome *g, const float hidden[NET_HIDDEN])
 {
     int best = 0;
     float best_sum = 0.0f;
-    for (int o = 0; o < NET_OUT; o++) {
-        float sum = g->g[net_out_weight(o, NET_HIDDEN)];
-        for (int j = 0; j < NET_HIDDEN; j++) {
-            sum += g->g[net_out_weight(o, j)] * hidden[j];
-        }
+    for (int o = 0; o < ACT_COUNT; o++) {
+        float sum = output(g, hidden, o);
         if (o == 0 || sum > best_sum) {
             best = o;
             best_sum = sum;
@@ -80,6 +89,9 @@ static bool net_decide(Brain *b, uint32_t id, const Genome *g,
     hidden_layer(g, in, hidden);
     out->kind = strongest_output(g, hidden);
     out->hold = 1; /* decide again next tick: the senses may change */
+    for (int m = 0; m < MEMORY_VALUES; m++) {
+        out->memory[m] = tanhf(output(g, hidden, ACT_COUNT + m));
+    }
     return true;
 }
 

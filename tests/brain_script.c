@@ -6,6 +6,7 @@ typedef struct {
     Action actions[SCRIPT_MAX];
     int count, next;
     int decisions, births, deaths;
+    Senses last_senses;
 } Script;
 
 static bool script_create(Brain *b, const Settings *s, uint64_t seed)
@@ -27,9 +28,9 @@ static bool script_decide(Brain *b, uint32_t id, const Genome *g,
 {
     (void)id;
     (void)g;
-    (void)in;
     Script *sc = b->state;
     sc->decisions++;
+    sc->last_senses = *in;
     if (sc->next >= sc->count) {
         return false;
     }
@@ -51,6 +52,12 @@ static void script_on_death(Brain *b, uint32_t id)
     (void)id;
     Script *sc = b->state;
     sc->deaths++;
+}
+
+Senses brain_script_last_senses(const Brain *b)
+{
+    const Script *sc = b->state;
+    return sc->last_senses;
 }
 
 void brain_script_load(Brain *b, const Action *actions, int count)

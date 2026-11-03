@@ -83,7 +83,7 @@ static void test_follows_until_death(void)
     CHECK(in.following);
 
     /* It moves north one cell; the cursor goes with it. */
-    creature_act(&sim.world, &sim.pool, idx, (Action){ACT_MOVE, 1}, &sim.set,
+    creature_act(&sim.world, &sim.pool, idx, (Action){.kind = ACT_MOVE, .hold = 1}, &sim.set,
                  &sim.rng);
     CHECK(c->y == 5);
     inspect_update(&in, &sim);

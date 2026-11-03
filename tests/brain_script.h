@@ -21,4 +21,8 @@ int brain_script_decisions(const Brain *b);
 int brain_script_births(const Brain *b);
 int brain_script_deaths(const Brain *b);
 
+/* The senses of the last creature that asked this brain to decide. A copy, since
+ * a Senses is a struct holding its array. */
+Senses brain_script_last_senses(const Brain *b);
+
 #endif

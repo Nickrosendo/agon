@@ -207,6 +207,7 @@ static void put_creature(Writer *w, const Creature *c)
     put_u16(w, c->mate_wish);
     put_float(w, c->level);
     put_float(w, c->eaten);
+    put_floats(w, c->memory, MEMORY_VALUES);
     put_floats(w, c->genome.g, GENOME_LEN);
 }
 
@@ -524,6 +525,7 @@ static void get_creature(Reader *r, Creature *c, const Settings *set,
         fail(r, "a creature in the file is impossible");
         return;
     }
+    get_floats(r, c->memory, MEMORY_VALUES, -1.0f, 1.0f);
     get_genome(r, &c->genome, set);
 }
 

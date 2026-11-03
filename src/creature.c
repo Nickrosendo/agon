@@ -319,6 +319,30 @@ static void sense_ray(const World *w, const Pool *p, const Creature *c,
     }
 }
 
+/* The shares of the 8 cells around holding relatives and strangers. Who counts
+ * as a relative is decided by how alike the genomes are, not by any family
+ * name: all a creature can have to go on is what it can tell by looking. */
+static void sense_neighbours(const World *w, const Pool *p, const Creature *c,
+                             const Settings *s, Senses *out)
+{
+    int kin = 0, strangers = 0;
+    for (int dir = 0; dir < 8; dir++) {
+        int cell = world_idx(w, c->x + AROUND_X[dir], c->y + AROUND_Y[dir]);
+        int other = w->occupant[cell];
+        if (other < 0) {
+            continue;
+        }
+        const Creature *o = &p->items[other];
+        if (genome_kinship(&c->genome, &o->genome) >= s->kin_sense) {
+            kin++;
+        } else {
+            strangers++;
+        }
+    }
+    out->v[SENSE_KIN_NEAR] = (float)kin / 8.0f;
+    out->v[SENSE_STRANGERS_NEAR] = (float)strangers / 8.0f;
+}
+
 void creature_sense(const World *w, const Pool *p, int idx,
                     const Settings *s, Senses *out)
 {
@@ -340,6 +364,14 @@ void creature_sense(const World *w, const Pool *p, int idx,
     int ahead = cell_towards(w, c->x, c->y, c->heading);
     out->v[SENSE_BLOCKED] =
         w->terrain[ahead] != TERRAIN_SOIL || w->occupant[ahead] >= 0 ? 1.0f : 0.0f;
+
+    /* The drives. Hunger is the sense of energy the other way up. */
+    out->v[SENSE_HUNGER] = 1.0f - out->v[SENSE_ENERGY];
+    out->v[SENSE_PAIN] = clamp01(1.0f - c->health / creature_max_health(c, s));
+    sense_neighbours(w, p, c, s, out);
+    for (int m = 0; m < MEMORY_VALUES; m++) {
+        out->v[SENSE_MEMORY + m] = c->memory[m];
+    }
 
     /* The directions of the three rays, in RAY_ order. */
     const uint8_t ray_heading[RAY_COUNT] = {

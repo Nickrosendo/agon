@@ -65,6 +65,7 @@ typedef struct {
      * read as a hit by creature 0 on tick 0. */
     uint32_t hits_taken;
     Hit recent_hits[HITS_KEPT];
+    float memory[MEMORY_VALUES]; /* what its brain last chose to keep */
     uint32_t age;       /* ticks lived */
     Action current;     /* what the brain last said */
     uint16_t hold_left; /* ticks of current still to do */
@@ -157,7 +158,8 @@ void pool_kill(Pool *p, World *w, int idx, const Settings *s, DeathCause cause);
 
 /* Fills *out with what creature idx senses: its energy, age, size, meat
  * digestion gene, whether it is the mating season and whether the way ahead
- * is blocked; and along each of its three rays (ahead, left,
+ * is blocked; its hunger, its wounds, the relatives and strangers around it, and
+ * its memory; and along each of its three rays (ahead, left,
  * right) the vegetation and the scent of carrion in the first cell, the
  * closeness of the nearest plant within sight, and
  * the nearest creature within sight: its closeness, its size relative to

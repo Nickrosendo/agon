@@ -25,6 +25,10 @@
  * Births are always counted. */
 #define COUNT_DEATHS_FROM 5000
 
+/* A hunter keeps being watched for this many ticks after it loses sight of
+ * whoever it last saw. */
+#define LOST_SIGHT_TICKS 5
+
 typedef struct {
     bool alive;
     uint32_t id;
@@ -33,6 +37,15 @@ typedef struct {
     uint32_t age;
     uint8_t last_action;
     uint32_t still_ticks; /* ticks since it changed cell */
+    /* The fight this creature is in as a target, if any. */
+    uint32_t hits_taken;
+    bool in_fight;
+    uint64_t fight_start, fight_last;
+    uint32_t fight_hits;
+    /* Where a hunter last saw someone, and for how many ticks it has not. */
+    bool saw_someone;
+    int seen_x, seen_y;
+    int lost_for;
 } Shadow;
 
 typedef struct {
@@ -51,6 +64,14 @@ typedef struct {
     uint64_t adult_deaths;
     uint32_t oldest_at_death;
     uint64_t still_deaths;
+    uint64_t still_starving_deaths;
+    uint64_t fights, fight_ticks, fight_hits;
+    uint64_t chase_towards, chase_away;
+    double target_kin, other_neighbour_kin;
+    uint64_t target_kin_n, other_neighbour_kin_n;
+    double beside_kin, anyone_kin;
+    uint64_t beside_kin_n;
+    uint32_t next_pick; /* steps through the slots for comparison picks */
     uint64_t still_by_action[ACT_COUNT];
     uint64_t ticks_at_plant_cap;
     uint64_t ticks_counted;
@@ -70,9 +91,182 @@ static void record_death(Report *rep, const Shadow *sh, const Settings *set)
     }
     if (sh->still_ticks >= STILL_TICKS) {
         rep->still_deaths++;
+        /* At 0 energy a tick ago: it had been losing health to hunger. */
+        if (sh->energy <= 0.0f) {
+            rep->still_starving_deaths++;
+        }
         if (sh->last_action < ACT_COUNT) {
             rep->still_by_action[sh->last_action]++;
         }
+    }
+}
+
+static void close_fight(const Shadow *sh, Report *rep)
+{
+    rep->fights++;
+    rep->fight_ticks += sh->fight_last - sh->fight_start + 1;
+    rep->fight_hits += sh->fight_hits;
+}
+
+/* Keeps count of a target's fight. A fight ends when gang_window ticks pass with
+ * no hit: the same span in which others' hits still help an attacker. */
+static void watch_fight(const Sim *s, const Creature *c, Shadow *sh, Report *rep)
+{
+    uint64_t window = (uint64_t)s->set.gang_window;
+    uint32_t new_hits = c->hits_taken - sh->hits_taken;
+    if (sh->in_fight && s->tick - sh->fight_last > window) {
+        close_fight(sh, rep);
+        sh->in_fight = false;
+    }
+    if (new_hits == 0) {
+        return;
+    }
+    if (!sh->in_fight) {
+        sh->in_fight = true;
+        sh->fight_start = s->tick;
+        sh->fight_hits = 0;
+    }
+    sh->fight_last = s->tick;
+    sh->fight_hits += new_hits;
+}
+
+/* The living creature with this id on one of the four cells beside (x, y), or
+ * NULL. Whoever lands a hit stands there, unless it has moved since, in the same
+ * tick; those few are left out rather than searched for across the pool. */
+static const Creature *beside_with_id(const Sim *s, int x, int y, uint32_t id)
+{
+    static const int DX[4] = {0, 1, 0, -1}, DY[4] = {-1, 0, 1, 0};
+    for (int k = 0; k < 4; k++) {
+        int other = s->world.occupant[world_idx(&s->world, x + DX[k], y + DY[k])];
+        if (other >= 0 && s->pool.items[other].id == id) {
+            return &s->pool.items[other];
+        }
+    }
+    return NULL;
+}
+
+/* A living creature picked without the Sim's random numbers: the next one along
+ * from a position stepped by a large prime. NULL when none is found. */
+static const Creature *any_creature(const Sim *s, Report *rep)
+{
+    uint32_t capacity = (uint32_t)s->pool.capacity;
+    rep->next_pick = (rep->next_pick + 7919u) % capacity;
+    for (uint32_t k = 0; k < capacity; k++) {
+        const Creature *c = &s->pool.items[(rep->next_pick + k) % capacity];
+        if (c->alive) {
+            return c;
+        }
+    }
+    return NULL;
+}
+
+/* For one hit by a hunter on target: how related it was to whom it chose, against
+ * another neighbour it could have chosen; and, when someone else had just hit the
+ * same target, how related those two were, against anyone in the world. */
+static void watch_hit_kinship(const Sim *s, const Creature *target,
+                              const Hit *hit, Report *rep)
+{
+    const Creature *by = beside_with_id(s, target->x, target->y, hit->by);
+    if (by == NULL || !creature_is_hunter(by)) {
+        return;
+    }
+    rep->target_kin += (double)genome_kinship(&by->genome, &target->genome);
+    rep->target_kin_n++;
+    static const int AX[8] = {0, 1, 1, 1, 0, -1, -1, -1};
+    static const int AY[8] = {-1, -1, 0, 1, 1, 1, 0, -1};
+    for (int k = 0; k < 8; k++) {
+        int cell = world_idx(&s->world, by->x + AX[k], by->y + AY[k]);
+        int other = s->world.occupant[cell];
+        if (other >= 0 && &s->pool.items[other] != target) {
+            rep->other_neighbour_kin +=
+                (double)genome_kinship(&by->genome, &s->pool.items[other].genome);
+            rep->other_neighbour_kin_n++;
+            break;
+        }
+    }
+    uint32_t kept = target->hits_taken < HITS_KEPT ? target->hits_taken : HITS_KEPT;
+    for (uint32_t i = 0; i < kept; i++) {
+        const Hit *h = &target->recent_hits[i];
+        if (h->by == hit->by || hit->tick - h->tick > (uint32_t)s->set.gang_window) {
+            continue;
+        }
+        const Creature *also = beside_with_id(s, target->x, target->y, h->by);
+        const Creature *anyone = any_creature(s, rep);
+        if (also != NULL && anyone != NULL) {
+            rep->beside_kin += (double)genome_kinship(&by->genome, &also->genome);
+            rep->anyone_kin += (double)genome_kinship(&by->genome, &anyone->genome);
+            rep->beside_kin_n++;
+        }
+    }
+}
+
+/* The newest hits this creature took since the shadow last looked. */
+static void watch_new_hits(const Sim *s, const Creature *c, const Shadow *sh,
+                           Report *rep)
+{
+    uint32_t new_hits = c->hits_taken - sh->hits_taken;
+    if (new_hits > HITS_KEPT) {
+        new_hits = HITS_KEPT;
+    }
+    for (uint32_t k = 0; k < new_hits; k++) {
+        uint32_t at = (c->hits_taken - 1u - k) % HITS_KEPT;
+        watch_hit_kinship(s, c, &c->recent_hits[at], rep);
+    }
+}
+
+/* Steps between two cells on a world that wraps, along both axes together. */
+static int wrapped_distance(const World *w, int x0, int y0, int x1, int y1)
+{
+    int dx = abs(x1 - x0), dy = abs(y1 - y0);
+    dx = dx < w->w - dx ? dx : w->w - dx;
+    dy = dy < w->h - dy ? dy : w->h - dy;
+    return dx + dy;
+}
+
+/* Fills in where a hunter now sees someone, or counts one more tick of not. Reads
+ * through creature_sense, which draws no random numbers. */
+static void watch_sight(const Sim *s, int idx, const Creature *c, Shadow *sh)
+{
+    static const int DX[4] = {0, 1, 0, -1}, DY[4] = {-1, 0, 1, 0};
+    Senses in;
+    creature_sense(&s->world, &s->pool, idx, &s->set, &in);
+    /* The rays' headings, in RAY_ order: ahead, then left and right. */
+    const int headings[RAY_COUNT] = {c->heading, (c->heading + 3) % 4,
+                                     (c->heading + 1) % 4};
+    int sight = creature_sight(c, &s->set);
+    for (int ray = 0; ray < RAY_COUNT; ray++) {
+        float near = in.v[SENSE_RAYS + ray * RAY_VALUES + RAY_NEAR];
+        if (near > 0.0f) {
+            /* The sense is 1 - (d - 1) / sight, undone here for d. + 0.5f rounds. */
+            int d = 1 + (int)((1.0f - near) * (float)sight + 0.5f);
+            sh->saw_someone = true;
+            sh->seen_x = c->x + d * DX[headings[ray]];
+            sh->seen_y = c->y + d * DY[headings[ray]];
+            sh->lost_for = 0;
+            return;
+        }
+    }
+    sh->lost_for++;
+}
+
+/* Whether a hunter that has just lost sight of someone is walking towards where
+ * they were. Half and half is what walking about at random would give. */
+static void watch_chase(const Sim *s, const Creature *c, const Shadow *before,
+                        Report *rep)
+{
+    bool moved = c->x != before->x || c->y != before->y;
+    if (!moved || !before->saw_someone || before->lost_for < 1 ||
+        before->lost_for > LOST_SIGHT_TICKS) {
+        return;
+    }
+    int was = wrapped_distance(&s->world, before->x, before->y, before->seen_x,
+                               before->seen_y);
+    int now = wrapped_distance(&s->world, c->x, c->y, before->seen_x,
+                               before->seen_y);
+    if (now < was) {
+        rep->chase_towards++;
+    } else if (now > was) {
+        rep->chase_away++;
     }
 }
 
@@ -83,8 +277,12 @@ static void watch_slots(const Sim *s, Shadow *shadow, Report *rep)
         const Creature *c = &s->pool.items[i];
         Shadow *sh = &shadow[i];
         bool same = sh->alive && c->alive && c->id == sh->id;
-        if (sh->alive && !same && s->tick > COUNT_DEATHS_FROM) {
+        bool counting = s->tick > COUNT_DEATHS_FROM;
+        if (sh->alive && !same && counting) {
             record_death(rep, sh, &s->set);
+            if (sh->in_fight) {
+                close_fight(sh, rep);
+            }
         }
         if (!c->alive) {
             sh->alive = false;
@@ -94,16 +292,27 @@ static void watch_slots(const Sim *s, Shadow *shadow, Report *rep)
         if (same && c->x == sh->x && c->y == sh->y) {
             still = sh->still_ticks + 1;
         }
-        *sh = (Shadow){
-            .alive = true,
-            .id = c->id,
-            .x = c->x,
-            .y = c->y,
-            .energy = c->energy,
-            .age = c->age,
-            .last_action = c->current.kind,
-            .still_ticks = still,
-        };
+        /* A copy to carry on from, or for a new creature an empty one. A struct
+         * can be assigned whole; its fields are copied, not shared. */
+        Shadow next = same ? *sh : (Shadow){0};
+        if (counting) {
+            watch_new_hits(s, c, &next, rep);
+            watch_fight(s, c, &next, rep);
+            if (creature_is_hunter(c)) {
+                watch_chase(s, c, &next, rep);
+                watch_sight(s, i, c, &next);
+            }
+        }
+        next.alive = true;
+        next.id = c->id;
+        next.x = c->x;
+        next.y = c->y;
+        next.energy = c->energy;
+        next.age = c->age;
+        next.last_action = c->current.kind;
+        next.still_ticks = still;
+        next.hits_taken = c->hits_taken;
+        *sh = next;
     }
 }
 
@@ -149,6 +358,41 @@ static void print_header(void)
            "woun  old still  rest left right move bite  mate atck  capt full  szmax szmean\n");
 }
 
+/* What no pass rule depends on: fights, chasing and who fights alongside whom. */
+static void print_behaviour(const Sim *s, const Report *rep)
+{
+    double length = rep->fights == 0
+                        ? 0.0
+                        : (double)rep->fight_ticks / (double)rep->fights;
+    double hits = rep->fights == 0
+                      ? 0.0
+                      : (double)rep->fight_hits / (double)rep->fights;
+    double target = rep->target_kin_n == 0
+                        ? 0.0
+                        : rep->target_kin / (double)rep->target_kin_n;
+    double other = rep->other_neighbour_kin_n == 0
+                       ? 0.0
+                       : rep->other_neighbour_kin /
+                             (double)rep->other_neighbour_kin_n;
+    double beside = rep->beside_kin_n == 0
+                        ? 0.0
+                        : rep->beside_kin / (double)rep->beside_kin_n;
+    double anyone = rep->beside_kin_n == 0
+                        ? 0.0
+                        : rep->anyone_kin / (double)rep->beside_kin_n;
+    printf("  seed %llu: still+starving %d%% | fights %llu, length %.1f ticks, "
+           "%.1f hits | chasing towards %d%% of %llu moves | kin of target %.2f, "
+           "other neighbour %.2f (%llu) | kin of co-attacker %.2f, anyone %.2f "
+           "(%llu)\n",
+           (unsigned long long)s->seed,
+           percent(rep->still_starving_deaths, rep->deaths),
+           (unsigned long long)rep->fights, length, hits,
+           percent(rep->chase_towards, rep->chase_towards + rep->chase_away),
+           (unsigned long long)(rep->chase_towards + rep->chase_away), target,
+           other, (unsigned long long)rep->other_neighbour_kin_n, beside, anyone,
+           (unsigned long long)rep->beside_kin_n);
+}
+
 static void print_row(const Sim *s, const Report *rep)
 {
     char extinct[32] = "-";
@@ -187,6 +431,7 @@ static void print_row(const Sim *s, const Report *rep)
     printf(" %4d%% %4s %6.1f %6.2f\n",
            percent(rep->ticks_at_plant_cap, rep->ticks_counted),
            rep->pool_filled ? "YES" : "no", (double)largest, (double)mean_size);
+    print_behaviour(s, rep);
 }
 
 /* Runs the world. The Sim is changed only by sim_step. */

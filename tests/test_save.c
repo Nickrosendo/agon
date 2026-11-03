@@ -209,6 +209,7 @@ static void test_mate_wish_survives_save(void)
     a.pool.deaths[DEATH_HUNGER] = 11;
     a.pool.items[slot].health = 12.5f;
     a.pool.items[slot].grown = 3.25f;
+    a.pool.items[slot].memory[1] = -0.75f;
     a.pool.items[slot].hits_taken = 2;
     a.pool.items[slot].recent_hits[1] = (Hit){.by = 42, .tick = 77};
     char err[256] = "";
@@ -220,6 +221,7 @@ static void test_mate_wish_survives_save(void)
     CHECK(b.pool.deaths[DEATH_HUNGER] == 11);
     CHECK(b.pool.items[slot].health == 12.5f);
     CHECK(b.pool.items[slot].grown == 3.25f);
+    CHECK(b.pool.items[slot].memory[1] == -0.75f);
     CHECK(b.pool.items[slot].hits_taken == 2);
     CHECK(b.pool.items[slot].recent_hits[1].by == 42);
     CHECK(b.pool.items[slot].recent_hits[1].tick == 77);
@@ -395,8 +397,9 @@ enum {
     AT_MATE_WISH = 111,
     AT_LEVEL = 113,
     AT_EATEN = 117,
-    AT_GENOME = 121,
-    SLOT_LIVING_BYTES = 121 + 4 * GENOME_LEN,
+    AT_MEMORY = 121,
+    AT_GENOME = 133,
+    SLOT_LIVING_BYTES = 133 + 4 * GENOME_LEN,
 };
 
 typedef struct {
@@ -701,6 +704,8 @@ static void test_refuses_impossible_creature(void)
     refuses_u32(&t, c + AT_ENERGY, BITS_HUGE, "out of range");
     refuses_u32(&t, c + AT_HEALTH, BITS_NAN, "out of range");
     refuses_u32(&t, c + AT_GROWN, BITS_NAN, "out of range");
+    refuses_u32(&t, c + AT_MEMORY, BITS_NAN, "out of range");
+    refuses_u32(&t, c + AT_MEMORY, 0x40000000u /* 2.0 */, "out of range");
     refuses_u32(&t, c + AT_GROWN, 0xBF800000u /* -1.0 */, "out of range");
     refuses_u32(&t, c + AT_MOVE_POINTS, BITS_NAN, "out of range");
     refuses_u32(&t, c + AT_LEVEL, BITS_NAN, "out of range");
