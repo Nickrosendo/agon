@@ -121,6 +121,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
         run: |
+          # This job has no checkout, so the tag's message comes from the API.
+          # tail skips its subject line and the blank line after it.
+          sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" --jq .object.sha)
+          gh api "repos/$GITHUB_REPOSITORY/git/tags/$sha" --jq .message | tail -n +3 > notes.txt
           gh release create "$TAG" agon-window-windows.zip \
-            --repo "$GITHUB_REPOSITORY" --verify-tag --notes-from-tag \
+            --repo "$GITHUB_REPOSITORY" --verify-tag --notes-file notes.txt \
             --title "agon ${TAG#v}"
