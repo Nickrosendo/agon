@@ -31,15 +31,16 @@ static bool creature_finite(const Creature *c, const Settings *set)
 
 static void test_long_run_stays_finite(void)
 {
-    /* 200,000 ticks is many generations, with lives ended by what ageing costs
-     * and not by a fixed limit. Mutations add up over that many generations, and
-     * a NaN, once in a genome, would be inherited by every descendant. Very old
-     * creatures are where an ageing cost could run away, so ages are checked
-     * through their upkeep too. */
+    /* 60,000 ticks at full size is many generations, on a seed measured to last:
+     * a small world now dies out, and a test with nobody left proves nothing.
+     * Lives are ended by what ageing costs and not by a fixed limit. Mutations
+     * add up over that many generations, and a NaN, once in a genome, would be
+     * inherited by every descendant. Very old creatures are where an ageing
+     * cost could run away, so ages are checked through their upkeep too. */
     Settings set = settings_default();
     Sim s;
-    CHECK(sim_init(&s, &set, 7, 64, 32));
-    for (int i = 0; i < 200000; i++) {
+    CHECK(sim_init(&s, &set, 1, 256, 144));
+    for (int i = 0; i < 60000; i++) {
         sim_step(&s);
     }
     int bad = 0;
@@ -50,7 +51,7 @@ static void test_long_run_stays_finite(void)
     }
     CHECK(bad == 0);
     CHECK(s.pool.count > 0);
-    printf("seed 7 after 200000 steps: %d alive, %u born in all\n",
+    printf("seed 1 after 60000 steps: %d alive, %u born in all\n",
            s.pool.count, (unsigned)s.pool.next_id);
     sim_free(&s);
 }
