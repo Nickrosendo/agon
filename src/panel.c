@@ -328,8 +328,8 @@ static PanelLine group_line(const ColourGroup *g)
 }
 
 /* Room for every line panel_draw can make: 18 fixed lines, 2 more before
- * the groups and one per group. */
-#define PANEL_MAX_LINES (20 + PANEL_GROUP_LINES)
+ * the groups, the refused births and one per group. */
+#define PANEL_MAX_LINES (21 + PANEL_GROUP_LINES)
 
 /* Appends line to lines, which holds *n lines so far, and counts it. A
  * line that does not fit is dropped: C would let lines[*n] be written
@@ -387,6 +387,10 @@ void panel_draw(const Sim *s, int col, int row0, int rows)
     PanelLine oldest_line = count_line("oldest", 0);
     oldest_line.value = oldest;
     add_line(lines, &n, oldest_line);
+    /* Only when it has happened: a full pool must never be quiet. */
+    if (s->pool.births_refused > 0) {
+        add_line(lines, &n, count_line("refused", s->pool.births_refused));
+    }
     add_line(lines, &n, heading(""));
     add_line(lines, &n, heading(" map"));
     add_line(lines, &n,

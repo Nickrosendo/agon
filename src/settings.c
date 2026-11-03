@@ -47,7 +47,10 @@ Settings settings_default(void)
          * newcomers alive. Old plants nobody eats hold the cap's places,
          * and the grazed cells beside the creatures cannot sprout again. */
         .veg_max_cells = 0,
-        .pool_capacity = 4000,
+        /* Sized from measurement: with plenty of room, seeds 1 to 5 peak at 5,748,
+         * 1,393, 4,772, 1,000 and 3,718 over 20,000 ticks. Reaching the limit changes
+         * the world (seed 1 at 4,000), so it stays well clear of the peak. */
+        .pool_capacity = 8000,
         .start_share = 0.05f,
         .min_creatures = 0,
         /* A char array inside a struct can be initialised from a string

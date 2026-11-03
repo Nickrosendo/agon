@@ -234,7 +234,7 @@ static void test_panel_and_family_on_dead_world(void)
 
 /* The label as text at (col, row) on an empty canvas equals the same pixels on
  * the panel: the click rows and the words on screen cannot drift apart unseen. */
-static bool panel_row_says(const Canvas *panel, int row, const char *label)
+static bool panel_row_says(Canvas *panel, int row, const char *label)
 {
     enum { LABEL_COL = 4 }; /* the two swatch columns, the indent and a space */
     Canvas expected;
@@ -250,6 +250,9 @@ static bool panel_row_says(const Canvas *panel, int row, const char *label)
         }
     }
     canvas_free(&expected);
+    /* The window's cells remember the canvas they were last given, and this one
+     * is gone: drawing now would write into freed memory. So point them back. */
+    cells_canvas_set(panel, 0, 0);
     return same;
 }
 
@@ -265,6 +268,12 @@ static void test_clickable_rows_hold_their_words(void)
     CHECK(panel_row_says(&c, PANEL_ROW_TOP_HUNTER, "top hunter"));
     CHECK(panel_row_says(&c, PANEL_ROW_OLDEST, "oldest"));
     CHECK(!panel_row_says(&c, PANEL_ROW_OLDEST, "top hunter"));
+    /* Refused births show only once there are some, right below. */
+    CHECK(!panel_row_says(&c, PANEL_ROW_OLDEST + 1, "refused"));
+    s.pool.births_refused = 3;
+    panel_draw(&s, 0, 0, 40);
+    CHECK(panel_row_says(&c, PANEL_ROW_OLDEST + 1, "refused"));
+    CHECK(panel_row_says(&c, PANEL_ROW_OLDEST, "oldest"));
     canvas_free(&c);
     sim_free(&s);
 }

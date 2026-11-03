@@ -63,7 +63,7 @@ veg_wither_ticks = 20
 veg_max_cells = 0
 
 # most creatures alive at once (1 to 1000000)
-pool_capacity = 4000
+pool_capacity = 8000
 
 # founders of a new world, as a share of its soil (0 to 1)
 start_share = 0.05
