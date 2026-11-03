@@ -15,6 +15,7 @@
 #include "settings.h"
 #include "sim.h"
 #include "term.h"
+#include "years.h"
 
 #define FRAMES_PER_SECOND 30
 #define NANOSECONDS_PER_SECOND 1000000000L
@@ -67,16 +68,16 @@ static void sleep_until(int64_t deadline)
 static void draw_title(int cols, const Sim *sim, int speed, int paused,
                        bool inspecting, const char *notice)
 {
-    char tick[32];
-    /* tick is a uint64_t; every value a run reaches fits in an int64_t. */
-    panel_format_count(tick, sizeof(tick), (int64_t)sim->tick);
+    char year[32];
+    panel_format_count(year, sizeof(year),
+                       years_whole(sim->tick, sim->set.ticks_per_year));
     char text[320];
     /* PRIx64 expands to the right printf letters for a uint64_t on this
      * platform ("lx" here); writing %llx would be wrong on some systems.
      * Adjacent string literals are joined into one by the compiler. */
     snprintf(text, sizeof(text),
-             " agon | seed 0x%" PRIx64 " | tick %s | creatures %d | %d/s%s%s%s%s",
-             sim->seed, tick, sim->pool.count, APP_SPEEDS[speed],
+             " agon | seed 0x%" PRIx64 " | year %s | creatures %d | %d/s%s%s%s%s",
+             sim->seed, year, sim->pool.count, APP_SPEEDS[speed],
              sim_is_over(sim) ? " | game over" : paused ? " | paused" : "",
              inspecting ? " | inspect" : "",
              notice[0] != '\0' ? " | " : "", notice);
@@ -186,23 +187,28 @@ static int world_columns(int cols)
     return cols >= MIN_COLS + PANEL_COLS ? cols - PANEL_COLS : cols;
 }
 
-/* The three lines --once prints under the world. */
+/* The lines --once prints under the world. */
 static void print_summary(const Sim *sim)
 {
     const Stats *st = &sim->stats;
-    char tick[32], plants[32], oldest[32];
+    int per_year = sim->set.ticks_per_year;
+    char tick[32], year[32], plants[32], oldest[32];
+    /* tick is a uint64_t; every value a run reaches fits in an int64_t. */
     panel_format_count(tick, sizeof(tick), (int64_t)sim->tick);
+    panel_format_count(year, sizeof(year), years_whole(sim->tick, per_year));
     panel_format_count(plants, sizeof(plants), st->planted);
-    panel_format_count(oldest, sizeof(oldest), (int64_t)st->oldest_age);
-    printf("agon | seed 0x%" PRIx64 " | tick %s | world %d x %d\n", sim->seed,
-           tick, sim->world.w, sim->world.h);
+    years_format(oldest, sizeof(oldest), st->oldest_age, per_year);
+    printf("agon | seed 0x%" PRIx64 " | year %s | world %d x %d\n", sim->seed,
+           year, sim->world.w, sim->world.h);
     printf("creatures %d: %d eat plants, %d eat meat (%d top hunters) | "
            "%d families\n",
            st->creatures, st->by_level[BAND_PLANT],
            st->by_level[BAND_MEAT] + st->by_level[BAND_TOP],
            st->by_level[BAND_TOP], st->lineages);
-    printf("plants on %s cells | carrion on %d cells | oldest %s ticks\n",
+    printf("plants on %s cells | carrion on %d cells | oldest %s\n",
            plants, st->carrion_cells, oldest);
+    /* The one place an exact tick is shown, for comparing runs. */
+    printf("debug: tick %s\n", tick);
     if (sim_is_over(sim)) {
         char lines[APP_OVER_LINES][APP_OVER_COLS];
         int n = app_game_over_lines(sim, lines);

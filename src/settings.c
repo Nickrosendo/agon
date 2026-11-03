@@ -102,6 +102,7 @@ Settings settings_default(void)
          * many creatures' whole lives, so a rise and fall of hunters fits
          * on screen. */
         .stats_every = 25,
+        .ticks_per_year = 100,
     };
     return s;
 }
@@ -217,6 +218,8 @@ static const SettingInfo TABLE[] = {
     FLOAT_ROW(scent_decay, 0, 1, "share of scent lost per tick"),
     INT_ROW(stats_every, 0, 1000000, "ticks between statistics samples "
                                      "(0: never)"),
+    INT_ROW(ticks_per_year, 1, 1000000, "ticks shown as one year (changes only "
+                                        "the display)"),
 };
 
 int settings_count(void)

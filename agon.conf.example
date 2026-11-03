@@ -202,3 +202,6 @@ scent_decay = 0.02
 
 # ticks between statistics samples (0: never) (0 to 1000000)
 stats_every = 25
+
+# ticks shown as one year (changes only the display) (1 to 1000000)
+ticks_per_year = 100

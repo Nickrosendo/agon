@@ -209,6 +209,11 @@ typedef struct {
      * is built). The panel's graphs show the last HISTORY samples (see
      * stats.h), so they span HISTORY * stats_every ticks. */
     int stats_every;
+
+    /* How many ticks people read as a year. Display code alone reads this, so it
+     * cannot change how a world evolves. At the default speed of 10 ticks a
+     * second, the default makes a year 10 seconds. */
+    int ticks_per_year;
 } Settings;
 
 Settings settings_default(void);

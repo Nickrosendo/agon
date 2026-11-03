@@ -3,9 +3,11 @@
 #include <assert.h>   /* static_assert */
 #include <inttypes.h> /* PRId64 */
 #include <stdio.h>    /* snprintf */
+#include <string.h>   /* strlen */
 
 #include "cells.h"
 #include "palette.h"
+#include "years.h"
 
 /* No swatch on this line: a heading or a blank line. */
 #define NO_SWATCH -1
@@ -199,6 +201,9 @@ typedef struct {
     float meat;      /* for HUE_SWATCH cells: 0 plant-eater .. 1 meat */
     const char *label;
     int64_t count;
+    /* Text to show in place of the count, or NULL. Only a pointer: the characters
+     * belong to the caller, and must outlast the drawing of this line. */
+    const char *value;
     const History *graph; /* NULL for an ordinary line */
 } PanelLine;
 
@@ -237,7 +242,15 @@ static void draw_line(const PanelLine *line, int col, int row)
     render_text(col, row, " ", 1);
     draw_cell(line->swatch, line->hue, line->meat, col + 1, row);
     draw_cell(line->swatch2, line->hue2, line->meat, col + 2, row);
-    if (line->count < 0) {
+    if (line->value != NULL) {
+        /* The label's padding shrinks as the value grows, so the two together
+         * always fill the same 16 columns. The * takes the width from the
+         * argument list; a label longer than that just pushes the value right,
+         * and render_text cuts the end. */
+        int label_cols = 16 - (int)strlen(line->value);
+        snprintf(text, sizeof(text), " %-*s%s", label_cols > 0 ? label_cols : 0,
+                 line->label, line->value);
+    } else if (line->count < 0) {
         snprintf(text, sizeof(text), " %s", line->label);
     } else {
         char count[16]; /* "-9,223,372,036,854,775,808" would not fit,
@@ -367,7 +380,13 @@ void panel_draw(const Sim *s, int col, int row0, int rows)
                          "carrion", st->carrion_cells));
     add_line(lines, &n, count_line("families", st->lineages));
     /* uint32_t into int64_t: every uint32_t value fits, on every system. */
-    add_line(lines, &n, count_line("oldest", (int64_t)st->oldest_age));
+    /* Outlives the line that points at it: both last until the end of this
+     * function, where the lines have been drawn. */
+    char oldest[32];
+    years_format(oldest, sizeof(oldest), st->oldest_age, s->set.ticks_per_year);
+    PanelLine oldest_line = count_line("oldest", 0);
+    oldest_line.value = oldest;
+    add_line(lines, &n, oldest_line);
     add_line(lines, &n, heading(""));
     add_line(lines, &n, heading(" map"));
     add_line(lines, &n,
@@ -503,7 +522,9 @@ static void describe_creature(Lines *l, const Sim *s, const Creature *c)
     snprintf(text, sizeof(text), " family   #%u", (unsigned)c->lineage);
     add_text(l, text);
     add_float(l, "energy", c->energy, 1);
-    add_count(l, "age", (int64_t)c->age);
+    char age[32];
+    years_format(age, sizeof(age), c->age, set->ticks_per_year);
+    add_pair(l, "age", age);
     add_float(l, "level", c->level, 2);
     add_float(l, "food eaten", c->eaten, 0);
     add_pair(l, "hunter", creature_is_hunter(c) ? "yes" : "no");

@@ -5,6 +5,7 @@
 
 #include "panel.h" /* panel_format_count */
 #include "save.h"
+#include "years.h"
 
 const int APP_SPEEDS[] = {1, 2, 5, 10, 15, 30, 60, 120};
 
@@ -42,16 +43,17 @@ bool app_open_world(Sim *sim, const Options *o, const Settings *settings,
 int app_game_over_lines(const Sim *sim, char lines[][APP_OVER_COLS])
 {
     const WorldRecords *r = &sim->records;
+    int per_year = sim->set.ticks_per_year;
     char when[32], peak[32], age[32];
-    panel_format_count(when, sizeof(when), (int64_t)r->ended_at);
+    panel_format_count(when, sizeof(when), years_whole(r->ended_at, per_year));
     panel_format_count(peak, sizeof(peak), r->peak_population);
-    panel_format_count(age, sizeof(age), (int64_t)r->oldest_age);
+    years_format(age, sizeof(age), r->oldest_age, per_year);
     int n = 0;
     snprintf(lines[n++], APP_OVER_COLS, "game over");
     if (r->peak_population == 0) {
         snprintf(lines[n++], APP_OVER_COLS, "nobody ever lived in this world");
     } else {
-        snprintf(lines[n++], APP_OVER_COLS, "the last creature died at tick %s",
+        snprintf(lines[n++], APP_OVER_COLS, "the last creature died in year %s",
                  when);
     }
     snprintf(lines[n++], APP_OVER_COLS, "seed 0x%" PRIx64, sim->seed);
@@ -60,7 +62,7 @@ int app_game_over_lines(const Sim *sim, char lines[][APP_OVER_COLS])
         snprintf(lines[n++], APP_OVER_COLS, "oldest: nobody");
         snprintf(lines[n++], APP_OVER_COLS, "largest: nobody");
     } else {
-        snprintf(lines[n++], APP_OVER_COLS, "oldest: #%u, %s ticks",
+        snprintf(lines[n++], APP_OVER_COLS, "oldest: #%u, %s",
                  (unsigned)r->oldest_id, age);
         snprintf(lines[n++], APP_OVER_COLS, "largest: #%u, size %.2f",
                  (unsigned)r->largest_id, (double)r->largest_size);

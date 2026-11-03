@@ -26,6 +26,7 @@
 #include "scene.h"
 #include "settings.h"
 #include "sim.h"
+#include "years.h"
 
 #define FRAMES_PER_SECOND 30
 #define WINDOW_W 1280
@@ -238,16 +239,17 @@ static void handle_event(App *a, const Event *e)
 
 static void draw_title(App *a, const Creature *followed)
 {
-    char tick[32];
-    panel_format_count(tick, sizeof(tick), (int64_t)a->sim.tick);
+    char year[32];
+    panel_format_count(year, sizeof(year),
+                       years_whole(a->sim.tick, a->sim.set.ticks_per_year));
     char who[32] = "";
     if (followed != NULL) {
         snprintf(who, sizeof(who), " | following #%u", (unsigned)followed->id);
     }
     char text[400];
     snprintf(text, sizeof(text),
-             " agon | seed 0x%" PRIx64 " | tick %s | creatures %d | %d/s%s%s%s%s",
-             a->sim.seed, tick, a->sim.pool.count, APP_SPEEDS[a->speed],
+             " agon | seed 0x%" PRIx64 " | year %s | creatures %d | %d/s%s%s%s%s",
+             a->sim.seed, year, a->sim.pool.count, APP_SPEEDS[a->speed],
              sim_is_over(&a->sim) ? " | game over" : a->paused ? " | paused" : "",
              who,
              a->notice[0] != '\0' ? " | " : "", a->notice);

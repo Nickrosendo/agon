@@ -575,11 +575,11 @@ static void test_game_over_text(void)
     char lines[APP_OVER_LINES][APP_OVER_COLS];
     int n = app_game_over_lines(&s, lines);
     CHECK(n == APP_OVER_LINES);
-    CHECK(lines_hold(lines, n, "12,345"));
+    CHECK(lines_hold(lines, n, "year 123"));  /* 12,345 ticks at 100 a year */
     CHECK(lines_hold(lines, n, "0x2a"));
     CHECK(lines_hold(lines, n, "1,234"));
     CHECK(lines_hold(lines, n, "#77"));
-    CHECK(lines_hold(lines, n, "4,567"));
+    CHECK(lines_hold(lines, n, "45.6 y"));
     CHECK(lines_hold(lines, n, "#88"));
     CHECK(lines_hold(lines, n, "1.50"));
 
@@ -615,7 +615,7 @@ static void test_game_over_text_longest(void)
 /* The screen's picture, pinned as test_known_world_pixels is. */
 static void test_scene_game_over(void)
 {
-    static const uint64_t EXPECTED = 0xc23965dd7a981db5u;
+    static const uint64_t EXPECTED = 0x5beacfce67e3d665u;
     Sim s;
     make_dead_world(&s);
     Canvas c;
