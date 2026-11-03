@@ -1,7 +1,7 @@
 /*
  * genome: everything a creature inherits, as one flat array of floats.
  * The first GENE_TRAITS values are traits (size, speed, sight, plant and
- * meat digestion, hue, ageing);
+ * meat digestion, hue, ageing, armour, weapon);
  * the rest are the weights of the creature's neural network. A child takes
  * each part from one of its two parents, with small random changes.
  */
@@ -23,6 +23,8 @@ enum {
     GENE_MEAT,
     GENE_HUE,
     GENE_AGEING, /* 0 ages slowly, 1 ages quickly (see Settings) */
+    GENE_ARMOUR, /* takes off a share of every hit; costs upkeep */
+    GENE_WEAPON, /* adds to every hit landed; costs upkeep */
     GENE_TRAITS
 };
 

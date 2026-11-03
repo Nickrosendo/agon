@@ -32,9 +32,10 @@
  * being blocked: one more sense, so 6 more genes, changing every random genome;
  * then the nearest plant along each ray: three more senses, so 18 more genes;
  * then fights: one more action, so 7 more genes, a bite that only eats, and
- * health and hits in the fingerprint.
+ * health and hits in the fingerprint; then armour and weapon: two more genes,
+ * changing every random genome.
  */
-#define SEED_7_AFTER_500 0x0a1be8aa283e5153ULL
+#define SEED_7_AFTER_500 0xee0aca5b8247357fULL
 
 static void test_same_seed_same_checksum(void)
 {

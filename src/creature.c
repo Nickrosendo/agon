@@ -190,7 +190,9 @@ float creature_upkeep_cost(const Creature *c, const Settings *s)
     return s->upkeep_base + s->size_upkeep * creature_size(c, s) +
            s->speed_upkeep * creature_speed(c, s) +
            s->sight_upkeep * (float)creature_sight(c, s) +
-           s->digest_upkeep * digest * digest + ageing_cost(c, s);
+           s->digest_upkeep * digest * digest + ageing_cost(c, s) +
+           s->armour_upkeep * c->genome.g[GENE_ARMOUR] +
+           s->weapon_upkeep * c->genome.g[GENE_WEAPON];
 }
 
 /* The energy at which this creature may mate: bigger bodies need more. */
@@ -375,6 +377,18 @@ static void note_hit(Creature *target, uint32_t by, uint32_t now)
     target->hits_taken++;
 }
 
+/* What one landed hit takes from the target, at attacker size a. A share of it
+ * is blocked rather than an amount, so armour never makes anyone untouchable at
+ * the default setting. The floor is for an armour_block above 1, where the
+ * share would go negative and a hit would heal. */
+static float hit_damage(const Creature *c, const Creature *target, float a,
+                        const Settings *s)
+{
+    float raised = 1.0f + s->weapon_damage * c->genome.g[GENE_WEAPON];
+    float left = 1.0f - s->armour_block * target->genome.g[GENE_ARMOUR];
+    return s->bite_damage * a * raised * (left > 0.0f ? left : 0.0f);
+}
+
 /* An attack on whatever stands ahead. It costs the same hit, miss or swing at
  * nothing. The target is only hurt: if its health reaches 0 it stops acting, and
  * the end-of-tick accounting kills it and leaves its body as carrion, so the
@@ -394,7 +408,7 @@ static void act_attack(const World *w, Pool *p, int idx, const Settings *s,
     float chance = attack_odds(a, creature_size(target, s), s->attack_steepness,
                                others, s->gang_bonus);
     if (rng_unit(r) < chance) {
-        target->health -= s->bite_damage * a;
+        target->health -= hit_damage(c, target, a, s);
         note_hit(target, c->id, p->now);
     }
 }

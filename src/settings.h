@@ -187,6 +187,13 @@ typedef struct {
     float attack_cost;
     float gang_bonus;
     int gang_window;
+    /* The genes of a fight. A hit is multiplied by 1 + weapon_damage * weapon
+     * gene, then by 1 - armour_block * armour gene, never below 0. Each gene at
+     * full value costs its upkeep every tick. */
+    float armour_block;
+    float weapon_damage;
+    float armour_upkeep;
+    float weapon_upkeep;
     /* Health. A body holds health_per_size * size. Fed creatures heal heal_rate
      * per tick at heal_cost energy per point; at 0 energy a creature loses
      * starve_damage per tick instead. Death comes only at 0 health. */

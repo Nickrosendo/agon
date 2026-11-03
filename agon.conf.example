@@ -182,6 +182,18 @@ gang_bonus = 0.5
 # ticks a hit counts towards those odds (0 to 65535)
 gang_window = 10
 
+# share of a hit full armour takes off (0 to 1e+06)
+armour_block = 0.7
+
+# share a full weapon adds to a hit (0 to 1e+06)
+weapon_damage = 1
+
+# upkeep of full armour (0 to 1e+06)
+armour_upkeep = 0.05
+
+# upkeep of a full weapon (0 to 1e+06)
+weapon_upkeep = 0.05
+
 # health of an unhurt body, by size (0.001 to 1e+06)
 health_per_size = 30
 

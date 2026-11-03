@@ -1651,6 +1651,66 @@ static void test_born_at_full_health(void)
     world_free(&w);
 }
 
+/* A hit from one creature of size 1 on another, with these two genes. */
+static float damage_with(float weapon, float armour, const Settings *s)
+{
+    World w;
+    Pool p;
+    int a, t;
+    Rng r;
+    rng_seed(&r, 3);
+    two_neighbours(&w, &p, &a, &t);
+    p.items[a].genome.g[GENE_WEAPON] = weapon;
+    p.items[t].genome.g[GENE_ARMOUR] = armour;
+    p.items[t].health = 1000.0f;
+    /* Attacks until one lands: even odds, so this ends after a few. */
+    for (int k = 0; k < 200 && p.items[t].health == 1000.0f; k++) {
+        creature_act(&w, &p, a, (Action){ACT_ATTACK, 1}, s, &r);
+    }
+    float damage = 1000.0f - p.items[t].health;
+    pool_free(&p);
+    world_free(&w);
+    return damage;
+}
+
+static void test_armour_reduces_damage(void)
+{
+    Settings s = settings_default();
+    float bare = damage_with(0.0f, 0.0f, &s);
+    CHECK(near(bare, s.bite_damage));
+    CHECK(near(damage_with(0.0f, 1.0f, &s), bare * (1.0f - s.armour_block)));
+    CHECK(damage_with(0.0f, 0.5f, &s) < bare);
+    CHECK(damage_with(0.0f, 0.5f, &s) > damage_with(0.0f, 1.0f, &s));
+}
+
+static void test_weapon_raises_damage(void)
+{
+    Settings s = settings_default();
+    float bare = damage_with(0.0f, 0.0f, &s);
+    CHECK(near(damage_with(1.0f, 0.0f, &s), bare * (1.0f + s.weapon_damage)));
+    CHECK(damage_with(0.5f, 0.0f, &s) > bare);
+}
+
+static void test_both_cost_upkeep(void)
+{
+    Settings s = settings_default();
+    Creature c = {.alive = true};
+    float bare = creature_upkeep_cost(&c, &s);
+    c.genome.g[GENE_ARMOUR] = 1.0f;
+    CHECK(near(creature_upkeep_cost(&c, &s) - bare, s.armour_upkeep));
+    c.genome.g[GENE_ARMOUR] = 0.0f;
+    c.genome.g[GENE_WEAPON] = 1.0f;
+    CHECK(near(creature_upkeep_cost(&c, &s) - bare, s.weapon_upkeep));
+}
+
+static void test_damage_never_below_zero(void)
+{
+    /* A setting above 1 would make the share negative, and a hit a heal. */
+    Settings s = settings_default();
+    s.armour_block = 5.0f;
+    CHECK(damage_with(0.0f, 1.0f, &s) == 0.0f);
+}
+
 int main(void)
 {
     CHECK(brain_register(&BRAIN_SCRIPT));
@@ -1713,5 +1773,9 @@ int main(void)
     test_death_causes_counted();
     test_age_limit_is_its_own_cause();
     test_born_at_full_health();
+    test_armour_reduces_damage();
+    test_weapon_raises_damage();
+    test_both_cost_upkeep();
+    test_damage_never_below_zero();
     TEST_SUMMARY();
 }
