@@ -359,6 +359,7 @@ static void test_save_over_existing_file(void)
 #define OFF_VERSION 8
 #define OFF_WIDTH 24
 #define OFF_HEIGHT 28
+#define OFF_TICK 40
 #define OFF_SETTINGS 80
 #define OFF_SIZE_FREE_SLOT 5 /* alive byte, next_free */
 
@@ -388,6 +389,7 @@ typedef struct {
     size_t size;
     size_t layers;    /* where the world's layers start */
     size_t histories; /* where the three histories start */
+    size_t records;   /* where the world's records start */
     size_t pool;      /* where free_head is */
     size_t living;    /* slot 0's alive byte */
     size_t free_slot; /* slot 1's alive byte */
@@ -440,7 +442,9 @@ static Tiny tiny_save(void)
     /* terrain, fertility, veg, veg_age, veg_wither, veg_rule, carrion,
      * carrion_level, scent, for 64 cells. */
     t.histories = t.layers + 64 * (1 + 4 + 1 + 2 + 1 + 1 + 4 + 4 + 4);
-    t.pool = t.histories + 3 * (HISTORY * 4 + 8);
+    t.records = t.histories + 3 * (HISTORY * 4 + 8);
+    /* peak, oldest id and age, largest id and size, then the u64 ended_at. */
+    t.pool = t.records + 5 * 4 + 8;
     t.living = t.pool + 12; /* free_head, next_id, births_refused */
     t.free_slot = t.living + SLOT_LIVING_BYTES;
     CHECK(t.size == t.free_slot + OFF_SIZE_FREE_SLOT);
@@ -604,6 +608,64 @@ static void test_refuses_impossible_histories(void)
     free(t.bytes);
 }
 
+static void test_refuses_impossible_records(void)
+{
+    Tiny t = tiny_save();
+    if (t.bytes == NULL) {
+        CHECK(false);
+        return;
+    }
+    refuses_u32(&t, t.records, 0xFFFFFFFFu, "records");    /* peak of -1 */
+    refuses_u32(&t, t.records, 3, "records");              /* a pool of 2 */
+    refuses_u32(&t, t.records + 16, BITS_NAN, "number");   /* largest size */
+    refuses_u32(&t, t.records + 16, 0xBF800000u, "number"); /* -1.0 */
+    /* Ended after the file's own tick, which is 0. */
+    refuses_u32(&t, t.records + 20, 1, "records");
+    refuses_u32(&t, t.records + 24, 1, "records");
+    /* A plausible date, tick 1 of 1, but a creature is alive. */
+    unsigned char *copy = malloc(t.size);
+    CHECK(copy != NULL);
+    if (copy != NULL) {
+        memcpy(copy, t.bytes, t.size);
+        put_le32(copy + OFF_TICK, 1);
+        put_le32(copy + t.records + 20, 1);
+        CHECK(load_fails(copy, t.size, "living world"));
+        free(copy);
+    }
+    free(t.bytes);
+}
+
+/* A world after its last death saves and loads like any other, and stays over. */
+static void test_dead_world_round_trip(void)
+{
+    Settings set = settings_default();
+    Sim a;
+    CHECK(sim_init(&a, &set, 5, 64, 32));
+    for (int i = 0; i < a.pool.capacity; i++) {
+        if (a.pool.items[i].alive) {
+            pool_kill(&a.pool, &a.world, i, &a.set);
+        }
+    }
+    sim_step(&a);
+    CHECK(sim_is_over(&a));
+    CHECK(a.records.ended_at == a.tick);
+    char err[256] = "";
+    CHECK(save_write(&a, SAVE_FILE, err, sizeof(err)));
+    Sim b;
+    CHECK(save_read(&b, SAVE_FILE, err, sizeof(err)));
+    CHECK(sim_is_over(&b));
+    CHECK(b.records.peak_population == a.records.peak_population);
+    CHECK(b.records.oldest_id == a.records.oldest_id);
+    CHECK(b.records.oldest_age == a.records.oldest_age);
+    CHECK(b.records.largest_id == a.records.largest_id);
+    CHECK(b.records.largest_size == a.records.largest_size);
+    CHECK(b.records.ended_at == a.records.ended_at);
+    CHECK(sim_checksum(&a) == sim_checksum(&b));
+    CHECK(b.stats.creatures == 0);
+    sim_free(&a);
+    sim_free(&b);
+}
+
 static void test_refuses_impossible_creature(void)
 {
     Tiny t = tiny_save();
@@ -765,6 +827,8 @@ int main(void)
     test_refuses_impossible_settings();
     test_refuses_impossible_layers();
     test_refuses_impossible_histories();
+    test_refuses_impossible_records();
+    test_dead_world_round_trip();
     test_refuses_impossible_creature();
     test_refuses_creature_off_soil();
     test_refuses_broken_free_list();

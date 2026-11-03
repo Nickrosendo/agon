@@ -26,9 +26,11 @@
  * cap, no plants from nothing, and founders by share of the soil; then
  * starting plants with mixed ages and a rule that can sprout from one plant;
  * then the mating season: one more sense, so 6 more genes, and more mating;
- * then ageing: one more gene, and upkeep that rises with age.
+ * then ageing: one more gene, and upkeep that rises with age; then the world's
+ * records, added to the fingerprint: the world itself is unchanged, shown by
+ * the pinned pictures in test_scene.c staying as they were.
  */
-#define SEED_7_AFTER_500 0x59af7c003573e41bULL
+#define SEED_7_AFTER_500 0xd0da95007f26ae27ULL
 
 static void test_same_seed_same_checksum(void)
 {
@@ -265,8 +267,152 @@ static void test_sim_follows_the_season(void)
     sim_free(&s);
 }
 
+/* A world with only the creatures the test places, on all-soil ground. */
+static void make_empty_world(Sim *s)
+{
+    Settings set = settings_default();
+    set.start_share = 0.0f;
+    set.veg_start_chance = 0.0f;
+    CHECK(sim_init(s, &set, 7, 64, 32));
+    for (int i = 0; i < 64 * 32; i++) {
+        s->world.terrain[i] = TERRAIN_SOIL;
+    }
+}
+
+/* A creature with plenty of energy, far enough from the others not to mate. */
+static Creature *place_one(Sim *s, int x, int y, uint32_t age, float size_gene)
+{
+    int slot = pool_spawn(&s->pool, &s->world, x, y);
+    CHECK(slot >= 0);
+    Creature *c = &s->pool.items[slot];
+    c->energy = 50.0f;
+    c->age = age;
+    c->genome.g[GENE_SIZE] = size_gene;
+    return c;
+}
+
+static void test_records_start_from_the_founders(void)
+{
+    Settings set = settings_default();
+    Sim s;
+    CHECK(sim_init(&s, &set, 7, 64, 32));
+    CHECK(s.pool.count > 0);
+    CHECK(s.records.peak_population == s.pool.count);
+    CHECK(s.records.largest_size > 0.0f);
+    CHECK(s.records.ended_at == 0);
+    /* A new world forgets the old one's records. */
+    s.records.oldest_age = 123456;
+    s.records.peak_population = 1000000;
+    CHECK(sim_reseed(&s, 8));
+    CHECK(s.records.oldest_age == 0);
+    CHECK(s.records.peak_population == s.pool.count);
+    sim_free(&s);
+}
+
+static void test_records_follow_the_world(void)
+{
+    Sim s;
+    make_empty_world(&s);
+    Creature *old = place_one(&s, 2, 2, 500, 0.2f);
+    Creature *big = place_one(&s, 30, 2, 10, 1.0f);
+    place_one(&s, 2, 20, 20, 0.5f);
+    uint32_t old_id = old->id;
+    uint32_t big_id = big->id;
+    float big_size = creature_size(big, &s.set);
+    sim_step(&s);
+    CHECK(s.records.peak_population >= 3);
+    CHECK(s.records.oldest_id == old_id);
+    CHECK(s.records.oldest_age == 501); /* one tick older */
+    CHECK(s.records.largest_id == big_id);
+    CHECK(s.records.largest_size == big_size);
+
+    /* Records stay when the ones who set them die. */
+    int peak = s.records.peak_population;
+    kill_everyone(&s);
+    sim_step(&s);
+    CHECK(s.records.peak_population == peak);
+    CHECK(s.records.oldest_id == old_id && s.records.oldest_age == 501);
+    CHECK(s.records.largest_id == big_id);
+    sim_free(&s);
+}
+
+/* Reading the records and asking whether the world is over must leave it as it
+ * would have been. */
+static void test_records_do_not_change_the_world(void)
+{
+    Settings set = settings_default();
+    Sim plain, read;
+    CHECK(sim_init(&plain, &set, 3, 64, 32));
+    CHECK(sim_init(&read, &set, 3, 64, 32));
+    int total = 0;
+    for (int t = 0; t < 300; t++) {
+        sim_step(&plain);
+        sim_step(&read);
+        total += read.records.peak_population + (sim_is_over(&read) ? 1 : 0);
+    }
+    CHECK(total > 0);
+    CHECK(sim_checksum(&plain) == sim_checksum(&read));
+    sim_free(&plain);
+    sim_free(&read);
+}
+
+/* The last creature starves: over from that tick on, and the date stays. */
+static void test_is_over(void)
+{
+    Sim s;
+    make_empty_world(&s);
+    CHECK(sim_is_over(&s));        /* nobody has ever lived here */
+    CHECK(s.records.ended_at == 0);
+    sim_step(&s);
+    CHECK(s.records.ended_at == 0); /* nobody died, so nothing ended */
+
+    Creature *c = place_one(&s, 5, 5, 0, 0.5f);
+    CHECK(!sim_is_over(&s));
+    sim_step(&s);
+    CHECK(!sim_is_over(&s));
+    CHECK(s.records.ended_at == 0);
+
+    c->energy = 0.000001f;
+    uint64_t last_tick = s.tick;
+    sim_step(&s);
+    CHECK(sim_is_over(&s));
+    CHECK(s.records.ended_at == last_tick + 1);
+    CHECK(s.records.ended_at == s.tick);
+    /* The sample is taken at the end too, so the panel does not go on showing
+     * a living population that is several ticks out of date. */
+    CHECK(s.stats.creatures == 0);
+    CHECK(s.stats.tick == s.tick);
+
+    uint64_t ended = s.records.ended_at;
+    sim_step(&s);
+    sim_step(&s);
+    CHECK(s.records.ended_at == ended);
+    sim_free(&s);
+}
+
+/* A settings file can still ask for a floor. A world it brings back is not
+ * over, so it must not carry a date of death. */
+static void test_floor_brings_a_world_back(void)
+{
+    Settings set = settings_default();
+    set.min_creatures = 5;
+    Sim s;
+    CHECK(sim_init(&s, &set, 7, 64, 32));
+    kill_everyone(&s);
+    sim_step(&s);
+    CHECK(s.pool.count >= 5);
+    CHECK(!sim_is_over(&s));
+    CHECK(s.records.ended_at == 0);
+    sim_free(&s);
+}
+
 int main(void)
 {
+    test_records_start_from_the_founders();
+    test_records_follow_the_world();
+    test_records_do_not_change_the_world();
+    test_is_over();
+    test_floor_brings_a_world_back();
     test_same_seed_same_checksum();
     test_other_seed_differs();
     test_reseed_matches_fresh_init();

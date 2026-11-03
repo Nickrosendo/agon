@@ -6,8 +6,13 @@
 
 #include "cells.h"
 #include "cells_canvas.h"
+#include "family.h"
 #include "font.h"
+#include "inspect.h"
 #include "palette.h"
+#include "panel.h"
+#include "settings.h"
+#include "sim.h"
 
 #define W 400
 #define H 100
@@ -156,6 +161,77 @@ static void test_off_the_canvas_is_clipped(void)
     canvas_free(&c);
 }
 
+static uint64_t hash_pixels(const Canvas *c)
+{
+    uint64_t h = 14695981039346656037u;
+    for (int i = 0; i < c->w * c->h; i++) {
+        h ^= c->px[i];
+        h *= 1099511628211u;
+    }
+    return h;
+}
+
+/*
+ * After the last death the panels and the family strip must still draw, reading
+ * nothing about a dead creature. A dead slot's fields stay readable, so reading
+ * one would go unnoticed by the memory checkers. So: draw, fill every dead slot
+ * with nonsense, draw again, and the pictures must match.
+ */
+static void test_panel_and_family_on_dead_world(void)
+{
+    Settings set = settings_default();
+    set.stats_every = 1;
+    Sim s;
+    CHECK(sim_init(&s, &set, 3, 64, 32));
+    Families f;
+    CHECK(family_init(&f, s.pool.capacity));
+    for (int t = 0; t < 20; t++) {
+        sim_step(&s);
+        family_update(&f, &s);
+    }
+    /* Following the creature in the first living slot, as it dies. */
+    Inspect in = {0};
+    int followed = 0;
+    while (!s.pool.items[followed].alive) {
+        followed++;
+    }
+    in.on = in.following = true;
+    in.id = s.pool.items[followed].id;
+    for (int i = 0; i < s.pool.capacity; i++) {
+        if (s.pool.items[i].alive) {
+            pool_kill(&s.pool, &s.world, i, &s.set);
+        }
+    }
+    sim_step(&s);
+    CHECK(sim_is_over(&s));
+    family_update(&f, &s);
+    inspect_update(&in, &s);
+    CHECK(inspect_creature(&in, &s) == NULL);
+    CHECK(family_largest(&f, &s) == FAMILY_NONE);
+
+    Canvas c;
+    CHECK(canvas_init(&c, PANEL_COLS * FONT_W, 40 * FONT_H));
+    cells_canvas_set(&c, 0, 0);
+    panel_draw(&s, 0, 0, 40);
+    uint64_t plain = hash_pixels(&c);
+    panel_draw_inspect(&s, &in, 0, 0, 40);
+    uint64_t inspected = hash_pixels(&c);
+
+    for (int i = 0; i < s.pool.capacity; i++) {
+        memset(&s.pool.items[i], 0xFF, sizeof(s.pool.items[i]));
+        s.pool.items[i].alive = false;
+    }
+    panel_draw(&s, 0, 0, 40);
+    CHECK(hash_pixels(&c) == plain);
+    panel_draw_inspect(&s, &in, 0, 0, 40);
+    CHECK(hash_pixels(&c) == inspected);
+    family_update(&f, &s);
+    CHECK(family_largest(&f, &s) == FAMILY_NONE);
+    canvas_free(&c);
+    family_free(&f);
+    sim_free(&s);
+}
+
 int main(void)
 {
     test_text_cut_and_padded();
@@ -164,5 +240,6 @@ int main(void)
     test_swatch_uses_map_colour();
     test_unknown_swatch_draws_nothing();
     test_off_the_canvas_is_clipped();
+    test_panel_and_family_on_dead_world();
     TEST_SUMMARY();
 }

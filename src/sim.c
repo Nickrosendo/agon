@@ -84,6 +84,32 @@ static void sample(Sim *s)
     stats_sample(&s->stats, &s->world, &s->pool, s->tick, s->scratch);
 }
 
+/* One creature against the records so far. Only strictly greater wins, so of
+ * two equals the first keeps the record. Draws no random numbers. */
+static void records_note(WorldRecords *r, const Creature *c, const Settings *set)
+{
+    if (c->age > r->oldest_age) {
+        r->oldest_age = c->age;
+        r->oldest_id = c->id;
+    }
+    float size = creature_size(c, set);
+    if (size > r->largest_size) {
+        r->largest_size = size;
+        r->largest_id = c->id;
+    }
+}
+
+/* A new world's records: its founders. */
+static void records_start(Sim *s)
+{
+    s->records = (WorldRecords){.peak_population = s->pool.count};
+    for (int i = 0; i < s->pool.capacity; i++) {
+        if (s->pool.items[i].alive) {
+            records_note(&s->records, &s->pool.items[i], &s->set);
+        }
+    }
+}
+
 bool sim_alloc(Sim *s, const Settings *set, int w, int h)
 {
     /* Everything zero first: sim_free can then clean up after a failure
@@ -157,6 +183,7 @@ bool sim_reseed(Sim *s, uint64_t seed)
             break;
         }
     }
+    records_start(s);
     /* A first sample at tick 0, so the panel has numbers from the start,
      * and fresh histories for the new world. */
     stats_clear(&s->stats);
@@ -238,12 +265,22 @@ static void creatures_act(Sim *s)
     }
 }
 
-/* Upkeep for everyone, in slot order; those left without energy die. */
+/* Upkeep for everyone, in slot order; those left without energy die. The
+ * records are read here because this already visits every creature, after this
+ * tick's births and before this tick's deaths, so a creature's last age counts. */
 static void accounting(Sim *s)
 {
+    if (s->pool.count > s->records.peak_population) {
+        s->records.peak_population = s->pool.count;
+    }
     for (int i = 0; i < s->pool.capacity; i++) {
         Creature *c = &s->pool.items[i];
-        if (c->alive && !creature_upkeep(c, &s->set)) {
+        if (!c->alive) {
+            continue;
+        }
+        bool lives = creature_upkeep(c, &s->set);
+        records_note(&s->records, c, &s->set);
+        if (!lives) {
             s->brain.on_death(&s->brain, c->id);
             pool_kill(&s->pool, &s->world, i, &s->set);
         }
@@ -261,6 +298,28 @@ static void restock(Sim *s)
     }
 }
 
+bool sim_is_over(const Sim *s)
+{
+    return s->pool.count == 0;
+}
+
+/* After a step: dates the end the first time the world is found empty. A world
+ * nobody ever lived in has no end to date. A floor from a settings file can bring
+ * a world back, and then it has not ended after all. True on the tick it ended. */
+static bool note_ending(Sim *s)
+{
+    WorldRecords *r = &s->records;
+    if (s->pool.count > 0) {
+        r->ended_at = 0;
+        return false;
+    }
+    if (r->peak_population == 0 || r->ended_at != 0) {
+        return false;
+    }
+    r->ended_at = s->tick;
+    return true;
+}
+
 void sim_step(Sim *s)
 {
     flora_step(&s->world, &s->rng, &s->set);
@@ -270,7 +329,12 @@ void sim_step(Sim *s)
     accounting(s);
     restock(s);
     s->tick++;
-    if (s->set.stats_every > 0 && s->tick % (uint64_t)s->set.stats_every == 0) {
+    bool sample_due =
+        s->set.stats_every > 0 && s->tick % (uint64_t)s->set.stats_every == 0;
+    /* The programs stop stepping a dead world, so without this last sample the
+     * panel would show the living population from up to stats_every ticks ago,
+     * for ever. */
+    if (note_ending(s) || sample_due) {
         sample(s);
     }
 }
@@ -345,6 +409,15 @@ uint64_t sim_checksum(const Sim *s)
     size_t n = (size_t)w->w * (size_t)w->h;
     uint64_t hash = 14695981039346656037ULL; /* the FNV starting value */
     hash = fnv1a(hash, &s->tick, sizeof(s->tick));
+    /* Field by field, as for a creature: a struct's raw bytes may hold padding. */
+    hash = fnv1a(hash, &s->records.peak_population,
+                 sizeof(s->records.peak_population));
+    hash = fnv1a(hash, &s->records.oldest_id, sizeof(s->records.oldest_id));
+    hash = fnv1a(hash, &s->records.oldest_age, sizeof(s->records.oldest_age));
+    hash = fnv1a(hash, &s->records.largest_id, sizeof(s->records.largest_id));
+    hash = fnv1a(hash, &s->records.largest_size,
+                 sizeof(s->records.largest_size));
+    hash = fnv1a(hash, &s->records.ended_at, sizeof(s->records.ended_at));
     hash = fnv1a(hash, s->rng.s, sizeof(s->rng.s));
     hash = fnv1a(hash, w->terrain, n * sizeof(uint8_t));
     hash = fnv1a(hash, w->fertility, n * sizeof(float));

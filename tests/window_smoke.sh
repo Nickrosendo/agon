@@ -67,5 +67,27 @@ done
 "$OUT/agon-window" --zoom sideways >/dev/null 2>&1
 [ $? -eq 2 ] || fail "a bad --zoom was not refused"
 
+# 6. A world that dies. A small world has too few founders to last: all six seeds
+# tried at 40x20 were empty by tick 5,000. The world stops on the tick it ended,
+# so more frames must not change it, and its save loads to the same dead world.
+"$OUT/agon-window" --seed 1 --size 40x20 --speed 120 --frames 2500 \
+    --save "$TMP/dead.save" --screenshot "$TMP/dead.ppm" --checksum >"$TMP/dead.a" ||
+    fail "the dying world's run failed"
+"$OUT/agon-window" --seed 1 --size 40x20 --speed 120 --frames 3000 --checksum >"$TMP/dead.b" ||
+    fail "the longer dying world's run failed"
+[ -s "$TMP/dead.a" ] && cmp -s "$TMP/dead.a" "$TMP/dead.b" ||
+    fail "a dead world went on changing"
+"$OUT/agon-window" --load "$TMP/dead.save" --frames 3 --checksum >"$TMP/dead.c" ||
+    fail "the dead save did not load"
+cmp -s "$TMP/dead.a" "$TMP/dead.c" || fail "the dead save came back different"
+if [ $HAVE_AGON -eq 1 ]; then
+    text=$("$OUT/agon" --load "$TMP/dead.save" --once --ticks 100 | tail -6)
+    [ $? -eq 0 ] || fail "--once on a dead world did not exit 0"
+    case "$text" in
+    *"game over"*"last creature died"*"most alive"*"oldest"*"largest"*) ;;
+    *) fail "--once did not print the game over lines: $text" ;;
+    esac
+fi
+
 [ $failed -eq 0 ] && echo "window_smoke: all passed"
 exit $failed

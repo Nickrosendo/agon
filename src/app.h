@@ -39,6 +39,19 @@ int app_speed_step(int ticks_per_second);
 bool app_open_world(Sim *sim, const Options *o, const Settings *settings,
                     uint64_t seed, int w, int h, char *err, size_t errlen);
 
+/* The text of the game over screen, the same in all three programs. Each line
+ * has room for the largest numbers a record can hold, and the compiler checks
+ * that: with less, -Wformat-truncation reports the snprintf that could be cut. */
+enum { APP_OVER_LINES = 6, APP_OVER_COLS = 64 };
+
+/*
+ * Fills the lines about a world that has ended and returns how many. The
+ * parameter is written as an array of arrays: each row is APP_OVER_COLS chars,
+ * and the compiler needs that number to find where lines[1] starts. Only the
+ * first dimension can be left blank.
+ */
+int app_game_over_lines(const Sim *sim, char lines[][APP_OVER_COLS]);
+
 /* The s key. The result goes to notice, for the title line: a failure must
  * not end a world that may have been running for days. */
 void app_save_now(const Sim *sim, const char *path, char *notice, size_t size);

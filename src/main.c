@@ -1,6 +1,7 @@
 #include <inttypes.h> /* PRIx64, PRIu64: printf formats for uint64_t */
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h> /* strlen */
 #include <time.h>   /* clock_gettime, nanosleep, struct timespec (POSIX) */
 
 #include "app.h"
@@ -76,7 +77,8 @@ static void draw_title(int cols, const Sim *sim, int speed, int paused,
     snprintf(text, sizeof(text),
              " agon | seed 0x%" PRIx64 " | tick %s | creatures %d | %d/s%s%s%s%s",
              sim->seed, tick, sim->pool.count, APP_SPEEDS[speed],
-             paused ? " | paused" : "", inspecting ? " | inspect" : "",
+             sim_is_over(sim) ? " | game over" : paused ? " | paused" : "",
+             inspecting ? " | inspect" : "",
              notice[0] != '\0' ? " | " : "", notice);
     render_text(0, 0, text, cols);
 }
@@ -89,6 +91,31 @@ static void draw_help(int cols, int rows, bool inspecting)
               " | q quit"
             : " space pause | +/- speed | r new seed | i inspect | s save | q quit";
     render_text(0, rows - 1, help, cols);
+}
+
+/* The game over screen in the middle of the world's area, drawn after the world
+ * so it lies on top. As many lines as fit, each cut to the width. */
+static void draw_game_over(const Sim *sim, int cols, int row0, int rows)
+{
+    char lines[APP_OVER_LINES][APP_OVER_COLS];
+    int n = app_game_over_lines(sim, lines);
+    const char *keys = "n new world | q quit";
+    int total = n + 2; /* an empty row, then the keys */
+    /* As wide as the longest line, with a space on each side. */
+    int longest = (int)strlen(keys);
+    for (int i = 0; i < n; i++) {
+        int len = (int)strlen(lines[i]);
+        longest = len > longest ? len : longest;
+    }
+    int width = longest + 2 < cols ? longest + 2 : cols;
+    int col = (cols - width) / 2;
+    int top = row0 + (rows > total ? (rows - total) / 2 : 0);
+    for (int i = 0; i < total && i < rows; i++) {
+        const char *text = i < n ? lines[i] : i == n ? "" : keys;
+        char line[APP_OVER_COLS + 2];
+        snprintf(line, sizeof(line), " %s", text);
+        render_text(col, top + i, line, width);
+    }
 }
 
 /* The keys that move the cursor in inspect mode, as a step in cells. */
@@ -176,6 +203,13 @@ static void print_summary(const Sim *sim)
            st->by_level[BAND_TOP], st->lineages);
     printf("plants on %s cells | carrion on %d cells | oldest %s ticks\n",
            plants, st->carrion_cells, oldest);
+    if (sim_is_over(sim)) {
+        char lines[APP_OVER_LINES][APP_OVER_COLS];
+        int n = app_game_over_lines(sim, lines);
+        for (int i = 0; i < n; i++) {
+            puts(lines[i]);
+        }
+    }
 }
 
 /* agon --once: build the world, run it, print it and a summary. Never
@@ -192,7 +226,8 @@ static int run_once(const Options *o, const Settings *settings,
         fprintf(stderr, "agon: %s\n", err);
         return EXIT_FAILED;
     }
-    for (long i = 0; i < o->ticks; i++) {
+    /* A dead world stays as it died: the tick shown is the tick it ended. */
+    for (long i = 0; i < o->ticks && !sim_is_over(&sim); i++) {
         sim_step(&sim);
     }
     /* Before the fresh sample below, which would add a point to the
@@ -343,7 +378,9 @@ int main(int argc, char **argv)
             } else if (key == 's') {
                 app_save_now(&sim, opt.save_path, notice, sizeof(notice));
                 notice_frames = NOTICE_FRAMES;
-            } else if (key == 'r') {
+            } else if (key == 'r' || (key == 'n' && sim_is_over(&sim))) {
+                /* r works at any time; n only here, where it cannot end a
+                 * living world by a slip of the finger. */
                 if (!sim_reseed(&sim, rng_next(&seed_source))) {
                     failed = 1; /* the brain could not be reopened */
                     running = 0;
@@ -352,12 +389,17 @@ int main(int argc, char **argv)
                      * followed now belongs to someone else. */
                     inspect_start(&inspect, &sim, max_x, max_y);
                 }
+                /* render_world skips cells whose colours have not changed, and
+                 * would leave the game over text on any such cell. */
+                need_clear = 1;
             }
         }
 
-        if (!paused) {
+        if (!paused && !sim_is_over(&sim)) {
             ticks_due += APP_SPEEDS[speed];
-            while (ticks_due >= FRAMES_PER_SECOND) {
+            /* Checked on every tick: at high speed a frame runs several, and
+             * the world may end during the first. */
+            while (ticks_due >= FRAMES_PER_SECOND && !sim_is_over(&sim)) {
                 sim_step(&sim);
                 ticks_due -= FRAMES_PER_SECOND;
             }
@@ -388,6 +430,9 @@ int main(int argc, char **argv)
             if (inspect.on) {
                 render_cursor(&sim, 0, 1, world_cols, rows - 2, inspect.x,
                               inspect.y);
+            }
+            if (sim_is_over(&sim)) {
+                draw_game_over(&sim, world_cols, 1, rows - 2);
             }
             draw_help(cols, rows, inspect.on);
         }

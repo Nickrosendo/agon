@@ -1,7 +1,9 @@
 #include "app.h"
 
-#include <stdio.h> /* snprintf */
+#include <inttypes.h> /* PRIx64 */
+#include <stdio.h>    /* snprintf */
 
+#include "panel.h" /* panel_format_count */
 #include "save.h"
 
 const int APP_SPEEDS[] = {1, 2, 5, 10, 15, 30, 60, 120};
@@ -35,6 +37,35 @@ bool app_open_world(Sim *sim, const Options *o, const Settings *settings,
         return false;
     }
     return true;
+}
+
+int app_game_over_lines(const Sim *sim, char lines[][APP_OVER_COLS])
+{
+    const WorldRecords *r = &sim->records;
+    char when[32], peak[32], age[32];
+    panel_format_count(when, sizeof(when), (int64_t)r->ended_at);
+    panel_format_count(peak, sizeof(peak), r->peak_population);
+    panel_format_count(age, sizeof(age), (int64_t)r->oldest_age);
+    int n = 0;
+    snprintf(lines[n++], APP_OVER_COLS, "game over");
+    if (r->peak_population == 0) {
+        snprintf(lines[n++], APP_OVER_COLS, "nobody ever lived in this world");
+    } else {
+        snprintf(lines[n++], APP_OVER_COLS, "the last creature died at tick %s",
+                 when);
+    }
+    snprintf(lines[n++], APP_OVER_COLS, "seed 0x%" PRIx64, sim->seed);
+    snprintf(lines[n++], APP_OVER_COLS, "most alive at once: %s", peak);
+    if (r->peak_population == 0) {
+        snprintf(lines[n++], APP_OVER_COLS, "oldest: nobody");
+        snprintf(lines[n++], APP_OVER_COLS, "largest: nobody");
+    } else {
+        snprintf(lines[n++], APP_OVER_COLS, "oldest: #%u, %s ticks",
+                 (unsigned)r->oldest_id, age);
+        snprintf(lines[n++], APP_OVER_COLS, "largest: #%u, size %.2f",
+                 (unsigned)r->largest_id, (double)r->largest_size);
+    }
+    return n;
 }
 
 void app_save_now(const Sim *sim, const char *path, char *notice, size_t size)

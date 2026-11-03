@@ -25,13 +25,15 @@
  *   every setting, in the table's order;
  *   the world's layers;
  *   three histories;
+ *   the records: i32 peak, u32 oldest id, u32 oldest age, u32 largest id,
+ *   float largest size, u64 ended_at;
  *   i32 free_head, u32 next_id, u32 births_refused; then every creature slot.
  *
  * Change anything here and SAVE_VERSION goes up by one.
  */
 #define SAVE_MAGIC "AGONSAVE"
 #define SAVE_MAGIC_LEN 8
-#define SAVE_VERSION 2u
+#define SAVE_VERSION 3u
 
 /* No value in a healthy world comes near this. Bounding them keeps sums
  * from reaching infinity, and float-to-int conversions defined. */
@@ -171,6 +173,16 @@ static void put_history(Writer *w, const History *h)
 
 /* The struct's fields one at a time: writing the struct whole would
  * include its padding, which holds whatever was in memory. */
+static void put_records(Writer *w, const WorldRecords *r)
+{
+    put_i32(w, r->peak_population);
+    put_u32(w, r->oldest_id);
+    put_u32(w, r->oldest_age);
+    put_u32(w, r->largest_id);
+    put_float(w, r->largest_size);
+    put_u64(w, r->ended_at);
+}
+
 static void put_creature(Writer *w, const Creature *c)
 {
     put_u32(w, c->id);
@@ -232,6 +244,7 @@ static void put_everything(Writer *w, const Sim *s)
     put_history(w, &s->stats.hist_plant_eaters);
     put_history(w, &s->stats.hist_meat_eaters);
     put_history(w, &s->stats.hist_planted);
+    put_records(w, &s->records);
     put_pool(w, &s->pool);
 }
 
@@ -595,6 +608,22 @@ static bool get_header(Reader *r, int *width, int *height)
     return r->problem == NULL;
 }
 
+/* The ids are only ever printed, so any value is harmless. peak is bounded so
+ * that its text fits the screen; a date after the file's own tick cannot be. */
+static void get_records(Reader *r, WorldRecords *rec, const Sim *s)
+{
+    rec->peak_population = get_i32(r);
+    rec->oldest_id = get_u32(r);
+    rec->oldest_age = get_u32(r);
+    rec->largest_id = get_u32(r);
+    rec->largest_size = get_float(r, 0.0f, FLOAT_LIMIT);
+    rec->ended_at = get_u64(r);
+    if (rec->peak_population < 0 ||
+        rec->peak_population > s->pool.capacity || rec->ended_at > s->tick) {
+        fail(r, "the records in the file are impossible");
+    }
+}
+
 /* Reads the rest of the file into *s, already allocated. */
 static void get_body(Reader *r, Sim *s, uint64_t seed, uint64_t tick,
                      const Rng *rng)
@@ -606,7 +635,12 @@ static void get_body(Reader *r, Sim *s, uint64_t seed, uint64_t tick,
     get_history(r, &s->stats.hist_plant_eaters);
     get_history(r, &s->stats.hist_meat_eaters);
     get_history(r, &s->stats.hist_planted);
+    get_records(r, &s->records, s);
     get_pool(r, &s->pool, &s->world, &s->set);
+    /* Only now is the population known. */
+    if (s->records.ended_at != 0 && s->pool.count != 0) {
+        fail(r, "the records in the file say a living world has ended");
+    }
     /* The file must end exactly here. fgetc returns EOF (a negative int,
      * which is why it does not return a char) at the end. */
     if (r->problem == NULL && fgetc(r->f) != EOF) {

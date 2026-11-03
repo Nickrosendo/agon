@@ -119,4 +119,13 @@ void scene_draw_cursor(const Scene *sc, Canvas *c, const Camera *cam,
                        const Sim *s, const Creature *followed,
                        float tick_fraction, int view_x, int view_y);
 
+/*
+ * The game over screen, a box in the middle of the area with its top left corner
+ * at (x, y), holding the app's lines and then the keys. It draws nothing outside
+ * the area, cutting what does not fit, and it reads only the Sim's seed and
+ * records: nothing about any creature, as none is left.
+ */
+void scene_draw_game_over(Canvas *c, const Sim *s, const char *keys, int x, int y,
+                          int w, int h);
+
 #endif

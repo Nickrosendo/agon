@@ -24,6 +24,19 @@ typedef struct {
 } Turn;
 
 /*
+ * What the game over screen tells: the most alive at once, and the oldest and
+ * largest creatures that ever lived. These cannot be worked out afterwards, so
+ * unlike stats they are part of the world's state: saved and fingerprinted.
+ */
+typedef struct {
+    int peak_population;
+    uint32_t oldest_id, oldest_age;
+    uint32_t largest_id;
+    float largest_size;
+    uint64_t ended_at; /* the tick the last creature died; 0 while any live */
+} WorldRecords;
+
+/*
  * A Sim owns its world, its creature pool and its brain: the structs sit
  * inside the Sim (not behind pointers), and the memory they point to is
  * freed by sim_free. stats is the latest sample (see stats.h), taken every
@@ -39,6 +52,7 @@ typedef struct {
     uint32_t *scratch; /* pool capacity entries, for stats_sample */
     Rng rng;
     uint64_t seed, tick;
+    WorldRecords records;
 } Sim;
 
 /* Allocates a w by h world and a creature pool, opens the brain named in
@@ -60,6 +74,10 @@ bool sim_resume(Sim *s);
  * fails, and the Sim must then be freed. */
 bool sim_reseed(Sim *s, uint64_t seed);
 void sim_step(Sim *s);
+/* True when no creature is alive. Nothing brings one back by default, so the
+ * programs stop stepping such a world and show its game over screen. Stepping it
+ * anyway is safe: its plants would carry on. */
+bool sim_is_over(const Sim *s);
 /* Whether a tick falls in the mating season. Pure arithmetic on the tick, so
  * the drawing side can ask too without touching the world. */
 bool sim_in_season(uint64_t tick, const Settings *set);

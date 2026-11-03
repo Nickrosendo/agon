@@ -1,5 +1,9 @@
 #include "scene.h"
 
+#include <stdio.h>  /* snprintf */
+#include <string.h> /* strlen */
+
+#include "app.h"
 #include "palette.h"
 
 /* How long one water frame lasts, in milliseconds. */
@@ -542,4 +546,50 @@ void scene_draw_strip(Canvas *c, const Families *f, uint32_t lineage, int x,
     for (int i = 0; i < n && (i + 1) * 16 <= w; i++) {
         draw_sample_body(c, &samples[i], FRAME_REST0, x + i * 16, y, 1);
     }
+}
+
+/* One line in the box, cut to the columns left inside the area. */
+static void over_line(Canvas *c, const char *text, int x, int y, int bottom,
+                      int cols, Colour fg)
+{
+    if (y + FONT_H > bottom || cols <= 0) {
+        return;
+    }
+    /* font_text stops at the terminator, so cutting means copying: the precision
+     * in "%.*s" limits how much of text is printed, and takes its value, an int,
+     * from the argument list. */
+    char cut[APP_OVER_COLS + 32];
+    snprintf(cut, sizeof(cut), "%.*s", cols, text);
+    font_text(c, x, y, cut, to_pixel(fg), to_pixel(PALETTE_TEXT_BACKGROUND));
+}
+
+void scene_draw_game_over(Canvas *c, const Sim *s, const char *keys, int x, int y,
+                          int w, int h)
+{
+    char lines[APP_OVER_LINES][APP_OVER_COLS];
+    int n = app_game_over_lines(s, lines);
+    int longest = (int)strlen(keys);
+    for (int i = 0; i < n; i++) {
+        int len = (int)strlen(lines[i]);
+        longest = len > longest ? len : longest;
+    }
+    /* One empty row above, below, and before the keys; one empty column each side. */
+    int box_w = (longest + 2) * FONT_W;
+    int box_h = (n + 4) * FONT_H;
+    box_w = box_w < w ? box_w : w;
+    box_h = box_h < h ? box_h : h;
+    if (box_w <= 0 || box_h <= 0) {
+        return;
+    }
+    int left = x + (w - box_w) / 2;
+    int top = y + (h - box_h) / 2;
+    int bottom = top + box_h;
+    canvas_rect(c, left, top, box_w, box_h, to_pixel(PALETTE_TEXT_BACKGROUND));
+    int cols = box_w / FONT_W - 2;
+    int text_x = left + FONT_W;
+    for (int i = 0; i < n; i++) {
+        over_line(c, lines[i], text_x, top + (i + 1) * FONT_H, bottom, cols,
+                  PALETTE_TEXT);
+    }
+    over_line(c, keys, text_x, top + (n + 2) * FONT_H, bottom, cols, PALETTE_TEXT);
 }

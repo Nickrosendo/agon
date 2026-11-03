@@ -2,7 +2,9 @@
 
 #include <math.h>  /* fabsf */
 #include <stdio.h> /* snprintf */
+#include <string.h> /* strlen, strstr */
 
+#include "app.h"
 #include "brain_script.h"
 #include "family.h"
 #include "inspect.h"
@@ -540,6 +542,106 @@ static void test_layout_family_area(void)
     CHECK(lost_strip && lost_enlarged);
 }
 
+/* A dead world with records set by hand, so its text depends on nothing else. */
+static void make_dead_world(Sim *s)
+{
+    make_empty_sim(s, 64, 64);
+    s->seed = 0x2a;
+    s->tick = 12345;
+    s->records = (WorldRecords){
+        .peak_population = 1234,
+        .oldest_id = 77,
+        .oldest_age = 4567,
+        .largest_id = 88,
+        .largest_size = 1.5f,
+        .ended_at = 12345,
+    };
+}
+
+static bool lines_hold(char lines[][APP_OVER_COLS], int n, const char *piece)
+{
+    for (int i = 0; i < n; i++) {
+        if (strstr(lines[i], piece) != NULL) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static void test_game_over_text(void)
+{
+    Sim s;
+    make_dead_world(&s);
+    char lines[APP_OVER_LINES][APP_OVER_COLS];
+    int n = app_game_over_lines(&s, lines);
+    CHECK(n == APP_OVER_LINES);
+    CHECK(lines_hold(lines, n, "12,345"));
+    CHECK(lines_hold(lines, n, "0x2a"));
+    CHECK(lines_hold(lines, n, "1,234"));
+    CHECK(lines_hold(lines, n, "#77"));
+    CHECK(lines_hold(lines, n, "4,567"));
+    CHECK(lines_hold(lines, n, "#88"));
+    CHECK(lines_hold(lines, n, "1.50"));
+
+    /* A world where nobody ever lived has no one to name. */
+    s.records = (WorldRecords){0};
+    n = app_game_over_lines(&s, lines);
+    CHECK(lines_hold(lines, n, "nobody"));
+    CHECK(!lines_hold(lines, n, "#"));
+    sim_free(&s);
+}
+
+/* The biggest numbers a record can hold still fit, whole and ended. */
+static void test_game_over_text_longest(void)
+{
+    Sim s;
+    make_dead_world(&s);
+    s.seed = UINT64_MAX;
+    s.tick = UINT64_MAX;
+    s.records.ended_at = UINT64_MAX;
+    s.records.peak_population = 2147483647;
+    s.records.oldest_id = UINT32_MAX;
+    s.records.oldest_age = UINT32_MAX;
+    s.records.largest_id = UINT32_MAX;
+    s.records.largest_size = 1e9f;
+    char lines[APP_OVER_LINES][APP_OVER_COLS];
+    int n = app_game_over_lines(&s, lines);
+    for (int i = 0; i < n; i++) {
+        CHECK(strlen(lines[i]) < APP_OVER_COLS - 1); /* nothing was cut */
+    }
+    sim_free(&s);
+}
+
+/* The screen's picture, pinned as test_known_world_pixels is. */
+static void test_scene_game_over(void)
+{
+    static const uint64_t EXPECTED = 0xc23965dd7a981db5u;
+    Sim s;
+    make_dead_world(&s);
+    Canvas c;
+    CHECK(canvas_init(&c, 640, 360));
+    canvas_fill(&c, canvas_rgb(255, 0, 255));
+    scene_draw_game_over(&c, &s, "n new world | q quit", 10, 20, 620, 330);
+    uint64_t h = hash_canvas(&c);
+    if (h != EXPECTED) {
+        printf("game over: 0x%llxu\n", (unsigned long long)h);
+    }
+    CHECK(h == EXPECTED);
+    /* Outside the area it was given, nothing is touched. */
+    CHECK(c.px[0] == canvas_rgb(255, 0, 255));
+    CHECK(c.px[640 * 359 + 639] == canvas_rgb(255, 0, 255));
+
+    /* A view too small for it: cut, and never outside. */
+    canvas_fill(&c, canvas_rgb(255, 0, 255));
+    scene_draw_game_over(&c, &s, "n new world", 10, 20, 40, 30);
+    CHECK(c.px[640 * 20 + 9] == canvas_rgb(255, 0, 255));
+    CHECK(c.px[640 * 19 + 10] == canvas_rgb(255, 0, 255));
+    CHECK(c.px[640 * 20 + 50] == canvas_rgb(255, 0, 255));
+    CHECK(c.px[640 * 50 + 10] == canvas_rgb(255, 0, 255));
+    canvas_free(&c);
+    sim_free(&s);
+}
+
 int main(void)
 {
     /* Tests register this one themselves: the real program never has it. */
@@ -559,5 +661,8 @@ int main(void)
     test_known_world_pixels();
     test_ground_layer_refreshes_when_it_should();
     test_layout_family_area();
+    test_game_over_text();
+    test_game_over_text_longest();
+    test_scene_game_over();
     TEST_SUMMARY();
 }

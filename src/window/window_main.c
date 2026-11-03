@@ -54,7 +54,7 @@ static const char WINDOW_USAGE[] =
     "  -h, --help        this text\n"
     "  --version         the version\n"
     "keys: space pause, +/- speed, r new seed, s save, q quit, arrows move,\n"
-    "      [ and ] zoom, Esc lets go of a creature.\n"
+    "      [ and ] zoom, Esc lets go of a creature, n new world after game over.\n"
     "mouse: wheel zooms, dragging moves, clicking a creature follows it,\n"
     "       clicking bare ground lets go.\n";
 
@@ -132,6 +132,7 @@ static void new_world(App *a)
     scene_reset(&a->scene);
     inspect_stop(&a->inspect);
     family_reset(&a->families);
+    a->ticks_due = 0;
 }
 
 static void handle_key(App *a, int key)
@@ -158,6 +159,11 @@ static void handle_key(App *a, int key)
         break;
     case 'r':
         new_world(a);
+        break;
+    case 'n': /* only here, where it cannot end a living world by a slip */
+        if (sim_is_over(&a->sim)) {
+            new_world(a);
+        }
         break;
     case 's':
         if (!PLATFORM_IS_PAGE) {
@@ -242,7 +248,8 @@ static void draw_title(App *a, const Creature *followed)
     snprintf(text, sizeof(text),
              " agon | seed 0x%" PRIx64 " | tick %s | creatures %d | %d/s%s%s%s%s",
              a->sim.seed, tick, a->sim.pool.count, APP_SPEEDS[a->speed],
-             a->paused ? " | paused" : "", who,
+             sim_is_over(&a->sim) ? " | game over" : a->paused ? " | paused" : "",
+             who,
              a->notice[0] != '\0' ? " | " : "", a->notice);
     cells_canvas_set(&a->canvas, 0, 0);
     render_text(0, 0, text, a->canvas.w / FONT_W + 1);
@@ -374,6 +381,12 @@ static void draw_frame(App *a, float fraction)
                      a->last_ms, a->body_ms, l->view_x, l->view_y);
     scene_draw_cursor(&a->scene, &a->canvas, &a->camera, &a->sim, followed,
                       fraction, l->view_x, l->view_y);
+    if (sim_is_over(&a->sim)) {
+        scene_draw_game_over(&a->canvas, &a->sim,
+                             PLATFORM_IS_PAGE ? "n new world"
+                                              : "n new world | q quit",
+                             l->view_x, l->view_y, l->view_w, l->view_h);
+    }
     /* After the world: a body near the edge may have been drawn over these. */
     draw_title(a, followed);
     draw_help(a);
@@ -383,7 +396,7 @@ static void draw_frame(App *a, float fraction)
 static void advance_clocks(App *a)
 {
     uint64_t now = platform_now_ms();
-    if (!a->paused) {
+    if (!a->paused && !sim_is_over(&a->sim)) {
         a->body_ms += now - a->last_ms;
     }
     a->last_ms = now;
@@ -401,7 +414,9 @@ static void advance_clocks(App *a)
 static bool frame_needs_drawing(App *a)
 {
     int water = scene_water_frame(a->last_ms);
-    bool needed = !a->paused || a->redraw || water != a->last_water;
+    /* A dead world is as still as a paused one, so it costs as little. */
+    bool still = a->paused || sim_is_over(&a->sim);
+    bool needed = !still || a->redraw || water != a->last_water;
     if (needed) {
         a->last_water = water;
         a->redraw = false;
@@ -422,11 +437,17 @@ static void app_frame(void *arg)
         platform_stop();
         return;
     }
-    if (!a->paused) {
+    if (!a->paused && !sim_is_over(&a->sim)) {
         a->ticks_due += APP_SPEEDS[a->speed];
-        while (a->ticks_due >= FRAMES_PER_SECOND) {
+        /* Checked on every tick: at high speed a frame runs several, and the
+         * world may end during the first. */
+        while (a->ticks_due >= FRAMES_PER_SECOND && !sim_is_over(&a->sim)) {
             sim_step(&a->sim);
             a->ticks_due -= FRAMES_PER_SECOND;
+        }
+        if (sim_is_over(&a->sim)) {
+            a->ticks_due = 0;  /* nothing is on its way any more */
+            a->redraw = true;  /* the frame that shows the screen */
         }
     }
     scene_update(&a->scene, &a->sim, APP_SPEEDS[a->speed]);
