@@ -4,6 +4,7 @@
 #include <stdio.h> /* snprintf */
 
 #include "brain_script.h"
+#include "family.h"
 #include "inspect.h"
 #include "scene.h"
 #include "settings.h"
@@ -26,6 +27,8 @@ static void test_drawing_changes_nothing(void)
     CHECK(canvas_init(&c, VIEW_W, VIEW_H));
     Camera cam;
     camera_init(&cam, 64, 32, VIEW_W, VIEW_H);
+    Families f;
+    CHECK(family_init(&f, drawn.pool.capacity));
     for (int t = 0; t < 2000; t++) {
         sim_step(&plain);
         sim_step(&drawn);
@@ -33,8 +36,17 @@ static void test_drawing_changes_nothing(void)
         cam.level = t % CAMERA_LEVELS;
         scene_draw_world(&sc, &c, &cam, &drawn, 0.5f, (uint64_t)t * 33u,
                          (uint64_t)t * 33u, 0, 0);
+        /* The panel's bodies, and asking which creature was clicked on. */
+        family_update(&f, &drawn);
+        scene_draw_strip(&c, &f, family_largest(&f, &drawn), 0, 0, VIEW_W);
+        int slot = t % drawn.pool.capacity;
+        if (drawn.pool.items[slot].alive) {
+            scene_draw_followed(&sc, &c, &drawn, &drawn.pool.items[slot],
+                                (uint64_t)t * 33u, 0, 0);
+        }
     }
     CHECK(sim_checksum(&plain) == sim_checksum(&drawn));
+    family_free(&f);
     canvas_free(&c);
     scene_free(&sc);
     sim_free(&plain);
@@ -323,6 +335,101 @@ static void test_layout_gives_the_panel_way_first(void)
     CHECK(l.too_small && l.view_w == 0 && l.view_h == 0);
 }
 
+static void test_strip_and_enlarged_bodies(void)
+{
+    Sim s;
+    make_empty_sim(&s, 32, 32);
+    int slot = pool_spawn(&s.pool, &s.world, 5, 5);
+    s.pool.items[slot].genome.g[GENE_SIZE] = 1.0f;
+    s.pool.items[slot].genome.g[GENE_HUE] = 0.3f;
+    s.pool.items[slot].lineage = 5;
+    Scene sc;
+    CHECK(scene_init(&sc, &s));
+    scene_update(&sc, &s, 10);
+    Families f;
+    CHECK(family_init(&f, s.pool.capacity));
+    family_update(&f, &s);
+    s.tick = f.next_tick;
+    family_update(&f, &s);
+    Canvas c;
+    CHECK(canvas_init(&c, VIEW_W, VIEW_H));
+    uint32_t magenta = canvas_rgb(255, 0, 255);
+
+    /* Two samples: two bodies, each a tile wide, side by side. */
+    canvas_fill(&c, magenta);
+    scene_draw_strip(&c, &f, 5, 0, 0, 16 * FAMILY_STRIP);
+    int first = 0, second = 0, third = 0;
+    for (int j = 0; j < 16; j++) {
+        for (int i = 0; i < 16; i++) {
+            first += c.px[j * VIEW_W + i] != magenta;
+            second += c.px[j * VIEW_W + 16 + i] != magenta;
+            third += c.px[j * VIEW_W + 32 + i] != magenta;
+        }
+    }
+    CHECK(first > 0 && second > 0 && third == 0);
+    /* A strip narrower than its bodies shows those that fit. */
+    canvas_fill(&c, magenta);
+    scene_draw_strip(&c, &f, 5, 0, 0, 16);
+    CHECK(c.px[8 * VIEW_W + 16 + 8] == magenta);
+    /* No record of this family: nothing drawn, no crash. */
+    canvas_fill(&c, magenta);
+    scene_draw_strip(&c, &f, 77, 0, 0, VIEW_W);
+    scene_draw_strip(&c, &f, FAMILY_NONE, 0, 0, VIEW_W);
+    CHECK(c.px[8 * VIEW_W + 8] == magenta);
+
+    /* Enlarged: four times the size of the 16 pixel body. */
+    canvas_fill(&c, magenta);
+    scene_draw_followed(&sc, &c, &s, &s.pool.items[slot], 0, 10, 10);
+    int bx0 = VIEW_W, bx1 = -1;
+    for (int j = 0; j < VIEW_H; j++) {
+        for (int i = 0; i < VIEW_W; i++) {
+            if (c.px[j * VIEW_W + i] != magenta) {
+                bx0 = i < bx0 ? i : bx0;
+                bx1 = i > bx1 ? i : bx1;
+            }
+        }
+    }
+    CHECK(bx0 == 10 && bx1 == 10 + SCENE_BODY_BIG - 1);
+    /* Enlarged, from a family's newest sample. */
+    FamilySample out[FAMILY_STRIP];
+    int n = family_strip(&f, 5, out);
+    CHECK(n == 2);
+    canvas_fill(&c, magenta);
+    scene_draw_sample(&c, &out[n - 1], 0, 0, 0);
+    CHECK(c.px[0] != magenta); /* its background */
+    canvas_free(&c);
+    family_free(&f);
+    scene_free(&sc);
+    sim_free(&s);
+}
+
+/* The panel's bottom part: the strip goes first when there is not room. */
+static void test_layout_family_area(void)
+{
+    Layout l;
+    scene_layout(&l, 1280, 720);
+    CHECK(l.show_enlarged && l.show_strip);
+    CHECK(l.panel_rows == (720 - 2 * SCENE_TEXT_H) / FONT_H - l.family_rows);
+    CHECK(l.family_y == l.panel_y + l.panel_rows * FONT_H);
+
+    /* Lower and lower: the strip goes, then the enlarged view. */
+    bool lost_strip = false, lost_enlarged = false;
+    for (int h = 720; h >= SCENE_MIN_H; h -= FONT_H) {
+        scene_layout(&l, 1280, h);
+        CHECK(l.panel_rows >= 0);
+        CHECK(l.panel_y + (l.panel_rows + l.family_rows) * FONT_H <= h - SCENE_TEXT_H);
+        if (!l.show_strip) {
+            lost_strip = true;
+        }
+        if (!l.show_enlarged) {
+            lost_enlarged = true;
+            CHECK(lost_strip);
+            CHECK(!l.show_strip);
+        }
+    }
+    CHECK(lost_strip && lost_enlarged);
+}
+
 int main(void)
 {
     /* Tests register this one themselves: the real program never has it. */
@@ -338,5 +445,7 @@ int main(void)
     test_new_world_lets_go();
     test_follow_across_the_edge_takes_the_short_way();
     test_layout_gives_the_panel_way_first();
+    test_strip_and_enlarged_bodies();
+    test_layout_family_area();
     TEST_SUMMARY();
 }

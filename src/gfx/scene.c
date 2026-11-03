@@ -321,6 +321,18 @@ void scene_draw_world(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
     draw_marks(sc, c, cam, s, tick_fraction, body_ms, view_x, view_y);
 }
 
+/* Shares the panel's rows between its text and the bodies below it. */
+static void split_panel(Layout *l, int rows)
+{
+    int spare = rows - SCENE_PANEL_MIN_ROWS;
+    l->show_enlarged = spare >= SCENE_ENLARGED_ROWS;
+    l->show_strip = spare >= SCENE_ENLARGED_ROWS + SCENE_STRIP_ROWS;
+    l->family_rows = (l->show_enlarged ? SCENE_ENLARGED_ROWS : 0) +
+                     (l->show_strip ? SCENE_STRIP_ROWS : 0);
+    l->panel_rows = rows - l->family_rows;
+    l->family_y = l->panel_y + l->panel_rows * FONT_H;
+}
+
 void scene_layout(Layout *l, int window_w, int window_h)
 {
     *l = (Layout){0}; /* every field not named below becomes 0 or false */
@@ -336,7 +348,7 @@ void scene_layout(Layout *l, int window_w, int window_h)
     if (l->has_panel) {
         l->panel_x = l->view_w;
         l->panel_y = SCENE_TEXT_H;
-        l->panel_rows = l->view_h / FONT_H;
+        split_panel(l, l->view_h / FONT_H);
     }
 }
 
@@ -419,4 +431,57 @@ void scene_draw_cursor(const Scene *sc, Canvas *c, const Camera *cam,
     canvas_rect(c, left, bottom - len + 1, 1, len, white);
     canvas_rect(c, right - len + 1, bottom, len, 1, white);
     canvas_rect(c, right, bottom - len + 1, 1, len, white);
+}
+
+/* How long a family's average body breathes in and out, in milliseconds. */
+#define SAMPLE_BREATH_MS 600u
+
+void scene_draw_followed(Scene *sc, Canvas *c, const Sim *s,
+                         const Creature *followed, uint64_t now_ms, int x, int y)
+{
+    int slot = (int)(followed - s->pool.items);
+    if (slot >= sc->anim.capacity || !sc->anim.slots[slot].seen) {
+        return;
+    }
+    AnimPose p;
+    anim_pose(&sc->anim, s, slot, 0.0f, now_ms, &p);
+    const SpriteMask *m =
+        sprite_get(&sc->sprites, slot, followed->id, &followed->genome, 16, p.frame);
+    if (m == NULL) {
+        return;
+    }
+    int scale = SCENE_BODY_BIG / 16;
+    canvas_rect(c, x, y, SCENE_BODY_BIG, SCENE_BODY_BIG, to_pixel(BACKGROUND));
+    canvas_mask(c, m->body, 16, x, y, scale, p.flip,
+                to_pixel(creature_colour(followed)));
+    canvas_mask(c, m->white, 16, x, y, scale, p.flip, to_pixel(WHITE));
+}
+
+/* One sample's body in this frame, at a scale, on the near-black background. */
+static void draw_sample_body(Canvas *c, const FamilySample *sample, int frame,
+                             int x, int y, int scale)
+{
+    SpriteMask m;
+    sprite_build(&m, &sample->traits, 16, frame);
+    canvas_rect(c, x, y, 16 * scale, 16 * scale, to_pixel(BACKGROUND));
+    canvas_mask(c, m.body, 16, x, y, scale, false,
+                to_pixel(palette_creature(sample->hue, sample->meat_share)));
+    canvas_mask(c, m.white, 16, x, y, scale, false, to_pixel(WHITE));
+}
+
+void scene_draw_sample(Canvas *c, const FamilySample *sample, uint64_t now_ms,
+                       int x, int y)
+{
+    int frame = FRAME_REST0 + (int)((now_ms / SAMPLE_BREATH_MS) % 2u);
+    draw_sample_body(c, sample, frame, x, y, SCENE_BODY_BIG / 16);
+}
+
+void scene_draw_strip(Canvas *c, const Families *f, uint32_t lineage, int x,
+                      int y, int w)
+{
+    FamilySample samples[FAMILY_STRIP];
+    int n = family_strip(f, lineage, samples);
+    for (int i = 0; i < n && (i + 1) * 16 <= w; i++) {
+        draw_sample_body(c, &samples[i], FRAME_REST0, x + i * 16, y, 1);
+    }
 }

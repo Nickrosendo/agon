@@ -14,9 +14,11 @@
 #include "canvas.h"
 #include "cells.h"
 #include "cells_canvas.h"
+#include "family.h"
 #include "font.h"
 #include "inspect.h"
 #include "options.h"
+#include "palette.h"
 #include "panel.h" /* panel_format_count */
 #include "platform.h"
 #include "rng.h"
@@ -60,6 +62,7 @@ static const char WINDOW_USAGE[] =
 typedef struct {
     Sim sim;
     Scene scene;
+    Families families;
     Canvas canvas;
     Camera camera;
     Layout layout;
@@ -126,6 +129,7 @@ static void new_world(App *a)
     }
     scene_reset(&a->scene);
     inspect_stop(&a->inspect);
+    family_reset(&a->families);
 }
 
 static void handle_key(App *a, int key)
@@ -245,6 +249,64 @@ static void draw_help(App *a)
                 a->canvas.w / FONT_W + 1);
 }
 
+/* The enlarged body, with a caption above it. */
+static void draw_enlarged(App *a, const Creature *followed, uint32_t lineage,
+                          const FamilySample *newest)
+{
+    const Layout *l = &a->layout;
+    char caption[32] = " no family yet";
+    if (followed != NULL) {
+        snprintf(caption, sizeof(caption), " creature #%u", (unsigned)followed->id);
+    } else if (lineage != FAMILY_NONE) {
+        snprintf(caption, sizeof(caption), " largest: #%u", (unsigned)lineage);
+    }
+    cells_canvas_set(&a->canvas, l->panel_x, l->family_y);
+    render_text(0, 0, caption, PANEL_COLS);
+    /* In the middle of the panel's width, below the caption. */
+    int x = l->panel_x + (SCENE_PANEL_W - SCENE_BODY_BIG) / 2;
+    int y = l->family_y + FONT_H;
+    if (followed != NULL) {
+        scene_draw_followed(&a->scene, &a->canvas, &a->sim, followed, a->body_ms,
+                            x, y);
+    } else if (newest != NULL) {
+        scene_draw_sample(&a->canvas, newest, a->body_ms, x, y);
+    }
+}
+
+/* The family's bodies over time, with a caption above them. A family outside the
+ * recorded ones has no strip, and the caption says so. */
+static void draw_strip(App *a, uint32_t lineage, int samples)
+{
+    const Layout *l = &a->layout;
+    int y = l->family_y + (SCENE_ENLARGED_ROWS * FONT_H);
+    cells_canvas_set(&a->canvas, l->panel_x, y);
+    char caption[32];
+    /* The longest id, 10 digits, would still only lose the end of the words. */
+    snprintf(caption, sizeof(caption), samples == 0 ? " #%u: no record" : " family #%u",
+             (unsigned)lineage);
+    render_text(0, 0, lineage != FAMILY_NONE ? caption : "", PANEL_COLS);
+    int w = FAMILY_STRIP * 16;
+    scene_draw_strip(&a->canvas, &a->families, lineage,
+                     l->panel_x + (SCENE_PANEL_W - w) / 2, y + FONT_H, w);
+}
+
+/* The bottom of the panel: the followed creature and its family, or else the
+ * largest family and its newest body. */
+static void draw_family(App *a, const Creature *followed)
+{
+    if (!a->layout.show_enlarged) {
+        return;
+    }
+    uint32_t lineage = followed != NULL ? followed->lineage
+                                        : family_largest(&a->families, &a->sim);
+    FamilySample samples[FAMILY_STRIP];
+    int n = family_strip(&a->families, lineage, samples);
+    draw_enlarged(a, followed, lineage, n > 0 ? &samples[n - 1] : NULL);
+    if (a->layout.show_strip) {
+        draw_strip(a, lineage, n);
+    }
+}
+
 static void draw_panel(App *a, const Creature *followed)
 {
     const Layout *l = &a->layout;
@@ -253,13 +315,15 @@ static void draw_panel(App *a, const Creature *followed)
     }
     /* Rows are whole; this clears what is left below the last of them. */
     canvas_rect(&a->canvas, l->panel_x, l->panel_y, SCENE_PANEL_W, l->view_h,
-                canvas_rgb(0, 0, 0));
+                canvas_rgb(PALETTE_TEXT_BACKGROUND.r, PALETTE_TEXT_BACKGROUND.g,
+                           PALETTE_TEXT_BACKGROUND.b));
     cells_canvas_set(&a->canvas, l->panel_x, l->panel_y);
     if (followed != NULL) {
         panel_draw_inspect(&a->sim, &a->inspect, 0, 0, l->panel_rows);
     } else {
         panel_draw(&a->sim, 0, 0, l->panel_rows);
     }
+    draw_family(a, followed);
 }
 
 /* Too small for anything else: a minimised window lands here too. */
@@ -337,6 +401,7 @@ static void app_frame(void *arg)
         }
     }
     scene_update(&a->scene, &a->sim, APP_SPEEDS[a->speed]);
+    family_update(&a->families, &a->sim);
     advance_clocks(a);
 
     float fraction = (float)a->ticks_due / (float)FRAMES_PER_SECOND;
@@ -461,6 +526,7 @@ int main(int argc, char **argv)
     app.running = true;
 
     if (!scene_init(&app.scene, &app.sim) ||
+        !family_init(&app.families, app.sim.pool.capacity) ||
         !canvas_init(&app.canvas, WINDOW_W, WINDOW_H)) {
         platform_error("out of memory");
         return EXIT_FAILED;
@@ -480,6 +546,7 @@ int main(int argc, char **argv)
     int result = app_leave(&app);
     platform_close();
     canvas_free(&app.canvas);
+    family_free(&app.families);
     scene_free(&app.scene);
     sim_free(&app.sim);
     return result;

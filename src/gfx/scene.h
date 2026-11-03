@@ -12,6 +12,7 @@
 #include "anim.h"
 #include "camera.h"
 #include "canvas.h"
+#include "family.h"
 #include "font.h"
 #include "inspect.h"
 #include "panel.h"
@@ -42,6 +43,15 @@ typedef struct {
 #define SCENE_MIN_ROWS 6
 #define SCENE_MIN_W (SCENE_MIN_COLS * FONT_W)
 #define SCENE_MIN_H (SCENE_MIN_ROWS * FONT_H)
+/* An enlarged body: 16 pixels, each four screen pixels wide. */
+#define SCENE_BODY_BIG 64
+/* A panel keeps at least this many text rows before the bodies get any: enough
+ * for all of its lines but the family colours. */
+#define SCENE_PANEL_MIN_ROWS 19
+/* Rows for: one of caption, four of enlarged body. And for the strip: one of
+ * bodies and one of caption above them. */
+#define SCENE_ENLARGED_ROWS 5
+#define SCENE_STRIP_ROWS 2
 
 /* The title line on top, the help line below, the world between them and the
  * panel on the right. When the window is narrow the panel goes first. */
@@ -50,6 +60,9 @@ typedef struct {
     bool has_panel;
     int view_x, view_y, view_w, view_h;
     int panel_x, panel_y, panel_rows;
+    /* Below the panel's text, family_rows rows from pixel family_y. */
+    bool show_enlarged, show_strip;
+    int family_y, family_rows;
     int help_y;
 } Layout;
 
@@ -72,6 +85,17 @@ void scene_draw_world(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
                       float tick_fraction, uint64_t water_ms, uint64_t body_ms,
                       int view_x, int view_y);
 
+/* The followed creature four times its size, in its live animation frame,
+ * with its top left corner at (x, y). */
+void scene_draw_followed(Scene *sc, Canvas *c, const Sim *s,
+                         const Creature *followed, uint64_t now_ms, int x, int y);
+/* A family's average body at the same size, breathing. */
+void scene_draw_sample(Canvas *c, const FamilySample *sample, uint64_t now_ms,
+                       int x, int y);
+/* A family's bodies over time, oldest on the left, as many as fit in w pixels.
+ * Nothing when the family has no record. */
+void scene_draw_strip(Canvas *c, const Families *f, uint32_t lineage, int x,
+                      int y, int w);
 /* A click at world point (wx, wy): follows the nearest creature within two
  * cells, going round the world's edges, or lets go when there is none. */
 void scene_click(Inspect *in, const Sim *s, float wx, float wy);
