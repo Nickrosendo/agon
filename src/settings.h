@@ -184,6 +184,9 @@ typedef struct {
      * carrion. */
     float attack_steepness;
     float attack_cost;
+    /* What a bite that finds nothing costs. Without this, waiting beside bare
+     * ground costs less than walking to food a few cells away. */
+    float bite_empty_cost;
     float bite_damage;
 
     /* Carrion. A death leaves body_energy * size plus any energy left.

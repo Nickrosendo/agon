@@ -550,6 +550,88 @@ static void test_senses_season(void)
     world_free(&w);
 }
 
+/* What is one step ahead, in the way the creature faces: the sense a creature
+ * needs in order to stop walking into a wall. */
+static void test_senses_blocked(void)
+{
+    World w;
+    make_world(&w, 8, 8);
+    Settings s = settings_default();
+    Pool p;
+    CHECK(pool_init(&p, 2));
+    int i = spawn(&p, &w, 3, 3);
+    Senses in;
+    int ahead = world_idx(&w, 3, 2); /* heading north */
+
+    creature_sense(&w, &p, i, &s, &in);
+    CHECK(in.v[SENSE_BLOCKED] == 0.0f);
+
+    w.terrain[ahead] = TERRAIN_WATER;
+    creature_sense(&w, &p, i, &s, &in);
+    CHECK(in.v[SENSE_BLOCKED] == 1.0f);
+    w.terrain[ahead] = TERRAIN_ROCK;
+    creature_sense(&w, &p, i, &s, &in);
+    CHECK(in.v[SENSE_BLOCKED] == 1.0f);
+
+    /* Turned away from it, the way is clear. */
+    p.items[i].heading = HEADING_EAST;
+    creature_sense(&w, &p, i, &s, &in);
+    CHECK(in.v[SENSE_BLOCKED] == 0.0f);
+    p.items[i].heading = HEADING_NORTH;
+
+    /* A neighbour in the way counts too. */
+    w.terrain[ahead] = TERRAIN_SOIL;
+    int other = spawn(&p, &w, 3, 2);
+    creature_sense(&w, &p, i, &s, &in);
+    CHECK(in.v[SENSE_BLOCKED] == 1.0f);
+    pool_kill(&p, &w, other, &s);
+    creature_sense(&w, &p, i, &s, &in);
+    CHECK(in.v[SENSE_BLOCKED] == 0.0f);
+
+    /* Across the world's edge, as walking does. */
+    pool_free(&p);
+    CHECK(pool_init(&p, 1));
+    world_free(&w);
+    make_world(&w, 8, 8);
+    i = spawn(&p, &w, 3, 0);
+    w.terrain[world_idx(&w, 3, 7)] = TERRAIN_WATER;
+    creature_sense(&w, &p, i, &s, &in);
+    CHECK(in.v[SENSE_BLOCKED] == 1.0f);
+    pool_free(&p);
+    world_free(&w);
+}
+
+/* A bite that finds nothing costs energy; one that finds food does not. */
+static void test_empty_bite_costs(void)
+{
+    World w;
+    make_world(&w, 8, 8);
+    Settings s = settings_default();
+    s.bite_empty_cost = 0.25f;
+    s.veg_vigour_food = 0.0f;
+    Rng r;
+    rng_seed(&r, 1);
+    Pool p;
+    CHECK(pool_init(&p, 1));
+    int i = spawn(&p, &w, 3, 3);
+    p.items[i].energy = 10.0f;
+    creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
+    CHECK(near(p.items[i].energy, 9.75f));
+
+    w.veg[world_idx(&w, 3, 2)] = 3;
+    creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
+    CHECK(near(p.items[i].energy, 9.75f + s.bite_veg_energy));
+
+    /* Off is off. */
+    w.veg[world_idx(&w, 3, 2)] = 0;
+    s.bite_empty_cost = 0.0f;
+    float before = p.items[i].energy;
+    creature_act(&w, &p, i, (Action){ACT_BITE, 1}, &s, &r);
+    CHECK(near(p.items[i].energy, before));
+    pool_free(&p);
+    world_free(&w);
+}
+
 static void test_plant_eater_cap(void)
 {
     World w;
@@ -1247,6 +1329,8 @@ int main(void)
     test_season_leaves_the_action();
     test_out_of_season_needs_a_choice();
     test_senses_season();
+    test_senses_blocked();
+    test_empty_bite_costs();
     test_plant_eater_cap();
     test_vigorous_plants_feed_less();
     test_cap_by_level();

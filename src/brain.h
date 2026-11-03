@@ -33,16 +33,17 @@ enum {
     RAY_VALUES
 };
 
-/* The senses, as positions in Senses.v. After the five single values come
+/* The senses, as positions in Senses.v. After the six single values come
  * the rays: ray k's value j is at SENSE_RAYS + k * RAY_VALUES + j. The
  * neural network of lesson 6 has one input per sense, so its NET_IN must
- * equal SENSE_COUNT (29). */
+ * equal SENSE_COUNT (30). */
 enum {
     SENSE_ENERGY,
     SENSE_AGE,
     SENSE_SIZE,
     SENSE_DIET, /* the meat digestion gene */
     SENSE_SEASON, /* 1 during the mating season, 0 outside it */
+    SENSE_BLOCKED, /* 1 when a step ahead cannot succeed: water, rock or a creature */
     SENSE_RAYS,
     SENSE_COUNT = SENSE_RAYS + RAY_COUNT * RAY_VALUES
 };

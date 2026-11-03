@@ -90,6 +90,9 @@ Settings settings_default(void)
         .digest_upkeep = 0.05f,
         .attack_steepness = 3.0f,
         .attack_cost = 0.5f,
+        /* Off: measured on seeds 1 to 5 it made worlds die without reducing how much
+         * creatures stand still (2 to 3 of 5 alive at 0.05 and above). */
+        .bite_empty_cost = 0.0f,
         .bite_damage = 6.0f,
         .body_energy = 10.0f,
         .carrion_decay = 0.01f,
@@ -210,6 +213,7 @@ static const SettingInfo TABLE[] = {
     FLOAT_ROW(digest_upkeep, 0, BIG, "upkeep of digesting"),
     FLOAT_ROW(attack_steepness, 0, 16, "how much size decides a fight"),
     FLOAT_ROW(attack_cost, 0, BIG, "energy an attack costs"),
+    FLOAT_ROW(bite_empty_cost, 0, BIG, "energy a bite that finds nothing costs"),
     FLOAT_ROW(bite_damage, 0, BIG, "energy a hit takes, by attacker's size"),
     FLOAT_ROW(body_energy, 0, BIG, "carrion a body leaves, by size"),
     FLOAT_ROW(carrion_decay, 0, 1, "share of carrion lost per tick"),

@@ -268,6 +268,10 @@ void creature_sense(const World *w, const Pool *p, int idx,
     out->v[SENSE_SIZE] = c->genome.g[GENE_SIZE];
     out->v[SENSE_DIET] = c->genome.g[GENE_MEAT]; /* how much a hunter */
     out->v[SENSE_SEASON] = p->in_season ? 1.0f : 0.0f;
+    /* The same test act_move makes, so the sense cannot disagree with walking. */
+    int ahead = cell_towards(w, c->x, c->y, c->heading);
+    out->v[SENSE_BLOCKED] =
+        w->terrain[ahead] != TERRAIN_SOIL || w->occupant[ahead] >= 0 ? 1.0f : 0.0f;
 
     /* The directions of the three rays, in RAY_ order. */
     const uint8_t ray_heading[RAY_COUNT] = {
@@ -473,6 +477,8 @@ static void act_bite(World *w, Pool *p, int idx, const Settings *s, Rng *r)
         eat_plant(w, c, choice.cell, s);
         break;
     default:
+        /* Nothing in reach: the effort is wasted, and it is paid for. */
+        c->energy -= s->bite_empty_cost;
         break;
     }
 }

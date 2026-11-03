@@ -28,9 +28,10 @@
  * then the mating season: one more sense, so 6 more genes, and more mating;
  * then ageing: one more gene, and upkeep that rises with age; then the world's
  * records, added to the fingerprint: the world itself is unchanged, shown by
- * the pinned pictures in test_scene.c staying as they were.
+ * the pinned pictures in test_scene.c staying as they were; then the sense of
+ * being blocked: one more sense, so 6 more genes, changing every random genome.
  */
-#define SEED_7_AFTER_500 0xd0da95007f26ae27ULL
+#define SEED_7_AFTER_500 0xe11852e771d8217bULL
 
 static void test_same_seed_same_checksum(void)
 {
