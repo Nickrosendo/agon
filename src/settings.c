@@ -17,8 +17,12 @@ Settings settings_default(void)
         .noise_scale = 48.0f,
         .noise_octaves = 4,
         .fertility_scale = 24.0f,
-        .veg_birth_lo = 3,
-        .veg_birth_hi = 4,
+        /* A plant can sprout from a single neighbour. With 3 needed, as this
+         * was while stray seeds kept arriving, scattered survivors could never
+         * reproduce: with no creatures at all, plants died out on 3 of 5 seeds.
+         * With 1 they hold at about 12 % of the soil on all five. */
+        .veg_birth_lo = 1,
+        .veg_birth_hi = 2,
         .veg_crowd_max = 3,
         .veg_mutation = 0.02f,
         .veg_vigour_food = 0.6f,

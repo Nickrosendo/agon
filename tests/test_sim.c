@@ -23,9 +23,10 @@
  * carrion no longer feeding the soil by default; then two parents in place
  * of splitting: six more senses and so 36 more genes, a crossing's draws, and
  * the wish to mate hashed; then limits off: no floor, no age limit, no plant
- * cap, no plants from nothing, and founders by share of the soil.
+ * cap, no plants from nothing, and founders by share of the soil; then
+ * starting plants with mixed ages and a rule that can sprout from one plant.
  */
-#define SEED_7_AFTER_500 0x77b93ffe94956d91ULL
+#define SEED_7_AFTER_500 0x1e56f73e65b50cdbULL
 
 static void test_same_seed_same_checksum(void)
 {
@@ -194,6 +195,39 @@ static void test_founders_scale_with_soil(void)
     sim_free(&s);
 }
 
+/* Plants on their own must keep going, now that nothing seeds them from
+ * nowhere: with the old rule they died out on 3 of 5 seeds within 2,000 ticks,
+ * leaving no food for anyone. Also, starting plants must not all be one age,
+ * or they would all wither together. */
+static void test_plants_alone_survive(void)
+{
+    Settings set = settings_default();
+    set.start_share = 0.0f;
+    for (uint64_t seed = 1; seed <= 5; seed++) {
+        Sim s;
+        CHECK(sim_init(&s, &set, seed, 128, 72));
+        int young = 0;
+        int old = 0;
+        for (int i = 0; i < s.world.w * s.world.h; i++) {
+            if (s.world.veg[i] > 0) {
+                young += s.world.veg_age[i] < set.veg_mature_age / 2;
+                old += s.world.veg_age[i] >= set.veg_mature_age / 2;
+            }
+        }
+        CHECK(young > 0 && old > 0);
+        for (int t = 0; t < 2000; t++) {
+            sim_step(&s);
+        }
+        int planted = 0;
+        for (int i = 0; i < s.world.w * s.world.h; i++) {
+            planted += s.world.veg[i] > 0;
+        }
+        /* Well above nothing: about 12 % of the soil when settled. */
+        CHECK(planted * 20 > count_soil(&s.world));
+        sim_free(&s);
+    }
+}
+
 int main(void)
 {
     test_same_seed_same_checksum();
@@ -203,5 +237,6 @@ int main(void)
     test_no_creature_after_the_start();
     test_empty_world_steps_safely();
     test_founders_scale_with_soil();
+    test_plants_alone_survive();
     TEST_SUMMARY();
 }

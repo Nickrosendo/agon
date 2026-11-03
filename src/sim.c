@@ -15,8 +15,10 @@
  * this one is the fractional part of the golden ratio. */
 #define BRAIN_SEED_SALT 0x9E3779B97F4A7C15ULL
 
-/* Random starting plants: one draw per soil cell, in row order. Every
- * starting plant carries the rule from the settings. */
+/* Random starting plants: two draws per soil cell, in row order, so that the
+ * count of draws does not depend on what the draws decide. Every starting
+ * plant carries the rule from the settings. Each gets a random age up to the
+ * age of maturity: all born on one tick, they would all wither together. */
 static void plant_start(World *w, Rng *r, const Settings *s)
 {
     uint8_t rule =
@@ -25,6 +27,10 @@ static void plant_start(World *w, Rng *r, const Settings *s)
         if (w->terrain[i] == TERRAIN_SOIL) {
             w->veg[i] = rng_unit(r) < s->veg_start_chance ? 1 : 0;
             w->veg_rule[i] = rule;
+            /* veg_mature_age is at most 65535 (the settings table), so it
+             * fits; + 1u keeps rng_below from being asked for 0 values. */
+            uint32_t age = rng_below(r, (uint32_t)s->veg_mature_age + 1u);
+            w->veg_age[i] = w->veg[i] > 0 ? (uint16_t)age : 0;
         }
     }
 }

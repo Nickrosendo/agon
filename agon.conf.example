@@ -18,10 +18,10 @@ noise_octaves = 4
 fertility_scale = 24
 
 # starting plants: fewest planted neighbours to sprout (1 to 4)
-veg_birth_lo = 3
+veg_birth_lo = 1
 
 # starting plants: most planted neighbours to sprout (at most birth_lo + 3) (1 to 7)
-veg_birth_hi = 4
+veg_birth_hi = 2
 
 # starting plants: most planted neighbours to keep growing (0 to 7)
 veg_crowd_max = 3
