@@ -46,6 +46,11 @@ SLOW_BIN = $(SLOW_SRC:tests/%.c=$(OUT)/tests/%)
 # Code only the tests use, linked into every test program: the scripted
 # brain. The program itself never contains it.
 TEST_SUPPORT_OBJ = $(OUT)/tests/brain_script.o
+# Tests of the window's own cells, linked with its version of them. None of
+# these see SDL: cells_canvas.c draws into a block of pixels and nothing more.
+WTEST_SRC = $(wildcard tests/wtest_*.c)
+WTEST_BIN = $(WTEST_SRC:tests/%.c=$(OUT)/tests/%)
+WTEST_OBJ = $(CORE_OBJ) $(GFX_OBJ) $(OUT)/window/cells_canvas.o
 
 all: $(OUT)/agon
 
@@ -88,12 +93,16 @@ $(OUT)/%.o: src/%.c
 $(OUT)/tests/brain_script.o: tests/brain_script.c | $(OUT)/tests
 	$(CC) $(CFLAGS) -MMD -MP -c $< -o $@
 
+# More specific than the rule below, so make prefers it for wtest_ programs.
+$(OUT)/tests/wtest_%: tests/wtest_%.c $(WTEST_OBJ) | $(OUT)/tests
+	$(CC) $(CFLAGS) -MMD -MP $< $(WTEST_OBJ) -o $@ $(LDLIBS)
+
 # One program per test file.
 $(OUT)/tests/%: tests/%.c $(LIB_OBJ) $(TEST_SUPPORT_OBJ) | $(OUT)/tests
 	$(CC) $(CFLAGS) -MMD -MP $< $(LIB_OBJ) $(TEST_SUPPORT_OBJ) \
 		-o $@ $(LDLIBS)
 
--include $(OBJ:.o=.d) $(GFX_OBJ:.o=.d) $(WIN_OBJ:.o=.d) $(TEST_BIN:=.d) $(SLOW_BIN:=.d) \
+-include $(OBJ:.o=.d) $(GFX_OBJ:.o=.d) $(WIN_OBJ:.o=.d) $(TEST_BIN:=.d) $(WTEST_BIN:=.d) $(SLOW_BIN:=.d) \
 	$(TEST_SUPPORT_OBJ:.o=.d)
 
 $(OUT)/tests:
@@ -103,9 +112,9 @@ test:
 	$(MAKE) MODE=test run-tests
 
 # Runs every test program, even after one fails, and fails if any did.
-run-tests: $(TEST_BIN)
+run-tests: $(TEST_BIN) $(WTEST_BIN)
 	@failed=0; \
-	for t in $(TEST_BIN); do ./$$t || failed=1; done; \
+	for t in $(TEST_BIN) $(WTEST_BIN); do ./$$t || failed=1; done; \
 	exit $$failed
 
 test-slow:

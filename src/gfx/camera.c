@@ -191,3 +191,12 @@ void camera_cells(const Camera *c, CameraCells *out)
     axis_cells(c->cy, c->world_h, c->view_h, ppc, &out->first_y, &out->rows,
                &out->screen_y);
 }
+
+bool camera_on_world(const Camera *c, int sx, int sy)
+{
+    CameraCells v;
+    camera_cells(c, &v);
+    int ppc = camera_ppc(c);
+    return sx >= v.screen_x && sx < v.screen_x + v.cols * ppc &&
+           sy >= v.screen_y && sy < v.screen_y + v.rows * ppc;
+}

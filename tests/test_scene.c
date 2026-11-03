@@ -1,5 +1,10 @@
 #include "test.h"
 
+#include <math.h>  /* fabsf */
+#include <stdio.h> /* snprintf */
+
+#include "brain_script.h"
+#include "inspect.h"
 #include "scene.h"
 #include "settings.h"
 #include "sim.h"
@@ -135,11 +140,203 @@ static void test_fight_draws_a_mark(void)
     CHECK(red_pixels(ACT_BITE) > 0);
 }
 
+/* A world of bare soil with nobody in it, for placing creatures by hand. */
+static void make_empty_sim(Sim *s, int w, int h)
+{
+    Settings set = settings_default();
+    snprintf(set.brain_name, sizeof(set.brain_name), "script");
+    set.start_creatures = 0;
+    set.min_creatures = 0;
+    set.veg_start_chance = 0.0f;
+    CHECK(sim_init(s, &set, 7, w, h));
+    for (int i = 0; i < w * h; i++) {
+        s->world.terrain[i] = TERRAIN_SOIL;
+    }
+}
+
+static void test_click_picks_within_two_cells(void)
+{
+    Sim s;
+    make_empty_sim(&s, 32, 32);
+    int near = pool_spawn(&s.pool, &s.world, 10, 10);
+    int far = pool_spawn(&s.pool, &s.world, 13, 10);
+    CHECK(near >= 0 && far >= 0);
+    Inspect in = {0};
+
+    /* On it. */
+    scene_click(&in, &s, 10.5f, 10.5f);
+    CHECK(in.on && inspect_creature(&in, &s) == &s.pool.items[near]);
+    /* Two cells away, still it: the nearest wins over the one further off. */
+    scene_click(&in, &s, 12.5f, 10.5f);
+    CHECK(inspect_creature(&in, &s) == &s.pool.items[far]);
+    scene_click(&in, &s, 8.5f, 10.5f);
+    CHECK(inspect_creature(&in, &s) == &s.pool.items[near]);
+    /* Three cells away from anyone: bare ground lets go. */
+    scene_click(&in, &s, 7.5f, 10.5f);
+    CHECK(!in.on && !in.following);
+    sim_free(&s);
+}
+
+static void test_click_finds_across_the_wrapped_edge(void)
+{
+    Sim s;
+    make_empty_sim(&s, 32, 32);
+    int slot = pool_spawn(&s.pool, &s.world, 0, 0);
+    CHECK(slot >= 0);
+    Inspect in = {0};
+    scene_click(&in, &s, 31.5f, 31.5f);
+    CHECK(inspect_creature(&in, &s) == &s.pool.items[slot]);
+    sim_free(&s);
+}
+
+static void test_follow_centres_on_the_creature(void)
+{
+    Sim s;
+    make_empty_sim(&s, 64, 64);
+    int slot = pool_spawn(&s.pool, &s.world, 20, 30);
+    Scene sc;
+    CHECK(scene_init(&sc, &s));
+    scene_update(&sc, &s, 10);
+    Camera cam;
+    camera_init(&cam, 64, 64, 64, 64);
+    cam.level = CAMERA_CLOSE;
+    Inspect in = {0};
+    scene_click(&in, &s, 20.5f, 30.5f);
+    CHECK(scene_follow(&sc, &cam, &in, &s, 0.0f) == &s.pool.items[slot]);
+    CHECK(fabsf(cam.cx - 20.0f) < 0.01f && fabsf(cam.cy - 30.0f) < 0.01f);
+    scene_free(&sc);
+    sim_free(&s);
+}
+
+static void test_followed_creature_dies_camera_stays(void)
+{
+    Sim s;
+    make_empty_sim(&s, 64, 64);
+    int slot = pool_spawn(&s.pool, &s.world, 20, 30);
+    Scene sc;
+    CHECK(scene_init(&sc, &s));
+    scene_update(&sc, &s, 10);
+    Camera cam;
+    camera_init(&cam, 64, 64, 64, 64);
+    cam.level = CAMERA_CLOSE;
+    Inspect in = {0};
+    scene_click(&in, &s, 20.5f, 30.5f);
+    CHECK(scene_follow(&sc, &cam, &in, &s, 0.0f) != NULL);
+
+    /* It dies, and a newborn takes its slot somewhere else: a different id, so
+     * the camera must not fly off after the newborn. */
+    pool_kill(&s.pool, &s.world, slot, &s.set);
+    int newborn = pool_spawn(&s.pool, &s.world, 50, 5);
+    CHECK(newborn == slot);
+    s.tick++;
+    scene_update(&sc, &s, 10);
+    CHECK(scene_follow(&sc, &cam, &in, &s, 0.0f) == NULL);
+    CHECK(!in.following);
+    CHECK(fabsf(cam.cx - 20.0f) < 0.01f && fabsf(cam.cy - 30.0f) < 0.01f);
+    scene_free(&sc);
+    sim_free(&s);
+}
+
+/* r: ids restart from 0, so the same id can come up on a stranger. */
+static void test_new_world_lets_go(void)
+{
+    Sim s;
+    make_empty_sim(&s, 64, 64);
+    CHECK(pool_spawn(&s.pool, &s.world, 20, 30) >= 0);
+    Inspect in = {0};
+    scene_click(&in, &s, 20.5f, 30.5f);
+    CHECK(in.following);
+    CHECK(sim_reseed(&s, 9));
+    for (int i = 0; i < 64 * 64; i++) {
+        s.world.terrain[i] = TERRAIN_SOIL;
+    }
+    int stranger = pool_spawn(&s.pool, &s.world, 40, 40);
+    CHECK(stranger >= 0);
+    /* The danger itself: without letting go, the old id finds a stranger. */
+    CHECK(inspect_creature(&in, &s) == &s.pool.items[stranger]);
+    inspect_stop(&in);
+    CHECK(inspect_creature(&in, &s) == NULL);
+    CHECK(!in.on);
+    sim_free(&s);
+}
+
+/* A glide over the world's edge: the camera moves one cell the short way. */
+static void test_follow_across_the_edge_takes_the_short_way(void)
+{
+    Sim s;
+    make_empty_sim(&s, 64, 64);
+    int slot = pool_spawn(&s.pool, &s.world, 63, 10);
+    Scene sc;
+    CHECK(scene_init(&sc, &s));
+    scene_update(&sc, &s, 10);
+    Camera cam;
+    camera_init(&cam, 64, 64, 64, 64);
+    cam.level = CAMERA_CLOSE;
+    Inspect in = {0};
+    scene_click(&in, &s, 63.5f, 10.5f);
+    CHECK(scene_follow(&sc, &cam, &in, &s, 0.0f) != NULL);
+    /* It steps to x = 0, the other side of the array. */
+    s.world.occupant[world_idx(&s.world, 63, 10)] = -1;
+    s.world.occupant[world_idx(&s.world, 0, 10)] = slot;
+    s.pool.items[slot].x = 0;
+    s.tick++;
+    scene_update(&sc, &s, 10);
+    float before = cam.cx;
+    for (int f = 0; f <= 10; f++) {
+        CHECK(scene_follow(&sc, &cam, &in, &s, (float)f / 10.0f) != NULL);
+        float moved = fabsf(cam.cx - before);
+        /* Wrapped: 63.9 to 0.1 is a small step, not 63.8 cells. */
+        if (moved > 32.0f) {
+            moved = 64.0f - moved;
+        }
+        CHECK(moved < 0.5f);
+        before = cam.cx;
+    }
+    scene_free(&sc);
+    sim_free(&s);
+}
+
+static void test_layout_gives_the_panel_way_first(void)
+{
+    Layout l;
+    scene_layout(&l, 1280, 720);
+    CHECK(!l.too_small && l.has_panel);
+    CHECK(l.view_x == 0 && l.view_y == SCENE_TEXT_H);
+    CHECK(l.view_w + SCENE_PANEL_W == 1280);
+    CHECK(l.panel_x == l.view_w);
+    /* Title and help lines take one row each. */
+    CHECK(l.view_h == 720 - 2 * SCENE_TEXT_H);
+    CHECK(l.help_y == 720 - SCENE_TEXT_H);
+
+    /* Too narrow for both: the world takes the width. */
+    scene_layout(&l, SCENE_MIN_W + SCENE_PANEL_W - 1, 720);
+    CHECK(!l.too_small && !l.has_panel);
+    CHECK(l.view_w == SCENE_MIN_W + SCENE_PANEL_W - 1);
+
+    scene_layout(&l, SCENE_MIN_W - 1, 720);
+    CHECK(l.too_small);
+    CHECK(l.view_w == 0 && l.view_h == 0);
+    scene_layout(&l, 1280, SCENE_MIN_H - 1);
+    CHECK(l.too_small);
+    /* Minimised: nothing at all. */
+    scene_layout(&l, 0, 0);
+    CHECK(l.too_small && l.view_w == 0 && l.view_h == 0);
+}
+
 int main(void)
 {
+    /* Tests register this one themselves: the real program never has it. */
+    CHECK(brain_register(&BRAIN_SCRIPT));
     test_drawing_changes_nothing();
     test_empty_view_draws_nothing();
     test_tiny_world_on_black();
     test_fight_draws_a_mark();
+    test_click_picks_within_two_cells();
+    test_click_finds_across_the_wrapped_edge();
+    test_follow_centres_on_the_creature();
+    test_followed_creature_dies_camera_stays();
+    test_new_world_lets_go();
+    test_follow_across_the_edge_takes_the_short_way();
+    test_layout_gives_the_panel_way_first();
     TEST_SUMMARY();
 }

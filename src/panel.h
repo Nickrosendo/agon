@@ -67,4 +67,8 @@ void panel_draw(const Sim *s, int col, int row0, int rows);
 void panel_draw_inspect(const Sim *s, const Inspect *in, int col, int row0,
                         int rows);
 
+/* The message shown instead of the world when the window is too small. Here
+ * and not in render.c because both programs show it, and it needs only cells. */
+void render_too_small(int cols, int rows, int min_cols, int min_rows);
+
 #endif

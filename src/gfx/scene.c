@@ -320,3 +320,103 @@ void scene_draw_world(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
     draw_creatures(sc, c, cam, s, tick_fraction, body_ms, view_x, view_y);
     draw_marks(sc, c, cam, s, tick_fraction, body_ms, view_x, view_y);
 }
+
+void scene_layout(Layout *l, int window_w, int window_h)
+{
+    *l = (Layout){0}; /* every field not named below becomes 0 or false */
+    if (window_w < SCENE_MIN_W || window_h < SCENE_MIN_H) {
+        l->too_small = true;
+        return;
+    }
+    l->has_panel = window_w >= SCENE_MIN_W + SCENE_PANEL_W;
+    l->view_y = SCENE_TEXT_H;
+    l->view_w = l->has_panel ? window_w - SCENE_PANEL_W : window_w;
+    l->view_h = window_h - 2 * SCENE_TEXT_H;
+    l->help_y = window_h - SCENE_TEXT_H;
+    if (l->has_panel) {
+        l->panel_x = l->view_w;
+        l->panel_y = SCENE_TEXT_H;
+        l->panel_rows = l->view_h / FONT_H;
+    }
+}
+
+void scene_click(Inspect *in, const Sim *s, float wx, float wy)
+{
+    const World *w = &s->world;
+    int cx = (int)wx; /* wx and wy are inside the world: never negative */
+    int cy = (int)wy;
+    int best_x = 0, best_y = 0, best_distance = -1;
+    for (int dy = -2; dy <= 2; dy++) {
+        for (int dx = -2; dx <= 2; dx++) {
+            int distance = dx * dx + dy * dy;
+            /* world_idx wraps, so a cell over the edge is found too. */
+            if (w->occupant[world_idx(w, cx + dx, cy + dy)] >= 0 &&
+                (best_distance < 0 || distance < best_distance)) {
+                best_distance = distance;
+                best_x = cx + dx;
+                best_y = cy + dy;
+            }
+        }
+    }
+    if (best_distance < 0) {
+        inspect_stop(in);
+        return;
+    }
+    /* Into the world: % keeps the sign of a negative number, so add w first. */
+    int x = (best_x + w->w) % w->w;
+    int y = (best_y + w->h) % w->h;
+    in->on = true;
+    inspect_move(in, s, x - in->x, y - in->y, w->w, w->h);
+}
+
+const Creature *scene_follow(const Scene *sc, Camera *cam, Inspect *in,
+                             const Sim *s, float tick_fraction)
+{
+    inspect_update(in, s);
+    const Creature *cr = inspect_creature(in, s);
+    if (cr == NULL) {
+        return NULL;
+    }
+    /* Subtracting two pointers into one array gives the distance in elements,
+     * not bytes: this is the creature's slot. */
+    int slot = (int)(cr - s->pool.items);
+    if (slot < sc->anim.capacity && sc->anim.slots[slot].seen) {
+        AnimPose p;
+        anim_pose(&sc->anim, s, slot, tick_fraction, 0, &p);
+        camera_centre_on(cam, p.x, p.y);
+    }
+    return cr;
+}
+
+void scene_draw_cursor(const Scene *sc, Canvas *c, const Camera *cam,
+                       const Sim *s, const Creature *followed,
+                       float tick_fraction, int view_x, int view_y)
+{
+    if (followed == NULL || cam->view_w == 0 || cam->view_h == 0) {
+        return;
+    }
+    int slot = (int)(followed - s->pool.items);
+    if (slot >= sc->anim.capacity || !sc->anim.slots[slot].seen) {
+        return;
+    }
+    AnimPose p;
+    anim_pose(&sc->anim, s, slot, tick_fraction, 0, &p);
+    int sx, sy;
+    camera_to_screen(cam, p.x, p.y, &sx, &sy);
+    int ppc = camera_ppc(cam);
+    int left = view_x + sx - 2;
+    int top = view_y + sy - 2;
+    int right = view_x + sx + ppc + 1; /* the last column of the frame */
+    int bottom = view_y + sy + ppc + 1;
+    int len = ppc < 8 ? 2 : ppc / 4;
+    uint32_t white = to_pixel(WHITE);
+    /* Each corner is two short lines. */
+    canvas_rect(c, left, top, len, 1, white);
+    canvas_rect(c, left, top, 1, len, white);
+    canvas_rect(c, right - len + 1, top, len, 1, white);
+    canvas_rect(c, right, top, 1, len, white);
+    canvas_rect(c, left, bottom, len, 1, white);
+    canvas_rect(c, left, bottom - len + 1, 1, len, white);
+    canvas_rect(c, right - len + 1, bottom, len, 1, white);
+    canvas_rect(c, right, bottom - len + 1, 1, len, white);
+}

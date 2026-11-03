@@ -5,6 +5,7 @@
  */
 #include <inttypes.h> /* PRIx64 */
 #include <stdio.h>    /* snprintf, printf, fputs */
+#include <stdlib.h>   /* abs */
 #include <string.h>   /* strcmp */
 #include <time.h>     /* time */
 
@@ -14,6 +15,7 @@
 #include "cells.h"
 #include "cells_canvas.h"
 #include "font.h"
+#include "inspect.h"
 #include "options.h"
 #include "panel.h" /* panel_format_count */
 #include "platform.h"
@@ -26,10 +28,10 @@
 #define FRAMES_PER_SECOND 30
 #define WINDOW_W 1280
 #define WINDOW_H 720
+/* A press that moves further than this, in pixels, is a drag, not a click. */
+#define CLICK_SLOP 4
 #define DEFAULT_WORLD_W 256
 #define DEFAULT_WORLD_H 144
-/* The title line's height, above the world. */
-#define TITLE_H FONT_H
 #define NOTICE_FRAMES (2 * FRAMES_PER_SECOND)
 /* How many screen pixels an arrow key pans by. */
 #define ARROW_PAN 48
@@ -50,7 +52,9 @@ static const char WINDOW_USAGE[] =
     "  -h, --help        this text\n"
     "  --version         the version\n"
     "keys: space pause, +/- speed, r new seed, s save, q quit, arrows move,\n"
-    "      [ and ] zoom. mouse: wheel zooms, dragging moves.\n";
+    "      [ and ] zoom, Esc lets go of a creature.\n"
+    "mouse: wheel zooms, dragging moves, clicking a creature follows it,\n"
+    "       clicking bare ground lets go.\n";
 
 /* Everything a frame needs, passed through platform_run as a void *. */
 typedef struct {
@@ -58,12 +62,16 @@ typedef struct {
     Scene scene;
     Canvas canvas;
     Camera camera;
+    Layout layout;
+    Inspect inspect;
     const Options *opt;
     Rng seed_source;
     int speed;
     int ticks_due; /* ticks owed, in thirtieths, as in the terminal program */
     bool paused, running, failed;
-    bool dragging;
+    bool pressed;  /* the left button went down over the world */
+    bool dragging; /* and has moved far enough not to be a click */
+    int press_x, press_y;
     int mouse_x, mouse_y;
     long frames_done;
     int notice_frames;
@@ -72,13 +80,41 @@ typedef struct {
     uint64_t last_ms;
 } App;
 
-/* The world's part of the window: all of it below the title line. */
 static void apply_window_size(App *a, int w, int h)
 {
     /* If memory runs out the old canvas stays, and is simply stretched. */
     if (canvas_resize(&a->canvas, w, h)) {
-        camera_resize(&a->camera, w, h - TITLE_H);
+        scene_layout(&a->layout, w, h);
+        camera_resize(&a->camera, a->layout.view_w, a->layout.view_h);
     }
+}
+
+/* True when this window pixel is on the world's part of the window. */
+static bool over_view(const App *a, int x, int y)
+{
+    const Layout *l = &a->layout;
+    return x >= l->view_x && x < l->view_x + l->view_w && y >= l->view_y &&
+           y < l->view_y + l->view_h;
+}
+
+/* Panning means looking elsewhere, which following would undo next frame. */
+static void pan(App *a, int dx, int dy)
+{
+    inspect_stop(&a->inspect);
+    camera_pan(&a->camera, dx, dy);
+}
+
+static void click(App *a, int x, int y)
+{
+    int sx = x - a->layout.view_x;
+    int sy = y - a->layout.view_y;
+    if (!camera_on_world(&a->camera, sx, sy)) {
+        inspect_stop(&a->inspect);
+        return;
+    }
+    float wx, wy;
+    camera_to_world(&a->camera, sx, sy, &wx, &wy);
+    scene_click(&a->inspect, &a->sim, wx, wy);
 }
 
 static void new_world(App *a)
@@ -89,6 +125,7 @@ static void new_world(App *a)
         return;
     }
     scene_reset(&a->scene);
+    inspect_stop(&a->inspect);
 }
 
 static void handle_key(App *a, int key)
@@ -124,10 +161,11 @@ static void handle_key(App *a, int key)
     case '[':
         camera_zoom(&a->camera, -1, a->camera.view_w / 2, a->camera.view_h / 2);
         break;
-    case KEY_LEFT: camera_pan(&a->camera, -ARROW_PAN, 0); break;
-    case KEY_RIGHT: camera_pan(&a->camera, ARROW_PAN, 0); break;
-    case KEY_UP: camera_pan(&a->camera, 0, -ARROW_PAN); break;
-    case KEY_DOWN: camera_pan(&a->camera, 0, ARROW_PAN); break;
+    case KEY_LEFT: pan(a, -ARROW_PAN, 0); break;
+    case KEY_RIGHT: pan(a, ARROW_PAN, 0); break;
+    case KEY_UP: pan(a, 0, -ARROW_PAN); break;
+    case KEY_DOWN: pan(a, 0, ARROW_PAN); break;
+    case KEY_ESCAPE: inspect_stop(&a->inspect); break;
     default: break;
     }
 }
@@ -142,21 +180,34 @@ static void handle_event(App *a, const Event *e)
         handle_key(a, e->key);
         break;
     case EV_WHEEL:
-        /* The camera counts from the view's corner, below the title line. */
-        camera_zoom(&a->camera, e->delta, e->x, e->y - TITLE_H);
+        if (over_view(a, e->x, e->y)) {
+            /* The camera counts from the view's own corner. */
+            camera_zoom(&a->camera, e->delta, e->x - a->layout.view_x,
+                        e->y - a->layout.view_y);
+        }
         break;
     case EV_DOWN:
-        a->dragging = true;
-        a->mouse_x = e->x;
-        a->mouse_y = e->y;
+        a->pressed = over_view(a, e->x, e->y);
+        a->dragging = false;
+        a->press_x = a->mouse_x = e->x;
+        a->press_y = a->mouse_y = e->y;
         break;
     case EV_UP:
+        if (a->pressed && !a->dragging) {
+            click(a, e->x, e->y);
+        }
+        a->pressed = false;
         a->dragging = false;
         break;
     case EV_MOVE:
+        if (a->pressed && !a->dragging &&
+            (abs(e->x - a->press_x) > CLICK_SLOP ||
+             abs(e->y - a->press_y) > CLICK_SLOP)) {
+            a->dragging = true;
+        }
         if (a->dragging) {
             /* Dragging pulls the world along: the view moves the other way. */
-            camera_pan(&a->camera, a->mouse_x - e->x, a->mouse_y - e->y);
+            pan(a, a->mouse_x - e->x, a->mouse_y - e->y);
             a->mouse_x = e->x;
             a->mouse_y = e->y;
         }
@@ -167,17 +218,90 @@ static void handle_event(App *a, const Event *e)
     }
 }
 
-static void draw_title(App *a)
+static void draw_title(App *a, const Creature *followed)
 {
     char tick[32];
     panel_format_count(tick, sizeof(tick), (long)a->sim.tick);
+    char who[32] = "";
+    if (followed != NULL) {
+        snprintf(who, sizeof(who), " | following #%u", (unsigned)followed->id);
+    }
     char text[400];
     snprintf(text, sizeof(text),
-             " agon | seed 0x%" PRIx64 " | tick %s | creatures %d | %d/s%s%s%s",
+             " agon | seed 0x%" PRIx64 " | tick %s | creatures %d | %d/s%s%s%s%s",
              a->sim.seed, tick, a->sim.pool.count, APP_SPEEDS[a->speed],
-             a->paused ? " | paused" : "", a->notice[0] != '\0' ? " | " : "",
-             a->notice);
+             a->paused ? " | paused" : "", who,
+             a->notice[0] != '\0' ? " | " : "", a->notice);
+    cells_canvas_set(&a->canvas, 0, 0);
     render_text(0, 0, text, a->canvas.w / FONT_W + 1);
+}
+
+static void draw_help(App *a)
+{
+    cells_canvas_set(&a->canvas, 0, a->layout.help_y);
+    render_text(0, 0,
+                " space pause | +/- speed | [ ] zoom | click follow | Esc let go"
+                " | r new world | s save | q quit",
+                a->canvas.w / FONT_W + 1);
+}
+
+static void draw_panel(App *a, const Creature *followed)
+{
+    const Layout *l = &a->layout;
+    if (!l->has_panel) {
+        return;
+    }
+    /* Rows are whole; this clears what is left below the last of them. */
+    canvas_rect(&a->canvas, l->panel_x, l->panel_y, SCENE_PANEL_W, l->view_h,
+                canvas_rgb(0, 0, 0));
+    cells_canvas_set(&a->canvas, l->panel_x, l->panel_y);
+    if (followed != NULL) {
+        panel_draw_inspect(&a->sim, &a->inspect, 0, 0, l->panel_rows);
+    } else {
+        panel_draw(&a->sim, 0, 0, l->panel_rows);
+    }
+}
+
+/* Too small for anything else: a minimised window lands here too. */
+static void draw_too_small(App *a)
+{
+    canvas_fill(&a->canvas, canvas_rgb(0, 0, 0));
+    cells_canvas_set(&a->canvas, 0, 0);
+    render_too_small(a->canvas.w / FONT_W, a->canvas.h / FONT_H, SCENE_MIN_COLS,
+                     SCENE_MIN_ROWS);
+}
+
+/* The creature being followed, moving the camera; a death here tells the user
+ * and drops back to the ordinary panel. */
+static const Creature *update_following(App *a, float fraction)
+{
+    bool was_following = a->inspect.following;
+    const Creature *followed =
+        scene_follow(&a->scene, &a->camera, &a->inspect, &a->sim, fraction);
+    if (was_following && followed == NULL) {
+        inspect_stop(&a->inspect);
+        snprintf(a->notice, sizeof(a->notice), "the creature you followed died");
+        a->notice_frames = NOTICE_FRAMES;
+    }
+    return followed;
+}
+
+static void draw_frame(App *a, float fraction)
+{
+    const Creature *followed = update_following(a, fraction);
+    if (a->layout.too_small) {
+        draw_too_small(a);
+        return;
+    }
+    const Layout *l = &a->layout;
+    scene_draw_world(&a->scene, &a->canvas, &a->camera, &a->sim, fraction,
+                     a->last_ms, a->body_ms, l->view_x, l->view_y);
+    scene_draw_cursor(&a->scene, &a->canvas, &a->camera, &a->sim, followed,
+                      fraction, l->view_x, l->view_y);
+    /* After the world: a body near the edge may have been drawn over these. */
+    draw_title(a, followed);
+    draw_help(a);
+    draw_panel(a, followed);
 }
 
 static void advance_clocks(App *a)
@@ -216,9 +340,7 @@ static void app_frame(void *arg)
     advance_clocks(a);
 
     float fraction = (float)a->ticks_due / (float)FRAMES_PER_SECOND;
-    scene_draw_world(&a->scene, &a->canvas, &a->camera, &a->sim, fraction,
-                     a->last_ms, a->body_ms, 0, TITLE_H);
-    draw_title(a);
+    draw_frame(a, fraction);
     platform_present(&a->canvas);
 
     /* The same way out as the window's X button, so --frames tests it. */
@@ -343,9 +465,9 @@ int main(int argc, char **argv)
         platform_error("out of memory");
         return EXIT_FAILED;
     }
-    cells_canvas_bind(&app.canvas);
-    camera_init(&app.camera, app.sim.world.w, app.sim.world.h, WINDOW_W,
-                WINDOW_H - TITLE_H);
+    scene_layout(&app.layout, WINDOW_W, WINDOW_H);
+    camera_init(&app.camera, app.sim.world.w, app.sim.world.h,
+                app.layout.view_w, app.layout.view_h);
     app.camera.level = zoom;
     if (!platform_open("agon", WINDOW_W, WINDOW_H, err, sizeof(err))) {
         platform_error(err);

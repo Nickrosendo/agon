@@ -75,6 +75,12 @@ void inspect_update(Inspect *in, const Sim *s)
     in->y = s->pool.items[slot].y;
 }
 
+void inspect_stop(Inspect *in)
+{
+    in->on = false;
+    in->following = false;
+}
+
 const Creature *inspect_creature(const Inspect *in, const Sim *s)
 {
     if (!in->following) {

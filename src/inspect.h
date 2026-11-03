@@ -35,6 +35,10 @@ void inspect_move(Inspect *in, const Sim *s, int dx, int dy, int max_x,
  * where the creature was last seen. */
 void inspect_update(Inspect *in, const Sim *s);
 
+/* Turns inspect mode off and follows nobody. Needed when a new world starts:
+ * ids begin again from 0, so a remembered id could match a stranger. */
+void inspect_stop(Inspect *in);
+
 /* The creature being followed, or NULL when none is. */
 const Creature *inspect_creature(const Inspect *in, const Sim *s);
 

@@ -532,3 +532,13 @@ void panel_draw_inspect(const Sim *s, const Inspect *in, int col, int row0,
         render_text(col, row0 + r, r < l.n ? l.text[r] : "", PANEL_COLS);
     }
 }
+
+void render_too_small(int cols, int rows, int min_cols, int min_rows)
+{
+    render_text(0, 0, "window too small", cols);
+    if (rows > 1) {
+        char need[48];
+        snprintf(need, sizeof(need), "need %d x %d", min_cols, min_rows);
+        render_text(0, 1, need, cols);
+    }
+}

@@ -221,6 +221,23 @@ static void test_zero_view(void)
     CHECK(c.view_w == 0 && c.view_h == 0);
 }
 
+static void test_on_world_says_no_on_the_black(void)
+{
+    Camera c;
+    /* 4 by 3 cells at 32 pixels each, centred in 320 by 180. */
+    camera_init(&c, 4, 3, 320, 180);
+    c.level = CAMERA_CLOSE;
+    CHECK(camera_on_world(&c, 160, 90));
+    CHECK(!camera_on_world(&c, 0, 90));
+    CHECK(!camera_on_world(&c, 160, 0));
+    CHECK(!camera_on_world(&c, 319, 179));
+    /* A world bigger than the view fills it, so everywhere is world. */
+    camera_init(&c, 256, 144, 320, 180);
+    c.level = CAMERA_CLOSE;
+    CHECK(camera_on_world(&c, 0, 0));
+    CHECK(camera_on_world(&c, 319, 179));
+}
+
 int main(void)
 {
     test_ppc_levels();
@@ -234,5 +251,6 @@ int main(void)
     test_tiny_world_fits();
     test_cells_cover_the_view();
     test_zero_view();
+    test_on_world_says_no_on_the_black();
     TEST_SUMMARY();
 }

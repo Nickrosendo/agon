@@ -31,7 +31,4 @@ void render_snapshot(const Sim *s);
  * cell. Call after the screen was cleared or resized. */
 void render_invalidate(void);
 
-/* The message shown instead of the world when the window is too small. */
-void render_too_small(int cols, int rows, int min_cols, int min_rows);
-
 #endif

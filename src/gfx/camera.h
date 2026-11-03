@@ -49,6 +49,8 @@ void camera_centre_on(Camera *c, float world_x, float world_y);
 void camera_to_screen(const Camera *c, float wx, float wy, int *sx, int *sy);
 /* The world point at a screen pixel's middle, wrapped into the world. */
 void camera_to_world(const Camera *c, int sx, int sy, float *wx, float *wy);
+/* False for a screen pixel on the black around a world smaller than the view. */
+bool camera_on_world(const Camera *c, int sx, int sy);
 /* True when the whole world is visible: centred on black, no repeats. */
 bool camera_world_fits(const Camera *c);
 /* The cells the view covers. */

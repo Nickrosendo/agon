@@ -193,12 +193,3 @@ void render_snapshot(const Sim *s)
     term_end();
 }
 
-void render_too_small(int cols, int rows, int min_cols, int min_rows)
-{
-    render_text(0, 0, "window too small", cols);
-    if (rows > 1) {
-        char need[48];
-        snprintf(need, sizeof(need), "need %d x %d", min_cols, min_rows);
-        render_text(0, 1, need, cols);
-    }
-}
