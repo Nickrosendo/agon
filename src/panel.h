@@ -15,6 +15,12 @@
 /* How many screen columns the panel takes. */
 #define PANEL_COLS 20
 
+/* The rows of panel_draw that can be clicked, counted from its top. Fixed, since
+ * only the lines after these depend on the colour groups. wtest_cells.c checks
+ * that the words really are on these rows. */
+#define PANEL_ROW_TOP_HUNTER 6
+#define PANEL_ROW_OLDEST 12
+
 /* How many bands the hue wheel is cut into when counting colours. */
 #define PANEL_HUE_BANDS 12
 

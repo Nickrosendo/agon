@@ -57,7 +57,8 @@ static const char WINDOW_USAGE[] =
     "keys: space pause, +/- speed, r new seed, s save, q quit, arrows move,\n"
     "      [ and ] zoom, Esc lets go of a creature, n new world after game over.\n"
     "mouse: wheel zooms, dragging moves, clicking a creature follows it,\n"
-    "       clicking bare ground lets go.\n";
+    "       clicking bare ground lets go. On the panel, clicking \"top hunter\",\n"
+    "       \"oldest\" or the largest family's body follows that creature.\n";
 
 /* Everything a frame needs, passed through platform_run as a void *. */
 typedef struct {
@@ -121,6 +122,36 @@ static void click(App *a, int x, int y)
     float wx, wy;
     camera_to_world(&a->camera, sx, sy, &wx, &wy);
     scene_click(&a->inspect, &a->sim, wx, wy);
+}
+
+/* A click on the panel: follow who it names. While following, the panel lists that
+ * creature instead, so these rows are not there to click. */
+static void click_panel(App *a, int x, int y)
+{
+    if (a->inspect.following) {
+        return;
+    }
+    int slot;
+    switch (scene_panel_pick(&a->layout, x, y)) {
+    case PANEL_PICK_TOP_HUNTER:
+        slot = inspect_highest_level(&a->sim);
+        break;
+    case PANEL_PICK_OLDEST:
+        slot = inspect_oldest(&a->sim);
+        break;
+    case PANEL_PICK_LARGEST_FAMILY:
+        slot = inspect_largest_of_family(&a->sim,
+                                         family_largest(&a->families, &a->sim));
+        break;
+    default:
+        return;
+    }
+    if (slot >= 0) {
+        inspect_follow(&a->inspect, &a->sim, slot);
+    } else {
+        snprintf(a->notice, sizeof(a->notice), "nobody to follow");
+        a->notice_frames = NOTICE_FRAMES;
+    }
 }
 
 static void new_world(App *a)
@@ -207,6 +238,9 @@ static void handle_event(App *a, const Event *e)
         break;
     case EV_DOWN:
         a->pressed = over_view(a, e->x, e->y);
+        if (!a->pressed) {
+            click_panel(a, e->x, e->y);
+        }
         a->dragging = false;
         a->press_x = a->mouse_x = e->x;
         a->press_y = a->mouse_y = e->y;

@@ -642,6 +642,38 @@ static void test_scene_game_over(void)
     sim_free(&s);
 }
 
+static void test_panel_pick(void)
+{
+    Layout l;
+    scene_layout(&l, 1280, 720);
+    CHECK(l.has_panel && l.show_enlarged);
+    int x = l.panel_x + 10;
+    int row_y = l.panel_y + PANEL_ROW_TOP_HUNTER * FONT_H;
+    CHECK(scene_panel_pick(&l, x, row_y) == PANEL_PICK_TOP_HUNTER);
+    CHECK(scene_panel_pick(&l, x, row_y + FONT_H - 1) == PANEL_PICK_TOP_HUNTER);
+    CHECK(scene_panel_pick(&l, x, row_y - 1) == PANEL_PICK_NONE);
+    CHECK(scene_panel_pick(&l, x, l.panel_y + PANEL_ROW_OLDEST * FONT_H) ==
+          PANEL_PICK_OLDEST);
+    CHECK(scene_panel_pick(&l, x, l.family_y + FONT_H) ==
+          PANEL_PICK_LARGEST_FAMILY);
+    /* Off the panel's sides and above it. */
+    CHECK(scene_panel_pick(&l, l.panel_x - 1, row_y) == PANEL_PICK_NONE);
+    CHECK(scene_panel_pick(&l, l.panel_x + SCENE_PANEL_W, row_y) == PANEL_PICK_NONE);
+    CHECK(scene_panel_pick(&l, x, 0) == PANEL_PICK_NONE);
+
+    /* A short window: rows that did not fit cannot be clicked. */
+    scene_layout(&l, 1280, 12 * FONT_H);
+    CHECK(l.has_panel);
+    CHECK(l.panel_rows <= PANEL_ROW_OLDEST);
+    CHECK(scene_panel_pick(&l, l.panel_x + 10,
+                           l.panel_y + PANEL_ROW_OLDEST * FONT_H) ==
+          PANEL_PICK_NONE);
+    /* A window with no panel at all. */
+    scene_layout(&l, SCENE_MIN_W, 720);
+    CHECK(!l.has_panel);
+    CHECK(scene_panel_pick(&l, 10, 100) == PANEL_PICK_NONE);
+}
+
 int main(void)
 {
     /* Tests register this one themselves: the real program never has it. */
@@ -664,5 +696,6 @@ int main(void)
     test_game_over_text();
     test_game_over_text_longest();
     test_scene_game_over();
+    test_panel_pick();
     TEST_SUMMARY();
 }

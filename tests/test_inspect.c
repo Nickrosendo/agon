@@ -102,6 +102,62 @@ static void test_follows_until_death(void)
     sim_free(&sim);
 }
 
+static Creature *add(Sim *sim, int x, int y)
+{
+    int slot = pool_spawn(&sim->pool, &sim->world, x, y);
+    CHECK(slot >= 0);
+    return &sim->pool.items[slot];
+}
+
+static void test_picks_for_the_panel(void)
+{
+    Sim sim;
+    make_empty_sim(&sim);
+    CHECK(inspect_highest_level(&sim) == -1);
+    CHECK(inspect_oldest(&sim) == -1);
+    CHECK(inspect_largest_of_family(&sim, 5) == -1);
+
+    Creature *a = add(&sim, 1, 1);
+    Creature *b = add(&sim, 5, 5);
+    Creature *c = add(&sim, 9, 9);
+    a->level = 1.0f;
+    b->level = 3.7f;
+    c->level = 2.0f;
+    a->age = 900;
+    b->age = 10;
+    c->age = 20;
+    a->lineage = b->lineage = 5;
+    c->lineage = 6;
+    a->genome.g[GENE_SIZE] = 0.9f;
+    b->genome.g[GENE_SIZE] = 0.1f;
+    c->genome.g[GENE_SIZE] = 1.0f;
+
+    CHECK(&sim.pool.items[inspect_highest_level(&sim)] == b);
+    CHECK(&sim.pool.items[inspect_oldest(&sim)] == a);
+    CHECK(&sim.pool.items[inspect_largest_of_family(&sim, 5)] == a);
+    CHECK(&sim.pool.items[inspect_largest_of_family(&sim, 6)] == c);
+    CHECK(inspect_largest_of_family(&sim, 7) == -1);
+
+    /* A dead one's old numbers do not count. */
+    pool_kill(&sim.pool, &sim.world, inspect_highest_level(&sim), &sim.set);
+    CHECK(&sim.pool.items[inspect_highest_level(&sim)] == c);
+    sim_free(&sim);
+}
+
+/* A creature anywhere can be followed, and the camera's cursor goes with it. */
+static void test_follow_a_slot(void)
+{
+    Sim sim;
+    make_empty_sim(&sim);
+    Creature *a = add(&sim, 3, 12);
+    Inspect in = {0};
+    inspect_follow(&in, &sim, (int)(a - sim.pool.items));
+    CHECK(in.on && in.following);
+    CHECK(in.x == 3 && in.y == 12);
+    CHECK(inspect_creature(&in, &sim) == a);
+    sim_free(&sim);
+}
+
 int main(void)
 {
     CHECK(brain_register(&BRAIN_SCRIPT));
@@ -109,5 +165,7 @@ int main(void)
     test_start_on_the_oldest_in_view();
     test_move_stops_at_the_edges();
     test_follows_until_death();
+    test_picks_for_the_panel();
+    test_follow_a_slot();
     TEST_SUMMARY();
 }

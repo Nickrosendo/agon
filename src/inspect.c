@@ -89,3 +89,55 @@ const Creature *inspect_creature(const Inspect *in, const Sim *s)
     int slot = find_creature(&s->pool, in->id);
     return slot >= 0 ? &s->pool.items[slot] : NULL;
 }
+
+void inspect_follow(Inspect *in, const Sim *s, int slot)
+{
+    const Creature *c = &s->pool.items[slot];
+    in->on = true;
+    in->x = c->x;
+    in->y = c->y;
+    in->following = true;
+    in->id = c->id;
+}
+
+int inspect_highest_level(const Sim *s)
+{
+    int best = -1;
+    for (int i = 0; i < s->pool.capacity; i++) {
+        const Creature *c = &s->pool.items[i];
+        if (c->alive && (best < 0 || c->level > s->pool.items[best].level)) {
+            best = i;
+        }
+    }
+    return best;
+}
+
+int inspect_oldest(const Sim *s)
+{
+    int best = -1;
+    for (int i = 0; i < s->pool.capacity; i++) {
+        const Creature *c = &s->pool.items[i];
+        if (c->alive && (best < 0 || c->age > s->pool.items[best].age)) {
+            best = i;
+        }
+    }
+    return best;
+}
+
+int inspect_largest_of_family(const Sim *s, uint32_t lineage)
+{
+    int best = -1;
+    float best_size = 0.0f;
+    for (int i = 0; i < s->pool.capacity; i++) {
+        const Creature *c = &s->pool.items[i];
+        if (!c->alive || c->lineage != lineage) {
+            continue;
+        }
+        float size = creature_size(c, &s->set);
+        if (best < 0 || size > best_size) {
+            best = i;
+            best_size = size;
+        }
+    }
+    return best;
+}

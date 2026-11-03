@@ -232,6 +232,43 @@ static void test_panel_and_family_on_dead_world(void)
     sim_free(&s);
 }
 
+/* The label as text at (col, row) on an empty canvas equals the same pixels on
+ * the panel: the click rows and the words on screen cannot drift apart unseen. */
+static bool panel_row_says(const Canvas *panel, int row, const char *label)
+{
+    enum { LABEL_COL = 4 }; /* the two swatch columns, the indent and a space */
+    Canvas expected;
+    CHECK(canvas_init(&expected, PANEL_COLS * FONT_W, FONT_H));
+    cells_canvas_set(&expected, 0, 0);
+    render_text(LABEL_COL, 0, label, (int)strlen(label));
+    bool same = true;
+    for (int y = 0; y < FONT_H; y++) {
+        for (int x = LABEL_COL * FONT_W;
+             x < (LABEL_COL + (int)strlen(label)) * FONT_W; x++) {
+            same = same && expected.px[y * expected.w + x] ==
+                               panel->px[(row * FONT_H + y) * panel->w + x];
+        }
+    }
+    canvas_free(&expected);
+    return same;
+}
+
+static void test_clickable_rows_hold_their_words(void)
+{
+    Settings set = settings_default();
+    Sim s;
+    CHECK(sim_init(&s, &set, 3, 64, 32));
+    Canvas c;
+    CHECK(canvas_init(&c, PANEL_COLS * FONT_W, 40 * FONT_H));
+    cells_canvas_set(&c, 0, 0);
+    panel_draw(&s, 0, 0, 40);
+    CHECK(panel_row_says(&c, PANEL_ROW_TOP_HUNTER, "top hunter"));
+    CHECK(panel_row_says(&c, PANEL_ROW_OLDEST, "oldest"));
+    CHECK(!panel_row_says(&c, PANEL_ROW_OLDEST, "top hunter"));
+    canvas_free(&c);
+    sim_free(&s);
+}
+
 int main(void)
 {
     test_text_cut_and_padded();
@@ -241,5 +278,6 @@ int main(void)
     test_unknown_swatch_draws_nothing();
     test_off_the_canvas_is_clipped();
     test_panel_and_family_on_dead_world();
+    test_clickable_rows_hold_their_words();
     TEST_SUMMARY();
 }

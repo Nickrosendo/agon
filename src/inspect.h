@@ -39,6 +39,17 @@ void inspect_update(Inspect *in, const Sim *s);
  * ids begin again from 0, so a remembered id could match a stranger. */
 void inspect_stop(Inspect *in);
 
+/* Follows the creature in this slot, which must be alive, wherever it is. */
+void inspect_follow(Inspect *in, const Sim *s, int slot);
+
+/* Who to follow from the panel: a living creature's slot, or -1 when there is
+ * none. On a tie, the lowest slot. Highest on the food chain, so there is always
+ * an answer while anyone lives, even with no top hunter at this moment. */
+int inspect_highest_level(const Sim *s);
+int inspect_oldest(const Sim *s);
+/* The biggest body in this family. */
+int inspect_largest_of_family(const Sim *s, uint32_t lineage);
+
 /* The creature being followed, or NULL when none is. */
 const Creature *inspect_creature(const Inspect *in, const Sim *s);
 

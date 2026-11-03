@@ -414,6 +414,27 @@ void scene_layout(Layout *l, int window_w, int window_h)
     }
 }
 
+PanelPick scene_panel_pick(const Layout *l, int x, int y)
+{
+    if (!l->has_panel || x < l->panel_x || x >= l->panel_x + SCENE_PANEL_W ||
+        y < l->panel_y) {
+        return PANEL_PICK_NONE;
+    }
+    if (l->show_enlarged && y >= l->family_y &&
+        y < l->family_y + SCENE_ENLARGED_ROWS * FONT_H) {
+        return PANEL_PICK_LARGEST_FAMILY;
+    }
+    /* A row that did not fit is not on screen, so it cannot be clicked. */
+    int row = (y - l->panel_y) / FONT_H;
+    if (row >= l->panel_rows) {
+        return PANEL_PICK_NONE;
+    }
+    if (row == PANEL_ROW_TOP_HUNTER) {
+        return PANEL_PICK_TOP_HUNTER;
+    }
+    return row == PANEL_ROW_OLDEST ? PANEL_PICK_OLDEST : PANEL_PICK_NONE;
+}
+
 void scene_click(Inspect *in, const Sim *s, float wx, float wy)
 {
     const World *w = &s->world;
