@@ -41,7 +41,15 @@ static void test_same_seed_same_checksum(void)
     CHECK(sim_checksum(&a) == sim_checksum(&b));
     printf("seed 7 after 500 steps: 0x%016llx\n",
            (unsigned long long)sim_checksum(&a));
+    /*
+     * Only on Linux. The value depends on tanhf, powf, logf and cosf, and
+     * Windows's maths library rounds some of their results differently, so its
+     * worlds differ from the first such difference on. The checks above, two runs
+     * agreeing with each other, are what must hold everywhere.
+     */
+#ifndef _WIN32
     CHECK(sim_checksum(&a) == SEED_7_AFTER_500);
+#endif
     sim_free(&a);
     sim_free(&b);
 }
