@@ -13,7 +13,7 @@
 #include "settings.h"
 #include "sim.h"
 
-#define AGON_VERSION "0.1.0"
+#define AGON_VERSION "0.2.0"
 
 /* What main returns to the shell: 0 for success, 1 when something failed
  * while running, 2 for a mistake on the command line (the convention of

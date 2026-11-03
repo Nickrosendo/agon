@@ -67,8 +67,10 @@ by both programs. `--zoom close|normal|far|world` picks the starting zoom.
 
 ### On Windows
 
-Each automated build makes `agon-window-windows.zip`: unpack it and run
-`agon-window.exe`; the DLLs it needs are beside it. To build it yourself, in
+Download `agon-window-windows.zip` from the
+[latest release](https://github.com/Nickrosendo/agon/releases/latest), unpack it and
+run `agon-window.exe`; the DLLs it needs are beside it. The program is not signed, so
+Windows may warn about it first. To build it yourself, in
 MSYS2's MINGW64 shell with `mingw-w64-x86_64-gcc`, `mingw-w64-x86_64-SDL2` and
 `make` installed:
 
@@ -83,7 +85,9 @@ system may not match another's, because maths functions differ between them.
 
 ### In a browser
 
-With [Emscripten](https://emscripten.org) set up:
+**[Run it here](https://nickrosendo.github.io/agon/)**, with nothing to install. The
+page always holds the latest version. To build it yourself, with
+[Emscripten](https://emscripten.org) set up:
 
 ```sh
 make web

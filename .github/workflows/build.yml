@@ -80,3 +80,47 @@ jobs:
         with:
           name: agon-web
           path: build/web
+
+  # The browser page, on every push to main that passes. Pages serves it at
+  # https://nickrosendo.github.io/agon/.
+  pages:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [test, windows, web]
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: agon-web
+          path: site
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4
+
+  # A version tag that passes becomes a release, with the Windows program attached.
+  # The tag's own message is the release notes.
+  release:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: [test, windows, web]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: agon-window-windows
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG" agon-window-windows.zip \
+            --repo "$GITHUB_REPOSITORY" --verify-tag --notes-from-tag \
+            --title "agon ${TAG#v}"
