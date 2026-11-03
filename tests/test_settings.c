@@ -98,6 +98,8 @@ static void test_removed_settings_are_errors(void)
                      "split_threshold"));
     CHECK(fails_with("split_share = 0.5\n", "line 1", "split_share"));
     CHECK(fails_with("pack_kinship = 0.5\n", "line 1", "pack_kinship"));
+    CHECK(fails_with("veg_seed_chance = 0.1\n", "line 1", "veg_seed_chance"));
+    CHECK(fails_with("start_creatures = 10\n", "line 1", "start_creatures"));
 }
 
 static void test_mistakes_name_the_line(void)

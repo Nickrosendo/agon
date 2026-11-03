@@ -14,7 +14,7 @@ const char OPTIONS_USAGE[] =
     "                30, 60 or 120 (default 10)\n"
     "  --once        print one snapshot after --ticks ticks and exit\n"
     "  --ticks N     ticks to run before the snapshot (default 2000)\n"
-    "  --no-floor    never place new random creatures\n"
+    "  --no-floor    turn off a floor a settings file set\n"
     "  --config PATH read settings from a file (see --settings)\n"
     "  --save PATH   write the world there on quit and on the s key\n"
     "                (with --once: after the last tick)\n"

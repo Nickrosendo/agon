@@ -59,6 +59,20 @@ static int place_creature(Sim *s)
     return -1;
 }
 
+/* How many founders this world gets: a share of its soil, at most the pool.
+ * + 0.5f before converting to int rounds to the nearest whole creature. */
+static int founder_count(const Sim *s)
+{
+    int soil = 0;
+    for (int i = 0; i < s->world.w * s->world.h; i++) {
+        if (s->world.terrain[i] == TERRAIN_SOIL) {
+            soil++;
+        }
+    }
+    int wanted = (int)(s->set.start_share * (float)soil + 0.5f);
+    return wanted < s->pool.capacity ? wanted : s->pool.capacity;
+}
+
 static void sample(Sim *s)
 {
     stats_sample(&s->stats, &s->world, &s->pool, s->tick, s->scratch);
@@ -129,8 +143,13 @@ bool sim_reseed(Sim *s, uint64_t seed)
     }
     terrain_generate(&s->world, &s->rng, &s->set);
     plant_start(&s->world, &s->rng, &s->set);
-    for (int i = 0; i < s->set.start_creatures; i++) {
-        place_creature(s);
+    int founders = founder_count(s);
+    for (int i = 0; i < founders; i++) {
+        /* A failure means 64 random cells in a row were taken: the soil is
+         * as good as full, so stop instead of searching further. */
+        if (place_creature(s) < 0) {
+            break;
+        }
     }
     /* A first sample at tick 0, so the panel has numbers from the start,
      * and fresh histories for the new world. */

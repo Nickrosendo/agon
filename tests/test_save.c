@@ -55,6 +55,21 @@ static void write_whole(const char *path, const unsigned char *bytes,
     }
 }
 
+/* Places exactly count creatures on the first soil cells with random genomes,
+ * for tests that depend on the count: founders are a share of the soil, and a
+ * tiny world's share is hard to hit exactly. */
+static void place_founders(Sim *s, int count)
+{
+    for (int i = 0; i < s->world.w * s->world.h && s->pool.count < count; i++) {
+        int slot = pool_spawn(&s->pool, &s->world, i % s->world.w,
+                              i / s->world.w);
+        if (slot >= 0) {
+            s->pool.items[slot].energy = s->set.energy_start;
+            genome_random(&s->pool.items[slot].genome, &s->rng, &s->set);
+        }
+    }
+}
+
 static bool history_same(const History *a, const History *b)
 {
     if (a->len != b->len) {
@@ -145,11 +160,12 @@ static unsigned char *small_save(size_t *size)
 {
     Settings set = settings_default();
     set.pool_capacity = 40;
-    set.start_creatures = 20;
+    set.start_share = 0.0f;
     set.min_creatures = 20;
     Sim a;
     char err[256] = "";
     CHECK(sim_init(&a, &set, 11, 16, 16));
+    place_founders(&a, 20);
     for (int i = 0; i < 150; i++) {
         sim_step(&a);
     }
@@ -178,8 +194,7 @@ static bool load_fails(const unsigned char *bytes, size_t size,
 static void test_mate_wish_survives_save(void)
 {
     Settings set = settings_default();
-    set.start_creatures = 2;
-    set.min_creatures = 0;
+    set.start_share = 0.01f;
     Sim a;
     CHECK(sim_init(&a, &set, 21, 32, 32));
     int slot = -1;
@@ -402,13 +417,14 @@ static Tiny tiny_save(void)
 {
     Settings set = settings_default();
     set.pool_capacity = 2;
-    set.start_creatures = 1;
+    set.start_share = 0.0f;
     set.min_creatures = 1;
     Sim a;
     char err[256] = "";
     /* An 8 by 8 world could be all rock and water for some seeds; the
      * count check below fails if this seed ever has no soil. */
     CHECK(sim_init(&a, &set, 3, 8, 8));
+    place_founders(&a, 1);
     CHECK(a.pool.count == 1 && a.pool.items[0].alive);
     CHECK(save_write(&a, SAVE_FILE, err, sizeof(err)));
     sim_free(&a);
@@ -657,11 +673,12 @@ static void test_refuses_two_on_one_cell(void)
 {
     Settings set = settings_default();
     set.pool_capacity = 2;
-    set.start_creatures = 2;
+    set.start_share = 0.0f;
     set.min_creatures = 2;
     Sim a;
     char err[256] = "";
     CHECK(sim_init(&a, &set, 3, 8, 8));
+    place_founders(&a, 2);
     CHECK(a.pool.count == 2);
     CHECK(save_write(&a, SAVE_FILE, err, sizeof(err)));
     sim_free(&a);

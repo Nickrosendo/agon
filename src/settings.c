@@ -32,8 +32,7 @@ Settings settings_default(void)
          * left only the floor's random newcomers alive. */
         .veg_sprout_rate = 0.02f,
         .veg_grow_chance = 0.05f,
-        .veg_seed_chance = 0.0002f,
-        .veg_start_chance = 0.03f,
+        .veg_start_chance = 0.15f,
         .veg_reach = 2,
         .veg_capacity = 15.0f,
         .veg_mature_age = 60,
@@ -45,12 +44,12 @@ Settings settings_default(void)
          * and the grazed cells beside the creatures cannot sprout again. */
         .veg_max_cells = 0,
         .pool_capacity = 4000,
-        .start_creatures = 150,
-        .min_creatures = 150,
+        .start_share = 0.05f,
+        .min_creatures = 0,
         /* A char array inside a struct can be initialised from a string
          * literal: the characters are copied in and the rest is zero. */
         .brain_name = "net",
-        .energy_start = 20.0f,
+        .energy_start = 60.0f,
         .upkeep_base = 0.1f,
         .move_cost = 0.3f,
         .bite_veg_energy = 40.0f,
@@ -59,9 +58,8 @@ Settings settings_default(void)
         .mate_window = 5,
         .mate_age = 50,
         .sense_age_half = 200.0f,
-        .max_age = 1500,
-        /* Hunters survived on all five seeds of a quick check with it. */
-        .max_plant_eaters = 500,
+        .max_age = 0,
+        .max_plant_eaters = 0,
         .cap_by_level = 1,
         .mutation_rate = 0.05f,
         .mutation_spread = 0.05f,
@@ -91,8 +89,8 @@ Settings settings_default(void)
         .scent_spread = 0.5f,
         .scent_decay = 0.02f,
         /* 64 samples * 25 ticks = 1,600 ticks on the graphs: longer than
-         * a creature's whole life (max_age 1,500), so a rise and fall of
-         * hunters fits on screen. */
+         * many creatures' whole lives, so a rise and fall of hunters fits
+         * on screen. */
         .stats_every = 25,
     };
     return s;
@@ -145,8 +143,6 @@ static const SettingInfo TABLE[] = {
     FLOAT_ROW(veg_sprout_rate, 0, 1, "scales the chance to sprout beside "
                                      "plants"),
     FLOAT_ROW(veg_grow_chance, 0, 1, "chance per tick that a plant thickens"),
-    FLOAT_ROW(veg_seed_chance, 0, 1, "chance of a seed from nowhere, by "
-                                     "fertility"),
     FLOAT_ROW(veg_start_chance, 0, 1, "chance a soil cell starts planted"),
     INT_ROW(veg_reach, 0, 8, "radius of the local carrying capacity"),
     FLOAT_ROW(veg_capacity, 0, BIG, "most plant mass around a cell of "
@@ -157,7 +153,8 @@ static const SettingInfo TABLE[] = {
     INT_ROW(veg_wither_ticks, 1, 255, "how long withering lasts"),
     INT_ROW(veg_max_cells, 0, INT_MAX, "cap on planted cells (0: no cap)"),
     INT_ROW(pool_capacity, 1, POOL_MAX, "most creatures alive at once"),
-    INT_ROW(start_creatures, 0, POOL_MAX, "creatures placed in a new world"),
+    FLOAT_ROW(start_share, 0, 1, "founders of a new world, as a share of its "
+                                 "soil"),
     INT_ROW(min_creatures, 0, POOL_MAX, "the floor: random creatures are "
                                         "added below this (0: never)"),
     {"brain", SETTING_TEXT, offsetof(Settings, brain_name), 0, 0,
@@ -171,7 +168,7 @@ static const SettingInfo TABLE[] = {
     INT_ROW(mate_window, 1, 65535, "ticks a wish to mate lasts"),
     INT_ROW(mate_age, 0, INT_MAX, "ticks before a creature can mate"),
     FLOAT_ROW(sense_age_half, 1, BIG, "the age sensed as 0.5"),
-    INT_ROW(max_age, 0, INT_MAX, "death by old age, in ticks (0: never)"),
+    INT_ROW(max_age, 0, INT_MAX, "a fixed death age, in ticks (0: none)"),
     INT_ROW(max_plant_eaters, 0, POOL_MAX, "plant-eaters cannot mate above "
                                            "this (0: no cap)"),
     INT_ROW(cap_by_level, 0, 1, "count plant-eaters by level (1) or by "

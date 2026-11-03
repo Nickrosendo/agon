@@ -22,9 +22,10 @@
  * more nourishing plants (sprout rate, capacity, bite energy); then
  * carrion no longer feeding the soil by default; then two parents in place
  * of splitting: six more senses and so 36 more genes, a crossing's draws, and
- * the wish to mate hashed.
+ * the wish to mate hashed; then limits off: no floor, no age limit, no plant
+ * cap, no plants from nothing, and founders by share of the soil.
  */
-#define SEED_7_AFTER_500 0xca624a2b6fad321eULL
+#define SEED_7_AFTER_500 0x77b93ffe94956d91ULL
 
 static void test_same_seed_same_checksum(void)
 {
@@ -93,11 +94,114 @@ static void test_bad_size_fails(void)
     CHECK(!sim_init(&s, &set, 7, 0, 32));
 }
 
+static int count_soil(const World *w)
+{
+    int soil = 0;
+    for (int i = 0; i < w->w * w->h; i++) {
+        soil += w->terrain[i] == TERRAIN_SOIL;
+    }
+    return soil;
+}
+
+static void kill_everyone(Sim *s)
+{
+    for (int i = 0; i < s->pool.capacity; i++) {
+        if (s->pool.items[i].alive) {
+            pool_kill(&s->pool, &s->world, i, &s->set);
+        }
+    }
+}
+
+/* By default nobody is placed after tick 0: a next_id that stays put means no
+ * creature appeared. */
+static void test_no_creature_after_the_start(void)
+{
+    Settings set = settings_default();
+    Sim s;
+    CHECK(sim_init(&s, &set, 7, 64, 32));
+    kill_everyone(&s);
+    uint32_t before = s.pool.next_id;
+    for (int t = 0; t < 100; t++) {
+        sim_step(&s);
+    }
+    CHECK(s.pool.count == 0);
+    CHECK(s.pool.next_id == before);
+    sim_free(&s);
+}
+
+/* An empty world is an ordinary state: stepping, sampling and fingerprinting
+ * it must all work, and it is still repeatable. */
+static void test_empty_world_steps_safely(void)
+{
+    Settings set = settings_default();
+    set.stats_every = 1;
+    Sim a, b;
+    CHECK(sim_init(&a, &set, 9, 64, 32));
+    CHECK(sim_init(&b, &set, 9, 64, 32));
+    kill_everyone(&a);
+    kill_everyone(&b);
+    for (int t = 0; t < 50; t++) {
+        sim_step(&a);
+        sim_step(&b);
+    }
+    CHECK(sim_checksum(&a) == sim_checksum(&b));
+    CHECK(a.stats.creatures == 0);
+    sim_free(&a);
+    sim_free(&b);
+}
+
+/* Founders follow the soil, so a small world is not swamped and a large one
+ * is not empty. Within 1 %, or within a creature for a small count. */
+static void check_founders(int width, int height)
+{
+    Settings set = settings_default();
+    set.start_share = 0.05f;
+    Sim s;
+    CHECK(sim_init(&s, &set, 11, width, height));
+    float wanted = set.start_share * (float)count_soil(&s.world);
+    float margin = wanted * 0.01f + 1.0f;
+    CHECK((float)s.pool.count >= wanted - margin);
+    CHECK((float)s.pool.count <= wanted + margin);
+    sim_free(&s);
+}
+
+static void test_founders_scale_with_soil(void)
+{
+    check_founders(40, 20);
+    check_founders(256, 144);
+
+    /* A share of 1 stops at the pool's size and comes back. */
+    Settings set = settings_default();
+    set.start_share = 1.0f;
+    set.pool_capacity = 50;
+    Sim s;
+    CHECK(sim_init(&s, &set, 11, 40, 20));
+    CHECK(s.pool.count == 50);
+    sim_free(&s);
+
+    /* A share of 1 with a pool larger than the soil: as much as can be
+     * found, and it comes back too. */
+    set.pool_capacity = 40 * 20;
+    CHECK(sim_init(&s, &set, 11, 40, 20));
+    CHECK(s.pool.count > 0);
+    CHECK(s.pool.count <= count_soil(&s.world));
+    sim_free(&s);
+
+    /* A share of 0: nobody, which tests that place their own rely on. */
+    set.start_share = 0.0f;
+    CHECK(sim_init(&s, &set, 11, 40, 20));
+    CHECK(s.pool.count == 0);
+    sim_free(&s);
+}
+
 int main(void)
 {
     test_same_seed_same_checksum();
     test_other_seed_differs();
     test_reseed_matches_fresh_init();
     test_bad_size_fails();
+    test_no_creature_after_the_start();
+    test_empty_world_steps_safely();
+    test_founders_scale_with_soil();
     TEST_SUMMARY();
 }

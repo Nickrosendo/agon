@@ -41,11 +41,8 @@ veg_sprout_rate = 0.02
 # chance per tick that a plant thickens (0 to 1)
 veg_grow_chance = 0.05
 
-# chance of a seed from nowhere, by fertility (0 to 1)
-veg_seed_chance = 0.0002
-
 # chance a soil cell starts planted (0 to 1)
-veg_start_chance = 0.03
+veg_start_chance = 0.15
 
 # radius of the local carrying capacity (0 to 8)
 veg_reach = 2
@@ -68,17 +65,17 @@ veg_max_cells = 0
 # most creatures alive at once (1 to 1000000)
 pool_capacity = 4000
 
-# creatures placed in a new world (0 to 1000000)
-start_creatures = 150
+# founders of a new world, as a share of its soil (0 to 1)
+start_share = 0.05
 
 # the floor: random creatures are added below this (0: never) (0 to 1000000)
-min_creatures = 150
+min_creatures = 0
 
 # which brain every creature uses: net or random
 brain = net
 
 # energy of creatures placed, not born (0 to 1e+06)
-energy_start = 20
+energy_start = 60
 
 # energy every tick costs (0 to 1e+06)
 upkeep_base = 0.1
@@ -104,11 +101,11 @@ mate_age = 50
 # the age sensed as 0.5 (1 to 1e+06)
 sense_age_half = 200
 
-# death by old age, in ticks (0: never) (0 to 2147483647)
-max_age = 1500
+# a fixed death age, in ticks (0: none) (0 to 2147483647)
+max_age = 0
 
 # plant-eaters cannot mate above this (0: no cap) (0 to 1000000)
-max_plant_eaters = 500
+max_plant_eaters = 0
 
 # count plant-eaters by level (1) or by genes (0) (0 to 1)
 cap_by_level = 1

@@ -113,7 +113,7 @@ These are for the terminal program, `agon`.
 --speed N      ticks per second (default 10)
 --once         print one snapshot after --ticks ticks and exit
 --ticks N      ticks to run before the snapshot (default 2000)
---no-floor     never place new random creatures
+--no-floor     turn off a floor a settings file set
 --config PATH  read settings from a file
 --save PATH    write the world there on quit and on s
                (with --once: after the last tick)
@@ -177,9 +177,8 @@ for the build that wrote them; a build with a different format refuses them.
    become carrion, which rots away and sends out a scent.
 9. A creature's food-chain level is measured from what it actually eats: a
    plant-eater sits at about 2, something that eats plant-eaters at about 3.
-10. A floor of random newcomers keeps a world from staying empty (`--no-floor`
-    turns it off), and caps on plant-eaters and the population keep the
-    simulation fast.
+10. Random creatures appear only at the very start, and plants grow only from
+    other plants. Nothing tops a world up, so a world can die.
 
 ## Licence
 

@@ -140,7 +140,7 @@ static void make_empty_sim(Sim *sim)
 {
     Settings set = settings_default();
     snprintf(set.brain_name, sizeof(set.brain_name), "script");
-    set.start_creatures = 0;
+    set.start_share = 0.0f;
     set.min_creatures = 0;
     CHECK(sim_init(sim, &set, 7, 16, 16));
     for (int i = 0; i < 16 * 16; i++) {

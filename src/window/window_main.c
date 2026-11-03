@@ -43,7 +43,7 @@ static const char WINDOW_USAGE[] =
     "  --seed N          the world's seed\n"
     "  --size WxH        world size in cells (default 256x144)\n"
     "  --speed N         ticks per second (default 10)\n"
-    "  --no-floor        never place new random creatures\n"
+    "  --no-floor        turn off a floor a settings file set\n"
     "  --config PATH     read settings from a file\n"
     "  --save PATH       write the world there on quit and on the s key\n"
     "  --load PATH       resume a saved world\n"

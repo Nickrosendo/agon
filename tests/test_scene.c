@@ -157,7 +157,7 @@ static void make_empty_sim(Sim *s, int w, int h)
 {
     Settings set = settings_default();
     snprintf(set.brain_name, sizeof(set.brain_name), "script");
-    set.start_creatures = 0;
+    set.start_share = 0.0f;
     set.min_creatures = 0;
     set.veg_start_chance = 0.0f;
     CHECK(sim_init(s, &set, 7, w, h));
@@ -357,7 +357,7 @@ static uint64_t hash_canvas(const Canvas *c)
 static void test_known_world_pixels(void)
 {
     static const uint64_t EXPECTED[CAMERA_LEVELS] = {
-        0x2ff27f9f210e01a5u, 0x996cbe6d86deb305u, 0x2bffdbcf2e65dfbau, 0xb56b6ac5afbd1db5u,
+        0x2ff27f9f210e01a5u, 0x996cbe6d86deb305u, 0x384e0821aaa96c9fu, 0x23c728eeb28b20a5u,
     };
     Settings set = settings_default();
     Sim s;

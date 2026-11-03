@@ -602,9 +602,8 @@ static void make_sim(Sim *sim, Settings *set)
 {
     *set = settings_default();
     snprintf(set->brain_name, sizeof(set->brain_name), "script");
-    set->start_creatures = 0;
+    set->start_share = 0.0f;
     set->min_creatures = 0;
-    set->veg_seed_chance = 0.0f;
     set->veg_start_chance = 0.0f;
     CHECK(sim_init(sim, set, 7, 16, 16));
     for (int i = 0; i < 16 * 16; i++) {
@@ -1044,7 +1043,7 @@ static void test_full_pool_runs(void)
     Settings set = settings_default();
     snprintf(set.brain_name, sizeof(set.brain_name), "random");
     set.pool_capacity = 8;
-    set.start_creatures = 8;
+    set.start_share = 1.0f; /* stops at the pool's 8 */
     set.min_creatures = 8;
     set.mate_threshold = 1.0f; /* everyone can mate at once */
     set.mate_age = 0;

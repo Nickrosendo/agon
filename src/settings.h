@@ -29,14 +29,13 @@ typedef struct {
      *
      * An empty cell with planted neighbours picks one of them at random,
      * its parent. If n is inside the parent's birth range, the cell
-     * sprouts with probability fertility * veg_sprout_rate; otherwise
-     * with probability veg_seed_chance * fertility. A sprout copies its
-     * parent's rule, and with probability veg_mutation one of the rule's
-     * seven bits is flipped. An empty cell with no planted neighbour
-     * sprouts with probability veg_seed_chance * fertility and gets a
-     * random rule. A planted cell, while n is at most its own crowd
-     * limit, grows by 1 with probability veg_grow_chance; above it,
-     * shrinks by 1.
+     * sprouts with probability fertility * veg_sprout_rate; otherwise it
+     * stays bare. A sprout copies its parent's rule, and with probability
+     * veg_mutation one of the rule's seven bits is flipped. A plant comes
+     * only from a plant: an empty cell with no planted neighbour never
+     * sprouts, so plants that die out everywhere are gone. A planted cell,
+     * while n is at most its own crowd limit, grows by 1 with probability
+     * veg_grow_chance; above it, shrinks by 1.
      *
      * veg_birth_lo, veg_birth_hi and veg_crowd_max are the rule the
      * starting plants carry, clamped to what a rule byte can hold
@@ -67,7 +66,6 @@ typedef struct {
     float veg_vigour_ageing;
     float veg_sprout_rate;  /* scales the chance to sprout beside plants */
     float veg_grow_chance;  /* chance per tick that a plant thickens */
-    float veg_seed_chance;
     float veg_start_chance; /* chance a soil cell starts planted */
     int veg_reach;          /* radius of the neighbourhood for m */
     float veg_capacity;     /* largest m a cell of fertility 1 allows */
@@ -85,16 +83,15 @@ typedef struct {
      * creature dies. From mate_age ticks and mate_threshold * size energy
      * it can wish to mate, for mate_window ticks; a child is born when two
      * neighbours wish together, each handing mate_share of its energy to
-     * it. While fewer than
-     * min_creatures are alive, new ones are placed at random (0 turns
-     * this off). */
+     * it. While fewer than min_creatures are alive, new ones are placed at
+     * random; 0, the default, means nobody appears after the first tick. */
     int pool_capacity;       /* most creatures alive at once */
-    int start_creatures;     /* placed when a world is built */
-    /* the floor. High on purpose: while no family can feed itself yet,
-     * the floor keeps placing random genomes, and the more are tried at
-     * once, the sooner one that works turns up: over ten seeds, 400
-     * creatures after 5,300 ticks on average with a floor of 150, after
-     * 17,600 with a floor of 10. */
+    /* Founders, placed when a world is built, as a share of its soil cells
+     * and at most pool_capacity. A share and not a count, so that a small
+     * world is not swamped and a large one not left empty. */
+    float start_share;
+    /* The floor. Off by default, and kept so that runs with and without it
+     * can be compared: with it on, a world can never die. */
     int min_creatures;
     char brain_name[BRAIN_NAME_MAX]; /* which brain every creature uses */
     float energy_start;      /* for creatures placed, not born */
@@ -106,14 +103,13 @@ typedef struct {
     int mate_window;         /* ticks a wish to mate lasts */
     int mate_age;            /* ticks before a creature can mate */
     float sense_age_half;    /* the age sensed as 0.5 */
-    /* Old age: a creature dies on reaching max_age ticks, whatever its
-     * energy (0 turns this off). Without it, a creature that sits and
-     * eats the plant ahead can live for ever; once the pool is full
-     * nobody is born, and selection stops. */
+    /* A fixed death age: a creature dies on reaching max_age ticks, whatever
+     * its energy. 0, the default, means no such age. Kept so that runs with
+     * and without it can be compared. */
     int max_age;
-    /* A plant-eater cannot split while max_plant_eaters plant-eaters are
+    /* A plant-eater cannot mate while max_plant_eaters plant-eaters are
      * alive (see pool_count_plant_eaters). Hunters are limited only by
-     * the pool's capacity. 0: no cap. */
+     * the pool's capacity. 0, the default: no cap. Kept for comparisons. */
     int max_plant_eaters;
     /* How max_plant_eaters tells a plant-eater: 1 by its food-chain level
      * (below LEVEL_MEAT, as the panel counts), 0 by its genes (plant

@@ -66,7 +66,7 @@ static int planted_neighbour_at(const World *w, int x, int y, int k)
  *
  *   bits  0..23  which planted neighbour is the parent
  *   bits 24..47  whether the rule mutates (24 bits, as in rng_unit)
- *   bits 48..63  which bit flips; bits 48..54 are a lone sprout's rule
+ *   bits 48..63  which bit flips
  *
  * Shifting right moves a group down to bit 0; & with a mask of ones
  * keeps only that group's width.
@@ -85,11 +85,6 @@ static bool draw_mutates(uint64_t draw, float chance)
 {
     uint32_t bits = (uint32_t)((draw >> 24) & DRAW_24_BITS);
     return (float)bits / 16777216.0f < chance; /* 0 <= value < 1 */
-}
-
-static uint8_t draw_lone_rule(uint64_t draw)
-{
-    return (uint8_t)((draw >> 48) & VEG_RULE_USED_MASK);
 }
 
 /* The rule a sprout inherits: its parent's, with one bit flipped by
@@ -137,10 +132,10 @@ static uint8_t next_density(uint8_t density, uint8_t rule, int n, int mass,
         if (!room) {
             return 0;
         }
-        float chance = (n >= veg_rule_birth_lo(rule) &&
-                        n <= veg_rule_birth_hi(rule))
-                           ? fertility * s->veg_sprout_rate
-                           : s->veg_seed_chance * fertility;
+        if (n < veg_rule_birth_lo(rule) || n > veg_rule_birth_hi(rule)) {
+            return 0; /* a plant comes only from plants, under their rule */
+        }
+        float chance = fertility * s->veg_sprout_rate;
         /* draw is in 0..1 (never 1), so a chance of 1 always sprouts and
          * a chance of 0 never does. */
         return draw < chance ? 1 : 0;
@@ -358,10 +353,7 @@ void flora_step(World *w, Rng *r, const Settings *s)
                  * cell can pick as a parent this tick. A plant that dies
                  * keeps its rule for the same reason: its neighbours may
                  * still pick it as a parent this tick. */
-                w->veg_rule[i] = parent >= 0
-                                     ? child_rule(rule, rule_draw,
-                                                  s->veg_mutation)
-                                     : draw_lone_rule(rule_draw);
+                w->veg_rule[i] = child_rule(rule, rule_draw, s->veg_mutation);
             }
             w->veg_next[i] = next;
         }

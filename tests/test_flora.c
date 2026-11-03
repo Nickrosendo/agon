@@ -28,7 +28,6 @@ static Settings rule(int birth_lo, int birth_hi, int crowd_max)
     s.veg_birth_lo = birth_lo;
     s.veg_birth_hi = birth_hi;
     s.veg_crowd_max = crowd_max;
-    s.veg_seed_chance = 0.0f;
     s.veg_mutation = 0.0f;
     s.veg_vigour_ageing = 0.0f; /* every rule matures at veg_mature_age */
     /* Out of reach: these tests are about the neighbour rule alone. */
@@ -133,7 +132,6 @@ static void test_water_and_rock_stay_bare(void)
     World w;
     make_world(&w, 9, 9);
     Settings s = rule(1, 4, 7);
-    s.veg_seed_chance = 1.0f; /* even forced sprouting must not reach them */
     rule_everywhere(&w, &s);
     Rng r;
     rng_seed(&r, 4);
@@ -628,34 +626,47 @@ static void test_mutation_flips_one_bit(void)
     CHECK(flipped == VEG_RULE_USED_MASK);
 }
 
-static void test_lone_sprouts_get_random_rules(void)
+/* Bare soil with no plant anywhere stays bare: a plant comes only from a
+ * plant. Everything that could help is turned up. */
+static void test_no_sprout_from_nothing(void)
 {
-    /* Seeding from nothing is certain and nothing is planted: every
-     * cell sprouts with no planted neighbour, so with a random rule.
-     * 4,096 random picks out of 128 rules should leave none unused, and
-     * bit 7 must stay clear. */
     World w;
-    make_world(&w, 64, 64);
-    Settings s = rule(3, 3, 3);
-    s.veg_seed_chance = 1.0f;
+    make_world(&w, 16, 16);
+    Settings s = rule(1, 4, 7);
     Rng r;
     rng_seed(&r, 18);
-    flora_step(&w, &r, &s);
-    int seen[VEG_RULE_USED_MASK + 1] = {0};
-    int high_bit = 0;
+    for (int t = 0; t < 10000; t++) {
+        flora_step(&w, &r, &s);
+    }
     int planted = 0;
     for (int i = 0; i < w.w * w.h; i++) {
         planted += w.veg[i] > 0;
-        high_bit += (w.veg_rule[i] & 0x80u) != 0;
-        seen[w.veg_rule[i] & VEG_RULE_USED_MASK] = 1;
     }
-    int distinct = 0;
-    for (int k = 0; k <= (int)VEG_RULE_USED_MASK; k++) {
-        distinct += seen[k];
+    CHECK(planted == 0);
+    world_free(&w);
+}
+
+/* A cell with planted neighbours, but too few for its parent's birth range,
+ * never sprouts: the old chance of a stray seed is gone there too. */
+static void test_no_sprout_outside_the_rule(void)
+{
+    World w;
+    make_world(&w, 16, 16);
+    Settings s = rule(3, 4, 7);
+    s.veg_grow_chance = 0.0f;
+    rule_everywhere(&w, &s);
+    Rng r;
+    rng_seed(&r, 19);
+    /* One lone plant: every neighbour of it has n = 1, below the range. */
+    w.veg[world_idx(&w, 8, 8)] = 1;
+    for (int t = 0; t < 2000; t++) {
+        flora_step(&w, &r, &s);
     }
-    CHECK(planted == w.w * w.h);
-    CHECK(high_bit == 0);
-    CHECK(distinct == (int)VEG_RULE_USED_MASK + 1);
+    int planted = 0;
+    for (int i = 0; i < w.w * w.h; i++) {
+        planted += w.veg[i] > 0;
+    }
+    CHECK(planted == 1);
     world_free(&w);
 }
 
@@ -840,7 +851,8 @@ int main(void)
     test_sprout_copies_its_parent();
     test_sprout_picks_one_neighbour();
     test_mutation_flips_one_bit();
-    test_lone_sprouts_get_random_rules();
+    test_no_sprout_from_nothing();
+    test_no_sprout_outside_the_rule();
     test_plant_reads_its_own_rule();
     test_rule_vigour();
     test_vigorous_plants_die_young();
