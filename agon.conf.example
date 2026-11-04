@@ -27,10 +27,16 @@ temperature_scale = 80
 rain_scale = 20
 
 # rain noise needed to rain (0 everywhere, 1 nowhere) (0 to 1)
-rain_threshold = 0.5
+rain_threshold = 0.6
 
 # ticks for one rain pattern to fade into the next (1 to 2147483647)
-rain_period = 4000
+rain_period = 1000
+
+# ticks from one wet time to the next (1 to 2.14748e+09)
+rain_cycle = 2000
+
+# how far the threshold moves either way between wet and dry (0 to 1)
+rain_swing = 0.2
 
 # ticks between updates of rain and water (1 to 65535)
 climate_every = 25

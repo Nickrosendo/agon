@@ -33,6 +33,10 @@ typedef struct {
     float rain_scale;       /* the same, for the rain */
     float rain_threshold;   /* 0 rains everywhere, 1 nowhere */
     int rain_period;        /* ticks for one pattern to fade into the next */
+    /* Wet and dry times: over each rain_cycle ticks the threshold moves
+     * rain_swing below rain_threshold and rain_swing above it, starting wet. */
+    int rain_cycle;
+    float rain_swing;
     int climate_every;      /* ticks between updates of rain and water */
     float rain_gain;        /* water soil takes per tick in full rain */
     float water_loss;       /* share of its water soil loses per tick */

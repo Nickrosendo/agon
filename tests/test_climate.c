@@ -1,6 +1,7 @@
 #include "test.h"
 
-#include <string.h> /* memcmp */
+#include <stdlib.h> /* malloc, free */
+#include <string.h> /* memcmp, memcpy */
 
 #include "climate.h"
 #include "rng.h"
@@ -106,6 +107,63 @@ static void test_rain_area_holds_through_a_fade(void)
     /* A plain average of two noise fields would flatten its peaks by about
      * 0.7 at the middle; these stay of the same order. */
     CHECK(strongest[0] > 0.0f && strongest[1] > 0.5f * strongest[0]);
+    world_free(&w);
+}
+
+/* The share of soil-or-not cells it is raining on at this tick. */
+static float rain_share(const World *w, const Settings *s, uint64_t tick)
+{
+    int raining = 0;
+    for (int y = 0; y < w->h; y++) {
+        for (int x = 0; x < w->w; x++) {
+            raining += climate_rain_at(w, s, x, y, tick) > 0.0f;
+        }
+    }
+    return (float)raining / (float)(w->w * w->h);
+}
+
+/* Wet and dry times take turns, and each wet time rains somewhere new. */
+static void test_rain_has_wet_and_dry_times(void)
+{
+    Settings s = settings_default();
+    World w;
+    CHECK(world_init(&w, 128, 64));
+    w.rain_seed = 99;
+    uint64_t cycle = (uint64_t)s.rain_cycle;
+    /* Each moment's pattern differs, so judged over several worlds. */
+    float wet = 0.0f, dry = 0.0f;
+    for (uint64_t seed = 1; seed <= 8; seed++) {
+        w.rain_seed = seed * 7777;
+        wet += rain_share(&w, &s, 4 * cycle) / 8.0f;
+        dry += rain_share(&w, &s, 4 * cycle + cycle / 2) / 8.0f;
+    }
+    CHECK(wet > 0.55f);
+    CHECK(dry < 0.06f);
+    /* The pattern fades on through the dry time: two wet times in a row share
+     * no more than chance would give. */
+    int both = 0, either = 0;
+    for (int y = 0; y < w.h; y++) {
+        for (int x = 0; x < w.w; x++) {
+            bool now = climate_rain_at(&w, &s, x, y, 4 * cycle) > 0.0f;
+            bool next = climate_rain_at(&w, &s, x, y, 5 * cycle) > 0.0f;
+            both += now && next;
+            either += now || next;
+        }
+    }
+    CHECK((float)both / (float)either < 0.85f);
+    /* No swing, no wet and dry times. */
+    s.rain_swing = 0.0f;
+    float flat_wet = 0.0f, flat_dry = 0.0f;
+    for (uint64_t seed = 1; seed <= 8; seed++) {
+        w.rain_seed = seed * 7777;
+        flat_wet += rain_share(&w, &s, 4 * cycle) / 8.0f;
+        flat_dry += rain_share(&w, &s, 4 * cycle + cycle / 2) / 8.0f;
+    }
+    CHECK(flat_wet - flat_dry < 0.15f && flat_dry - flat_wet < 0.15f);
+    /* A threshold of 1 still means no rain at all, at any time of the cycle. */
+    s.rain_swing = 0.3f;
+    s.rain_threshold = 1.0f;
+    CHECK(rain_share(&w, &s, 4 * cycle) == 0.0f);
     world_free(&w);
 }
 
@@ -253,40 +311,30 @@ static void test_shallow_lies_at_the_shore(void)
     world_free(&plain);
 }
 
-/* Climate has its own random numbers, so how the rain falls takes none from
- * life. Rain does reach life, through plants that need water and regions that
- * ask things of bodies, so this looks only at the start: the plants' stores
- * have already felt it, and nothing has yet come of that. With the regions' costs
- * and camouflage off, since those would reach creatures on the first step. */
+/* Climate has its own random numbers, so however the rain falls it takes none
+ * from life's generator. Rain does reach life, through plants that need water
+ * and regions that ask things of bodies, so two whole worlds would part
+ * quickly: this runs the climate alone. */
 static void test_climate_takes_no_random_numbers(void)
 {
-    Settings wet = settings_default();
-    Settings dry = settings_default();
-    dry.rain_threshold = 1.0f;
-    Settings *both[2] = {&wet, &dry};
-    for (int k = 0; k < 2; k++) {
-        both[k]->camouflage = 0.0f;
-        both[k]->cold_upkeep = 0.0f;
-        both[k]->heat_upkeep = 0.0f;
-        both[k]->rough_step_cost = 0.0f;
-        both[k]->legs_step_cost = 0.0f;
+    Settings s = settings_default();
+    Sim sim;
+    CHECK(sim_init(&sim, &s, 11, 64, 32));
+    Rng before = sim.rng;
+    size_t bytes = (size_t)(sim.world.w * sim.world.h) * sizeof(float);
+    float *water = malloc(bytes);
+    CHECK(water != NULL);
+    memcpy(water, sim.world.water, bytes);
+    for (uint64_t t = 0; t < 500; t++) {
+        climate_step(&sim.world, &sim.set, t);
     }
-    Sim a, b;
-    CHECK(sim_init(&a, &wet, 11, 64, 32));
-    CHECK(sim_init(&b, &dry, 11, 64, 32));
-    for (int t = 0; t < 20; t++) {
-        sim_step(&a);
-        sim_step(&b);
-    }
-    CHECK(a.pool.count == b.pool.count);
+    /* A struct cannot be compared with ==, and its bytes are four uint64_t. */
     for (int i = 0; i < 4; i++) {
-        CHECK(a.rng.s[i] == b.rng.s[i]);
+        CHECK(sim.rng.s[i] == before.s[i]);
     }
-    /* Raw bytes are safe to compare: Plant is six floats, with no padding. */
-    size_t bytes = (size_t)(a.world.w * a.world.h) * sizeof(Plant);
-    CHECK(memcmp(a.world.plant, b.world.plant, bytes) != 0);
-    sim_free(&a);
-    sim_free(&b);
+    CHECK(memcmp(water, sim.world.water, bytes) != 0);
+    free(water);
+    sim_free(&sim);
 }
 
 /* The climate belongs to the fingerprint: a world that differs only in its
@@ -328,6 +376,7 @@ int main(void)
     test_regions_cover_the_list();
     test_region_changes_with_water();
     test_shallow_lies_at_the_shore();
+    test_rain_has_wet_and_dry_times();
     test_climate_takes_no_random_numbers();
     test_fingerprint_covers_climate();
     TEST_SUMMARY();

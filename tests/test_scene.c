@@ -363,12 +363,13 @@ static uint64_t hash_canvas(const Canvas *c)
  * plants: the green from the water they need, and ripe fruit tinting them orange;
  * then a blocked walk turns aside, so creatures stand elsewhere at the two closest
  * zooms (the wider two show too little to change); then regions' edges, for the
- * same reason.
+ * same reason; then wet and dry times, which change the rain and the ground's water
+ * at every zoom.
  */
 static void test_known_world_pixels(void)
 {
     static const uint64_t EXPECTED[CAMERA_LEVELS] = {
-        0x6daa2d8cc5fa844du, 0x276b29f77586ba7du, 0x5d7a18783ca4c16bu, 0x3fa79c4698dd0ee5u,
+        0x97c7dc7faf140a9du, 0x25e91a7901331d05u, 0x1cb7b21bef4cd4edu, 0x8b6752455fe35d85u,
     };
     Settings set = settings_default();
     Sim s;

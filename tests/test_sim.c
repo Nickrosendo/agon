@@ -43,9 +43,10 @@
  * balance_report giving the same bytes before and after); then living plants:
  * each with its energy, fruit and genes, and two digestion genes for plants;
  * then a blocked walk turns aside: one more random draw for each; then regions'
- * edges: two more genes, and shallows, colour, size and legs matter.
+ * edges: two more genes, and shallows, colour, size and legs matter; then wet and
+ * dry times: rain follows a yearly-like cycle, with a shorter pattern.
  */
-#define SEED_7_AFTER_500 0x575dee3ee6e063aeULL
+#define SEED_7_AFTER_500 0x8d1ce8b04f0b6e8bULL
 
 static void test_same_seed_same_checksum(void)
 {

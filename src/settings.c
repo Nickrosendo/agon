@@ -23,8 +23,10 @@ Settings settings_default(void)
          * held about 8, and between 11 % and 82 % of the land had rain at the same
          * moment: a world-wide drought every so often. */
         .rain_scale = 20.0f,
-        .rain_threshold = 0.5f,
-        .rain_period = 4000,
+        .rain_threshold = 0.6f,
+        .rain_period = 1000,
+        .rain_cycle = 2000,
+        .rain_swing = 0.2f,
         .climate_every = 25,
         .rain_gain = 0.008f,
         .water_loss = 0.0005f,
@@ -232,6 +234,8 @@ static const SettingInfo TABLE[] = {
     FLOAT_ROW(rain_scale, 1, BIG, "the same, for the rain"),
     FLOAT_ROW(rain_threshold, 0, 1, "rain noise needed to rain (0 everywhere, 1 nowhere)"),
     INT_ROW(rain_period, 1, INT_MAX, "ticks for one rain pattern to fade into the next"),
+    INT_ROW(rain_cycle, 1, INT_MAX, "ticks from one wet time to the next"),
+    FLOAT_ROW(rain_swing, 0, 1, "how far the threshold moves either way between wet and dry"),
     INT_ROW(climate_every, 1, 65535, "ticks between updates of rain and water"),
     FLOAT_ROW(rain_gain, 0, 1, "water soil takes per tick in full rain"),
     FLOAT_ROW(water_loss, 0, 1, "share of its water soil loses per tick"),

@@ -27,7 +27,20 @@ static const uint64_t RAIN_FRAME_STEP = 0xD6E8FEB86659FD93ULL;
 typedef struct {
     uint64_t seed_from, seed_to;
     float share_from, share_to;
+    float threshold; /* noise above this rains, at this time of the cycle */
 } RainMoment;
+
+/* The threshold moves along a cosine: lowest, so wettest, at the start of each
+ * cycle, and highest half way through. A threshold of 1 or more is left alone,
+ * since it is the settings' way of saying no rain ever. */
+static float threshold_at(const Settings *s, uint64_t tick)
+{
+    if (s->rain_threshold >= 1.0f) {
+        return s->rain_threshold;
+    }
+    float phase = (float)(tick % (uint64_t)s->rain_cycle) / (float)s->rain_cycle;
+    return s->rain_threshold - s->rain_swing * cosf(phase * 4.0f * HALF_PI);
+}
 
 static RainMoment rain_moment(const World *w, const Settings *s, uint64_t tick)
 {
@@ -46,6 +59,7 @@ static RainMoment rain_moment(const World *w, const Settings *s, uint64_t tick)
         .seed_to = w->rain_seed + (frame + 1) * RAIN_FRAME_STEP,
         .share_from = cosf(phase * HALF_PI),
         .share_to = sinf(phase * HALF_PI),
+        .threshold = threshold_at(s, tick),
     };
     return m;
 }
@@ -67,19 +81,19 @@ static float clamp_unit(float v)
 }
 
 /* Only noise above the threshold is rain, scaled so its top reaches 1. */
-static float rain_from_noise(float noise, const Settings *s)
+static float rain_from_noise(float noise, float threshold)
 {
-    if (s->rain_threshold >= 1.0f) {
+    if (threshold >= 1.0f) {
         return 0.0f; /* the range below would divide by zero */
     }
-    return clamp_unit((noise - s->rain_threshold) / (1.0f - s->rain_threshold));
+    return clamp_unit((noise - threshold) / (1.0f - threshold));
 }
 
 float climate_rain_at(const World *w, const Settings *s, int x, int y,
                       uint64_t tick)
 {
     RainMoment m = rain_moment(w, s, tick);
-    return rain_from_noise(rain_noise(w, s, &m, x, y), s);
+    return rain_from_noise(rain_noise(w, s, &m, x, y), m.threshold);
 }
 
 /* The field spread over the whole of 0..1 for this world, as terrain does with
@@ -116,7 +130,7 @@ void climate_generate(World *w, Rng *r, const Settings *s)
         for (int x = 0; x < w->w; x++) {
             int i = world_idx(w, x, y);
             float noise = rain_noise(w, s, &m, x, y);
-            w->rain[i] = rain_from_noise(noise, s);
+            w->rain[i] = rain_from_noise(noise, m.threshold);
             w->water[i] = w->terrain[i] == TERRAIN_SOIL
                               ? clamp_unit((noise - START_DRY) /
                                            (START_WET - START_DRY))
@@ -135,7 +149,7 @@ void climate_step(World *w, const Settings *s, uint64_t tick)
     for (int y = 0; y < w->h; y++) {
         for (int x = 0; x < w->w; x++) {
             int i = world_idx(w, x, y);
-            float rain = rain_from_noise(rain_noise(w, s, &m, x, y), s);
+            float rain = rain_from_noise(rain_noise(w, s, &m, x, y), m.threshold);
             w->rain[i] = rain;
             if (w->terrain[i] != TERRAIN_SOIL) {
                 continue;
