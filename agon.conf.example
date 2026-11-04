@@ -230,6 +230,21 @@ family_split = 0.25
 # share of upkeep paid while resting (0 to 1)
 rest_upkeep = 0.5
 
+# chance a full territory gene attacks a stranger beside it (0 to 1)
+territory_drive = 0.3
+
+# upkeep of a full territory gene (0 to 1e+06)
+territory_upkeep = 0.05
+
+# energy per tick per neighbour past the free ones (0 to 1e+06)
+crowd_upkeep = 0.01
+
+# how many cells away counts as a neighbour (1 to 8)
+crowd_radius = 2
+
+# neighbours that cost nothing (0 to 288)
+crowd_free = 1
+
 # carrion a body leaves, by size (0 to 1e+06)
 body_energy = 10
 

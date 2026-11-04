@@ -219,6 +219,17 @@ typedef struct {
     float family_split;
     /* The share of upkeep paid on a tick spent resting. */
     float rest_upkeep;
+    /* Crowding: crowd_upkeep energy per tick for each creature past the first
+     * crowd_free within crowd_radius cells, whoever they are. 0 turns it off. */
+    /* Territory: each tick an adult with a stranger on one of the four cells
+     * beside it turns and attacks, whatever its brain chose, with chance
+     * territory_drive * its territory gene. The gene costs territory_upkeep per
+     * tick at full value. 0 turns the drive off. */
+    float territory_drive;
+    float territory_upkeep;
+    float crowd_upkeep;
+    int crowd_radius;
+    int crowd_free;
 
     /* Carrion. A death leaves body_energy * size plus any energy left.
      * Each tick carrion loses carrion_decay of itself; carrion_to_fertility

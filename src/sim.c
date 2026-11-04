@@ -319,6 +319,9 @@ static void accounting(Sim *s)
             continue;
         }
         bool hit_to_death = c->health <= 0.0f; /* read before upkeep changes it */
+        /* In slot order, seeing everyone still standing, the dying included, so a
+         * creature's crowd does not depend on who happened to die first. */
+        c->energy -= creature_crowd_cost(&s->world, c, &s->set);
         bool lives = creature_upkeep(c, &s->set);
         records_note(&s->records, c, &s->set);
         if (!lives) {

@@ -2148,6 +2148,189 @@ static void test_rest_costs_less(void)
     CHECK(near(100.0f - resting.energy, cost * s.rest_upkeep));
 }
 
+static void test_crowd_counts_anyone_near(void)
+{
+    World w;
+    make_world(&w, 16, 16);
+    Pool p;
+    CHECK(pool_init(&p, 6));
+    int c = spawn(&p, &w, 0, 0);
+    CHECK(creature_crowd(&w, &p.items[c], 1) == 0); /* it does not count itself */
+    spawn(&p, &w, 1, 0);
+    spawn(&p, &w, 15, 15); /* diagonal, across the wrap */
+    spawn(&p, &w, 2, 0);   /* two away */
+    spawn(&p, &w, 3, 0);   /* three away */
+    CHECK(creature_crowd(&w, &p.items[c], 1) == 2);
+    CHECK(creature_crowd(&w, &p.items[c], 2) == 3);
+    CHECK(creature_crowd(&w, &p.items[c], 3) == 4);
+    pool_free(&p);
+    world_free(&w);
+}
+
+static void test_crowd_cost_past_the_free_ones(void)
+{
+    Settings s = settings_default();
+    s.crowd_upkeep = 0.1f;
+    s.crowd_radius = 1;
+    s.crowd_free = 1;
+    World w;
+    make_world(&w, 16, 16);
+    Pool p;
+    CHECK(pool_init(&p, 4));
+    int c = spawn(&p, &w, 5, 5);
+    CHECK(creature_crowd_cost(&w, &p.items[c], &s) == 0.0f);
+    spawn(&p, &w, 6, 5);
+    CHECK(creature_crowd_cost(&w, &p.items[c], &s) == 0.0f); /* the free one */
+    spawn(&p, &w, 4, 5);
+    CHECK(near(creature_crowd_cost(&w, &p.items[c], &s), 0.1f));
+    int stranger = spawn(&p, &w, 5, 4);
+    CHECK(near(creature_crowd_cost(&w, &p.items[c], &s), 0.2f));
+    /* Relatives or strangers cost the same: the rule never asks. */
+    p.items[stranger].genome = p.items[c].genome;
+    CHECK(near(creature_crowd_cost(&w, &p.items[c], &s), 0.2f));
+    s.crowd_upkeep = 0.0f;
+    CHECK(creature_crowd_cost(&w, &p.items[c], &s) == 0.0f);
+    pool_free(&p);
+    world_free(&w);
+}
+
+static void test_crowd_charged_each_tick(void)
+{
+    Sim sim;
+    Settings set;
+    make_sim(&sim, &set);
+    sim.set.crowd_upkeep = 0.5f;
+    sim.set.crowd_radius = 1;
+    sim.set.crowd_free = 0;
+    int a = spawn(&sim.pool, &sim.world, 2, 2);
+    int b = spawn(&sim.pool, &sim.world, 3, 2);
+    int alone = spawn(&sim.pool, &sim.world, 8, 8);
+    sim.pool.items[a].energy = 50.0f;
+    sim.pool.items[b].energy = 50.0f;
+    sim.pool.items[alone].energy = 50.0f;
+    sim.pool.items[a].genome = sim.pool.items[alone].genome;
+    sim.pool.items[b].genome = sim.pool.items[alone].genome;
+    sim_step(&sim);
+    CHECK(near(sim.pool.items[alone].energy - sim.pool.items[a].energy, 0.5f));
+    CHECK(near(sim.pool.items[alone].energy - sim.pool.items[b].energy, 0.5f));
+    sim_free(&sim);
+}
+
+/* An adult with a full territory gene and a certain drive, a stranger to the east,
+ * facing north, its brain having said to rest. */
+static void territory_scene(World *w, Pool *p, Settings *s, int *a, int *t)
+{
+    fight_scene(w, p, s, a, t); /* t starts ahead: north */
+    p->items[*a].age = (uint32_t)s->mate_age;
+    p->items[*a].genome.g[GENE_TERRITORY] = 1.0f;
+    s->territory_drive = 1.0f;
+    s->attack_steepness = 0.0f; /* even odds whatever the sizes */
+}
+
+static void test_territory_attacks_a_stranger_beside_it(void)
+{
+    Settings s = settings_default();
+    Rng r;
+    rng_seed(&r, 5);
+    World w;
+    Pool p;
+    int a, t;
+    territory_scene(&w, &p, &s, &a, &t);
+    /* Moved to the east: a must turn to reach it. */
+    w.occupant[world_idx(&w, 3, 2)] = -1;
+    p.items[t].x = 4;
+    p.items[t].y = 3;
+    w.occupant[world_idx(&w, 4, 3)] = t;
+    float health = p.items[t].health;
+    for (int k = 0; k < 20; k++) {
+        creature_act(&w, &p, a, (Action){.kind = ACT_REST, .hold = 1}, &s, &r);
+    }
+    CHECK(p.items[t].health < health);
+    CHECK(p.items[a].heading == HEADING_EAST);
+    pool_free(&p);
+    world_free(&w);
+}
+
+static void test_territory_spares_relatives(void)
+{
+    Settings s = settings_default();
+    Rng r;
+    rng_seed(&r, 5);
+    World w;
+    Pool p;
+    int a, t;
+    territory_scene(&w, &p, &s, &a, &t);
+    p.items[t].genome = p.items[a].genome;
+    float energy = p.items[a].energy;
+    for (int k = 0; k < 20; k++) {
+        creature_act(&w, &p, a, (Action){.kind = ACT_REST, .hold = 1}, &s, &r);
+    }
+    CHECK(p.items[t].health == creature_max_health(&p.items[t], &s));
+    CHECK(p.items[a].energy == energy); /* no swing, so nothing paid */
+    CHECK(p.items[a].heading == HEADING_NORTH); /* it did not turn either */
+    pool_free(&p);
+    world_free(&w);
+}
+
+static void test_territory_follows_the_gene_and_age(void)
+{
+    Settings s = settings_default();
+    Rng r;
+    rng_seed(&r, 5);
+    World w;
+    Pool p;
+    int a, t;
+    territory_scene(&w, &p, &s, &a, &t);
+    float health = p.items[t].health;
+    /* Gene 0: it never fires. */
+    p.items[a].genome.g[GENE_TERRITORY] = 0.0f;
+    for (int k = 0; k < 50; k++) {
+        creature_act(&w, &p, a, (Action){.kind = ACT_REST, .hold = 1}, &s, &r);
+    }
+    CHECK(p.items[t].health == health);
+    /* A full gene on the young: not yet. */
+    p.items[a].genome.g[GENE_TERRITORY] = 1.0f;
+    p.items[a].age = 0;
+    for (int k = 0; k < 50; k++) {
+        creature_act(&w, &p, a, (Action){.kind = ACT_REST, .hold = 1}, &s, &r);
+    }
+    CHECK(p.items[t].health == health);
+    pool_free(&p);
+    world_free(&w);
+}
+
+static void test_territory_gene_costs_upkeep(void)
+{
+    Settings s = settings_default();
+    Creature c = {.alive = true};
+    float bare = creature_upkeep_cost(&c, &s);
+    c.genome.g[GENE_TERRITORY] = 1.0f;
+    CHECK(near(creature_upkeep_cost(&c, &s) - bare, s.territory_upkeep));
+}
+
+static void test_territory_does_not_stop_a_chosen_mating(void)
+{
+    Settings s = settings_default();
+    Rng r;
+    rng_seed(&r, 5);
+    World w;
+    Pool p;
+    make_world(&w, 8, 8);
+    CHECK(pool_init(&p, 3));
+    int a = spawn(&p, &w, 3, 3);
+    int t = spawn(&p, &w, 3, 2);
+    make_stranger(&p.items[t]);
+    p.items[a].energy = p.items[t].energy = 100.0f;
+    p.items[a].age = p.items[t].age = (uint32_t)s.mate_age;
+    p.items[a].genome.g[GENE_TERRITORY] = 1.0f;
+    p.items[t].mate_wish = 5;
+    s.territory_drive = 1.0f;
+    int child = creature_act(&w, &p, a, (Action){.kind = ACT_MATE, .hold = 1}, &s, &r);
+    CHECK(child >= 0);
+    pool_free(&p);
+    world_free(&w);
+}
+
 int main(void)
 {
     CHECK(brain_register(&BRAIN_SCRIPT));
@@ -2230,5 +2413,13 @@ int main(void)
     test_child_of_two_colours_joins_the_closer_family();
     test_drifted_child_starts_a_family();
     test_rest_costs_less();
+    test_crowd_counts_anyone_near();
+    test_crowd_cost_past_the_free_ones();
+    test_crowd_charged_each_tick();
+    test_territory_attacks_a_stranger_beside_it();
+    test_territory_spares_relatives();
+    test_territory_follows_the_gene_and_age();
+    test_territory_gene_costs_upkeep();
+    test_territory_does_not_stop_a_chosen_mating();
     TEST_SUMMARY();
 }

@@ -120,6 +120,15 @@ Settings settings_default(void)
         .family_peace = 0.3f,
         .family_split = 0.25f,
         .rest_upkeep = 0.5f,
+        /* These two together, Nicolas's call to try. Seeds 1 to 15, 20,000 ticks, the
+         * best of six tried: 15 alive and the smallest world at 98, deaths from wounds
+         * 26.3 % against 2.4 %, still and starving 7 % against 20 %. Alone, territory
+         * lost a world; stronger crowding lost one or two and left worlds of under 70. */
+        .territory_drive = 0.3f,
+        .territory_upkeep = 0.05f,
+        .crowd_upkeep = 0.01f,
+        .crowd_radius = 2,
+        .crowd_free = 1,
         .body_energy = 10.0f,
         .carrion_decay = 0.01f,
         /* Off: at 0.002, rotting carrion slowly enriched the soil and plants
@@ -257,6 +266,11 @@ static const SettingInfo TABLE[] = {
     FLOAT_ROW(family_peace, 0, 2, "kinship from which an attack does not strike"),
     FLOAT_ROW(family_split, 0, 0.5, "colour drift at which a newborn starts a family"),
     FLOAT_ROW(rest_upkeep, 0, 1, "share of upkeep paid while resting"),
+    FLOAT_ROW(territory_drive, 0, 1, "chance a full territory gene attacks a stranger beside it"),
+    FLOAT_ROW(territory_upkeep, 0, BIG, "upkeep of a full territory gene"),
+    FLOAT_ROW(crowd_upkeep, 0, BIG, "energy per tick per neighbour past the free ones"),
+    INT_ROW(crowd_radius, 1, 8, "how many cells away counts as a neighbour"),
+    INT_ROW(crowd_free, 0, 288, "neighbours that cost nothing"),
     FLOAT_ROW(body_energy, 0, BIG, "carrion a body leaves, by size"),
     FLOAT_ROW(carrion_decay, 0, 1, "share of carrion lost per tick"),
     FLOAT_ROW(carrion_to_fertility, 0, 1, "share of lost carrion that feeds "

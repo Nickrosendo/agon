@@ -171,7 +171,7 @@ for the build that wrote them; a build with a different format refuses them.
 3. Vigorous rules spread faster, but they feed less and die younger. Plants
    age, wither and leave bare soil.
 4. Each creature inherits a genome: its size at birth, speed, sight, digestion of
-   plants and of meat, its colour, how fast it ages, its armour, weapon and growth,
+   plants and of meat, its colour, how fast it ages, its armour, weapon, growth and territory,
    and the weights of a small neural network.
 5. Each tick, the network turns what the creature senses into one action: rest,
    turn left, turn right, move, bite, mate or attack.
@@ -209,7 +209,13 @@ for the build that wrote them; a build with a different format refuses them.
     drifted far from its family's starts a new family, and the old one stays safe
     from it for as long as the two remain close relatives. Resting costs half of
     what being busy does.
-14. Time is shown in years. A year is 100 ticks by default (`ticks_per_year`),
+14. Creatures pay for being crowded, a little for each neighbour within two cells
+    past the first, whoever those neighbours are. So staying packed together costs
+    energy and spreading out saves it.
+15. Territory is an inherited instinct. An adult with the gene sometimes turns on a
+    stranger right beside it, whatever its brain chose, unless it chose to mate.
+    Close relatives are safe.
+16. Time is shown in years. A year is 100 ticks by default (`ticks_per_year`),
     which is only a way of showing time and changes nothing in a world.
 
 ## Licence

@@ -203,7 +203,32 @@ float creature_upkeep_cost(const Creature *c, const Settings *s)
            s->sight_upkeep * (float)creature_sight(c, s) +
            s->digest_upkeep * digest * digest + ageing_cost(c, s) +
            s->armour_upkeep * c->genome.g[GENE_ARMOUR] +
-           s->weapon_upkeep * c->genome.g[GENE_WEAPON];
+           s->weapon_upkeep * c->genome.g[GENE_WEAPON] +
+           s->territory_upkeep * c->genome.g[GENE_TERRITORY];
+}
+
+int creature_crowd(const World *w, const Creature *c, int radius)
+{
+    int own_cell = world_idx(w, c->x, c->y);
+    int crowd = 0;
+    for (int dy = -radius; dy <= radius; dy++) {
+        for (int dx = -radius; dx <= radius; dx++) {
+            int cell = world_idx(w, c->x + dx, c->y + dy);
+            if (cell != own_cell && w->occupant[cell] >= 0) {
+                crowd++;
+            }
+        }
+    }
+    return crowd;
+}
+
+float creature_crowd_cost(const World *w, const Creature *c, const Settings *s)
+{
+    if (s->crowd_upkeep <= 0.0f) {
+        return 0.0f; /* off: spares looking at the cells at all */
+    }
+    int over = creature_crowd(w, c, s->crowd_radius) - s->crowd_free;
+    return over > 0 ? s->crowd_upkeep * (float)over : 0.0f;
 }
 
 /* The energy at which this creature may mate: bigger bodies need more. */
@@ -743,6 +768,36 @@ static int act_mate(World *w, Pool *p, int idx, const Settings *s, Rng *r)
     return child_idx;
 }
 
+/* The territorial drive: an adult may turn on a stranger on one of the four cells
+ * beside it, looking round from a random heading so no side is favoured. True when
+ * it attacked, which takes up its tick. Whoever counts as a stranger is decided by
+ * creature_attack_target, the same test an attack it chose itself would meet, so
+ * close relatives are safe here too. With the drive off, this draws no random
+ * numbers at all, so the world is the same as if it were not here. */
+static bool territorial_drive(const World *w, Pool *p, int idx, const Settings *s,
+                              Rng *r)
+{
+    Creature *c = &p->items[idx];
+    if (s->territory_drive <= 0.0f || c->age < (uint32_t)s->mate_age) {
+        return false;
+    }
+    uint8_t own_heading = c->heading;
+    uint8_t start = (uint8_t)rng_below(r, HEADING_COUNT);
+    for (int k = 0; k < HEADING_COUNT; k++) {
+        c->heading = turned(start, k);
+        if (creature_attack_target(w, p, idx, s) >= 0) {
+            float chance = s->territory_drive * c->genome.g[GENE_TERRITORY];
+            if (rng_unit(r) < chance) {
+                act_attack(w, p, idx, s, r); /* now facing it */
+                return true;
+            }
+            break;
+        }
+    }
+    c->heading = own_heading;
+    return false;
+}
+
 int creature_act(World *w, Pool *p, int idx, Action a, const Settings *s,
                  Rng *r)
 {
@@ -760,6 +815,10 @@ int creature_act(World *w, Pool *p, int idx, Action a, const Settings *s,
         if (child >= 0) {
             return child;
         }
+    }
+    /* A creature that has chosen to mate is not turned from it by this. */
+    if (a.kind != ACT_MATE && territorial_drive(w, p, idx, s, r)) {
+        return -1;
     }
     switch (a.kind) {
     case ACT_TURN_LEFT:

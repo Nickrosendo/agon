@@ -221,7 +221,13 @@ float creature_speed(const Creature *c, const Settings *s);
 int creature_sight(const Creature *c, const Settings *s);
 /* The health of an unhurt body. */
 float creature_max_health(const Creature *c, const Settings *s);
-/* Energy one tick of life costs this creature. */
+/* How many creatures stand within radius cells of c, not counting c, of any kind
+ * and any family. A square, so radius 1 is the 8 cells around. */
+int creature_crowd(const World *w, const Creature *c, int radius);
+/* Energy this creature's crowd costs it per tick: crowd_upkeep for each neighbour
+ * past the first crowd_free. Being busy or resting makes no difference to it. */
+float creature_crowd_cost(const World *w, const Creature *c, const Settings *s);
+/* Energy one tick of life costs this creature, before any crowding. */
 float creature_upkeep_cost(const Creature *c, const Settings *s);
 
 /* True for a creature that digests meat better than plants. Says nothing
