@@ -35,9 +35,10 @@
  * health and hits in the fingerprint; then armour and weapon: two more genes,
  * changing every random genome; then growth: one more gene, bites that scale with
  * size, and a size that goes on rising; then memory and drives: eight more senses
- * and three more outputs, and one more random draw per decision.
+ * and three more outputs, and one more random draw per decision; then life costs
+ * less, more so at rest, close relatives are not struck, and families can split.
  */
-#define SEED_7_AFTER_500 0x5fccf55d0c89b45bULL
+#define SEED_7_AFTER_500 0x1cac42660acbb8c1ULL
 
 static void test_same_seed_same_checksum(void)
 {

@@ -211,6 +211,14 @@ typedef struct {
     float bite_damage;
     /* A neighbour counts as a relative in the senses from this genome_kinship up. */
     float kin_sense;
+    /* An attack does not strike a creature whose genome_kinship with the attacker
+     * is this or more; above 1, nobody is spared. */
+    float family_peace;
+    /* A newborn this far round the colour wheel from its family's colour starts a
+     * family of its own; 0.5 or more, nobody ever does. */
+    float family_split;
+    /* The share of upkeep paid on a tick spent resting. */
+    float rest_upkeep;
 
     /* Carrion. A death leaves body_energy * size plus any energy left.
      * Each tick carrion loses carrion_decay of itself; carrion_to_fertility

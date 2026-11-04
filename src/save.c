@@ -188,6 +188,7 @@ static void put_creature(Writer *w, const Creature *c)
 {
     put_u32(w, c->id);
     put_u32(w, c->lineage);
+    put_float(w, c->family_hue);
     put_i32(w, c->x);
     put_i32(w, c->y);
     put_bytes(w, &c->heading, 1);
@@ -501,6 +502,7 @@ static void get_creature(Reader *r, Creature *c, const Settings *set,
     c->next_free = -1;
     c->id = get_u32(r);
     c->lineage = get_u32(r);
+    c->family_hue = get_float(r, 0.0f, 1.0f);
     c->x = get_i32(r);
     c->y = get_i32(r);
     c->heading = get_byte(r);

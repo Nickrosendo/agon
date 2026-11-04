@@ -50,6 +50,9 @@ typedef struct {
      * parent, chosen at random, like a surname. Not a measure of relatedness:
      * with two parents, most of a child's genes can come from the other side. */
     uint32_t lineage;
+    /* The colour its family started with. A child whose own colour has drifted
+     * further than family_split from this leaves, and starts a family of its own. */
+    float family_hue;
     int x, y;
     uint8_t heading;    /* a HEADING_ value */
     float energy;
@@ -178,9 +181,11 @@ typedef struct {
 BiteChoice creature_bite_choice(const World *w, const Pool *p, int idx,
                                 const Settings *s);
 /* The slot of the creature an ACT_ATTACK by creature idx would strike: whoever
- * stands on the cell ahead, of any kind, unless an earlier hit this tick has
- * already taken it to 0. -1 for nobody. Reads only, for the drawing side too. */
-int creature_attack_target(const World *w, const Pool *p, int idx);
+ * stands on the cell ahead, unless an earlier hit this tick has already taken it
+ * to 0, or it is a close relative (genome_kinship at family_peace or above). -1
+ * for nobody. Reads only, for the drawing side too. */
+int creature_attack_target(const World *w, const Pool *p, int idx,
+                           const Settings *s);
 /* Carries out one tick of action a for creature idx. Returns the slot of
  * a child born from it, or -1 when none was.
  *
@@ -195,7 +200,9 @@ int creature_attack_target(const World *w, const Pool *p, int idx);
  * Out of season only ACT_MATE tries. */
 int creature_act(World *w, Pool *p, int idx, Action a, const Settings *s,
                  Rng *r);
-/* Charges one tick of upkeep and ages the creature by one tick. With energy
+/* Starts a family: its own id is the name, and its own colour the family's. */
+void creature_start_family(Creature *c);
+/* Charges one tick of upkeep (rest_upkeep's share of it while resting) and ages the creature by one tick. With energy
  * left it heals, paying for it, and then turns the growth gene's share of any
  * surplus into body (growth_surplus, growth_cost); with none, it stays at exactly 0 and loses
  * starve_damage health instead. Returns false when its health is gone or it has

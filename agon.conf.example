@@ -78,7 +78,7 @@ brain = net
 energy_start = 60
 
 # energy every tick costs (0 to 1e+06)
-upkeep_base = 0.1
+upkeep_base = 0.06
 
 # extra energy a move costs (0 to 1e+06)
 move_cost = 0.3
@@ -220,6 +220,15 @@ bite_damage = 6
 
 # kinship from which a neighbour counts as family (0 to 1)
 kin_sense = 0.5
+
+# kinship from which an attack does not strike (0 to 2)
+family_peace = 0.3
+
+# colour drift at which a newborn starts a family (0 to 0.5)
+family_split = 0.25
+
+# share of upkeep paid while resting (0 to 1)
+rest_upkeep = 0.5
 
 # carrion a body leaves, by size (0 to 1e+06)
 body_energy = 10

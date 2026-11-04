@@ -128,6 +128,7 @@ static int red_pixels(int action)
     int prey = pool_spawn(&s.pool, &s.world, 9, 8);
     s.pool.items[hunter].current.kind = (uint8_t)action;
     s.pool.items[hunter].heading = HEADING_EAST; /* the prey is ahead */
+    s.set.family_peace = 2.0f; /* near-identical genomes would be spared */
     s.pool.items[hunter].genome.g[GENE_MEAT] = 1.0f;
     s.pool.items[prey].genome.g[GENE_PLANT] = 1.0f;
     s.pool.items[prey].energy = 10.0f;
@@ -361,7 +362,7 @@ static uint64_t hash_canvas(const Canvas *c)
 static void test_known_world_pixels(void)
 {
     static const uint64_t EXPECTED[CAMERA_LEVELS] = {
-        0x2ff27f9f210e01a5u, 0x996cbe6d86deb305u, 0x905e1916eee7771u, 0x5f08ccc1e032fde5u,
+        0x2ff27f9f210e01a5u, 0x996cbe6d86deb305u, 0xf790e060263dfadcu, 0xecb6341a12a64245u,
     };
     Settings set = settings_default();
     Sim s;

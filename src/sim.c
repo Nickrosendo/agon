@@ -60,6 +60,7 @@ static int place_creature(Sim *s)
              * lineage pool_spawn gave it (its own id) starts a new line. */
             genome_random(&c->genome, &s->rng, &s->set);
             c->health = creature_max_health(c, &s->set); /* needs the genes */
+            creature_start_family(c);
             s->brain.on_birth(&s->brain, c->id, &c->genome);
             return idx;
         }
@@ -416,6 +417,7 @@ static uint64_t hash_creature(uint64_t hash, const Creature *c)
 {
     hash = fnv1a(hash, &c->id, sizeof(c->id));
     hash = fnv1a(hash, &c->lineage, sizeof(c->lineage));
+    hash = fnv1a(hash, &c->family_hue, sizeof(c->family_hue));
     hash = fnv1a(hash, &c->x, sizeof(c->x));
     hash = fnv1a(hash, &c->y, sizeof(c->y));
     hash = fnv1a(hash, &c->heading, sizeof(c->heading));

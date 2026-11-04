@@ -205,7 +205,11 @@ for the build that wrote them; a build with a different format refuses them.
 12. A creature carries a few numbers from one decision to the next, its memory,
     and also senses its hunger, its wounds, the relatives and strangers beside it
     and a random number. What it does with them is left to selection.
-13. Time is shown in years. A year is 100 ticks by default (`ticks_per_year`),
+13. A creature does not strike a close relative. A newborn whose colour has
+    drifted far from its family's starts a new family, and the old one stays safe
+    from it for as long as the two remain close relatives. Resting costs half of
+    what being busy does.
+14. Time is shown in years. A year is 100 ticks by default (`ticks_per_year`),
     which is only a way of showing time and changes nothing in a world.
 
 ## Licence

@@ -405,12 +405,18 @@ static void act_move(World *w, Creature *c, int idx, const Settings *s)
     c->y = to / w->w;
 }
 
-int creature_attack_target(const World *w, const Pool *p, int idx)
+int creature_attack_target(const World *w, const Pool *p, int idx,
+                           const Settings *s)
 {
     const Creature *c = &p->items[idx];
     int other = w->occupant[cell_towards(w, c->x, c->y, c->heading)];
     /* other == idx only in a world one cell across, where ahead wraps to itself. */
     if (other < 0 || other == idx || p->items[other].health <= 0.0f) {
+        return -1;
+    }
+    /* Close relatives are not struck. The swing is still paid for, so choosing
+     * to attack beside them costs energy and selection can act on that. */
+    if (genome_kinship(&c->genome, &p->items[other].genome) >= s->family_peace) {
         return -1;
     }
     return other;
@@ -444,7 +450,7 @@ static void act_attack(const World *w, Pool *p, int idx, const Settings *s,
 {
     Creature *c = &p->items[idx];
     c->energy -= s->attack_cost;
-    int slot = creature_attack_target(w, p, idx);
+    int slot = creature_attack_target(w, p, idx, s);
     if (slot < 0) {
         return;
     }
@@ -606,6 +612,12 @@ static void act_bite(World *w, Pool *p, int idx, const Settings *s)
     }
 }
 
+void creature_start_family(Creature *c)
+{
+    c->lineage = c->id;
+    c->family_hue = c->genome.g[GENE_HUE];
+}
+
 /* Grown up and fed enough to have a child. mate_age is an int checked to be
  * 0 or more when settings load, so the cast cannot make a huge number of it.
  * A creature an attack has just taken to 0 is dying, and must not become a
@@ -647,6 +659,13 @@ static int free_cell_around(const World *w, const Creature *c, int start)
     return -1;
 }
 
+/* How far apart two colours are, round the wheel: 0.98 and 0.01 are close. */
+static float hue_distance(float a, float b)
+{
+    float d = fabsf(a - b);
+    return d > 0.5f ? 1.0f - d : d;
+}
+
 /* Fills in a newborn from its parents. Both pay here, together, so the energy
  * is only moved: the three of them hold afterwards what the two held before.
  * a and b stay valid across the pool_spawn before this: spawning never moves
@@ -661,13 +680,24 @@ static void make_child(Creature *child, Creature *a, Creature *b,
     b->energy -= from_b;
     child->energy = from_a + from_b;
     /* Each is a separate statement, so the draws have a fixed order. */
-    child->lineage = rng_below(r, 2) == 0 ? a->lineage : b->lineage;
     child->heading = (uint8_t)rng_below(r, HEADING_COUNT);
     child->level = (a->level + b->level) / 2.0f; /* until its first meal */
     /* Pointers to the three genomes, not copies: the function writes the
      * child's in place, reading its parents'. */
     genome_cross(&child->genome, &a->genome, &b->genome, r, s);
     child->health = creature_max_health(child, s); /* needs the genes above */
+    /* It joins the family whose colour it is closer to. Only then is any distance
+     * left real drift: naming it at random could give it one parent's colour and
+     * the other's family, and two-coloured parents would found a family per birth. */
+    float hue = child->genome.g[GENE_HUE];
+    float a_off = hue_distance(hue, a->family_hue);
+    float b_off = hue_distance(hue, b->family_hue);
+    const Creature *family = a_off <= b_off ? a : b;
+    child->lineage = family->lineage;
+    child->family_hue = family->family_hue;
+    if (hue_distance(hue, child->family_hue) > s->family_split) {
+        creature_start_family(child);
+    }
     a->mate_wish = 0;
     b->mate_wish = 0;
 }
@@ -792,7 +822,9 @@ bool creature_upkeep(Creature *c, const Settings *s)
     if (c->health <= 0.0f) {
         return false;
     }
-    c->energy -= creature_upkeep_cost(c, s);
+    /* The ageing part is included in the discount: a body at rest costs less. */
+    float share = c->current.kind == ACT_REST ? s->rest_upkeep : 1.0f;
+    c->energy -= creature_upkeep_cost(c, s) * share;
     if (c->age < UINT32_MAX) {
         c->age++;
     }

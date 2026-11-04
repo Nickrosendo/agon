@@ -375,6 +375,7 @@ static void test_attacker_faces_what_it_attacks(void)
     int attacker = pool_spawn(&s.pool, &s.world, 10, 10);
     int target = pool_spawn(&s.pool, &s.world, 11, 10);
     s.pool.items[attacker].current.kind = ACT_ATTACK;
+    s.set.family_peace = 2.0f; /* both all-zero genomes: twins, otherwise spared */
     s.pool.items[attacker].heading = HEADING_EAST;
     Anim a;
     CHECK(anim_init(&a, s.pool.capacity));

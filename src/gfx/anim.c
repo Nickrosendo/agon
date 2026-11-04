@@ -133,7 +133,7 @@ void anim_pose(const Anim *a, const Sim *s, int slot, float tick_fraction,
 
     out->bite = BITE_NOTHING;
     if (c->current.kind == ACT_ATTACK) {
-        int target = creature_attack_target(w, &s->pool, slot);
+        int target = creature_attack_target(w, &s->pool, slot, &s->set);
         if (target >= 0) {
             out->bite = POSE_ATTACK;
             out->target_x = s->pool.items[target].x;

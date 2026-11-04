@@ -57,7 +57,8 @@ Settings settings_default(void)
          * literal: the characters are copied in and the rest is zero. */
         .brain_name = "net",
         .energy_start = 60.0f,
-        .upkeep_base = 0.1f,
+        /* Slowed at Nicolas's request: 0.1 spent the starting energy in 1.3 years. */
+        .upkeep_base = 0.06f,
         .move_cost = 0.3f,
         .bite_veg_energy = 40.0f,
         .mate_threshold = 30.0f,
@@ -112,6 +113,13 @@ Settings settings_default(void)
         .bite_empty_cost = 0.0f,
         .bite_damage = 6.0f,
         .kin_sense = 0.5f,
+        /* Nicolas, 2026-11-03: a creature leaves its family without turning on it.
+         * Measured on seeds 1 to 15: hits within a family name fell from 57 % to
+         * 37 %, none are now between close relatives, and families rose from 3.8 to
+         * 9.7 on average. */
+        .family_peace = 0.3f,
+        .family_split = 0.25f,
+        .rest_upkeep = 0.5f,
         .body_energy = 10.0f,
         .carrion_decay = 0.01f,
         /* Off: at 0.002, rotting carrion slowly enriched the soil and plants
@@ -246,6 +254,9 @@ static const SettingInfo TABLE[] = {
     FLOAT_ROW(bite_empty_cost, 0, BIG, "energy a bite that finds nothing costs"),
     FLOAT_ROW(bite_damage, 0, BIG, "health a hit takes, by attacker's size"),
     FLOAT_ROW(kin_sense, 0, 1, "kinship from which a neighbour counts as family"),
+    FLOAT_ROW(family_peace, 0, 2, "kinship from which an attack does not strike"),
+    FLOAT_ROW(family_split, 0, 0.5, "colour drift at which a newborn starts a family"),
+    FLOAT_ROW(rest_upkeep, 0, 1, "share of upkeep paid while resting"),
     FLOAT_ROW(body_energy, 0, BIG, "carrion a body leaves, by size"),
     FLOAT_ROW(carrion_decay, 0, 1, "share of carrion lost per tick"),
     FLOAT_ROW(carrion_to_fertility, 0, 1, "share of lost carrion that feeds "

@@ -340,6 +340,8 @@ static void test_child_surname_from_a_parent(void)
         adult_pair(&w, &p, &a, &b, &s, &r);
         p.items[a].level = 2.0f;
         p.items[b].level = 3.0f;
+        creature_start_family(&p.items[a]);
+        creature_start_family(&p.items[b]);
         creature_act(&w, &p, a, mate, &s, &r);
         int child = creature_act(&w, &p, b, mate, &s, &r);
         CHECK(child >= 0);
@@ -954,6 +956,7 @@ static void test_attacks_hit_half_the_time(void)
     int t = spawn(&p, &w, 3, 2); /* right ahead, the same size */
     p.items[a].energy = 1e6f;
     p.items[t].energy = 50.0f;
+    s.family_peace = 2.0f; /* this is about the odds: identical genomes */
     /* The hit ring would otherwise change nothing, as a sole attacker is never
      * one of the others; the health is reset by hand each time. */
     int hits = 0, misses_checked = 0;
@@ -981,6 +984,15 @@ static void test_attacks_hit_half_the_time(void)
     world_free(&w);
 }
 
+/* Sets a creature's network weights apart from an all-zero one's, so the two are
+ * not close relatives and an attack between them strikes. */
+static void make_stranger(Creature *c)
+{
+    for (int i = GENE_TRAITS; i < GENOME_LEN; i++) {
+        c->genome.g[i] = 1.0f;
+    }
+}
+
 /* Two creatures side by side, the first heading north with the second
  * ahead of it, on an 8 by 8 world of bare soil. */
 static void two_neighbours(World *w, Pool *p, int *a, int *t)
@@ -991,6 +1003,7 @@ static void two_neighbours(World *w, Pool *p, int *a, int *t)
     *t = spawn(p, w, 3, 2);
     p->items[*a].energy = 100.0f;
     p->items[*t].energy = 100.0f;
+    make_stranger(&p->items[*t]);
 }
 
 static void test_food_under_a_creature(void)
@@ -1128,6 +1141,7 @@ static void test_killed_creature_leaves_carrion(void)
     Settings set;
     make_sim(&sim, &set);
     sim.set.attack_steepness = 50.0f; /* the bigger one always hits */
+    sim.set.family_peace = 2.0f; /* identical but for size */
     int a = spawn(&sim.pool, &sim.world, 4, 6);
     int t = spawn(&sim.pool, &sim.world, 4, 5); /* ahead of a */
     sim.pool.items[a].genome.g[GENE_SIZE] = 1.0f; /* size 1.5 */
@@ -1464,12 +1478,12 @@ static void test_attack_needs_a_target_ahead(void)
     CHECK(p.items[t].health == health);
     CHECK(near(p.items[a].energy, 100.0f - s.attack_cost));
     CHECK(r.s[0] == draws_before); /* nothing to hit: no draw */
-    CHECK(creature_attack_target(&w, &p, a) == -1);
+    CHECK(creature_attack_target(&w, &p, a, &s) == -1);
     p.items[a].heading = HEADING_NORTH;
-    CHECK(creature_attack_target(&w, &p, a) == t);
+    CHECK(creature_attack_target(&w, &p, a, &s) == t);
     /* One already at 0 this tick has nothing left to hit. */
     p.items[t].health = 0.0f;
-    CHECK(creature_attack_target(&w, &p, a) == -1);
+    CHECK(creature_attack_target(&w, &p, a, &s) == -1);
     pool_free(&p);
     world_free(&w);
 }
@@ -1589,6 +1603,7 @@ static void test_death_causes_counted(void)
     Settings set;
     make_sim(&sim, &set);
     sim.set.attack_steepness = 16.0f;
+    sim.set.family_peace = 2.0f; /* identical but for size */
     int a = spawn(&sim.pool, &sim.world, 4, 6);
     int t = spawn(&sim.pool, &sim.world, 4, 5); /* ahead of a */
     int hungry = spawn(&sim.pool, &sim.world, 1, 1);
@@ -2003,6 +2018,136 @@ static void test_random_sense_is_seeded(void)
     CHECK(varies);
 }
 
+static void test_attack_spares_close_relatives(void)
+{
+    Settings s = settings_default();
+    Rng r;
+    rng_seed(&r, 5);
+    World w;
+    Pool p;
+    int a, t;
+    fight_scene(&w, &p, &s, &a, &t);
+    CHECK(creature_attack_target(&w, &p, a, &s) == t); /* strangers */
+    p.items[t].genome = p.items[a].genome; /* now twins */
+    CHECK(creature_attack_target(&w, &p, a, &s) == -1);
+    float health = p.items[t].health;
+    for (int k = 0; k < 50; k++) {
+        creature_act(&w, &p, a, (Action){.kind = ACT_ATTACK, .hold = 1}, &s, &r);
+    }
+    CHECK(p.items[t].health == health);
+    CHECK(near(p.items[a].energy, 100.0f - 50.0f * s.attack_cost)); /* still paid */
+    /* The setting's top means nobody is spared. */
+    s.family_peace = 2.0f;
+    CHECK(creature_attack_target(&w, &p, a, &s) == t);
+    pool_free(&p);
+    world_free(&w);
+}
+
+/* Two parents of one colour and family, and a child made from them. */
+static void family_birth(float hue, float mutation, uint64_t seed, Creature *child_out)
+{
+    Settings s = settings_default();
+    s.mutation_rate = mutation;
+    s.mutation_spread = 1.0f; /* any mutation is a large one */
+    Rng r;
+    rng_seed(&r, seed);
+    World w;
+    make_world(&w, 8, 8);
+    Pool p;
+    CHECK(pool_init(&p, 3));
+    int a = spawn(&p, &w, 3, 3);
+    int t = spawn(&p, &w, 3, 2);
+    p.items[a].energy = p.items[t].energy = 100.0f;
+    p.items[a].age = p.items[t].age = (uint32_t)s.mate_age;
+    p.items[a].genome.g[GENE_HUE] = p.items[t].genome.g[GENE_HUE] = hue;
+    p.items[a].family_hue = p.items[t].family_hue = hue;
+    p.items[a].lineage = p.items[t].lineage = 77;
+    p.items[t].mate_wish = 5;
+    int child = creature_act(&w, &p, a, (Action){.kind = ACT_MATE, .hold = 1}, &s, &r);
+    CHECK(child >= 0);
+    *child_out = p.items[child];
+    pool_free(&p);
+    world_free(&w);
+}
+
+static void test_child_stays_in_family_without_drift(void)
+{
+    Creature c;
+    family_birth(0.5f, 0.0f, 11, &c);
+    CHECK(c.lineage == 77);
+    CHECK(c.family_hue == 0.5f);
+}
+
+static void test_child_of_two_colours_joins_the_closer_family(void)
+{
+    /* No mutation, parents of far-apart colours in two families: the child's colour
+     * is one parent's, so it must carry that parent's family and not found a new one. */
+    Settings s = settings_default();
+    s.mutation_rate = 0.0f;
+    Rng r;
+    rng_seed(&r, 11);
+    for (int k = 0; k < 40; k++) {
+        World w;
+        make_world(&w, 8, 8);
+        Pool p;
+        CHECK(pool_init(&p, 3));
+        int a = spawn(&p, &w, 3, 3);
+        int t = spawn(&p, &w, 3, 2);
+        p.items[a].energy = p.items[t].energy = 100.0f;
+        p.items[a].age = p.items[t].age = (uint32_t)s.mate_age;
+        p.items[a].genome.g[GENE_HUE] = p.items[a].family_hue = 0.1f;
+        p.items[t].genome.g[GENE_HUE] = p.items[t].family_hue = 0.6f;
+        p.items[a].lineage = 10;
+        p.items[t].lineage = 20;
+        p.items[t].mate_wish = 5;
+        int child = creature_act(&w, &p, a, (Action){.kind = ACT_MATE, .hold = 1}, &s, &r);
+        CHECK(child >= 0);
+        uint32_t expected = p.items[child].genome.g[GENE_HUE] == 0.1f ? 10u : 20u;
+        CHECK(p.items[child].lineage == expected);
+        pool_free(&p);
+        world_free(&w);
+    }
+}
+
+static void test_drifted_child_starts_a_family(void)
+{
+    /* Every value mutates by a large step, so over these seeds the colour lands
+     * both near and far: each child is checked against the side it landed on. */
+    Settings s = settings_default();
+    int left = 0, stayed = 0;
+    for (uint64_t seed = 1; seed <= 60; seed++) {
+        Creature c;
+        family_birth(0.5f, 1.0f, seed, &c);
+        float d = fabsf(c.genome.g[GENE_HUE] - 0.5f);
+        d = d > 0.5f ? 1.0f - d : d;
+        if (d > s.family_split) {
+            left++;
+            CHECK(c.lineage == c.id);
+            CHECK(c.family_hue == c.genome.g[GENE_HUE]);
+        } else {
+            stayed++;
+            CHECK(c.lineage == 77);
+            CHECK(c.family_hue == 0.5f);
+        }
+    }
+    CHECK(left > 0 && stayed > 0);
+}
+
+static void test_rest_costs_less(void)
+{
+    Settings s = settings_default();
+    Creature resting = {.alive = true, .energy = 100.0f, .health = 1.0f};
+    resting.health = creature_max_health(&resting, &s);
+    Creature busy = resting;
+    resting.current.kind = ACT_REST;
+    busy.current.kind = ACT_TURN_LEFT;
+    float cost = creature_upkeep_cost(&busy, &s);
+    CHECK(creature_upkeep(&resting, &s));
+    CHECK(creature_upkeep(&busy, &s));
+    CHECK(near(100.0f - busy.energy, cost));
+    CHECK(near(100.0f - resting.energy, cost * s.rest_upkeep));
+}
+
 int main(void)
 {
     CHECK(brain_register(&BRAIN_SCRIPT));
@@ -2080,5 +2225,10 @@ int main(void)
     test_child_memory_starts_empty();
     test_senses_hunger_pain_near();
     test_random_sense_is_seeded();
+    test_attack_spares_close_relatives();
+    test_child_stays_in_family_without_drift();
+    test_child_of_two_colours_joins_the_closer_family();
+    test_drifted_child_starts_a_family();
+    test_rest_costs_less();
     TEST_SUMMARY();
 }

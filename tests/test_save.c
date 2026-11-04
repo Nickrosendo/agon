@@ -209,6 +209,7 @@ static void test_mate_wish_survives_save(void)
     a.pool.deaths[DEATH_HUNGER] = 11;
     a.pool.items[slot].health = 12.5f;
     a.pool.items[slot].grown = 3.25f;
+    a.pool.items[slot].family_hue = 0.125f;
     a.pool.items[slot].memory[1] = -0.75f;
     a.pool.items[slot].hits_taken = 2;
     a.pool.items[slot].recent_hits[1] = (Hit){.by = 42, .tick = 77};
@@ -221,6 +222,7 @@ static void test_mate_wish_survives_save(void)
     CHECK(b.pool.deaths[DEATH_HUNGER] == 11);
     CHECK(b.pool.items[slot].health == 12.5f);
     CHECK(b.pool.items[slot].grown == 3.25f);
+    CHECK(b.pool.items[slot].family_hue == 0.125f);
     CHECK(b.pool.items[slot].memory[1] == -0.75f);
     CHECK(b.pool.items[slot].hits_taken == 2);
     CHECK(b.pool.items[slot].recent_hits[1].by == 42);
@@ -381,25 +383,26 @@ enum {
     AT_ALIVE = 0,
     AT_ID = 1,
     AT_LINEAGE = 5,
-    AT_X = 9,
-    AT_Y = 13,
-    AT_HEADING = 17,
-    AT_ENERGY = 18,
-    AT_HEALTH = 22,
-    AT_GROWN = 26,
-    AT_HITS_TAKEN = 30,
-    AT_RECENT_HITS = 34, /* HITS_KEPT pairs of u32: 64 bytes */
-    AT_AGE = 98,
-    AT_KIND = 102,
-    AT_HOLD = 103,
-    AT_HOLD_LEFT = 105,
-    AT_MOVE_POINTS = 107,
-    AT_MATE_WISH = 111,
-    AT_LEVEL = 113,
-    AT_EATEN = 117,
-    AT_MEMORY = 121,
-    AT_GENOME = 133,
-    SLOT_LIVING_BYTES = 133 + 4 * GENOME_LEN,
+    AT_FAMILY_HUE = 9,
+    AT_X = 13,
+    AT_Y = 17,
+    AT_HEADING = 21,
+    AT_ENERGY = 22,
+    AT_HEALTH = 26,
+    AT_GROWN = 30,
+    AT_HITS_TAKEN = 34,
+    AT_RECENT_HITS = 38, /* HITS_KEPT pairs of u32: 64 bytes */
+    AT_AGE = 102,
+    AT_KIND = 106,
+    AT_HOLD = 107,
+    AT_HOLD_LEFT = 109,
+    AT_MOVE_POINTS = 111,
+    AT_MATE_WISH = 115,
+    AT_LEVEL = 117,
+    AT_EATEN = 121,
+    AT_MEMORY = 125,
+    AT_GENOME = 137,
+    SLOT_LIVING_BYTES = 137 + 4 * GENOME_LEN,
 };
 
 typedef struct {
@@ -705,6 +708,7 @@ static void test_refuses_impossible_creature(void)
     refuses_u32(&t, c + AT_HEALTH, BITS_NAN, "out of range");
     refuses_u32(&t, c + AT_GROWN, BITS_NAN, "out of range");
     refuses_u32(&t, c + AT_MEMORY, BITS_NAN, "out of range");
+    refuses_u32(&t, c + AT_FAMILY_HUE, BITS_NAN, "out of range");
     refuses_u32(&t, c + AT_MEMORY, 0x40000000u /* 2.0 */, "out of range");
     refuses_u32(&t, c + AT_GROWN, 0xBF800000u /* -1.0 */, "out of range");
     refuses_u32(&t, c + AT_MOVE_POINTS, BITS_NAN, "out of range");
