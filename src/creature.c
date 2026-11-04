@@ -430,6 +430,13 @@ static void act_move(World *w, Creature *c, int idx, const Settings *s)
     c->y = to / w->w;
 }
 
+/* How far apart two colours are, round the wheel: 0.98 and 0.01 are close. */
+static float hue_distance(float a, float b)
+{
+    float d = fabsf(a - b);
+    return d > 0.5f ? 1.0f - d : d;
+}
+
 int creature_attack_target(const World *w, const Pool *p, int idx,
                            const Settings *s)
 {
@@ -441,7 +448,13 @@ int creature_attack_target(const World *w, const Pool *p, int idx,
     }
     /* Close relatives are not struck. The swing is still paid for, so choosing
      * to attack beside them costs energy and selection can act on that. */
-    if (genome_kinship(&c->genome, &p->items[other].genome) >= s->family_peace) {
+    const Genome *theirs = &p->items[other].genome;
+    if (genome_kinship(&c->genome, theirs) >= s->family_peace) {
+        return -1;
+    }
+    /* Nor is anyone of a similar colour: what a creature looks like is what can be
+     * seen on screen, and two who look alike can be distant by their genes. */
+    if (hue_distance(c->genome.g[GENE_HUE], theirs->g[GENE_HUE]) < s->colour_peace) {
         return -1;
     }
     return other;
@@ -682,13 +695,6 @@ static int free_cell_around(const World *w, const Creature *c, int start)
         }
     }
     return -1;
-}
-
-/* How far apart two colours are, round the wheel: 0.98 and 0.01 are close. */
-static float hue_distance(float a, float b)
-{
-    float d = fabsf(a - b);
-    return d > 0.5f ? 1.0f - d : d;
 }
 
 /* Fills in a newborn from its parents. Both pay here, together, so the energy

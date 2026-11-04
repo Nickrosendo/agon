@@ -182,8 +182,9 @@ BiteChoice creature_bite_choice(const World *w, const Pool *p, int idx,
                                 const Settings *s);
 /* The slot of the creature an ACT_ATTACK by creature idx would strike: whoever
  * stands on the cell ahead, unless an earlier hit this tick has already taken it
- * to 0, or it is a close relative (genome_kinship at family_peace or above). -1
- * for nobody. Reads only, for the drawing side too. */
+ * to 0, or it is a close relative (genome_kinship at family_peace or above), or
+ * of a similar colour (closer than colour_peace on the colour wheel). -1 for
+ * nobody. Reads only, for the drawing side too. */
 int creature_attack_target(const World *w, const Pool *p, int idx,
                            const Settings *s);
 /* Carries out one tick of action a for creature idx. Returns the slot of

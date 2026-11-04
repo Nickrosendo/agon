@@ -224,6 +224,9 @@ kin_sense = 0.5
 # kinship from which an attack does not strike (0 to 2)
 family_peace = 0.3
 
+# colour distance within which an attack does not strike (0 to 0.5)
+colour_peace = 0.1
+
 # colour drift at which a newborn starts a family (0 to 0.5)
 family_split = 0.25
 

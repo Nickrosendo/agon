@@ -118,6 +118,10 @@ Settings settings_default(void)
          * 37 %, none are now between close relatives, and families rose from 3.8 to
          * 9.7 on average. */
         .family_peace = 0.3f,
+        /* Nicolas, 2026-11-04. Seeds 1 to 15: hits between similar colours fell from
+         * about half to none, hits within a family name from 44 % to 9 %, and deaths
+         * from wounds from 26 % to 13 %. */
+        .colour_peace = 0.1f,
         .family_split = 0.25f,
         .rest_upkeep = 0.5f,
         /* These two together, Nicolas's call to try. Seeds 1 to 15, 20,000 ticks, the
@@ -264,6 +268,7 @@ static const SettingInfo TABLE[] = {
     FLOAT_ROW(bite_damage, 0, BIG, "health a hit takes, by attacker's size"),
     FLOAT_ROW(kin_sense, 0, 1, "kinship from which a neighbour counts as family"),
     FLOAT_ROW(family_peace, 0, 2, "kinship from which an attack does not strike"),
+    FLOAT_ROW(colour_peace, 0, 0.5, "colour distance within which an attack does not strike"),
     FLOAT_ROW(family_split, 0, 0.5, "colour drift at which a newborn starts a family"),
     FLOAT_ROW(rest_upkeep, 0, 1, "share of upkeep paid while resting"),
     FLOAT_ROW(territory_drive, 0, 1, "chance a full territory gene attacks a stranger beside it"),

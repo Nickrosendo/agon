@@ -214,6 +214,8 @@ typedef struct {
     /* An attack does not strike a creature whose genome_kinship with the attacker
      * is this or more; above 1, nobody is spared. */
     float family_peace;
+    /* Nor one closer than this on the colour wheel; 0, colour spares nobody. */
+    float colour_peace;
     /* A newborn this far round the colour wheel from its family's colour starts a
      * family of its own; 0.5 or more, nobody ever does. */
     float family_split;

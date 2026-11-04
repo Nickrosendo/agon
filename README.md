@@ -205,7 +205,7 @@ for the build that wrote them; a build with a different format refuses them.
 12. A creature carries a few numbers from one decision to the next, its memory,
     and also senses its hunger, its wounds, the relatives and strangers beside it
     and a random number. What it does with them is left to selection.
-13. A creature does not strike a close relative. A newborn whose colour has
+13. A creature does not strike a close relative, or anyone of a similar colour. A newborn whose colour has
     drifted far from its family's starts a new family, and the old one stays safe
     from it for as long as the two remain close relatives. Resting costs half of
     what being busy does.

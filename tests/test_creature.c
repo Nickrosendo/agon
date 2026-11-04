@@ -957,6 +957,7 @@ static void test_attacks_hit_half_the_time(void)
     p.items[a].energy = 1e6f;
     p.items[t].energy = 50.0f;
     s.family_peace = 2.0f; /* this is about the odds: identical genomes */
+    s.colour_peace = 0.0f;
     /* The hit ring would otherwise change nothing, as a sole attacker is never
      * one of the others; the health is reset by hand each time. */
     int hits = 0, misses_checked = 0;
@@ -991,6 +992,7 @@ static void make_stranger(Creature *c)
     for (int i = GENE_TRAITS; i < GENOME_LEN; i++) {
         c->genome.g[i] = 1.0f;
     }
+    c->genome.g[GENE_HUE] = 0.5f; /* and far from an all-zero colour */
 }
 
 /* Two creatures side by side, the first heading north with the second
@@ -1142,6 +1144,7 @@ static void test_killed_creature_leaves_carrion(void)
     make_sim(&sim, &set);
     sim.set.attack_steepness = 50.0f; /* the bigger one always hits */
     sim.set.family_peace = 2.0f; /* identical but for size */
+    sim.set.colour_peace = 0.0f;
     int a = spawn(&sim.pool, &sim.world, 4, 6);
     int t = spawn(&sim.pool, &sim.world, 4, 5); /* ahead of a */
     sim.pool.items[a].genome.g[GENE_SIZE] = 1.0f; /* size 1.5 */
@@ -1604,6 +1607,7 @@ static void test_death_causes_counted(void)
     make_sim(&sim, &set);
     sim.set.attack_steepness = 16.0f;
     sim.set.family_peace = 2.0f; /* identical but for size */
+    sim.set.colour_peace = 0.0f;
     int a = spawn(&sim.pool, &sim.world, 4, 6);
     int t = spawn(&sim.pool, &sim.world, 4, 5); /* ahead of a */
     int hungry = spawn(&sim.pool, &sim.world, 1, 1);
@@ -2036,8 +2040,9 @@ static void test_attack_spares_close_relatives(void)
     }
     CHECK(p.items[t].health == health);
     CHECK(near(p.items[a].energy, 100.0f - 50.0f * s.attack_cost)); /* still paid */
-    /* The setting's top means nobody is spared. */
+    /* With both settings at their ends, nobody is spared. */
     s.family_peace = 2.0f;
+    s.colour_peace = 0.0f;
     CHECK(creature_attack_target(&w, &p, a, &s) == t);
     pool_free(&p);
     world_free(&w);
@@ -2331,6 +2336,37 @@ static void test_territory_does_not_stop_a_chosen_mating(void)
     world_free(&w);
 }
 
+static void test_attack_spares_similar_colours(void)
+{
+    Settings s = settings_default();
+    World w;
+    Pool p;
+    int a, t;
+    fight_scene(&w, &p, &s, &a, &t); /* strangers by genes: only colour differs below */
+    p.items[a].genome.g[GENE_HUE] = 0.5f;
+    p.items[t].genome.g[GENE_HUE] = 0.5f + s.colour_peace / 2.0f;
+    CHECK(creature_attack_target(&w, &p, a, &s) == -1);
+    p.items[t].genome.g[GENE_HUE] = 0.5f + s.colour_peace * 2.0f;
+    CHECK(creature_attack_target(&w, &p, a, &s) == t);
+    /* Round the wheel: 0.98 and 0.01 look alike. */
+    p.items[a].genome.g[GENE_HUE] = 0.98f;
+    p.items[t].genome.g[GENE_HUE] = 0.01f;
+    CHECK(creature_attack_target(&w, &p, a, &s) == -1);
+    /* The instinct meets the same test. */
+    s.territory_drive = 1.0f;
+    p.items[a].age = (uint32_t)s.mate_age;
+    p.items[a].genome.g[GENE_TERRITORY] = 1.0f;
+    Rng r;
+    rng_seed(&r, 5);
+    float health = p.items[t].health;
+    for (int k = 0; k < 30; k++) {
+        creature_act(&w, &p, a, (Action){.kind = ACT_REST, .hold = 1}, &s, &r);
+    }
+    CHECK(p.items[t].health == health);
+    pool_free(&p);
+    world_free(&w);
+}
+
 int main(void)
 {
     CHECK(brain_register(&BRAIN_SCRIPT));
@@ -2421,5 +2457,6 @@ int main(void)
     test_territory_follows_the_gene_and_age();
     test_territory_gene_costs_upkeep();
     test_territory_does_not_stop_a_chosen_mating();
+    test_attack_spares_similar_colours();
     TEST_SUMMARY();
 }
