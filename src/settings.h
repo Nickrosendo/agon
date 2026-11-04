@@ -150,6 +150,10 @@ typedef struct {
     float bite_veg_energy;
     float mate_threshold;
     float mate_share;        /* 0..1 */
+    /* Parents whose bodies are less alike than this (genome_body_likeness, body
+     * trait genes only) have no child, from the first tick. 0 turns it off. The
+     * default lets about 94 % of random founders' pairs mate. */
+    float mate_barrier;
     int mate_window;         /* ticks a wish to mate lasts */
     int mate_age;            /* ticks before a creature can mate */
     /* The mating season: for the first season_ticks of every season_every

@@ -16,6 +16,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "climate.h"
+#include "genome.h"
+#include "rng.h"
 #include "settings.h"
 #include "sim.h"
 
@@ -389,6 +392,194 @@ static void print_plants(const Sim *s)
            leaf_plants, fruit, need / n, energy / n);
 }
 
+/* The body traits compared across regions: the genes behind what regions reward,
+ * with colour apart, because a mean of colours needs the wheel. */
+enum { TRAIT_SIZE, TRAIT_SPEED, TRAIT_LEGS, TRAIT_SWIM, TRAIT_LEAF, TRAIT_FRUIT,
+       TRAIT_MEAT, TRAIT_MATCH, TRAITS };
+static const char *const TRAIT_NAMES[TRAITS] = {
+    "size", "speed", "legs", "swim", "leaf", "fruit", "meat", "match",
+};
+static const char *const REGION_NAMES[REGION_COUNT] = {
+    "cold", "hot/dry", "temperate", "wet", "shallow",
+};
+/* A region with fewer creatures than this has means too noisy to compare. */
+#define REGION_MIN_COUNT 30
+#define SHUFFLES 50
+
+/* The value of a trait for one creature. "match" is 1 when its colour hides it on
+ * the ground of the region named, whichever region it stands in. */
+static double trait_value(const Creature *c, int trait, int region)
+{
+    const float *g = c->genome.g;
+    switch (trait) {
+    case TRAIT_SIZE: return (double)g[GENE_SIZE];
+    case TRAIT_SPEED: return (double)g[GENE_SPEED];
+    case TRAIT_LEGS: return (double)g[GENE_LEGS];
+    case TRAIT_SWIM: return (double)g[GENE_SWIM];
+    case TRAIT_LEAF: return (double)g[GENE_LEAF];
+    case TRAIT_FRUIT: return (double)g[GENE_FRUIT];
+    case TRAIT_MEAT: return (double)g[GENE_MEAT];
+    default: {
+        float d = g[GENE_HUE] - climate_region_hue(region);
+        d = d < 0.0f ? -d : d;
+        d = d > 0.5f ? 1.0f - d : d;
+        return d < 0.15f ? 1.0f : 0.0f;
+    }
+    }
+}
+
+/* The largest gap between two regions' means, given each creature's region. */
+static double trait_spread(const Sim *s, const int *slots, const int *regions, int n,
+                           int trait)
+{
+    double sum[REGION_COUNT] = {0.0};
+    int count[REGION_COUNT] = {0};
+    for (int k = 0; k < n; k++) {
+        sum[regions[k]] += trait_value(&s->pool.items[slots[k]], trait, regions[k]);
+        count[regions[k]]++;
+    }
+    double low = 2.0, high = -1.0;
+    for (int r = 0; r < REGION_COUNT; r++) {
+        if (count[r] < REGION_MIN_COUNT) {
+            continue;
+        }
+        double mean = sum[r] / count[r];
+        low = mean < low ? mean : low;
+        high = mean > high ? mean : high;
+    }
+    return high > low ? high - low : 0.0;
+}
+
+/*
+ * Do regions hold different bodies? Each trait's spread between regions, against
+ * the same creatures dealt out to regions at random, keeping each region's head
+ * count. A trait counts as different only when it beats every shuffle. The
+ * report's own generator: drawing from the Sim's would change the world measured.
+ */
+static void print_regions(const Sim *s)
+{
+    int *slots = malloc((size_t)s->pool.capacity * sizeof(*slots));
+    int *regions = malloc((size_t)s->pool.capacity * sizeof(*regions));
+    if (slots == NULL || regions == NULL) {
+        free(slots);
+        free(regions);
+        return;
+    }
+    int n = 0;
+    int count[REGION_COUNT] = {0};
+    for (int i = 0; i < s->pool.capacity; i++) {
+        const Creature *c = &s->pool.items[i];
+        if (!c->alive) {
+            continue;
+        }
+        int region = climate_region(&s->world, world_idx(&s->world, c->x, c->y), &s->set);
+        if (region == REGION_NONE) {
+            continue; /* not an index */
+        }
+        slots[n] = i;
+        regions[n] = region;
+        count[region]++;
+        n++;
+    }
+    printf("     regions:");
+    for (int r = 0; r < REGION_COUNT; r++) {
+        printf(" %s %d", REGION_NAMES[r], count[r]);
+    }
+    printf("\n     trait spread (real / highest shuffled):");
+    Rng rng;
+    rng_seed(&rng, 12345);
+    int beat = 0;
+    for (int t = 0; t < TRAITS; t++) {
+        double real = trait_spread(s, slots, regions, n, t);
+        double top = 0.0;
+        for (int k = 0; k < SHUFFLES; k++) {
+            for (int i = n - 1; i > 0; i--) {
+                int j = (int)rng_below(&rng, (uint32_t)i + 1u);
+                int tmp = regions[i];
+                regions[i] = regions[j];
+                regions[j] = tmp;
+            }
+            double spread = trait_spread(s, slots, regions, n, t);
+            top = spread > top ? spread : top;
+        }
+        /* The shuffles scattered who stands where; the real table comes next
+         * time from a fresh look, so put each creature back. */
+        for (int i = 0; i < n; i++) {
+            const Creature *c = &s->pool.items[slots[i]];
+            regions[i] = climate_region(&s->world, world_idx(&s->world, c->x, c->y),
+                                        &s->set);
+        }
+        printf(" %s %.2f/%.2f%s", TRAIT_NAMES[t], real, top, real > top ? "*" : "");
+        beat += real > top;
+    }
+    printf("\n     traits beating chance: %d of %d\n", beat, TRAITS);
+    free(slots);
+    free(regions);
+}
+
+/* The root of slot x's group, shortening the path as it climbs. */
+static int group_root(int *parent, int x)
+{
+    while (parent[x] != x) {
+        parent[x] = parent[parent[x]];
+        x = parent[x];
+    }
+    return x;
+}
+
+/*
+ * Species, as far as the numbers can say: creatures joined when their bodies pass
+ * the breeding barrier, directly or through a chain of others. Two groups with no
+ * such chain cannot exchange a gene through anyone alive. A strict test: one
+ * in-between creature joins two groups into one. Only groups of 10 or more count.
+ */
+static void print_species(const Sim *s)
+{
+    int *slots = malloc((size_t)s->pool.capacity * sizeof(*slots));
+    int *parent = malloc((size_t)s->pool.capacity * sizeof(*parent));
+    int *size = calloc((size_t)s->pool.capacity, sizeof(*size));
+    if (slots == NULL || parent == NULL || size == NULL) {
+        free(slots);
+        free(parent);
+        free(size);
+        return;
+    }
+    int n = 0;
+    for (int i = 0; i < s->pool.capacity; i++) {
+        if (s->pool.items[i].alive) {
+            slots[n] = i;
+            parent[n] = n;
+            n++;
+        }
+    }
+    uint64_t pairs = 0, barred = 0;
+    for (int a = 0; a < n; a++) {
+        for (int b = a + 1; b < n; b++) {
+            float like = genome_body_likeness(&s->pool.items[slots[a]].genome,
+                                              &s->pool.items[slots[b]].genome);
+            pairs++;
+            if (like >= s->set.mate_barrier) {
+                parent[group_root(parent, a)] = group_root(parent, b);
+            } else {
+                barred++;
+            }
+        }
+    }
+    for (int a = 0; a < n; a++) {
+        size[group_root(parent, a)]++;
+    }
+    int species = 0, largest = 0;
+    for (int a = 0; a < n; a++) {
+        species += size[a] >= 10;
+        largest = size[a] > largest ? size[a] : largest;
+    }
+    printf("     species: %d groups of 10+, largest %d of %d; pairs barred from mating %d%%\n",
+           species, largest, n, percent(barred, pairs));
+    free(slots);
+    free(parent);
+    free(size);
+}
+
 static void print_behaviour(const Sim *s, const Report *rep)
 {
     double length = rep->fights == 0
@@ -463,6 +654,8 @@ static void print_row(const Sim *s, const Report *rep)
            rep->pool_filled ? "YES" : "no", (double)largest, (double)mean_size);
     print_behaviour(s, rep);
     print_plants(s);
+    print_regions(s);
+    print_species(s);
 }
 
 /* Runs the world. The Sim is changed only by sim_step. */

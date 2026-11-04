@@ -699,6 +699,79 @@ static void test_mate_needs_both(void)
     world_free(&w);
 }
 
+/* Parents whose bodies differ too much have no child, and the wish stays with
+ * each, since either might yet find someone like itself. */
+static void test_barrier_stops_different_parents(void)
+{
+    World w;
+    Pool p;
+    int a, b;
+    Settings s = settings_default();
+    s.mate_barrier = 0.6f;
+    Rng r;
+    rng_seed(&r, 1);
+    adult_pair(&w, &p, &a, &b, &s, &r);
+    for (int i = 0; i < GENE_TRAITS; i++) {
+        p.items[a].genome.g[i] = 0.0f;
+        p.items[b].genome.g[i] = 1.0f;
+    }
+    /* Size and energy from the same gene values, so each can still mate. */
+    p.items[a].energy = 1000.0f;
+    p.items[b].energy = 1000.0f;
+    Action mate = {.kind = ACT_MATE, .hold = 1};
+    CHECK(genome_body_likeness(&p.items[a].genome, &p.items[b].genome) < s.mate_barrier);
+    CHECK(creature_act(&w, &p, a, mate, &s, &r) == -1);
+    CHECK(creature_act(&w, &p, b, mate, &s, &r) == -1);
+    CHECK(p.count == 2);
+    CHECK(p.items[a].energy == 1000.0f);
+    /* The barrier off: the same two have a child. */
+    s.mate_barrier = 0.0f;
+    CHECK(creature_act(&w, &p, a, mate, &s, &r) >= 0);
+    pool_free(&p);
+    world_free(&w);
+}
+
+/* It compares bodies alone: minds as different as can be do not stop a birth. */
+static void test_barrier_ignores_weights(void)
+{
+    World w;
+    Pool p;
+    int a, b;
+    Settings s = settings_default();
+    s.mate_barrier = 0.99f;
+    Rng r;
+    rng_seed(&r, 1);
+    adult_pair(&w, &p, &a, &b, &s, &r);
+    p.items[b].genome = p.items[a].genome;
+    for (int i = GENE_TRAITS; i < GENOME_LEN; i++) {
+        p.items[a].genome.g[i] = -s.weight_limit;
+        p.items[b].genome.g[i] = s.weight_limit;
+    }
+    Action mate = {.kind = ACT_MATE, .hold = 1};
+    CHECK(creature_act(&w, &p, a, mate, &s, &r) == -1);
+    CHECK(creature_act(&w, &p, b, mate, &s, &r) >= 0);
+    pool_free(&p);
+    world_free(&w);
+}
+
+/* Random founders stay able to mate, which is what sets the default. */
+static void test_founders_can_mate_at_default(void)
+{
+    Settings s = settings_default();
+    CHECK(s.mate_barrier > 0.0f); /* on from tick 0, with no later switch */
+    Rng r;
+    rng_seed(&r, 7);
+    int can = 0;
+    enum { PAIRS = 2000 };
+    for (int i = 0; i < PAIRS; i++) {
+        Genome a, b;
+        genome_random(&a, &r, &s);
+        genome_random(&b, &r, &s);
+        can += genome_body_likeness(&a, &b) >= s.mate_barrier;
+    }
+    CHECK(can * 10 > PAIRS * 9);
+}
+
 static void test_mate_costs_both_parents(void)
 {
     World w;
@@ -771,6 +844,7 @@ static void test_child_surname_from_a_parent(void)
     Pool p;
     int a, b;
     Settings s = settings_default();
+    s.mate_barrier = 0.0f; /* the pairs here are random, and must all have a child */
     Rng r;
     rng_seed(&r, 4);
     int from_a = 0;
@@ -2989,6 +3063,9 @@ int main(void)
     test_turns();
     test_bite();
     test_mate_needs_both();
+    test_barrier_stops_different_parents();
+    test_barrier_ignores_weights();
+    test_founders_can_mate_at_default();
     test_mate_costs_both_parents();
     test_mate_needs_adults();
     test_child_surname_from_a_parent();

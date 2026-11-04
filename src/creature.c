@@ -837,7 +837,9 @@ static int find_partner(const World *w, const Pool *p, const Creature *c,
         int cell = world_idx(w, c->x + AROUND_X[dir], c->y + AROUND_Y[dir]);
         int other = w->occupant[cell];
         if (other >= 0 && p->items[other].mate_wish > 0 &&
-            can_mate(&p->items[other], s)) {
+            can_mate(&p->items[other], s) &&
+            genome_body_likeness(&c->genome, &p->items[other].genome) >=
+                s->mate_barrier) {
             return other;
         }
     }
