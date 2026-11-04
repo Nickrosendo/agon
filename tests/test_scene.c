@@ -364,12 +364,12 @@ static uint64_t hash_canvas(const Canvas *c)
  * then a blocked walk turns aside, so creatures stand elsewhere at the two closest
  * zooms (the wider two show too little to change); then regions' edges, for the
  * same reason; then wet and dry times, which change the rain and the ground's water
- * at every zoom.
+ * at every zoom; then soil that dries twice as fast.
  */
 static void test_known_world_pixels(void)
 {
     static const uint64_t EXPECTED[CAMERA_LEVELS] = {
-        0x97c7dc7faf140a9du, 0x25e91a7901331d05u, 0x1cb7b21bef4cd4edu, 0x8b6752455fe35d85u,
+        0x97c7dc7faf140a9du, 0x25e91a7901331d05u, 0x108a0ead6a95d159u, 0x2e49528df9a33045u,
     };
     Settings set = settings_default();
     Sim s;

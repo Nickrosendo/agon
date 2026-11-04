@@ -44,9 +44,10 @@
  * each with its energy, fruit and genes, and two digestion genes for plants;
  * then a blocked walk turns aside: one more random draw for each; then regions'
  * edges: two more genes, and shallows, colour, size and legs matter; then wet and
- * dry times: rain follows a yearly-like cycle, with a shorter pattern.
+ * dry times: rain follows a yearly-like cycle, with a shorter pattern; then soil
+ * that dries twice as fast.
  */
-#define SEED_7_AFTER_500 0x8d1ce8b04f0b6e8bULL
+#define SEED_7_AFTER_500 0x6525dc77febb2588ULL
 
 static void test_same_seed_same_checksum(void)
 {
@@ -266,8 +267,9 @@ static void test_plants_alone_survive(void)
         for (int i = 0; i < s.world.w * s.world.h; i++) {
             planted += s.world.veg[i] > 0;
         }
-        /* Well above nothing: about 12 % of the soil when settled. */
-        CHECK(planted * 20 > count_soil(&s.world));
+        /* Well above nothing: 5 to 11 % of the soil at this moment, with the
+         * ground drying as it does. */
+        CHECK(planted * 33 > count_soil(&s.world));
         sim_free(&s);
     }
 }

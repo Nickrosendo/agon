@@ -29,7 +29,7 @@ Settings settings_default(void)
         .rain_swing = 0.2f,
         .climate_every = 25,
         .rain_gain = 0.008f,
-        .water_loss = 0.0005f,
+        .water_loss = 0.001f,
         .region_cold_below = 0.33f,
         .region_hot_above = 0.6f,
         .region_dry_below = 0.25f,
