@@ -32,36 +32,54 @@ Settings settings_default(void)
         .region_hot_above = 0.6f,
         .region_dry_below = 0.25f,
         .region_wet_above = 0.7f,
-        /* A plant can sprout from a single neighbour. With 3 needed, as this
-         * was while stray seeds kept arriving, scattered survivors could never
-         * reproduce: with no creatures at all, plants died out on 3 of 5 seeds.
-         * With 1 they hold at about 12 % of the soil on all five. */
-        .veg_birth_lo = 1,
-        .veg_birth_hi = 2,
-        .veg_crowd_max = 3,
-        .veg_mutation = 0.02f,
-        .veg_vigour_food = 0.6f,
-        .veg_vigour_ageing = 0.6f,
-        /* Slow and sparse on purpose: at 0.4, capacity 50 and bite 5, plants
-         * covered 40 % of the soil within 100 ticks and stayed there. Now
-         * (five seeds, 160 by 80) they take from 550 to 48,650 ticks to reach
-         * 10 %, and peak at 10 to 13 % even by tick 150,000 (see
-         * carrion_to_fertility). Fewer plants feed fewer creatures,
-         * which is why bite_veg_energy went up with these two: alone, they
-         * left only the floor's random newcomers alive. */
-        .veg_sprout_rate = 0.02f,
-        .veg_grow_chance = 0.05f,
+        /* Plants live long and thicken slowly, but grazed ground regrows fast
+         * enough to feed the creatures that sit beside it: at half these two
+         * rates only 8 of 15 worlds lived to tick 20,000, and at these, 14. */
+        .veg_sprout_rate = 0.05f,
+        .veg_grow_chance = 0.1f,
         .veg_start_chance = 0.15f,
         .veg_reach = 2,
         .veg_capacity = 15.0f,
-        .veg_mature_age = 60,
-        .veg_wither_chance = 0.02f,
+        .veg_mature_age = 600,
+        .veg_wither_chance = 0.005f,
         .veg_wither_ticks = 20,
         /* Off: in a quick check (five seeds, 20,000 ticks, 200 by 100) a
          * cap of 1,500 or even 2,500 cells left only the floor's random
          * newcomers alive. Old plants nobody eats hold the cap's places,
          * and the grazed cells beside the creatures cannot sprout again. */
         .veg_max_cells = 0,
+        /* Income high against the costs below: at plant_gain 0.05 a plant could
+         * seed about once in 70 ticks, founders ate the ground bare faster than
+         * that, and every world died within 5,000 ticks with fruit left hanging. */
+        .plant_gain = 0.3f,
+        .plant_upkeep = 0.02f,
+        .plant_energy_max = 10.0f,
+        .plant_start_energy = 5.0f,
+        .plant_thrift = 0.6f,
+        .plant_water_min = 0.1f,
+        .plant_temp_width = 0.35f,
+        .plant_seed_fit = 0.3f,
+        .plant_seed_energy = 3.0f,
+        .plant_seed_cost = 1.0f,
+        .plant_seed_start = 2.0f,
+        .plant_grow_cost = 0.1f,
+        .plant_mutation = 0.1f,
+        .plant_mutation_spread = 0.08f,
+        /* These two keep leaves and fruit both alive. Fruit is never harmed by
+         * eating, so with neither, fruit trees left about 2 leaf plants in a
+         * world. Thirst leaves dry ground to the leaves, and needing animals to
+         * spread ties the trees to the creatures. */
+        .plant_fruit_thirst = 0.45f,
+        .plant_fruit_near = 0.5f,
+        .plant_fruit_energy = 4.0f,
+        .plant_fruit_rate = 0.05f,
+        .plant_fruit_cost = 2.0f,
+        .plant_fruit_max = 3.0f,
+        .bite_fruit_energy = 40.0f,
+        .plant_gut_min = 50,
+        .plant_gut_max = 400,
+        .plant_dung_start = 5.0f,
+        .plant_leaf_harm = 0.2f,
         /* Sized from measurement: with plenty of room, seeds 1 to 5 peak at 5,748,
          * 1,393, 4,772, 1,000 and 3,718 over 20,000 ticks. Reaching the limit changes
          * the world (seed 1 at 4,000), so it stays well clear of the peak. */
@@ -75,7 +93,7 @@ Settings settings_default(void)
         /* Slowed at Nicolas's request: 0.1 spent the starting energy in 1.3 years. */
         .upkeep_base = 0.06f,
         .move_cost = 0.3f,
-        .bite_veg_energy = 40.0f,
+        .bite_veg_energy = 27.0f,
         .mate_threshold = 30.0f,
         .mate_share = 0.5f,
         .mate_window = 5,
@@ -110,7 +128,7 @@ Settings settings_default(void)
         .sight_upkeep = 0.01f,
         .bite_meat_energy = 8.0f,
         .digest_floor = 0.25f,
-        .digest_upkeep = 0.05f,
+        .digest_upkeep = 0.025f,
         .attack_steepness = 3.0f,
         .attack_cost = 0.5f,
         .gang_bonus = 0.5f,
@@ -212,17 +230,6 @@ static const SettingInfo TABLE[] = {
     FLOAT_ROW(region_hot_above, 0, 1, "temperature above this can be hot and dry"),
     FLOAT_ROW(region_dry_below, 0, 1, "water below this, when hot, is hot and dry"),
     FLOAT_ROW(region_wet_above, 0, 1, "water above this is a wet region"),
-    INT_ROW(veg_birth_lo, 1, 4, "starting plants: fewest planted neighbours "
-                                "to sprout"),
-    INT_ROW(veg_birth_hi, 1, 7, "starting plants: most planted neighbours "
-                                "to sprout (at most birth_lo + 3)"),
-    INT_ROW(veg_crowd_max, 0, 7, "starting plants: most planted neighbours "
-                                 "to keep growing"),
-    FLOAT_ROW(veg_mutation, 0, 1, "chance a sprout's rule has a bit flipped"),
-    FLOAT_ROW(veg_vigour_food, 0, 1, "how much less food vigorous plants "
-                                     "give"),
-    FLOAT_ROW(veg_vigour_ageing, 0, 1, "how much sooner vigorous plants "
-                                       "mature"),
     FLOAT_ROW(veg_sprout_rate, 0, 1, "scales the chance to sprout beside "
                                      "plants"),
     FLOAT_ROW(veg_grow_chance, 0, 1, "chance per tick that a plant thickens"),
@@ -235,6 +242,31 @@ static const SettingInfo TABLE[] = {
                                        "wither, once mature"),
     INT_ROW(veg_wither_ticks, 1, 255, "how long withering lasts"),
     INT_ROW(veg_max_cells, 0, INT_MAX, "cap on planted cells (0: no cap)"),
+    FLOAT_ROW(plant_gain, 0, BIG, "energy a plant gains per tick where it fits best"),
+    FLOAT_ROW(plant_upkeep, 0, BIG, "energy a plant pays per tick"),
+    FLOAT_ROW(plant_energy_max, 0, BIG, "most energy a plant can store"),
+    FLOAT_ROW(plant_start_energy, 0, BIG, "energy of a starting plant"),
+    FLOAT_ROW(plant_thrift, 0, 1, "growth of a plant needing no water, against a thirsty one"),
+    FLOAT_ROW(plant_water_min, 0.001, 1, "water even the hardiest plant needs"),
+    FLOAT_ROW(plant_temp_width, 0.001, 1, "how far from its best temperature a plant still lives"),
+    FLOAT_ROW(plant_seed_fit, 0, 1, "how well a place must suit a plant before it seeds, grows or fruits"),
+    FLOAT_ROW(plant_seed_energy, 0, BIG, "energy a plant must hold to seed"),
+    FLOAT_ROW(plant_seed_cost, 0, BIG, "energy a seed costs its parent"),
+    FLOAT_ROW(plant_seed_start, 0, BIG, "energy of a sprout beside its parent"),
+    FLOAT_ROW(plant_grow_cost, 0, BIG, "energy a plant pays to thicken by one step"),
+    FLOAT_ROW(plant_mutation, 0, 1, "chance each gene of a seed changes"),
+    FLOAT_ROW(plant_mutation_spread, 0, 1, "size of that change"),
+    FLOAT_ROW(plant_fruit_thirst, 0, BIG, "water a fruit tree needs beyond what its gene says"),
+    FLOAT_ROW(plant_fruit_near, 0, 1, "how often a fruit tree seeds beside itself, against a leaf plant"),
+    FLOAT_ROW(plant_fruit_energy, 0, BIG, "energy a plant must hold to make fruit"),
+    FLOAT_ROW(plant_fruit_rate, 0, BIG, "fruit per tick of a plant offering only fruit"),
+    FLOAT_ROW(plant_fruit_cost, 0, BIG, "energy one fruit costs its plant"),
+    FLOAT_ROW(plant_fruit_max, 0, BIG, "most fruit on one plant"),
+    FLOAT_ROW(bite_fruit_energy, 0, BIG, "energy in one fruit"),
+    INT_ROW(plant_gut_min, 1, 65535, "ticks a seed stays in an animal, at least"),
+    INT_ROW(plant_gut_max, 1, 65535, "ticks a seed stays in an animal, at most"),
+    FLOAT_ROW(plant_dung_start, 0, BIG, "energy of a sprout from dropped dung"),
+    FLOAT_ROW(plant_leaf_harm, 0, BIG, "plant energy lost per density step of leaves eaten"),
     INT_ROW(pool_capacity, 1, POOL_MAX, "most creatures alive at once"),
     FLOAT_ROW(start_share, 0, 1, "founders of a new world, as a share of its "
                                  "soil"),

@@ -13,7 +13,7 @@ void world_free(World *w)
     free(w->veg_next);
     free(w->veg_age);
     free(w->veg_wither);
-    free(w->veg_rule);
+    free(w->plant);
     free(w->carrion);
     free(w->carrion_level);
     free(w->scent);
@@ -53,7 +53,7 @@ bool world_init(World *w, int width, int height)
     w->veg_next = calloc(n, sizeof(uint8_t));
     w->veg_age = calloc(n, sizeof(uint16_t));
     w->veg_wither = calloc(n, sizeof(uint8_t));
-    w->veg_rule = calloc(n, sizeof(uint8_t));
+    w->plant = calloc(n, sizeof(Plant));
     w->carrion = calloc(n, sizeof(float));
     w->carrion_level = calloc(n, sizeof(float));
     w->scent = calloc(n, sizeof(float));
@@ -65,7 +65,7 @@ bool world_init(World *w, int width, int height)
 
     if (w->terrain == NULL || w->fertility == NULL || w->veg == NULL ||
         w->veg_next == NULL || w->veg_age == NULL || w->veg_wither == NULL ||
-        w->veg_rule == NULL || w->carrion == NULL ||
+        w->plant == NULL || w->carrion == NULL ||
         w->carrion_level == NULL || w->scent == NULL ||
         w->scent_next == NULL || w->water == NULL ||
         w->temperature == NULL || w->rain == NULL || w->occupant == NULL) {
@@ -91,7 +91,7 @@ void world_clear(World *w)
     memset(w->veg_next, 0, n * sizeof(uint8_t));
     memset(w->veg_age, 0, n * sizeof(uint16_t));
     memset(w->veg_wither, 0, n * sizeof(uint8_t));
-    memset(w->veg_rule, 0, n * sizeof(uint8_t));
+    memset(w->plant, 0, n * sizeof(Plant));
     memset(w->carrion, 0, n * sizeof(float));
     memset(w->carrion_level, 0, n * sizeof(float));
     memset(w->scent, 0, n * sizeof(float));

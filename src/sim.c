@@ -19,18 +19,29 @@
 /* The same idea for the climate's generator. */
 #define CLIMATE_SEED_SALT 0xC2B2AE3D27D4EB4FULL
 
-/* Random starting plants: two draws per soil cell, in row order, so that the
- * count of draws does not depend on what the draws decide. Every starting
- * plant carries the rule from the settings. Each gets a random age up to the
- * age of maturity: all born on one tick, they would all wither together. */
+/* A starting plant's genes are all random, as a founder creature's are: most
+ * will suit their place badly and die, and the ones that fit are the start of
+ * selection. Separate statements, so the draws have a fixed order. */
+static void random_plant(Plant *p, Rng *r, const Settings *s)
+{
+    p->energy = s->plant_start_energy;
+    p->fruit = 0.0f;
+    p->fruit_share = rng_unit(r);
+    p->water_need = rng_unit(r);
+    p->temp_pref = rng_unit(r);
+    p->gut_time = rng_unit(r);
+}
+
+/* Random starting plants, in row order, with the same number of draws for every
+ * soil cell, so that the count of draws does not depend on what the draws decide.
+ * Each gets a random age up to the age of maturity: all born on one tick, they
+ * would all wither together. */
 static void plant_start(World *w, Rng *r, const Settings *s)
 {
-    uint8_t rule =
-        veg_rule_pack(s->veg_birth_lo, s->veg_birth_hi, s->veg_crowd_max);
     for (int i = 0; i < w->w * w->h; i++) {
         if (w->terrain[i] == TERRAIN_SOIL) {
             w->veg[i] = rng_unit(r) < s->veg_start_chance ? 1 : 0;
-            w->veg_rule[i] = rule;
+            random_plant(&w->plant[i], r, s);
             /* veg_mature_age is at most 65535 (the settings table), so it
              * fits; + 1u keeps rng_below from being asked for 0 values. */
             uint32_t age = rng_below(r, (uint32_t)s->veg_mature_age + 1u);
@@ -450,6 +461,8 @@ static uint64_t hash_creature(uint64_t hash, const Creature *c)
     hash = fnv1a(hash, &c->mate_wish, sizeof(c->mate_wish));
     hash = fnv1a(hash, &c->level, sizeof(c->level));
     hash = fnv1a(hash, &c->eaten, sizeof(c->eaten));
+    hash = fnv1a(hash, &c->gut_seed, sizeof(c->gut_seed));
+    hash = fnv1a(hash, &c->gut_ticks, sizeof(c->gut_ticks));
     /* sizeof of an array that is a struct field is the whole array,
      * GENOME_LEN * sizeof(float): it has not decayed to a pointer here,
      * as an array passed to a function would. */
@@ -487,7 +500,8 @@ uint64_t sim_checksum(const Sim *s)
     hash = fnv1a(hash, w->veg, n * sizeof(uint8_t));
     hash = fnv1a(hash, w->veg_age, n * sizeof(uint16_t));
     hash = fnv1a(hash, w->veg_wither, n * sizeof(uint8_t));
-    hash = fnv1a(hash, w->veg_rule, n * sizeof(uint8_t));
+    /* Plant is six floats, so no padding: its raw bytes are safe to hash. */
+    hash = fnv1a(hash, w->plant, n * sizeof(Plant));
     hash = fnv1a(hash, w->carrion, n * sizeof(float));
     hash = fnv1a(hash, w->carrion_level, n * sizeof(float));
     hash = fnv1a(hash, w->scent, n * sizeof(float));

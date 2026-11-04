@@ -53,29 +53,11 @@ region_dry_below = 0.25
 # water above this is a wet region (0 to 1)
 region_wet_above = 0.7
 
-# starting plants: fewest planted neighbours to sprout (1 to 4)
-veg_birth_lo = 1
-
-# starting plants: most planted neighbours to sprout (at most birth_lo + 3) (1 to 7)
-veg_birth_hi = 2
-
-# starting plants: most planted neighbours to keep growing (0 to 7)
-veg_crowd_max = 3
-
-# chance a sprout's rule has a bit flipped (0 to 1)
-veg_mutation = 0.02
-
-# how much less food vigorous plants give (0 to 1)
-veg_vigour_food = 0.6
-
-# how much sooner vigorous plants mature (0 to 1)
-veg_vigour_ageing = 0.6
-
 # scales the chance to sprout beside plants (0 to 1)
-veg_sprout_rate = 0.02
+veg_sprout_rate = 0.05
 
 # chance per tick that a plant thickens (0 to 1)
-veg_grow_chance = 0.05
+veg_grow_chance = 0.1
 
 # chance a soil cell starts planted (0 to 1)
 veg_start_chance = 0.15
@@ -87,16 +69,91 @@ veg_reach = 2
 veg_capacity = 15
 
 # ticks before a plant can wither (0 to 65535)
-veg_mature_age = 60
+veg_mature_age = 600
 
 # chance per tick of starting to wither, once mature (0 to 1)
-veg_wither_chance = 0.02
+veg_wither_chance = 0.005
 
 # how long withering lasts (1 to 255)
 veg_wither_ticks = 20
 
 # cap on planted cells (0: no cap) (0 to 2147483647)
 veg_max_cells = 0
+
+# energy a plant gains per tick where it fits best (0 to 1e+06)
+plant_gain = 0.3
+
+# energy a plant pays per tick (0 to 1e+06)
+plant_upkeep = 0.02
+
+# most energy a plant can store (0 to 1e+06)
+plant_energy_max = 10
+
+# energy of a starting plant (0 to 1e+06)
+plant_start_energy = 5
+
+# growth of a plant needing no water, against a thirsty one (0 to 1)
+plant_thrift = 0.6
+
+# water even the hardiest plant needs (0.001 to 1)
+plant_water_min = 0.1
+
+# how far from its best temperature a plant still lives (0.001 to 1)
+plant_temp_width = 0.35
+
+# how well a place must suit a plant before it seeds, grows or fruits (0 to 1)
+plant_seed_fit = 0.3
+
+# energy a plant must hold to seed (0 to 1e+06)
+plant_seed_energy = 3
+
+# energy a seed costs its parent (0 to 1e+06)
+plant_seed_cost = 1
+
+# energy of a sprout beside its parent (0 to 1e+06)
+plant_seed_start = 2
+
+# energy a plant pays to thicken by one step (0 to 1e+06)
+plant_grow_cost = 0.1
+
+# chance each gene of a seed changes (0 to 1)
+plant_mutation = 0.1
+
+# size of that change (0 to 1)
+plant_mutation_spread = 0.08
+
+# water a fruit tree needs beyond what its gene says (0 to 1e+06)
+plant_fruit_thirst = 0.45
+
+# how often a fruit tree seeds beside itself, against a leaf plant (0 to 1)
+plant_fruit_near = 0.5
+
+# energy a plant must hold to make fruit (0 to 1e+06)
+plant_fruit_energy = 4
+
+# fruit per tick of a plant offering only fruit (0 to 1e+06)
+plant_fruit_rate = 0.05
+
+# energy one fruit costs its plant (0 to 1e+06)
+plant_fruit_cost = 2
+
+# most fruit on one plant (0 to 1e+06)
+plant_fruit_max = 3
+
+# energy in one fruit (0 to 1e+06)
+bite_fruit_energy = 40
+
+# ticks a seed stays in an animal, at least (1 to 65535)
+plant_gut_min = 50
+
+# ticks a seed stays in an animal, at most (1 to 65535)
+plant_gut_max = 400
+
+# energy of a sprout from dropped dung (0 to 1e+06)
+plant_dung_start = 5
+
+# plant energy lost per density step of leaves eaten (0 to 1e+06)
+plant_leaf_harm = 0.2
 
 # most creatures alive at once (1 to 1000000)
 pool_capacity = 8000
@@ -120,7 +177,7 @@ upkeep_base = 0.06
 move_cost = 0.3
 
 # energy in a bite of plant (0 to 1e+06)
-bite_veg_energy = 40
+bite_veg_energy = 27
 
 # energy needed to mate, by size (0 to 1e+06)
 mate_threshold = 30
@@ -210,7 +267,7 @@ bite_meat_energy = 8
 digest_floor = 0.25
 
 # upkeep of digesting (0 to 1e+06)
-digest_upkeep = 0.05
+digest_upkeep = 0.025
 
 # how much size decides a fight (0 to 16)
 attack_steepness = 3

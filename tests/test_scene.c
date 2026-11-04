@@ -131,7 +131,7 @@ static int red_pixels(int action)
     s.set.family_peace = 2.0f; /* near-identical genomes would be spared */
     s.set.colour_peace = 0.0f;
     s.pool.items[hunter].genome.g[GENE_MEAT] = 1.0f;
-    s.pool.items[prey].genome.g[GENE_PLANT] = 1.0f;
+    s.pool.items[prey].genome.g[GENE_LEAF] = 1.0f;
     s.pool.items[prey].energy = 10.0f;
     Scene sc;
     CHECK(scene_init(&sc, &s));
@@ -359,12 +359,13 @@ static uint64_t hash_canvas(const Canvas *c)
  * picture changed: look at it first, and only then update the numbers, saying
  * why in the commit. Symbols are computed with sinf, so another system's maths
  * library may legitimately give other numbers. Last changed for the climate: the
- * ground follows its water, shallows along the shore, and rain falls.
+ * ground follows its water, shallows along the shore, and rain falls; then living
+ * plants: the green from the water they need, and ripe fruit tinting them orange.
  */
 static void test_known_world_pixels(void)
 {
     static const uint64_t EXPECTED[CAMERA_LEVELS] = {
-        0x6daa2d8cc5fa844du, 0x276b29f77586ba7du, 0xa0aabf72a1e6a19bu, 0x8dc09a63d15825u,
+        0x6daa2d8cc5fa844du, 0x276b29f77586ba7du, 0x2e3bfebf1f0ea2e7u, 0xf2ee0d24e054c025u,
     };
     Settings set = settings_default();
     Sim s;

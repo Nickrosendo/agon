@@ -99,7 +99,7 @@ int scene_water_frame(uint64_t water_ms)
 static Colour plant_colour(const Sim *s, int i)
 {
     const World *w = &s->world;
-    Colour plant = palette_plant(w->veg_rule[i]);
+    Colour plant = palette_plant(&w->plant[i]);
     if (w->veg_wither[i] == 0) {
         return plant;
     }
@@ -310,7 +310,7 @@ static void draw_mark(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
         colour = SLASH;
     } else if (p->bite == BITE_PLANT) {
         const World *w = &s->world;
-        Colour plant = palette_plant(w->veg_rule[p->target_y * w->w + p->target_x]);
+        Colour plant = palette_plant(&w->plant[p->target_y * w->w + p->target_x]);
         colour = palette_mix(plant, WHITE, 0.6f);
     }
     canvas_mask(c, rows, size, view_x + sx, view_y + sy, scale, false,

@@ -1,7 +1,7 @@
 #include "test.h"
 
 #include "palette.h"
-#include "world.h" /* veg_rule_pack */
+#include "world.h" /* Plant */
 
 static int same(Colour a, Colour b)
 {
@@ -54,27 +54,48 @@ static void test_display_hue_keeps_the_order(void)
 
 static void test_plant_hues_stay_in_the_greens(void)
 {
-    /* Every rule's hue lies inside the plants' greens, which creatures
-     * never use; rules that differ in their birth bits differ in hue;
-     * rules that differ only in the crowd bits share a hue. */
+    /* Every water need gives a hue inside the plants' greens, which creatures
+     * never use, the driest and the thirstiest differ, and a need of exactly 1
+     * does not reach past the last step. */
     int outside = 0;
-    for (int b = 0; b <= (int)VEG_RULE_USED_MASK; b++) {
-        float hue = render_plant_hue((uint8_t)b);
+    for (int b = 0; b <= 100; b++) {
+        float hue = render_plant_hue((float)b / 100.0f);
         if (hue < RENDER_PLANT_HUE_FROM || hue > RENDER_PLANT_HUE_TO) {
             outside++;
         }
     }
     CHECK(outside == 0);
-    CHECK(render_plant_hue(veg_rule_pack(3, 4, 3)) !=
-          render_plant_hue(veg_rule_pack(1, 4, 3)));
-    CHECK(render_plant_hue(veg_rule_pack(3, 4, 0)) ==
-          render_plant_hue(veg_rule_pack(3, 4, 7)));
+    CHECK(render_plant_hue(0.0f) != render_plant_hue(1.0f));
+    /* Close needs share a hue: render_world skips cells that have not changed. */
+    CHECK(render_plant_hue(0.5f) == render_plant_hue(0.51f));
+}
+
+/* Ripe fruit shows, what a plant offers shows, and huge fruit from a damaged
+ * save stays safe. */
+static void test_plant_colour_shows_fruit(void)
+{
+    Plant plain = {.water_need = 0.5f};
+    Plant ripe = plain;
+    ripe.fruit = 2.0f;
+    Colour a = palette_plant(&plain), b = palette_plant(&ripe);
+    CHECK(a.r != b.r || a.g != b.g || a.b != b.b);
+    Plant huge = plain;
+    huge.fruit = 1e30f;
+    Plant full = plain;
+    full.fruit = 3.0f;
+    Colour c = palette_plant(&huge), d = palette_plant(&full);
+    CHECK(c.r == d.r && c.g == d.g && c.b == d.b);
+    Plant tree = plain;
+    tree.fruit_share = 1.0f;
+    Colour e = palette_plant(&tree);
+    CHECK(a.r != e.r || a.g != e.g || a.b != e.b);
 }
 
 int main(void)
 {
     test_ground_follows_its_water();
     test_plant_hues_stay_in_the_greens();
+    test_plant_colour_shows_fruit();
     test_display_hue_skips_the_greens();
     test_display_hue_keeps_the_order();
     TEST_SUMMARY();

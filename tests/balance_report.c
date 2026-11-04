@@ -359,6 +359,36 @@ static void print_header(void)
 }
 
 /* What no pass rule depends on: fights, chasing and who fights alongside whom. */
+/* How the plants stand at the end: how much of the soil holds one, how many
+ * lean to fruit and to leaves, how much ripe fruit hangs, and the genes' means. */
+static void print_plants(const Sim *s)
+{
+    const World *w = &s->world;
+    int soil = 0, planted = 0, fruit_plants = 0, leaf_plants = 0;
+    double fruit = 0.0, need = 0.0, energy = 0.0;
+    for (int i = 0; i < w->w * w->h; i++) {
+        soil += w->terrain[i] == TERRAIN_SOIL;
+        if (w->veg[i] == 0) {
+            continue;
+        }
+        planted++;
+        const Plant *p = &w->plant[i];
+        if (p->fruit_share > 0.5f) {
+            fruit_plants++;
+        } else {
+            leaf_plants++;
+        }
+        fruit += (double)p->fruit;
+        need += (double)p->water_need;
+        energy += (double)p->energy;
+    }
+    double n = planted > 0 ? (double)planted : 1.0;
+    printf("     plants: %d cells (%d%% of soil), %d lean to fruit, %d to leaves, "
+           "%.0f ripe fruit, mean water need %.2f, mean energy %.1f\n",
+           planted, percent((uint64_t)planted, (uint64_t)soil), fruit_plants,
+           leaf_plants, fruit, need / n, energy / n);
+}
+
 static void print_behaviour(const Sim *s, const Report *rep)
 {
     double length = rep->fights == 0
@@ -432,6 +462,7 @@ static void print_row(const Sim *s, const Report *rep)
            percent(rep->ticks_at_plant_cap, rep->ticks_counted),
            rep->pool_filled ? "YES" : "no", (double)largest, (double)mean_size);
     print_behaviour(s, rep);
+    print_plants(s);
 }
 
 /* Runs the world. The Sim is changed only by sim_step. */

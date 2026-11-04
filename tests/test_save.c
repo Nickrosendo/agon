@@ -98,6 +98,14 @@ static void test_round_trip_and_continue(void)
     for (int i = 0; i < 1000; i++) {
         sim_step(&a);
     }
+    /* A seed being carried travels too, or the world would differ when it drops. */
+    for (int i = 0; i < a.pool.capacity; i++) {
+        if (a.pool.items[i].alive) {
+            a.pool.items[i].gut_seed = (Plant){.fruit_share = 0.75f, .temp_pref = 0.25f};
+            a.pool.items[i].gut_ticks = 9;
+            break;
+        }
+    }
     CHECK(save_write(&a, SAVE_FILE, err, sizeof(err)));
     CHECK(save_read(&b, SAVE_FILE, err, sizeof(err)));
     CHECK(b.seed == 7 && b.tick == 1000);
@@ -400,9 +408,11 @@ enum {
     AT_MATE_WISH = 115,
     AT_LEVEL = 117,
     AT_EATEN = 121,
-    AT_MEMORY = 125,
-    AT_GENOME = 137,
-    SLOT_LIVING_BYTES = 137 + 4 * GENOME_LEN,
+    AT_GUT_SEED = 125, /* six floats: 24 bytes */
+    AT_GUT_TICKS = 149,
+    AT_MEMORY = 151,
+    AT_GENOME = 163,
+    SLOT_LIVING_BYTES = AT_GENOME + 4 * GENOME_LEN,
 };
 
 typedef struct {
@@ -460,10 +470,10 @@ static Tiny tiny_save(void)
             settings_info(i)->type == SETTING_TEXT ? BRAIN_NAME_MAX : 4;
     }
     t.layers = OFF_SETTINGS + settings_bytes;
-    /* terrain, fertility, veg, veg_age, veg_wither, veg_rule, carrion,
+    /* terrain, fertility, veg, veg_age, veg_wither, plant, carrion,
      * carrion_level, scent, water, temperature, rain, for 64 cells, and the
      * rain's seed once. */
-    t.histories = t.layers + 64 * (1 + 4 + 1 + 2 + 1 + 1 + 4 + 4 + 4 + 4 + 4 + 4) + 8;
+    t.histories = t.layers + 64 * (1 + 4 + 1 + 2 + 1 + 24 + 4 + 4 + 4 + 4 + 4 + 4) + 8;
     t.records = t.histories + 3 * (HISTORY * 4 + 8);
     /* peak, oldest id and age, largest id and size, then the u64 ended_at. */
     t.pool = t.records + 5 * 4 + 8;
@@ -597,8 +607,8 @@ static void test_refuses_impossible_layers(void)
     size_t veg = fertility + 64 * 4;
     size_t veg_age = veg + 64;
     size_t veg_wither = veg_age + 64 * 2;
-    size_t veg_rule = veg_wither + 64;
-    size_t carrion = veg_rule + 64;
+    size_t plant = veg_wither + 64;
+    size_t carrion = plant + 64 * 24;
     size_t carrion_level = carrion + 64 * 4;
     size_t scent = carrion_level + 64 * 4;
     refuses_byte(&t, terrain, TERRAIN_SHALLOW + 1, "layer");
@@ -606,7 +616,11 @@ static void test_refuses_impossible_layers(void)
     refuses_u32(&t, fertility, 0x40000000u /* 2.0 */, "out of range");
     refuses_u32(&t, fertility, BITS_HUGE, "out of range");
     refuses_byte(&t, veg, VEG_MAX + 1, "layer");
-    refuses_byte(&t, veg_rule, 0x80, "layer");
+    /* A plant's energy first, then its fruit, then the genes, which are 0..1. */
+    refuses_u32(&t, plant, BITS_NAN, "out of range");
+    refuses_u32(&t, plant + 4, BITS_HUGE, "out of range");
+    refuses_u32(&t, plant + 8, 0x40000000u /* 2.0 */, "out of range");
+    refuses_u32(&t, plant + 20, BITS_NAN, "out of range");
     refuses_u32(&t, carrion, BITS_NAN, "out of range");
     refuses_u32(&t, carrion, BITS_HUGE, "out of range");
     refuses_u32(&t, carrion_level, BITS_NAN, "out of range");

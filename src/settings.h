@@ -42,22 +42,15 @@ typedef struct {
     float region_wet_above;  /* water above this is wet ground */
 
     /* Vegetation. n is how many of a soil cell's eight neighbours carry
-     * plants. Every planted cell carries its own rule (world.h, veg_rule):
-     * a birth range and a crowd limit.
+     * plants. Every planted cell holds a living plant (world.h, Plant): its
+     * stored energy, its fruit and its genes.
      *
-     * An empty cell with planted neighbours picks one of them at random,
-     * its parent. If n is inside the parent's birth range, the cell
-     * sprouts with probability fertility * veg_sprout_rate; otherwise it
-     * stays bare. A sprout copies its parent's rule, and with probability
-     * veg_mutation one of the rule's seven bits is flipped. A plant comes
-     * only from a plant: an empty cell with no planted neighbour never
-     * sprouts, so plants that die out everywhere are gone. A planted cell,
-     * while n is at most its own crowd limit, grows by 1 with probability
-     * veg_grow_chance; above it, shrinks by 1.
-     *
-     * veg_birth_lo, veg_birth_hi and veg_crowd_max are the rule the
-     * starting plants carry, clamped to what a rule byte can hold
-     * (birth_lo 1..4, birth_hi up to birth_lo + 3, crowd_max 0..7).
+     * An empty cell with planted neighbours picks one of them at random, its
+     * parent. If that plant can seed (see below), the cell sprouts with
+     * probability fertility * veg_sprout_rate. A plant comes only from a plant:
+     * an empty cell with no planted neighbour never sprouts, so plants that die
+     * out everywhere are gone. A planted cell grows by 1 with probability
+     * veg_grow_chance, if it is well enough and can pay plant_grow_cost.
      *
      * Local carrying capacity: m is the total density of every cell within
      * veg_reach steps (the cell itself left out), and the cell's capacity
@@ -68,20 +61,9 @@ typedef struct {
      *
      * Life cycle: every tick a plant ages by one. From veg_mature_age on,
      * a healthy plant starts withering with probability veg_wither_chance
-     * per tick. A withering plant no longer grows or shrinks; after
-     * veg_wither_ticks ticks it disappears and the cell is bare soil. */
-    int veg_birth_lo;
-    int veg_birth_hi;
-    int veg_crowd_max;
-    float veg_mutation;     /* chance a sprout's rule has one bit flipped */
-    /* Costs of an aggressive rule, by its vigour (0..1, see
-     * veg_rule_vigour in world.h). A bite of the plant gives
-     * bite_veg_energy * (1 - veg_vigour_food * vigour): fast growers are
-     * less nourishing. The plant may start withering from
-     * veg_mature_age * (1 - veg_vigour_ageing * vigour), at least 1:
-     * fast growers die young. 0 turns either cost off. */
-    float veg_vigour_food;
-    float veg_vigour_ageing;
+     * per tick; it also starts when its energy runs out. A withering plant no
+     * longer grows or shrinks; after veg_wither_ticks ticks it disappears and
+     * the cell is bare soil. */
     float veg_sprout_rate;  /* scales the chance to sprout beside plants */
     float veg_grow_chance;  /* chance per tick that a plant thickens */
     float veg_start_chance; /* chance a soil cell starts planted */
@@ -94,6 +76,56 @@ typedef struct {
      * plants, no empty cell sprouts. Counted once at the start of each
      * tick, so one tick of sprouting can overshoot it. 0: no cap. */
     int veg_max_cells;
+
+    /* A plant's life. Its fit, 0..1, says how well the place suits it: the
+     * water part is the soil's water over what it needs, at most 1, where it
+     * needs plant_water_min + (1 - plant_water_min) * water_need; the
+     * temperature part falls from 1 to 0 as the distance from temp_pref reaches
+     * plant_temp_width. Fit is the two multiplied.
+     *
+     * Each tick it gains plant_gain * fit * vigour and pays plant_upkeep, where
+     * vigour = plant_thrift + (1 - plant_thrift) * water_need: a thirsty plant
+     * grows faster where there is water, and that is what thirst buys. Stored
+     * energy stays within 0..plant_energy_max. */
+    float plant_gain;
+    float plant_upkeep;
+    float plant_energy_max;
+    float plant_start_energy; /* a starting plant's energy */
+    float plant_thrift;
+    float plant_water_min;
+    float plant_temp_width;
+    /* Seeds. A plant can seed, grow or fruit only at a fit of plant_seed_fit or
+     * more. Seeding also needs plant_seed_energy stored, and costs the parent
+     * plant_seed_cost. The sprout starts with plant_seed_start. Each gene of a
+     * seed moves with chance plant_mutation by a normal step of
+     * plant_mutation_spread. */
+    float plant_seed_fit;
+    float plant_seed_energy;
+    float plant_seed_cost;
+    float plant_seed_start;
+    float plant_grow_cost;
+    float plant_mutation;
+    float plant_mutation_spread;
+    /* Fruit. A plant offering fruit (world.h, plant_offers_fruit) and holding
+     * plant_fruit_energy or more makes plant_fruit_rate fruit per tick, up to
+     * plant_fruit_max,
+     * paying plant_fruit_cost per fruit. Eating one gives bite_fruit_energy
+     * and takes nothing else from the plant. The eater keeps one seed for
+     * plant_gut_min to plant_gut_max ticks, by the seed's gut_time gene, and
+     * drops it where it then stands; a seed landing on bare soil sprouts with
+     * plant_dung_start, far more than a seed falling beside its parent. */
+    float plant_fruit_thirst; /* water a fruit tree needs on top of its gene's */
+    float plant_fruit_near; /* a fruit tree's seeds falling beside it, against a leaf plant's */
+    float plant_fruit_energy;
+    float plant_fruit_rate;
+    float plant_fruit_cost;
+    float plant_fruit_max;
+    float bite_fruit_energy;
+    int plant_gut_min;
+    int plant_gut_max;
+    float plant_dung_start;
+    /* Leaves. Eating them gives bite_veg_energy per density step, and takes plant_leaf_harm of the plant's stored energy per step. */
+    float plant_leaf_harm;
 
     /* Creatures. Energy pays for everything: every tick costs
      * upkeep_base, a move costs move_cost more (even a blocked one), and
@@ -187,8 +219,8 @@ typedef struct {
      * the food that gives it the most energy, and never hurts anyone
      * (see act_bite in creature.c). Energy gained
      * is what was taken times the efficiency for that food: digest_floor
-     * + (1 - digest_floor) * gene, with GENE_PLANT or GENE_MEAT.
-     * Digesting costs upkeep every tick: digest_upkeep * (plant +
+     * + (1 - digest_floor) * gene, with GENE_LEAF, GENE_FRUIT or GENE_MEAT.
+     * Digesting costs upkeep every tick: digest_upkeep * (leaf + fruit +
      * meat)^2. The square
      * makes a generalist (both genes 1) pay four times what a specialist
      * (one gene 1) pays, while a little of the second food costs a

@@ -8,6 +8,8 @@
 
 #include <stdint.h>
 
+#include "world.h" /* Plant */
+
 typedef struct {
     uint8_t r, g, b;
 } Colour;
@@ -45,8 +47,8 @@ Colour palette_mix(Colour a, Colour b, float t);
  * blue, back to red at 1), at full brightness and the given saturation. */
 Colour palette_hue(float hue, float saturation);
 
-/* A plant's full colour, from its rule byte (world.h). */
-Colour palette_plant(uint8_t rule);
+/* A plant's full colour, from its genes and its ripe fruit. */
+Colour palette_plant(const Plant *p);
 
 /* A creature's colour, from its inherited hue (0..1) and meat share (0..1). */
 Colour palette_creature(float hue, float meat);
@@ -69,10 +71,10 @@ float render_meat_share(float level);
 #define RENDER_PLANT_HUE_FROM 0.20f
 #define RENDER_PLANT_HUE_TO 0.47f
 
-/* The hue a plant is drawn in, from its rule byte (world.h): the four
- * birth bits pick one of 16 hues spread across the plants' greens, so
- * neighbouring patches with different birth ranges look different. */
-float render_plant_hue(uint8_t rule);
+/* The hue a plant is drawn in, from how much water it needs: one of 16 hues
+ * spread across the plants' greens, so patches adapted to different ground look
+ * different. */
+float render_plant_hue(float water_need);
 
 /* The hue a creature is drawn in, from its inherited hue: the whole wheel
  * squeezed into the part outside the plants' greens, order kept, so a

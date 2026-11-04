@@ -34,7 +34,7 @@
  */
 #define SAVE_MAGIC "AGONSAVE"
 #define SAVE_MAGIC_LEN 8
-#define SAVE_VERSION 5u
+#define SAVE_VERSION 6u
 
 /* No value in a healthy world comes near this. Bounding them keeps sums
  * from reaching infinity, and float-to-int conversions defined. */
@@ -147,6 +147,16 @@ static void put_floats(Writer *w, const float *v, size_t n)
  * pointing outside the pool. veg_next and scent_next are not written
  * either: each tick overwrites them before reading them.
  */
+static void put_plant(Writer *w, const Plant *p)
+{
+    put_float(w, p->energy);
+    put_float(w, p->fruit);
+    put_float(w, p->fruit_share);
+    put_float(w, p->water_need);
+    put_float(w, p->temp_pref);
+    put_float(w, p->gut_time);
+}
+
 static void put_world(Writer *w, const World *world)
 {
     size_t n = (size_t)world->w * (size_t)world->h;
@@ -157,7 +167,9 @@ static void put_world(Writer *w, const World *world)
         put_u16(w, world->veg_age[i]);
     }
     put_bytes(w, world->veg_wither, n);
-    put_bytes(w, world->veg_rule, n);
+    for (size_t i = 0; i < n; i++) {
+        put_plant(w, &world->plant[i]);
+    }
     put_floats(w, world->carrion, n);
     put_floats(w, world->carrion_level, n);
     put_floats(w, world->scent, n);
@@ -212,6 +224,8 @@ static void put_creature(Writer *w, const Creature *c)
     put_u16(w, c->mate_wish);
     put_float(w, c->level);
     put_float(w, c->eaten);
+    put_plant(w, &c->gut_seed);
+    put_u16(w, c->gut_ticks);
     put_floats(w, c->memory, MEMORY_VALUES);
     put_floats(w, c->genome.g, GENOME_LEN);
 }
@@ -451,6 +465,18 @@ static void get_small(Reader *r, uint8_t *v, size_t n, unsigned most)
     }
 }
 
+/* Genes stay within 0..1 by construction, and energy and fruit are only ever
+ * compared and added, so a large one does no harm as long as it is finite. */
+static void get_plant(Reader *r, Plant *p)
+{
+    p->energy = get_float(r, 0.0f, FLOAT_LIMIT);
+    p->fruit = get_float(r, 0.0f, FLOAT_LIMIT);
+    p->fruit_share = get_float(r, 0.0f, 1.0f);
+    p->water_need = get_float(r, 0.0f, 1.0f);
+    p->temp_pref = get_float(r, 0.0f, 1.0f);
+    p->gut_time = get_float(r, 0.0f, 1.0f);
+}
+
 static void get_world(Reader *r, World *w)
 {
     size_t n = (size_t)w->w * (size_t)w->h;
@@ -463,7 +489,9 @@ static void get_world(Reader *r, World *w)
         w->veg_age[i] = get_u16(r);
     }
     get_small(r, w->veg_wither, n, UINT8_MAX);
-    get_small(r, w->veg_rule, n, VEG_RULE_USED_MASK);
+    for (size_t i = 0; i < n && r->problem == NULL; i++) {
+        get_plant(r, &w->plant[i]);
+    }
     get_floats(r, w->carrion, n, 0.0f, FLOAT_LIMIT);
     get_floats(r, w->carrion_level, n, 0.0f, FLOAT_LIMIT);
     get_floats(r, w->scent, n, 0.0f, FLOAT_LIMIT);
@@ -530,6 +558,8 @@ static void get_creature(Reader *r, Creature *c, const Settings *set,
     c->mate_wish = get_u16(r);
     c->level = get_float(r, 0.0f, FLOAT_LIMIT);
     c->eaten = get_float(r, 0.0f, FLOAT_LIMIT);
+    get_plant(r, &c->gut_seed);
+    c->gut_ticks = get_u16(r);
     if (c->x < 0 || c->x >= w->w || c->y < 0 || c->y >= w->h ||
         c->heading >= HEADING_COUNT || c->current.kind >= ACT_COUNT) {
         fail(r, "a creature in the file is impossible");

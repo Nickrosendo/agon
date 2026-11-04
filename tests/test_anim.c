@@ -289,8 +289,10 @@ static int biter_beside_plant(Sim *s, int dx, int dy)
     empty_sim(s, 64, 32);
     int slot = pool_spawn(&s->pool, &s->world, 10, 10);
     s->pool.items[slot].current.kind = ACT_BITE;
-    s->pool.items[slot].genome.g[GENE_PLANT] = 1.0f;
+    s->pool.items[slot].genome.g[GENE_LEAF] = 1.0f;
     s->world.veg[world_idx(&s->world, 10 + dx, 10 + dy)] = 2;
+    /* The starting plants' genes are random: this one must offer leaves. */
+    s->world.plant[world_idx(&s->world, 10 + dx, 10 + dy)].fruit_share = 0.0f;
     return slot;
 }
 
@@ -355,7 +357,7 @@ static void test_bite_target_across_wrap(void)
     empty_sim(&s, 64, 32);
     int slot = pool_spawn(&s.pool, &s.world, 0, 10);
     s.pool.items[slot].current.kind = ACT_BITE;
-    s.pool.items[slot].genome.g[GENE_PLANT] = 1.0f;
+    s.pool.items[slot].genome.g[GENE_LEAF] = 1.0f;
     s.world.veg[world_idx(&s.world, 63, 10)] = 2;
     Anim a;
     CHECK(anim_init(&a, s.pool.capacity));
@@ -403,7 +405,7 @@ static void test_biter_beside_creature_and_carrion_eats(void)
     int prey = pool_spawn(&s.pool, &s.world, 11, 10);
     s.pool.items[hunter].current.kind = ACT_BITE;
     s.pool.items[hunter].genome.g[GENE_MEAT] = 1.0f;
-    s.pool.items[prey].genome.g[GENE_PLANT] = 1.0f;
+    s.pool.items[prey].genome.g[GENE_LEAF] = 1.0f;
     s.world.carrion[world_idx(&s.world, 9, 10)] = 5.0f;
     Anim a;
     CHECK(anim_init(&a, s.pool.capacity));

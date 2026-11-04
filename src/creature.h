@@ -80,6 +80,11 @@ typedef struct {
      * the first meal, level is LEVEL_START or the mean of its parents'. */
     float level;
     float eaten;
+    /* A seed from fruit it ate, and the ticks until it drops. While gut_ticks
+     * is 0 there is none and gut_seed means nothing. Dying loses it: the slot's
+     * next owner starts from zeroes. */
+    Plant gut_seed;
+    uint16_t gut_ticks;
     /* Stored inside the creature, not behind a pointer: GENOME_LEN floats
      * (916 bytes) in every slot, allocated with the pool and never freed
      * on its own. */
@@ -177,6 +182,7 @@ enum { BITE_NOTHING, BITE_CARRION, BITE_PLANT };
 typedef struct {
     int kind; /* a BITE_ value */
     int cell;
+    bool fruit; /* for BITE_PLANT: its fruit rather than its leaves */
 } BiteChoice;
 BiteChoice creature_bite_choice(const World *w, const Pool *p, int idx,
                                 const Settings *s);

@@ -60,11 +60,11 @@ static Colour ground_colour(const Sim *s, int i)
     if (w->veg[i] == 0) {
         return soil;
     }
-    /* Four shades of the rule's green over the soil: density 1 is 40 %
+    /* Four shades of the plant's green over the soil: density 1 is 40 %
      * of the way from the soil colour to the full green, density VEG_MAX
      * is all green. */
     float t = (float)(w->veg[i] + 1) / (float)(VEG_MAX + 1);
-    Colour plant = palette_mix(soil, palette_plant(w->veg_rule[i]), t);
+    Colour plant = palette_mix(soil, palette_plant(&w->plant[i]), t);
     if (w->veg_wither[i] == 0) {
         return plant;
     }

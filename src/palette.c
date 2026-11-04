@@ -1,8 +1,12 @@
 #include "palette.h"
 
-#include "world.h" /* veg_rule_crowd_max */
 
 /* How many soil colours, from dry to rich. */
+/* How many hues of green a plant can be drawn in. */
+#define PLANT_HUE_STEPS 16
+/* What ripe fruit pulls a plant's colour towards. */
+static const Colour FRUIT = {235, 130, 40};
+
 #define SOIL_SHADES 6
 /* How many looks the ground has, from desert to soaked. */
 #define GROUND_SHADES 4
@@ -147,26 +151,35 @@ float render_display_hue(float hue)
     return shown >= RENDER_PLANT_HUE_FROM ? shown + gap : shown;
 }
 
-float render_plant_hue(uint8_t rule)
+float render_plant_hue(float water_need)
 {
-    /* The birth bits are the low four: & 0xF keeps them, 0..15. */
-    unsigned birth = (unsigned)rule & 0xFu;
     float gap = RENDER_PLANT_HUE_TO - RENDER_PLANT_HUE_FROM;
-    return RENDER_PLANT_HUE_FROM + gap * (float)birth / 15.0f;
+    /* Steps, not a smooth blend: render_world skips cells whose colour has not
+     * changed, and with a smooth gene almost every plant would differ. */
+    int step = (int)(water_need * (float)PLANT_HUE_STEPS);
+    step = step >= PLANT_HUE_STEPS ? PLANT_HUE_STEPS - 1 : step;
+    return RENDER_PLANT_HUE_FROM +
+           gap * (float)step / (float)(PLANT_HUE_STEPS - 1);
 }
 
 /*
- * A plant's full colour, from its rule: the hue from the birth bits, and
- * the saturation from the crowd limit (0.35 for a limit of 0 up to 0.84
- * for 7: plants that tolerate crowding look a deeper green). Darkened to
- * 60 % so plants sit below the brightness of creatures. The starting
- * rule (born with 3 or 4, crowd limit 3) comes out close to PLANT.
+ * A plant's full colour: the hue from the water it needs (dry plants yellower,
+ * thirsty plants bluer), the saturation from what it offers (a leaf plant a deep
+ * green, a fruit tree a paler one), and each whole ripe fruit a step towards
+ * orange. Darkened to 60 % so plants sit below the brightness of creatures.
  */
-Colour palette_plant(uint8_t rule)
+Colour palette_plant(const Plant *p)
 {
-    float saturation = 0.35f + 0.07f * (float)veg_rule_crowd_max(rule);
-    return palette_mix(PALETTE_BLACK,
-                       palette_hue(render_plant_hue(rule), saturation), 0.6f);
+    int offer = (int)(p->fruit_share * 4.0f); /* 0..4, for 0.84 down to 0.35 */
+    float saturation = 0.84f - 0.1225f * (float)offer;
+    Colour plant = palette_mix(PALETTE_BLACK,
+                               palette_hue(render_plant_hue(p->water_need),
+                                           saturation),
+                               0.6f);
+    /* Comparing before converting: the fruit from a save is only known to be
+     * finite, and a large float does not fit an int. */
+    int ripe = p->fruit >= 3.0f ? 3 : (int)p->fruit;
+    return palette_mix(plant, FRUIT, 0.2f * (float)ripe);
 }
 
 Colour palette_creature(float hue, float meat)

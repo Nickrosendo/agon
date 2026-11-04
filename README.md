@@ -167,15 +167,17 @@ for the build that wrote them; a build with a different format refuses them.
    the edges. Soil has a fertility. Rain falls in a slowly changing pattern from
    the world's seed; soil holds water and slowly loses it, turning to pale sand
    when dry. Temperature and water together give each cell a region: cold, hot and
-   dry, temperate, wet, or shallows. For now these only show on the ground: plants
-   and creatures do not read them yet.
-2. Every plant carries its own rule: how many planted neighbours let an empty
-   cell sprout, and how much crowding it tolerates. A sprout copies a planted
-   neighbour's rule, sometimes with one bit flipped.
-3. Vigorous rules spread faster, but they feed less and die younger. Plants
-   age, wither and leave bare soil.
+   dry, temperate, wet, or shallows. Creatures do not read the regions yet.
+2. Every plant is alive: it stores energy, earned where the water and temperature
+   suit its genes, and with too little of either it cannot seed, and starves. Its
+   seeds inherit its genes with small changes.
+3. A plant offers leaves or fruit. Eating leaves takes part of the plant and hurts
+   it, and its seeds fall beside it. A fruit tree needs wetter soil and pays for
+   each fruit; eating one leaves the tree whole, and the eater carries a seed that
+   later drops in its dung, far away, with a good start. Plants age, wither and
+   leave bare soil.
 4. Each creature inherits a genome: its size at birth, speed, sight, digestion of
-   plants and of meat, its colour, how fast it ages, its armour, weapon, growth and territory,
+   leaves, fruit and meat, its colour, how fast it ages, its armour, weapon, growth and territory,
    and the weights of a small neural network.
 5. Each tick, the network turns what the creature senses into one action: rest,
    turn left, turn right, move, bite, mate or attack.

@@ -31,7 +31,7 @@ static int spawn(Pool *p, World *w, int x, int y)
         g->g[GENE_SIZE] = 0.5f;
         g->g[GENE_SPEED] = 1.0f;
         g->g[GENE_SIGHT] = 0.0f;
-        g->g[GENE_PLANT] = 1.0f; /* a plant-eater: full plant energy */
+        g->g[GENE_LEAF] = 1.0f; /* a plant-eater: full plant energy */
         g->g[GENE_MEAT] = 0.0f;
     }
     return idx;
@@ -41,7 +41,16 @@ static int spawn(Pool *p, World *w, int x, int y)
 static void make_hunter(Creature *c)
 {
     c->genome.g[GENE_MEAT] = 1.0f;
-    c->genome.g[GENE_PLANT] = 0.0f;
+    c->genome.g[GENE_LEAF] = 0.0f;
+}
+
+/* Default settings with the cheapest digestion, so that a creature from spawn
+ * gets a plant's whole food. */
+static Settings plant_eater_settings(void)
+{
+    Settings s = settings_default();
+    s.digest_floor = 0.25f;
+    return s;
 }
 
 static bool near(float a, float b)
@@ -177,7 +186,6 @@ static void test_bite(void)
     p.items[i].energy = 10.0f;
     /* Every plant gives the full bite_veg_energy, whatever its rule;
      * test_vigorous_plants_feed_less covers the food cost. */
-    s.veg_vigour_food = 0.0f;
     w.veg[world_idx(&w, 3, 2)] = 3; /* ahead, to the north */
     creature_act(&w, &p, i, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
     CHECK(w.veg[world_idx(&w, 3, 2)] == 2);
@@ -673,7 +681,6 @@ static void test_empty_bite_costs(void)
     make_world(&w, 8, 8);
     Settings s = settings_default();
     s.bite_empty_cost = 0.25f;
-    s.veg_vigour_food = 0.0f;
     Rng r;
     rng_seed(&r, 1);
     Pool p;
@@ -710,7 +717,7 @@ static void test_plant_eater_cap(void)
     rng_seed(&r, 1);
     adult_pair(&w, &p, &a, &b, &s, &r);
     for (int k = 0; k < 2; k++) {
-        p.items[k].genome.g[GENE_PLANT] = 1.0f;
+        p.items[k].genome.g[GENE_LEAF] = 1.0f;
         p.items[k].genome.g[GENE_MEAT] = 0.0f;
         p.items[k].energy = 100.0f;
     }
@@ -739,15 +746,14 @@ static void test_plant_eater_cap(void)
     world_free(&w);
 }
 
-static void test_vigorous_plants_feed_less(void)
+static void test_fruit_tree_has_no_leaves_to_eat(void)
 {
-    /* veg_vigour_food 0.5: a bite of the most aggressive rule (vigour 1)
-     * gives half of bite_veg_energy, one of the most modest (vigour 0)
-     * all of it. */
+    /* A leaf plant feeds a bite in full. A fruit tree with no ripe fruit gives
+     * nothing, and a bite with both in reach takes the one that feeds. */
     World w;
-    make_world(&w, 8, 8);
-    Settings s = settings_default();
-    s.veg_vigour_food = 0.5f;
+    make_world(&w, 7, 7);
+    Settings s = plant_eater_settings();
+    s.bite_empty_cost = 0.0f;
     Rng r;
     rng_seed(&r, 1);
     Pool p;
@@ -757,27 +763,182 @@ static void test_vigorous_plants_feed_less(void)
 
     p.items[i].energy = 10.0f;
     w.veg[ahead] = 1;
-    w.veg_rule[ahead] = veg_rule_pack(1, 4, 7);
-    creature_act(&w, &p, i, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
-    CHECK(fabsf(p.items[i].energy - (10.0f + 0.5f * s.bite_veg_energy)) <
-          1e-5f);
-
-    p.items[i].energy = 10.0f;
-    w.veg[ahead] = 1;
-    w.veg_rule[ahead] = veg_rule_pack(4, 4, 0);
+    w.plant[ahead].fruit_share = 0.5f; /* exactly on the line is still leaves */
     creature_act(&w, &p, i, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
     CHECK(fabsf(p.items[i].energy - (10.0f + s.bite_veg_energy)) < 1e-5f);
 
-    /* Given the choice, a bite takes the more nourishing plant. */
-    int behind = world_idx(&w, 3, 4);
+    p.items[i].energy = 10.0f;
     w.veg[ahead] = 1;
-    w.veg_rule[ahead] = veg_rule_pack(1, 4, 7);
+    w.plant[ahead].fruit_share = 1.0f;
+    creature_act(&w, &p, i, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
+    CHECK(p.items[i].energy == 10.0f);
+    CHECK(w.veg[ahead] == 1);
+
+    int behind = world_idx(&w, 3, 4);
     w.veg[behind] = 1;
-    w.veg_rule[behind] = veg_rule_pack(4, 4, 0);
+    w.plant[behind].fruit_share = 0.0f;
     creature_act(&w, &p, i, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
     CHECK(w.veg[behind] == 0 && w.veg[ahead] == 1);
     pool_free(&p);
     world_free(&w);
+}
+
+/* Leaves: the bite takes the plant's body and hurts what it has stored. */
+static void test_leaf_bite_harms_plant(void)
+{
+    World w;
+    make_world(&w, 7, 7);
+    Settings s = plant_eater_settings();
+    Rng r;
+    rng_seed(&r, 1);
+    Pool p;
+    CHECK(pool_init(&p, 1));
+    int i = spawn(&p, &w, 3, 3);
+    int ahead = world_idx(&w, 3, 2);
+    w.veg[ahead] = 3;
+    w.plant[ahead].energy = 5.0f;
+    creature_act(&w, &p, i, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
+    CHECK(w.veg[ahead] == 2);
+    CHECK(fabsf(w.plant[ahead].energy - (5.0f - s.plant_leaf_harm)) < 1e-5f);
+    /* It never goes below nothing. */
+    w.plant[ahead].energy = 0.01f;
+    creature_act(&w, &p, i, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
+    CHECK(w.plant[ahead].energy == 0.0f);
+    /* No seed comes along with leaves. */
+    CHECK(p.items[i].gut_ticks == 0);
+    pool_free(&p);
+    world_free(&w);
+}
+
+/* Fruit: gives its food, leaves the plant whole, and the eater carries a seed. */
+static void test_fruit_bite_carries_seed(void)
+{
+    World w;
+    make_world(&w, 7, 7);
+    Settings s = plant_eater_settings();
+    Rng r;
+    rng_seed(&r, 1);
+    Pool p;
+    CHECK(pool_init(&p, 1));
+    int i = spawn(&p, &w, 3, 3);
+    p.items[i].genome.g[GENE_FRUIT] = 1.0f;
+    p.items[i].energy = 10.0f;
+    int ahead = world_idx(&w, 3, 2);
+    w.veg[ahead] = 2;
+    w.plant[ahead] = (Plant){.energy = 5.0f, .fruit = 1.5f, .fruit_share = 1.0f,
+                             .water_need = 0.25f, .temp_pref = 0.75f,
+                             .gut_time = 0.5f};
+    s.plant_mutation = 0.0f;
+    creature_act(&w, &p, i, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
+    CHECK(fabsf(p.items[i].energy - (10.0f + s.bite_fruit_energy)) < 1e-5f);
+    CHECK(w.veg[ahead] == 2);
+    CHECK(w.plant[ahead].energy == 5.0f);
+    CHECK(fabsf(w.plant[ahead].fruit - 0.5f) < 1e-5f);
+    CHECK(p.items[i].gut_ticks == plant_gut_ticks(&w.plant[ahead], &s));
+    CHECK(p.items[i].gut_seed.temp_pref == 0.75f);
+    /* Half a fruit is not a meal, and a plant offering only fruit has no leaves
+     * to eat: the bite finds nothing. */
+    float before = p.items[i].energy;
+    creature_act(&w, &p, i, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
+    CHECK(p.items[i].energy <= before);
+    CHECK(fabsf(w.plant[ahead].fruit - 0.5f) < 1e-5f);
+    pool_free(&p);
+    world_free(&w);
+}
+
+/* A second fruit does not replace the seed being carried. */
+static void test_gut_keeps_first_seed(void)
+{
+    World w;
+    make_world(&w, 7, 7);
+    Settings s = plant_eater_settings();
+    s.plant_mutation = 0.0f;
+    Rng r;
+    rng_seed(&r, 1);
+    Pool p;
+    CHECK(pool_init(&p, 1));
+    int i = spawn(&p, &w, 3, 3);
+    p.items[i].genome.g[GENE_FRUIT] = 1.0f;
+    int ahead = world_idx(&w, 3, 2);
+    w.veg[ahead] = 1;
+    w.plant[ahead] = (Plant){.fruit = 5.0f, .fruit_share = 1.0f, .temp_pref = 0.25f};
+    creature_act(&w, &p, i, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
+    w.plant[ahead].temp_pref = 0.75f;
+    creature_act(&w, &p, i, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
+    CHECK(p.items[i].gut_seed.temp_pref == 0.25f);
+    pool_free(&p);
+    world_free(&w);
+}
+
+/* The seed drops wherever the animal has got to, and sprouts with far more
+ * energy than one falling beside its parent. */
+static void test_dung_seed_sprouts_far_away_with_a_start(void)
+{
+    World w;
+    make_world(&w, 40, 40);
+    Settings s = plant_eater_settings();
+    Rng r;
+    rng_seed(&r, 1);
+    Pool p;
+    CHECK(pool_init(&p, 1));
+    int i = spawn(&p, &w, 3, 3);
+    /* As if it had eaten far away: only the genes and the timer matter. */
+    p.items[i].gut_seed = (Plant){.temp_pref = 0.75f, .water_need = 0.25f};
+    p.items[i].gut_ticks = 2;
+    int here = world_idx(&w, 3, 3);
+    creature_act(&w, &p, i, (Action){.kind = ACT_REST, .hold = 1}, &s, &r);
+    CHECK(w.veg[here] == 0);
+    creature_act(&w, &p, i, (Action){.kind = ACT_REST, .hold = 1}, &s, &r);
+    CHECK(w.veg[here] == 1);
+    CHECK(w.plant[here].energy == s.plant_dung_start);
+    CHECK(s.plant_dung_start > s.plant_seed_start);
+    CHECK(w.plant[here].temp_pref == 0.75f);
+    CHECK(p.items[i].gut_ticks == 0);
+    /* Landing on a plant already there, a seed is lost and changes nothing. */
+    w.plant[here].temp_pref = 0.5f;
+    p.items[i].gut_seed.temp_pref = 0.1f;
+    p.items[i].gut_ticks = 1;
+    creature_act(&w, &p, i, (Action){.kind = ACT_REST, .hold = 1}, &s, &r);
+    CHECK(w.plant[here].temp_pref == 0.5f);
+    CHECK(p.items[i].gut_ticks == 0);
+    pool_free(&p);
+    world_free(&w);
+}
+
+static void test_gut_seed_lost_on_death(void)
+{
+    World w;
+    make_world(&w, 7, 7);
+    Settings s = plant_eater_settings();
+    Pool p;
+    CHECK(pool_init(&p, 1));
+    int i = spawn(&p, &w, 3, 3);
+    p.items[i].gut_seed = (Plant){.temp_pref = 0.75f};
+    p.items[i].gut_ticks = 5;
+    pool_kill(&p, &w, i, &s, DEATH_HUNGER);
+    int planted = 0;
+    for (int c = 0; c < 49; c++) {
+        planted += w.veg[c] > 0;
+    }
+    CHECK(planted == 0);
+    /* The slot's next owner carries nothing. */
+    int j = spawn(&p, &w, 3, 3);
+    CHECK(p.items[j].gut_ticks == 0);
+    CHECK(p.items[j].gut_seed.temp_pref == 0.0f);
+    pool_free(&p);
+    world_free(&w);
+}
+
+/* A hunter is judged against the plant food it digests better. */
+static void test_hunter_compares_larger_plant_gene(void)
+{
+    Creature c = {0};
+    c.genome.g[GENE_MEAT] = 0.5f;
+    c.genome.g[GENE_LEAF] = 0.2f;
+    c.genome.g[GENE_FRUIT] = 0.3f;
+    CHECK(creature_is_hunter(&c));
+    c.genome.g[GENE_FRUIT] = 0.7f;
+    CHECK(!creature_is_hunter(&c));
 }
 
 static void test_cap_by_level(void)
@@ -885,7 +1046,7 @@ static void test_bite_carrion(void)
     CHECK(pool_init(&p, 2));
     int i = spawn(&p, &w, 3, 3); /* heading north: (3, 2) is ahead */
     p.items[i].genome.g[GENE_MEAT] = 1.0f; /* meat efficiency 1 */
-    p.items[i].genome.g[GENE_PLANT] = 0.0f;
+    p.items[i].genome.g[GENE_LEAF] = 0.0f;
     p.items[i].energy = 10.0f;
     int ahead = world_idx(&w, 3, 2);
     carrion_add(&w, ahead, 5.0f, 2.0f);
@@ -901,7 +1062,7 @@ static void test_bite_carrion(void)
 
     /* Both carrion and plants ahead: a plant-eater eats the plants. */
     p.items[i].genome.g[GENE_MEAT] = 0.0f;
-    p.items[i].genome.g[GENE_PLANT] = 1.0f;
+    p.items[i].genome.g[GENE_LEAF] = 1.0f;
     w.veg[ahead] = 2;
     float carrion_before = w.carrion[ahead];
     creature_act(&w, &p, i, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
@@ -909,7 +1070,7 @@ static void test_bite_carrion(void)
     CHECK(w.carrion[ahead] == carrion_before);
     /* A meat-eater, the carrion. */
     p.items[i].genome.g[GENE_MEAT] = 1.0f;
-    p.items[i].genome.g[GENE_PLANT] = 0.0f;
+    p.items[i].genome.g[GENE_LEAF] = 0.0f;
     creature_act(&w, &p, i, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
     CHECK(w.veg[ahead] == 1);
     CHECK(w.carrion[ahead] < carrion_before);
@@ -917,7 +1078,7 @@ static void test_bite_carrion(void)
 
     /* A pure plant-eater gets nothing from meat, and its level stays. */
     p.items[i].genome.g[GENE_MEAT] = 0.0f;
-    p.items[i].genome.g[GENE_PLANT] = 1.0f;
+    p.items[i].genome.g[GENE_LEAF] = 1.0f;
     float before = p.items[i].energy;
     float level_before = p.items[i].level;
     creature_act(&w, &p, i, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
@@ -1162,9 +1323,10 @@ static void test_killed_creature_leaves_carrion(void)
     CHECK(!sim.pool.items[t].alive || sim.pool.items[t].id != target_id);
     int cell = world_idx(&sim.world, 4, 5);
     CHECK(sim.world.occupant[cell] == -1);
-    /* The body, and what energy it had left after its own swing and upkeep. */
+    /* The body, and what energy it had left: all 3 if it was struck first, less
+     * its swing and upkeep if it acted first. The order is a random draw. */
     CHECK(sim.world.carrion[cell] > set.body_energy * 0.5f);
-    CHECK(sim.world.carrion[cell] < set.body_energy * 0.5f + 3.0f);
+    CHECK(sim.world.carrion[cell] <= set.body_energy * 0.5f + 3.0f);
     CHECK(near(sim.world.carrion_level[cell], 2.5f));
     sim_free(&sim);
 }
@@ -1174,9 +1336,9 @@ static void test_digestion_costs(void)
     Settings s = settings_default();
     s.digest_upkeep = 0.1f;
     Creature c = {0}; /* size, speed and sight genes 0 */
-    c.genome.g[GENE_PLANT] = 0.0f;
+    c.genome.g[GENE_LEAF] = 0.0f;
     float none = creature_upkeep_cost(&c, &s);
-    c.genome.g[GENE_PLANT] = 1.0f;
+    c.genome.g[GENE_LEAF] = 1.0f;
     float specialist = creature_upkeep_cost(&c, &s);
     c.genome.g[GENE_MEAT] = 1.0f;
     float generalist = creature_upkeep_cost(&c, &s);
@@ -2391,7 +2553,13 @@ int main(void)
     test_senses_plant_along_ray();
     test_empty_bite_costs();
     test_plant_eater_cap();
-    test_vigorous_plants_feed_less();
+    test_fruit_tree_has_no_leaves_to_eat();
+    test_leaf_bite_harms_plant();
+    test_fruit_bite_carries_seed();
+    test_gut_keeps_first_seed();
+    test_dung_seed_sprouts_far_away_with_a_start();
+    test_gut_seed_lost_on_death();
+    test_hunter_compares_larger_plant_gene();
     test_cap_by_level();
     test_sense();
     test_level();

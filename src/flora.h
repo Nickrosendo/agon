@@ -14,6 +14,20 @@
  * generator state always give the same result. */
 void flora_step(World *w, Rng *r, const Settings *s);
 
+/* How well a cell with this water and temperature suits a plant, 0..1. See
+ * Settings for the sum. Too dry or too cold for it reads as a low number, never
+ * as a fixed yes or no: only plant_seed_fit makes a line of it. */
+float plant_fit(const Plant *p, float water, float temperature,
+                const Settings *s);
+/* Writes into *seed a copy of the parent's genes, each maybe mutated, with no
+ * energy and no fruit. Draws from r. */
+void plant_make_seed(Plant *seed, const Plant *parent, Rng *r, const Settings *s);
+/* How long this seed stays inside an animal, at least 1. */
+uint16_t plant_gut_ticks(const Plant *seed, const Settings *s);
+/* Puts a sprout on the cell with this much energy. False, and nothing changes,
+ * unless the cell is bare soil. */
+bool plant_sow(World *w, int cell, const Plant *seed, float energy);
+
 /* Lays energy worth of carrion at food-chain level on cell idx. Carrion
  * already there merges with it: the amounts add up and the cell's level
  * becomes the energy-weighted average. Nothing happens for energy <= 0. */

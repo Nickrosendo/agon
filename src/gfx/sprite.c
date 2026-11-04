@@ -53,8 +53,11 @@ static float round_to_steps(float value, int steps)
 
 BodyTraits sprite_traits(const Genome *g)
 {
+    /* The body shows whichever plant food it digests better. */
+    float leaf = g->g[GENE_LEAF];
+    float fruit = g->g[GENE_FRUIT];
     BodyTraits t = {g->g[GENE_SIZE], g->g[GENE_SPEED], g->g[GENE_SIGHT],
-                    g->g[GENE_PLANT], g->g[GENE_MEAT]};
+                    leaf > fruit ? leaf : fruit, g->g[GENE_MEAT]};
     return t;
 }
 

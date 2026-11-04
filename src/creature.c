@@ -1,6 +1,6 @@
 #include "creature.h"
 
-#include <math.h>   /* powf */
+#include <math.h>   /* powf, floorf */
 #include <stdlib.h> /* malloc, free */
 #include <string.h> /* memset */
 
@@ -197,7 +197,8 @@ static float ageing_cost(const Creature *c, const Settings *s)
 
 float creature_upkeep_cost(const Creature *c, const Settings *s)
 {
-    float digest = c->genome.g[GENE_PLANT] + c->genome.g[GENE_MEAT];
+    float digest = c->genome.g[GENE_LEAF] + c->genome.g[GENE_FRUIT] +
+                   c->genome.g[GENE_MEAT];
     return s->upkeep_base + s->size_upkeep * creature_size(c, s) +
            s->speed_upkeep * creature_speed(c, s) +
            s->sight_upkeep * (float)creature_sight(c, s) +
@@ -531,12 +532,25 @@ static float meat_gain(const Creature *c, float take, const Settings *s)
     return take * digest_eff(c->genome.g[GENE_MEAT], s);
 }
 
-/* What one density step of a plant with the given rule gives c: less for a
- * vigorous rule (veg_vigour_food), less for a weak plant gene. */
-static float plant_gain(const Creature *c, uint8_t rule, const Settings *s)
+/* What one density step of this plant's leaves gives c: nothing from a fruit
+ * tree, and less for a weak leaf gene. */
+static float leaf_gain(const Creature *c, const Plant *plant, const Settings *s)
 {
-    float food = 1.0f - s->veg_vigour_food * veg_rule_vigour(rule);
-    return s->bite_veg_energy * food * digest_eff(c->genome.g[GENE_PLANT], s);
+    if (plant_offers_fruit(plant)) {
+        return 0.0f;
+    }
+    return s->bite_veg_energy * digest_eff(c->genome.g[GENE_LEAF], s);
+}
+
+/* How many whole fruit a bite by c would take from plant cell i. Worked out in
+ * floats and only then converted: fruit from a damaged save could be too large
+ * for an int, and that conversion would be undefined. mouth is small, so
+ * whichever is returned fits. */
+static int fruit_take(const World *w, int i, const Creature *c, const Settings *s)
+{
+    float mouth = (float)bite_steps(creature_size(c, s));
+    float whole = floorf(w->plant[i].fruit);
+    return (int)(whole < mouth ? whole : mouth);
 }
 
 /* Eats what its mouth can take of the carrion ahead. */
@@ -554,22 +568,60 @@ static void eat_carrion(World *w, Creature *c, int ahead, const Settings *s)
     creature_ate(c, gain, level);
 }
 
-/* Eats what its mouth can take of the vegetation ahead. When that leaves
- * the cell bare, flora_step resets the cell's age on the next tick. */
-static void eat_plant(World *w, Creature *c, int ahead, const Settings *s)
+/* Eats what its mouth can take of the leaves on this cell. When that leaves
+ * the cell bare, flora_step resets the cell's age on the next tick. Harm may
+ * take the plant's energy to 0, and then it starts withering on the next tick. */
+static void eat_leaves(World *w, Creature *c, int cell, const Settings *s)
 {
-    int take = plant_take(w, ahead, c, s);
+    Plant *plant = &w->plant[cell];
+    int take = plant_take(w, cell, c, s);
     /* veg is a uint8_t, promoted to int for the subtraction. The result is
      * between 0 and what it held, so the cast back loses nothing. */
-    w->veg[ahead] = (uint8_t)(w->veg[ahead] - take);
-    float gain = (float)take * plant_gain(c, w->veg_rule[ahead], s);
+    w->veg[cell] = (uint8_t)(w->veg[cell] - take);
+    float energy = plant->energy - (float)take * s->plant_leaf_harm;
+    plant->energy = energy < 0.0f ? 0.0f : energy;
+    float gain = (float)take * leaf_gain(c, plant, s);
     c->energy += gain;
     creature_ate(c, gain, 1.0f); /* plants are level 1 */
 }
 
+/* Eats whole fruit. The plant paid for it when it was made, so nothing else
+ * happens to the plant. A creature already carrying a seed keeps that one: if
+ * a newer seed replaced it, a steady fruit-eater would never drop any. */
+static void eat_fruit(World *w, Creature *c, int cell, const Settings *s, Rng *r)
+{
+    Plant *plant = &w->plant[cell];
+    int take = fruit_take(w, cell, c, s);
+    plant->fruit -= (float)take;
+    float gain = (float)take * s->bite_fruit_energy *
+                 digest_eff(c->genome.g[GENE_FRUIT], s);
+    c->energy += gain;
+    creature_ate(c, gain, 1.0f);
+    if (c->gut_ticks == 0) {
+        plant_make_seed(&c->gut_seed, plant, r, s);
+        c->gut_ticks = plant_gut_ticks(&c->gut_seed, s);
+    }
+}
+
+/* One tick of carrying a seed. On the last one it drops where the creature
+ * stands, which sprouts only if that soil is bare. */
+static void carry_seed(World *w, Creature *c, const Settings *s)
+{
+    if (c->gut_ticks == 0) {
+        return;
+    }
+    c->gut_ticks--;
+    if (c->gut_ticks == 0) {
+        plant_sow(w, world_idx(w, c->x, c->y), &c->gut_seed, s->plant_dung_start);
+    }
+}
+
 bool creature_is_hunter(const Creature *c)
 {
-    return c->genome.g[GENE_MEAT] > c->genome.g[GENE_PLANT];
+    /* Against whichever plant food it digests better. */
+    float leaf = c->genome.g[GENE_LEAF];
+    float fruit = c->genome.g[GENE_FRUIT];
+    return c->genome.g[GENE_MEAT] > (leaf > fruit ? leaf : fruit);
 }
 
 bool creature_counts_as_plant_eater(const Creature *c, const Settings *s)
@@ -587,7 +639,8 @@ bool creature_counts_as_plant_eater(const Creature *c, const Settings *s)
  *
  * Food on a cell holding a creature is covered by it and is not eaten.
  * Among the free cells, the bite takes the food (plants or carrion) that
- * gives this creature the most energy, carrion first on a tie; a bite
+ * gives this creature the most energy, carrion first on a tie, and on one
+ * plant fruit before leaves on a tie, since fruit costs the plant nothing; a bite
  * that would gain nothing does nothing. Hurting anyone takes ACT_ATTACK. */
 BiteChoice creature_bite_choice(const World *w, const Pool *p, int idx,
                                 const Settings *s)
@@ -595,6 +648,7 @@ BiteChoice creature_bite_choice(const World *w, const Pool *p, int idx,
     const Creature *c = &p->items[idx];
     int food_cell = -1;
     bool food_is_carrion = false;
+    bool food_is_fruit = false;
     float best_gain = 0.0f;
 
     /* AROUND_ is clockwise from north, two steps per heading. */
@@ -611,28 +665,34 @@ BiteChoice creature_bite_choice(const World *w, const Pool *p, int idx,
                 best_gain = gain;
                 food_cell = cell;
                 food_is_carrion = true;
+                food_is_fruit = false;
             }
         }
         if (w->veg[cell] > 0) {
-            float gain = (float)plant_take(w, cell, c, s) *
-                         plant_gain(c, w->veg_rule[cell], s);
+            float leaves = (float)plant_take(w, cell, c, s) *
+                           leaf_gain(c, &w->plant[cell], s);
+            float fruit = (float)fruit_take(w, cell, c, s) * s->bite_fruit_energy *
+                          digest_eff(c->genome.g[GENE_FRUIT], s);
+            float gain = fruit >= leaves ? fruit : leaves;
             if (gain > best_gain) {
                 best_gain = gain;
                 food_cell = cell;
                 food_is_carrion = false;
+                food_is_fruit = fruit >= leaves;
             }
         }
     }
 
-    BiteChoice choice = {BITE_NOTHING, -1};
+    BiteChoice choice = {BITE_NOTHING, -1, false};
     if (food_cell >= 0) {
+        choice.fruit = food_is_fruit;
         choice.kind = food_is_carrion ? BITE_CARRION : BITE_PLANT;
         choice.cell = food_cell;
     }
     return choice;
 }
 
-static void act_bite(World *w, Pool *p, int idx, const Settings *s)
+static void act_bite(World *w, Pool *p, int idx, const Settings *s, Rng *r)
 {
     Creature *c = &p->items[idx];
     BiteChoice choice = creature_bite_choice(w, p, idx, s);
@@ -641,7 +701,11 @@ static void act_bite(World *w, Pool *p, int idx, const Settings *s)
         eat_carrion(w, c, choice.cell, s);
         break;
     case BITE_PLANT:
-        eat_plant(w, c, choice.cell, s);
+        if (choice.fruit) {
+            eat_fruit(w, c, choice.cell, s, r);
+        } else {
+            eat_leaves(w, c, choice.cell, s);
+        }
         break;
     default:
         /* Nothing in reach: the effort is wasted, and it is paid for. */
@@ -808,6 +872,7 @@ int creature_act(World *w, Pool *p, int idx, Action a, const Settings *s,
                  Rng *r)
 {
     Creature *c = &p->items[idx];
+    carry_seed(w, c, s);
     /* Move points build up every tick, whatever the action, but never
      * past 1: a creature cannot save up for a burst of moves. */
     c->move_points += creature_speed(c, s);
@@ -837,7 +902,7 @@ int creature_act(World *w, Pool *p, int idx, Action a, const Settings *s,
         act_move(w, c, idx, s);
         break;
     case ACT_BITE:
-        act_bite(w, p, idx, s);
+        act_bite(w, p, idx, s, r);
         break;
     case ACT_ATTACK:
         act_attack(w, p, idx, s, r);

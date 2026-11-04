@@ -503,14 +503,12 @@ static void describe_cell(Lines *l, const Sim *s, const Inspect *in)
         add_float(l, "water", w->water[i], 2);
         add_count(l, "plants", w->veg[i]);
         if (w->veg[i] > 0) {
-            /* The cell's rule, unpacked: e.g. "3-4 / 3" for born with 3
-             * or 4 planted neighbours, grows with at most 3. */
-            char rule_text[24];
-            snprintf(rule_text, sizeof(rule_text), "%d-%d / %d",
-                     veg_rule_birth_lo(w->veg_rule[i]),
-                     veg_rule_birth_hi(w->veg_rule[i]),
-                     veg_rule_crowd_max(w->veg_rule[i]));
-            add_pair(l, "rule", rule_text);
+            const Plant *plant = &w->plant[i];
+            add_float(l, "plant energy", plant->energy, 1);
+            add_float(l, "fruit", plant->fruit, 1);
+            add_float(l, "fruit share", plant->fruit_share, 2);
+            add_float(l, "water need", plant->water_need, 2);
+            add_float(l, "best temp", plant->temp_pref, 2);
         }
         if (w->carrion[i] > 0.0f) {
             add_float(l, "carrion", w->carrion[i], 1);
@@ -539,7 +537,8 @@ static void describe_creature(Lines *l, const Sim *s, const Creature *c)
     add_float(l, "size", creature_size(c, set), 2);
     add_float(l, "speed", creature_speed(c, set), 2);
     add_count(l, "sight", creature_sight(c, set));
-    add_float(l, "plant gene", c->genome.g[GENE_PLANT], 2);
+    add_float(l, "leaf gene", c->genome.g[GENE_LEAF], 2);
+    add_float(l, "fruit gene", c->genome.g[GENE_FRUIT], 2);
     add_float(l, "meat gene", c->genome.g[GENE_MEAT], 2);
     add_float(l, "ageing gene", c->genome.g[GENE_AGEING], 2);
     add_float(l, "armour gene", c->genome.g[GENE_ARMOUR], 2);

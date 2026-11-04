@@ -40,9 +40,10 @@
  * then crowding costs energy, and one more gene, territory, drives attacks; then
  * attacks spare similar colours; then the climate: rain, soil water, temperature
  * and shallows in the fingerprint, with plants and creatures unchanged (shown by
- * balance_report giving the same bytes before and after).
+ * balance_report giving the same bytes before and after); then living plants:
+ * each with its energy, fruit and genes, and two digestion genes for plants.
  */
-#define SEED_7_AFTER_500 0xc8ffd26e75abb363ULL
+#define SEED_7_AFTER_500 0xcf5d2ba0ceec63f4ULL
 
 static void test_same_seed_same_checksum(void)
 {
@@ -215,6 +216,30 @@ static void test_founders_scale_with_soil(void)
  * nowhere: with the old rule they died out on 3 of 5 seeds within 2,000 ticks,
  * leaving no food for anyone. Also, starting plants must not all be one age,
  * or they would all wither together. */
+/* Every plant gone: the world keeps stepping, nothing grows from nothing, and
+ * the animals follow to game over. */
+static void test_all_plants_dead_is_allowed(void)
+{
+    Settings set = settings_default();
+    Sim s;
+    CHECK(sim_init(&s, &set, 1, 64, 32));
+    int n = s.world.w * s.world.h;
+    for (int i = 0; i < n; i++) {
+        s.world.veg[i] = 0;
+    }
+    int regrown = 0;
+    for (int t = 0; t < 60000 && !sim_is_over(&s); t++) {
+        sim_step(&s);
+        /* Seeds in guts cannot exist either: nobody could have eaten fruit. */
+        for (int i = 0; i < n; i++) {
+            regrown += s.world.veg[i] > 0;
+        }
+    }
+    CHECK(regrown == 0);
+    CHECK(sim_is_over(&s));
+    sim_free(&s);
+}
+
 static void test_plants_alone_survive(void)
 {
     Settings set = settings_default();
@@ -434,6 +459,7 @@ int main(void)
     test_empty_world_steps_safely();
     test_founders_scale_with_soil();
     test_plants_alone_survive();
+    test_all_plants_dead_is_allowed();
     test_season_calendar();
     test_sim_follows_the_season();
     TEST_SUMMARY();

@@ -8,44 +8,51 @@
 #include "settings.h"
 #include "world.h"
 
-/* A world of all soil with fertility 1, and no vegetation. */
+/* A world of all soil with fertility 1, full water, a middling temperature, and
+ * no vegetation. */
 static void make_world(World *w, int width, int height)
 {
     CHECK(world_init(w, width, height));
     for (int i = 0; i < width * height; i++) {
         w->terrain[i] = TERRAIN_SOIL;
         w->fertility[i] = 1.0f;
+        w->water[i] = 1.0f;
+        w->temperature[i] = 0.5f;
     }
 }
 
-/* Default settings with the starting rule's numbers replaced, and no
- * seeding from nothing and no mutation, so every change in these tests
- * comes from the rule itself. The rule must also be laid on the cells:
- * see rule_everywhere. */
-static Settings rule(int birth_lo, int birth_hi, int crowd_max)
+/* A plant that suits make_world's soil perfectly, with plenty stored. */
+static Plant healthy_plant(void)
+{
+    return (Plant){.energy = 10.0f, .water_need = 0.5f, .temp_pref = 0.5f};
+}
+
+/* Default settings with the plants' life taken out of the way: no mutation, no
+ * cost for anything, and sprouting and growth certain whenever they are allowed,
+ * so every change in these tests comes from the one rule each is about. */
+static Settings rules(void)
 {
     Settings s = settings_default();
-    s.veg_birth_lo = birth_lo;
-    s.veg_birth_hi = birth_hi;
-    s.veg_crowd_max = crowd_max;
-    s.veg_mutation = 0.0f;
-    s.veg_vigour_ageing = 0.0f; /* every rule matures at veg_mature_age */
-    /* Out of reach: these tests are about the neighbour rule alone. */
+    s.plant_mutation = 0.0f;
+    s.plant_upkeep = 0.0f;
+    s.plant_seed_cost = 0.0f;
+    s.plant_grow_cost = 0.0f;
+    s.plant_fruit_rate = 0.0f;
+    s.plant_fruit_near = 1.0f;
+    /* Out of reach: these tests are about one rule alone. */
     s.veg_capacity = 1000.0f;
     s.veg_wither_chance = 0.0f; /* plants never wither */
-    /* Sprouting and growth always happen when the rule allows them. */
     s.veg_sprout_rate = 1.0f;
     s.veg_grow_chance = 1.0f;
     return s;
 }
 
-/* Every cell carries the starting rule of s: what flora_step reads for
- * a planted cell, and what an empty cell inherits from its neighbours. */
-static void rule_everywhere(World *w, const Settings *s)
+/* Every cell holds a healthy plant's numbers, ready for veg to switch it on. */
+static void plants_everywhere(World *w)
 {
-    uint8_t packed =
-        veg_rule_pack(s->veg_birth_lo, s->veg_birth_hi, s->veg_crowd_max);
-    memset(w->veg_rule, packed, (size_t)(w->w * w->h));
+    for (int i = 0; i < w->w * w->h; i++) {
+        w->plant[i] = healthy_plant();
+    }
 }
 
 static uint8_t veg_at(const World *w, int x, int y)
@@ -53,41 +60,12 @@ static uint8_t veg_at(const World *w, int x, int y)
     return w->veg[world_idx(w, x, y)];
 }
 
-static void test_line_of_three(void)
-{
-    World w;
-    make_world(&w, 9, 9);
-    Settings s = rule(3, 3, 3);
-    rule_everywhere(&w, &s);
-    Rng r;
-    rng_seed(&r, 1);
-    w.veg[world_idx(&w, 4, 3)] = 1;
-    w.veg[world_idx(&w, 4, 4)] = 1;
-    w.veg[world_idx(&w, 4, 5)] = 1;
-
-    flora_step(&w, &r, &s);
-
-    /* The middle's two side cells have 3 planted neighbours: they sprout
-     * (fertility 1 makes it certain). */
-    CHECK(veg_at(&w, 3, 4) == 1);
-    CHECK(veg_at(&w, 5, 4) == 1);
-    /* The original three have 1 or 2 neighbours, within the crowd limit:
-     * they grow. */
-    CHECK(veg_at(&w, 4, 3) == 2);
-    CHECK(veg_at(&w, 4, 4) == 2);
-    CHECK(veg_at(&w, 4, 5) == 2);
-    /* Beside the ends there are only 2 neighbours: nothing sprouts. */
-    CHECK(veg_at(&w, 3, 3) == 0);
-    CHECK(veg_at(&w, 4, 2) == 0);
-    world_free(&w);
-}
-
 static void test_lone_cell_grows_to_max(void)
 {
     World w;
     make_world(&w, 7, 7);
-    Settings s = rule(3, 3, 3);
-    rule_everywhere(&w, &s);
+    Settings s = rules();
+    plants_everywhere(&w);
     Rng r;
     rng_seed(&r, 2);
     w.veg[world_idx(&w, 3, 3)] = 1;
@@ -102,37 +80,12 @@ static void test_lone_cell_grows_to_max(void)
     world_free(&w);
 }
 
-static void test_crowded_cell_shrinks(void)
-{
-    World w;
-    make_world(&w, 9, 9);
-    /* Birth range 4..4: no cell around the block has exactly four
-     * planted neighbours (at most three), so nothing sprouts there. */
-    Settings s = rule(4, 4, 3);
-    rule_everywhere(&w, &s);
-    Rng r;
-    rng_seed(&r, 3);
-    for (int dy = -1; dy <= 1; dy++) {
-        for (int dx = -1; dx <= 1; dx++) {
-            w.veg[world_idx(&w, 4 + dx, 4 + dy)] = VEG_MAX;
-        }
-    }
-    /* The centre has 8 planted neighbours. The ring cells themselves
-     * have 3 or 5 and change too, but stay planted for these steps, so
-     * the centre keeps seeing 8. */
-    for (int expected = VEG_MAX - 1; expected >= VEG_MAX - 3; expected--) {
-        flora_step(&w, &r, &s);
-        CHECK(veg_at(&w, 4, 4) == expected);
-    }
-    world_free(&w);
-}
-
 static void test_water_and_rock_stay_bare(void)
 {
     World w;
     make_world(&w, 9, 9);
-    Settings s = rule(1, 4, 7);
-    rule_everywhere(&w, &s);
+    Settings s = rules();
+    plants_everywhere(&w);
     Rng r;
     rng_seed(&r, 4);
     int water = world_idx(&w, 2, 2);
@@ -155,8 +108,8 @@ static void test_barren_world_stays_empty(void)
 {
     World w;
     make_world(&w, 16, 16);
-    Settings s = rule(3, 3, 3);
-    rule_everywhere(&w, &s);
+    Settings s = rules();
+    plants_everywhere(&w);
     Rng r;
     rng_seed(&r, 5);
     for (int i = 0; i < w.w * w.h; i++) {
@@ -217,10 +170,10 @@ static void test_capacity_blocks_sprouting(void)
      * capacity 20 * fertility 1 leaves no room (m must stay below it). */
     World w;
     make_world(&w, 11, 11);
-    Settings s = rule(1, 4, 7);
+    Settings s = rules();
     s.veg_reach = 2;
     s.veg_capacity = 20.0f;
-    rule_everywhere(&w, &s);
+    plants_everywhere(&w);
     Rng r;
     rng_seed(&r, 6);
     ring(&w, 5, 5, 2, 1);
@@ -231,7 +184,7 @@ static void test_capacity_blocks_sprouting(void)
     /* Same neighbourhood with room to spare: it sprouts. */
     world_free(&w);
     make_world(&w, 11, 11);
-    rule_everywhere(&w, &s);
+    plants_everywhere(&w);
     s.veg_capacity = 30.0f;
     ring(&w, 5, 5, 2, 1);
     clear_corners(&w, 5, 5);
@@ -245,14 +198,14 @@ static void test_planted_cells_cap(void)
     /* Eight planted cells around (5, 5). With birth range 1..4 the cells
      * around the ring (1 to 3 planted neighbours each) would sprout. */
     World w;
-    Settings s = rule(1, 4, 7);
+    Settings s = rules();
     Rng r;
     rng_seed(&r, 6);
 
     /* A cap of 8 is already reached: nothing sprouts, and the eight
      * plants stay. */
     make_world(&w, 11, 11);
-    rule_everywhere(&w, &s);
+    plants_everywhere(&w);
     s.veg_max_cells = 8;
     ring(&w, 5, 5, 1, 1);
     flora_step(&w, &r, &s);
@@ -262,7 +215,7 @@ static void test_planted_cells_cap(void)
     /* A cap of 9 is not reached at the start of the tick, so sprouting
      * goes ahead; the count is taken once per tick, so it can overshoot. */
     make_world(&w, 11, 11);
-    rule_everywhere(&w, &s);
+    plants_everywhere(&w);
     s.veg_max_cells = 9;
     ring(&w, 5, 5, 1, 1);
     flora_step(&w, &r, &s);
@@ -271,7 +224,7 @@ static void test_planted_cells_cap(void)
 
     /* 0 means no cap. */
     make_world(&w, 11, 11);
-    rule_everywhere(&w, &s);
+    plants_everywhere(&w);
     s.veg_max_cells = 0;
     ring(&w, 5, 5, 1, 1);
     flora_step(&w, &r, &s);
@@ -286,10 +239,10 @@ static void test_capacity_scales_with_fertility(void)
      * The neighbourhood fertility does not matter, only the cell's own. */
     World w;
     make_world(&w, 11, 11);
-    Settings s = rule(1, 4, 7);
+    Settings s = rules();
     s.veg_reach = 2;
     s.veg_capacity = 40.0f;
-    rule_everywhere(&w, &s);
+    plants_everywhere(&w);
     Rng r;
     rng_seed(&r, 7);
     ring(&w, 5, 5, 2, 1);
@@ -318,10 +271,10 @@ static void test_over_capacity_shrinks(void)
      * it thins by one per step instead of growing. */
     World w;
     make_world(&w, 11, 11);
-    Settings s = rule(4, 4, 7);
+    Settings s = rules();
     s.veg_reach = 2;
     s.veg_capacity = 30.0f;
-    rule_everywhere(&w, &s);
+    plants_everywhere(&w);
     Rng r;
     rng_seed(&r, 8);
     ring(&w, 5, 5, 2, 2);
@@ -339,9 +292,9 @@ static void test_tiny_world_is_safe(void)
      * memory checker stops the test with a heap-buffer-overflow report. */
     World w;
     make_world(&w, 2, 2);
-    Settings s = rule(1, 4, 7);
+    Settings s = rules();
     s.veg_reach = 3;
-    rule_everywhere(&w, &s);
+    plants_everywhere(&w);
     Rng r;
     rng_seed(&r, 9);
     w.veg[0] = 1;
@@ -359,11 +312,11 @@ static void test_plant_withers_then_disappears(void)
      * planted neighbour each, outside the birth range 4..4. */
     World w;
     make_world(&w, 7, 7);
-    Settings s = rule(4, 4, 7);
+    Settings s = rules();
     s.veg_mature_age = 2;
     s.veg_wither_chance = 1.0f;
     s.veg_wither_ticks = 3;
-    rule_everywhere(&w, &s);
+    plants_everywhere(&w);
     Rng r;
     rng_seed(&r, 10);
     int i = world_idx(&w, 3, 3);
@@ -385,9 +338,9 @@ static void test_no_wither_chance_lives_on(void)
 {
     World w;
     make_world(&w, 7, 7);
-    Settings s = rule(4, 4, 7);
+    Settings s = rules();
     s.veg_mature_age = 1;
-    rule_everywhere(&w, &s);
+    plants_everywhere(&w);
     Rng r;
     rng_seed(&r, 11);
     int i = world_idx(&w, 3, 3);
@@ -406,8 +359,8 @@ static void test_sprout_starts_young(void)
      * that grew there before left its numbers behind. */
     World w;
     make_world(&w, 9, 9);
-    Settings s = rule(3, 3, 3);
-    rule_everywhere(&w, &s);
+    Settings s = rules();
+    plants_everywhere(&w);
     Rng r;
     rng_seed(&r, 12);
     w.veg[world_idx(&w, 4, 3)] = 1;
@@ -431,9 +384,9 @@ static void test_growth_follows_its_chance(void)
      * veg_grow_chance. */
     World w;
     make_world(&w, 64, 64);
-    Settings s = rule(4, 4, 7);
+    Settings s = rules();
     s.veg_grow_chance = 0.25f;
-    rule_everywhere(&w, &s);
+    plants_everywhere(&w);
     Rng r;
     rng_seed(&r, 13);
     for (int y = 0; y < w.h; y++) {
@@ -470,9 +423,9 @@ static void test_sprouting_follows_its_rate(void)
      * sprout in one step. */
     World w;
     make_world(&w, 64, 64);
-    Settings s = rule(4, 4, 7);
+    Settings s = rules();
     s.veg_sprout_rate = 0.25f;
-    rule_everywhere(&w, &s);
+    plants_everywhere(&w);
     Rng r;
     rng_seed(&r, 14);
     for (int y = 0; y < w.h; y++) {
@@ -494,85 +447,56 @@ static void test_sprouting_follows_its_rate(void)
     world_free(&w);
 }
 
-static void test_rule_pack_round_trip(void)
-{
-    /* Every byte with bit 7 clear is a rule. Unpacking it and packing
-     * the three numbers again must give the same byte back, and the
-     * numbers must be inside their documented ranges. */
-    int bad = 0;
-    for (int b = 0; b <= (int)VEG_RULE_USED_MASK; b++) {
-        uint8_t rule_byte = (uint8_t)b;
-        int lo = veg_rule_birth_lo(rule_byte);
-        int hi = veg_rule_birth_hi(rule_byte);
-        int crowd = veg_rule_crowd_max(rule_byte);
-        if (lo < 1 || lo > 4 || hi < lo || hi > lo + 3 || crowd < 0 ||
-            crowd > 7 || veg_rule_pack(lo, hi, crowd) != rule_byte) {
-            bad++;
-        }
-    }
-    CHECK(bad == 0);
-    /* The lesson 4 defaults: born with 3 or 4 neighbours, crowd limit 3.
-     * Low 3 is stored as 2 (binary 10), width 1 (01), crowd 3 (011):
-     * 0 011 01 10 is 0x36. */
-    CHECK(veg_rule_pack(3, 4, 3) == 0x36);
-    /* Out of range values are clamped, not wrapped into other bits. */
-    CHECK(veg_rule_pack(0, 9, 9) == veg_rule_pack(1, 4, 7));
-    CHECK(veg_rule_pack(9, 2, -1) == veg_rule_pack(4, 4, 0));
-}
-
-/* Three plants in a column at (4, 3), (4, 4), (4, 5) carrying the given
- * rules; the cells beside the middle one, (3, 4) and (5, 4), have three
+/* Three plants in a column at (4, 3), (4, 4), (4, 5), told apart by their
+ * fruit_share; the cells beside the middle one, (3, 4) and (5, 4), have three
  * planted neighbours. */
-static void column_of_three(World *w, uint8_t top, uint8_t middle,
-                            uint8_t bottom)
+static void column_of_three(World *w, float top, float middle, float bottom)
 {
     int a = world_idx(w, 4, 3), b = world_idx(w, 4, 4), c = world_idx(w, 4, 5);
     w->veg[a] = w->veg[b] = w->veg[c] = 1;
-    w->veg_rule[a] = top;
-    w->veg_rule[b] = middle;
-    w->veg_rule[c] = bottom;
+    w->plant[a].fruit_share = top;
+    w->plant[b].fruit_share = middle;
+    w->plant[c].fruit_share = bottom;
 }
 
 static void test_sprout_copies_its_parent(void)
 {
-    /* All three neighbours carry rule R (born with 3, crowd limit 5,
-     * unlike the default): with no mutation, the sprouts beside the
-     * middle carry R too. */
     World w;
     make_world(&w, 9, 9);
-    Settings s = rule(3, 3, 3);
-    uint8_t parent_rule = veg_rule_pack(3, 3, 5);
+    Settings s = rules();
+    plants_everywhere(&w);
     Rng r;
     rng_seed(&r, 15);
-    column_of_three(&w, parent_rule, parent_rule, parent_rule);
+    column_of_three(&w, 0.25f, 0.25f, 0.25f);
     flora_step(&w, &r, &s);
     CHECK(veg_at(&w, 3, 4) == 1 && veg_at(&w, 5, 4) == 1);
-    CHECK(w.veg_rule[world_idx(&w, 3, 4)] == parent_rule);
-    CHECK(w.veg_rule[world_idx(&w, 5, 4)] == parent_rule);
+    CHECK(w.plant[world_idx(&w, 3, 4)].fruit_share == 0.25f);
+    CHECK(w.plant[world_idx(&w, 5, 4)].fruit_share == 0.25f);
+    /* It starts with the seed's energy, not its parent's. */
+    CHECK(w.plant[world_idx(&w, 3, 4)].energy == s.plant_seed_start);
     world_free(&w);
 }
 
 static void test_sprout_picks_one_neighbour(void)
 {
-    /* Three different rules, all born with exactly 3 neighbours. Over
-     * many tries, each sprout copies one of the three, and each of the
-     * three is picked sometimes. */
-    uint8_t rules[3] = {veg_rule_pack(3, 3, 1), veg_rule_pack(3, 3, 4),
-                        veg_rule_pack(3, 6, 7)};
+    /* Three different plants: over many tries, each sprout copies one of the
+     * three, and each of the three is picked sometimes. */
+    float shares[3] = {0.1f, 0.5f, 0.9f};
     int picked[3] = {0, 0, 0};
     int foreign = 0;
-    Settings s = rule(3, 3, 3);
+    Settings s = rules();
     Rng r;
     rng_seed(&r, 16);
     for (int attempt = 0; attempt < 60; attempt++) {
         World w;
         make_world(&w, 9, 9);
-        column_of_three(&w, rules[0], rules[1], rules[2]);
+        plants_everywhere(&w);
+        column_of_three(&w, shares[0], shares[1], shares[2]);
         flora_step(&w, &r, &s);
-        uint8_t got = w.veg_rule[world_idx(&w, 3, 4)];
+        float got = w.plant[world_idx(&w, 3, 4)].fruit_share;
         int known = 0;
         for (int k = 0; k < 3; k++) {
-            if (got == rules[k]) {
+            if (got == shares[k]) {
                 picked[k]++;
                 known = 1;
             }
@@ -584,46 +508,231 @@ static void test_sprout_picks_one_neighbour(void)
     CHECK(picked[0] > 0 && picked[1] > 0 && picked[2] > 0);
 }
 
-/* How many bits are set in v. */
-static int bits_set(unsigned v)
+/* A seed takes its parent's genes, each moved a little, and stays within 0..1
+ * however often it mutates. Energy and fruit are not inherited. */
+static void test_seed_inherits_and_mutates(void)
 {
-    int count = 0;
-    while (v != 0) {
-        count += (int)(v & 1u);
-        v >>= 1;
-    }
-    return count;
-}
-
-static void test_mutation_flips_one_bit(void)
-{
-    /* With mutation 1, every sprout's rule differs from its parent's in
-     * exactly one of the seven bits in use: XOR keeps the bits that
-     * differ, and exactly one must be set, never bit 7. Across many
-     * sprouts, every one of the seven bits gets flipped at some point. */
-    Settings s = rule(3, 3, 3);
-    s.veg_mutation = 1.0f;
-    uint8_t parent_rule = veg_rule_pack(3, 3, 3);
+    Settings s = settings_default();
     Rng r;
     rng_seed(&r, 17);
-    int wrong = 0;
-    unsigned flipped = 0;
-    for (int attempt = 0; attempt < 100; attempt++) {
-        World w;
-        make_world(&w, 9, 9);
-        column_of_three(&w, parent_rule, parent_rule, parent_rule);
-        flora_step(&w, &r, &s);
-        unsigned diff =
-            (unsigned)(w.veg_rule[world_idx(&w, 3, 4)] ^ parent_rule);
-        if (veg_at(&w, 3, 4) != 1 || bits_set(diff) != 1 ||
-            (diff & ~VEG_RULE_USED_MASK) != 0) {
-            wrong++;
-        }
-        flipped |= diff;
-        world_free(&w);
+    Plant parent = {.energy = 9.0f, .fruit = 2.0f, .fruit_share = 0.5f,
+                    .water_need = 0.25f, .temp_pref = 0.75f, .gut_time = 0.5f};
+    Plant seed;
+    s.plant_mutation = 0.0f;
+    plant_make_seed(&seed, &parent, &r, &s);
+    CHECK(seed.fruit_share == 0.5f && seed.water_need == 0.25f);
+    CHECK(seed.temp_pref == 0.75f && seed.gut_time == 0.5f);
+    CHECK(seed.energy == 0.0f && seed.fruit == 0.0f);
+
+    s.plant_mutation = 1.0f;
+    s.plant_mutation_spread = 0.5f;
+    int outside = 0;
+    int moved = 0;
+    for (int i = 0; i < 1000; i++) {
+        plant_make_seed(&seed, &parent, &r, &s);
+        outside += seed.fruit_share < 0.0f || seed.fruit_share > 1.0f;
+        outside += seed.water_need < 0.0f || seed.water_need > 1.0f;
+        outside += seed.temp_pref < 0.0f || seed.temp_pref > 1.0f;
+        outside += seed.gut_time < 0.0f || seed.gut_time > 1.0f;
+        moved += seed.water_need != parent.water_need;
     }
-    CHECK(wrong == 0);
-    CHECK(flipped == VEG_RULE_USED_MASK);
+    CHECK(outside == 0);
+    CHECK(moved > 900);
+}
+
+/* Too dry or too cold: no seed, whatever its energy. The same plant seeds at
+ * once where it fits. */
+static void test_plant_needs_energy_and_climate(void)
+{
+    Settings s = rules();
+    Rng r;
+    rng_seed(&r, 18);
+    int side;
+    World w;
+
+    /* Everything right: it seeds. */
+    make_world(&w, 9, 9);
+    plants_everywhere(&w);
+    side = world_idx(&w, 3, 4);
+    w.veg[world_idx(&w, 4, 4)] = 1;
+    flora_step(&w, &r, &s);
+    CHECK(w.veg[side] == 1);
+    world_free(&w);
+
+    /* Too dry: soil water 0 gives a fit of 0. */
+    make_world(&w, 9, 9);
+    plants_everywhere(&w);
+    w.veg[world_idx(&w, 4, 4)] = 1;
+    w.water[world_idx(&w, 4, 4)] = 0.0f;
+    flora_step(&w, &r, &s);
+    CHECK(w.veg[side] == 0);
+    world_free(&w);
+
+    /* Too cold: far below the temperature it prefers. */
+    make_world(&w, 9, 9);
+    plants_everywhere(&w);
+    w.veg[world_idx(&w, 4, 4)] = 1;
+    w.temperature[world_idx(&w, 4, 4)] = 0.0f;
+    flora_step(&w, &r, &s);
+    CHECK(w.veg[side] == 0);
+    world_free(&w);
+
+    /* Fits, but too little energy stored: still no seed. */
+    make_world(&w, 9, 9);
+    plants_everywhere(&w);
+    w.veg[world_idx(&w, 4, 4)] = 1;
+    w.plant[world_idx(&w, 4, 4)].energy = s.plant_seed_energy * 0.5f;
+    flora_step(&w, &r, &s);
+    CHECK(w.veg[side] == 0);
+    world_free(&w);
+}
+
+/* Fit: full where it suits, zero on dust, falling with distance from the
+ * temperature it prefers, and thirsty plants need wetter soil. */
+static void test_plant_fit(void)
+{
+    Settings s = settings_default();
+    Plant thirsty = {.water_need = 1.0f, .temp_pref = 0.5f};
+    Plant hardy = {.water_need = 0.0f, .temp_pref = 0.5f};
+    CHECK(plant_fit(&thirsty, 1.0f, 0.5f, &s) == 1.0f);
+    CHECK(plant_fit(&thirsty, 0.0f, 0.5f, &s) == 0.0f);
+    CHECK(plant_fit(&hardy, 0.0f, 0.5f, &s) == 0.0f);
+    CHECK(plant_fit(&hardy, 0.3f, 0.5f, &s) == 1.0f);
+    CHECK(plant_fit(&thirsty, 0.3f, 0.5f, &s) < 0.5f);
+    CHECK(plant_fit(&thirsty, 1.0f, 0.5f + s.plant_temp_width, &s) == 0.0f);
+    CHECK(plant_fit(&thirsty, 1.0f, 0.6f, &s) < 1.0f);
+}
+
+/* Soil too dry for a plant drains it until it withers and goes. */
+static void test_plant_starves_where_dry(void)
+{
+    Settings s = settings_default();
+    s.veg_wither_chance = 0.0f;
+    World w;
+    make_world(&w, 9, 9);
+    int cell = world_idx(&w, 4, 4);
+    w.veg[cell] = 1;
+    w.plant[cell] = (Plant){.energy = 1.0f, .temp_pref = 0.5f};
+    w.water[cell] = 0.0f;
+    Rng r;
+    rng_seed(&r, 19);
+    /* energy / upkeep ticks to run out, then withering. */
+    int ticks = (int)(1.0f / s.plant_upkeep) + s.veg_wither_ticks + 5;
+    for (int t = 0; t < ticks; t++) {
+        flora_step(&w, &r, &s);
+    }
+    CHECK(w.veg[cell] == 0);
+    world_free(&w);
+}
+
+/* Only a plant offering fruit makes any, it pays for it, and it stops at the
+ * most one plant can hold. */
+static void test_fruit_costs_the_tree(void)
+{
+    Settings s = rules();
+    s.veg_grow_chance = 0.0f;
+    s.veg_sprout_rate = 0.0f;
+    s.plant_gain = 0.0f; /* so the only change in energy is the fruit */
+    s.plant_fruit_rate = 0.5f;
+    s.plant_fruit_cost = 2.0f;
+    s.plant_fruit_max = 2.0f;
+    World w;
+    make_world(&w, 9, 9);
+    int tree = world_idx(&w, 2, 2), bush = world_idx(&w, 6, 6);
+    w.veg[tree] = w.veg[bush] = 1;
+    w.plant[tree] = healthy_plant();
+    w.plant[bush] = healthy_plant();
+    w.plant[tree].fruit_share = 1.0f;
+    w.plant[bush].fruit_share = 0.0f;
+    float before = w.plant[tree].energy;
+    Rng r;
+    rng_seed(&r, 20);
+    flora_step(&w, &r, &s);
+    CHECK(fabsf(w.plant[tree].fruit - 0.5f) < 1e-5f);
+    CHECK(fabsf(w.plant[tree].energy - (before - 1.0f)) < 1e-5f);
+    CHECK(w.plant[bush].fruit == 0.0f);
+    CHECK(w.plant[bush].energy == before);
+    for (int t = 0; t < 10; t++) {
+        flora_step(&w, &r, &s);
+    }
+    CHECK(w.plant[tree].fruit <= 2.5f); /* the last step may overshoot once */
+    float settled = w.plant[tree].energy;
+    flora_step(&w, &r, &s);
+    CHECK(w.plant[tree].energy == settled);
+    world_free(&w);
+}
+
+/* Spec section 12: an area that stops getting rain loses its plants, and when
+ * rain returns they come back from its edges. The water layer is set by hand;
+ * test_climate already shows rain drying and wetting it. */
+static void test_desert_and_back(void)
+{
+    World w;
+    make_world(&w, 60, 12);
+    Settings s = settings_default();
+    s.plant_mutation = 0.0f;
+    s.veg_capacity = 40.0f;
+    s.veg_sprout_rate = 0.2f;
+    plants_everywhere(&w);
+    for (int i = 0; i < 60 * 12; i++) {
+        w.veg[i] = 1;
+    }
+    Rng r;
+    rng_seed(&r, 21);
+    /* The middle of the strip dries out; columns 0..9 and 50..59 stay wet. */
+    for (int y = 0; y < 12; y++) {
+        for (int x = 10; x < 50; x++) {
+            w.water[world_idx(&w, x, y)] = 0.0f;
+        }
+    }
+    for (int t = 0; t < 2000; t++) {
+        flora_step(&w, &r, &s);
+    }
+    int dry_planted = 0;
+    int wet_planted = 0;
+    for (int y = 0; y < 12; y++) {
+        for (int x = 0; x < 60; x++) {
+            bool dry = x >= 10 && x < 50;
+            /* A sprout on the dry edge comes from the wet side and is dying,
+             * so only the desert's inside has to be empty. */
+            dry_planted += x >= 15 && x < 45 && w.veg[world_idx(&w, x, y)] > 0;
+            wet_planted += !dry && w.veg[world_idx(&w, x, y)] > 0;
+        }
+    }
+    CHECK(dry_planted == 0);
+    CHECK(wet_planted > 0);
+
+    /* Rain returns. Soon after, the plants nearest the edge are back, and the
+     * middle still is not; given time, the middle is planted too. */
+    for (int y = 0; y < 12; y++) {
+        for (int x = 10; x < 50; x++) {
+            w.water[world_idx(&w, x, y)] = 1.0f;
+        }
+    }
+    int near_edge = 0;
+    int middle = 0;
+    for (int t = 0; t < 40; t++) {
+        flora_step(&w, &r, &s);
+    }
+    for (int y = 0; y < 12; y++) {
+        for (int x = 15; x < 45; x++) {
+            bool centre = x >= 25 && x < 35;
+            middle += centre && w.veg[world_idx(&w, x, y)] > 0;
+            near_edge += x < 20 && w.veg[world_idx(&w, x, y)] > 0;
+        }
+    }
+    CHECK(near_edge > middle);
+    for (int t = 0; t < 3000; t++) {
+        flora_step(&w, &r, &s);
+    }
+    middle = 0;
+    for (int y = 0; y < 12; y++) {
+        for (int x = 25; x < 35; x++) {
+            middle += w.veg[world_idx(&w, x, y)] > 0;
+        }
+    }
+    CHECK(middle > 0);
+    world_free(&w);
 }
 
 /* Bare soil with no plant anywhere stays bare: a plant comes only from a
@@ -632,7 +741,7 @@ static void test_no_sprout_from_nothing(void)
 {
     World w;
     make_world(&w, 16, 16);
-    Settings s = rule(1, 4, 7);
+    Settings s = rules();
     Rng r;
     rng_seed(&r, 18);
     for (int t = 0; t < 10000; t++) {
@@ -643,113 +752,6 @@ static void test_no_sprout_from_nothing(void)
         planted += w.veg[i] > 0;
     }
     CHECK(planted == 0);
-    world_free(&w);
-}
-
-/* A cell with planted neighbours, but too few for its parent's birth range,
- * never sprouts: the old chance of a stray seed is gone there too. */
-static void test_no_sprout_outside_the_rule(void)
-{
-    World w;
-    make_world(&w, 16, 16);
-    Settings s = rule(3, 4, 7);
-    s.veg_grow_chance = 0.0f;
-    rule_everywhere(&w, &s);
-    Rng r;
-    rng_seed(&r, 19);
-    /* One lone plant: every neighbour of it has n = 1, below the range. */
-    w.veg[world_idx(&w, 8, 8)] = 1;
-    for (int t = 0; t < 2000; t++) {
-        flora_step(&w, &r, &s);
-    }
-    int planted = 0;
-    for (int i = 0; i < w.w * w.h; i++) {
-        planted += w.veg[i] > 0;
-    }
-    CHECK(planted == 1);
-    world_free(&w);
-}
-
-static void test_plant_reads_its_own_rule(void)
-{
-    /* Two touching plants, each with one planted neighbour (the other).
-     * The left one's crowd limit is 0, so one neighbour is too many and
-     * it shrinks; the right one's is 7, so it grows. */
-    World w;
-    make_world(&w, 9, 9);
-    Settings s = rule(4, 4, 7);
-    Rng r;
-    rng_seed(&r, 19);
-    int left = world_idx(&w, 3, 4), right = world_idx(&w, 4, 4);
-    w.veg[left] = 2;
-    w.veg[right] = 2;
-    w.veg_rule[left] = veg_rule_pack(4, 4, 0);
-    w.veg_rule[right] = veg_rule_pack(4, 4, 7);
-    flora_step(&w, &r, &s);
-    CHECK(w.veg[left] == 1);
-    CHECK(w.veg[right] == 3);
-    world_free(&w);
-}
-
-static void test_rule_vigour(void)
-{
-    /* The most modest rule is 0, the most aggressive 1, the starting
-     * rule 5 / 13, and every rule lies in between. */
-    CHECK(veg_rule_vigour(veg_rule_pack(4, 4, 0)) == 0.0f);
-    CHECK(veg_rule_vigour(veg_rule_pack(1, 4, 7)) == 1.0f);
-    CHECK(fabsf(veg_rule_vigour(veg_rule_pack(3, 4, 3)) - 5.0f / 13.0f) <
-          1e-6f);
-    int outside = 0;
-    for (int b = 0; b <= (int)VEG_RULE_USED_MASK; b++) {
-        float v = veg_rule_vigour((uint8_t)b);
-        outside += v < 0.0f || v > 1.0f;
-    }
-    CHECK(outside == 0);
-}
-
-static void test_vigorous_plants_die_young(void)
-{
-    /* Mature age 10, ageing cost 0.5, withering certain once mature. A
-     * plant with the most aggressive rule (vigour 1) matures at
-     * 10 * (1 - 0.5) = 5; one with the most modest rule (vigour 0) at
-     * 10. A sprout rate of 0 keeps the cells around them empty, so the
-     * two plants stay alone. */
-    World w;
-    make_world(&w, 16, 16);
-    Settings s = rule(4, 4, 0);
-    s.veg_sprout_rate = 0.0f;
-    s.veg_mature_age = 10;
-    s.veg_wither_chance = 1.0f;
-    s.veg_vigour_ageing = 0.5f;
-    Rng r;
-    rng_seed(&r, 20);
-    int fast = world_idx(&w, 3, 3), slow = world_idx(&w, 11, 11);
-    w.veg[fast] = 1;
-    w.veg[slow] = 1;
-    w.veg_rule[fast] = veg_rule_pack(1, 4, 7);
-    w.veg_rule[slow] = veg_rule_pack(4, 4, 0);
-    for (int step = 0; step < 5; step++) {
-        flora_step(&w, &r, &s);
-    }
-    CHECK(w.veg_wither[fast] == 1); /* started at age 5 */
-    CHECK(w.veg_wither[slow] == 0);
-    for (int step = 0; step < 5; step++) {
-        flora_step(&w, &r, &s);
-    }
-    CHECK(w.veg_wither[slow] == 1); /* started at age 10 */
-
-    /* With the cost off, both mature at 10. */
-    world_free(&w);
-    make_world(&w, 16, 16);
-    s.veg_vigour_ageing = 0.0f;
-    w.veg[fast] = 1;
-    w.veg_rule[fast] = veg_rule_pack(1, 4, 7);
-    for (int step = 0; step < 9; step++) {
-        flora_step(&w, &r, &s);
-    }
-    CHECK(w.veg_wither[fast] == 0);
-    flora_step(&w, &r, &s);
-    CHECK(w.veg_wither[fast] == 1);
     world_free(&w);
 }
 
@@ -832,9 +834,7 @@ static void test_scent_spreads_and_fades(void)
 
 int main(void)
 {
-    test_line_of_three();
     test_lone_cell_grows_to_max();
-    test_crowded_cell_shrinks();
     test_water_and_rock_stay_bare();
     test_barren_world_stays_empty();
     test_capacity_blocks_sprouting();
@@ -847,15 +847,15 @@ int main(void)
     test_sprout_starts_young();
     test_growth_follows_its_chance();
     test_sprouting_follows_its_rate();
-    test_rule_pack_round_trip();
     test_sprout_copies_its_parent();
     test_sprout_picks_one_neighbour();
-    test_mutation_flips_one_bit();
+    test_seed_inherits_and_mutates();
+    test_plant_needs_energy_and_climate();
+    test_plant_fit();
+    test_plant_starves_where_dry();
+    test_fruit_costs_the_tree();
+    test_desert_and_back();
     test_no_sprout_from_nothing();
-    test_no_sprout_outside_the_rule();
-    test_plant_reads_its_own_rule();
-    test_rule_vigour();
-    test_vigorous_plants_die_young();
     test_carrion_merges();
     test_carrion_rots_into_soil();
     test_carrion_disappears();

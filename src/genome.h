@@ -1,6 +1,6 @@
 /*
  * genome: everything a creature inherits, as one flat array of floats.
- * The first GENE_TRAITS values are traits (size, speed, sight, plant and
+ * The first GENE_TRAITS values are traits (size, speed, sight, leaf, fruit and
  * meat digestion, hue, ageing, armour, weapon, growth, territory);
  * the rest are the weights of the creature's neural network. A child takes
  * each part from one of its two parents, with small random changes.
@@ -12,14 +12,15 @@
 #include "settings.h"
 
 /* The traits, as positions in Genome.g. Each is stored in 0..1.
- * GENE_PLANT and GENE_MEAT are how well the creature digests each food;
- * they are separate genes, so one can rise without the other falling,
+ * GENE_LEAF, GENE_FRUIT and GENE_MEAT are how well the creature digests each
+ * food; they are separate genes, so one can rise without the others falling,
  * and an upkeep cost (see Settings) keeps a creature from having both. */
 enum {
     GENE_SIZE,
     GENE_SPEED,
     GENE_SIGHT,
-    GENE_PLANT,
+    GENE_LEAF,
+    GENE_FRUIT,
     GENE_MEAT,
     GENE_HUE,
     GENE_AGEING, /* 0 ages slowly, 1 ages quickly (see Settings) */
