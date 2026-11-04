@@ -38,9 +38,11 @@
  * and three more outputs, and one more random draw per decision; then life costs
  * less, more so at rest, close relatives are not struck, and families can split;
  * then crowding costs energy, and one more gene, territory, drives attacks; then
- * attacks spare similar colours.
+ * attacks spare similar colours; then the climate: rain, soil water, temperature
+ * and shallows in the fingerprint, with plants and creatures unchanged (shown by
+ * balance_report giving the same bytes before and after).
  */
-#define SEED_7_AFTER_500 0x307f29396ee9beb6ULL
+#define SEED_7_AFTER_500 0xc8ffd26e75abb363ULL
 
 static void test_same_seed_same_checksum(void)
 {

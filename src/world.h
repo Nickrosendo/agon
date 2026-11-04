@@ -9,7 +9,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-enum { TERRAIN_WATER, TERRAIN_SOIL, TERRAIN_ROCK };
+/* TERRAIN_WATER is deep. TERRAIN_SHALLOW is the band beside the shore: nobody
+ * can stand on it yet, but it is a region of its own. Appended, so the numbers
+ * of the others do not change. */
+enum { TERRAIN_WATER, TERRAIN_SOIL, TERRAIN_ROCK, TERRAIN_SHALLOW };
 #define VEG_MAX 4
 
 typedef struct {
@@ -23,6 +26,10 @@ typedef struct {
     float *carrion;          /* energy lying on the cell */
     float *carrion_level;    /* food-chain level of that carrion */
     float *scent, *scent_next; /* smell of carrion, spreading from it */
+    float *water;            /* in the soil, 0..1; 0 on anything else */
+    float *temperature;      /* 0 coldest .. 1 hottest, fixed from the start */
+    float *rain;             /* how hard it rains, 0..1, as of the last update */
+    uint64_t rain_seed;      /* the rain's whole future comes from this */
     int32_t *occupant;       /* creature index, or -1 */
 } World;
 

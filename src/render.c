@@ -34,24 +34,21 @@ static int same_colour(Colour a, Colour b)
     return a.r == b.r && a.g == b.g && a.b == b.b;
 }
 
-static Colour cell_colour(const Sim *s, int i)
+/* Whatever lies on the cell, creatures aside. */
+static Colour ground_colour(const Sim *s, int i)
 {
     const World *w = &s->world;
     const Settings *set = &s->set;
-    /* A creature hides whatever is under it. occupant holds its slot in
-     * the pool, so its genome is one lookup away. */
-    if (w->occupant[i] >= 0) {
-        const Creature *c = &s->pool.items[w->occupant[i]];
-        return palette_creature(c->genome.g[GENE_HUE],
-                               render_meat_share(c->level));
-    }
     if (w->terrain[i] == TERRAIN_WATER) {
         return PALETTE_WATER;
+    }
+    if (w->terrain[i] == TERRAIN_SHALLOW) {
+        return PALETTE_SHALLOW;
     }
     if (w->terrain[i] == TERRAIN_ROCK) {
         return PALETTE_ROCK;
     }
-    Colour soil = palette_soil(w->fertility[i]);
+    Colour soil = palette_ground(w->fertility[i], w->water[i]);
     if (w->carrion[i] > 0.0f) {
         /* Carrion covers whatever grows there: from a faint stain to
          * full colour as it approaches several bites' worth, in a few
@@ -75,6 +72,26 @@ static Colour cell_colour(const Sim *s, int i)
     int shade = palette_wither_shade(w->veg_wither[i], set->veg_wither_ticks);
     return palette_mix(plant, PALETTE_WITHERED,
                        (float)shade / (float)PALETTE_WITHER_SHADES);
+}
+
+static Colour cell_colour(const Sim *s, int i)
+{
+    const World *w = &s->world;
+    /* A creature hides whatever is under it. occupant holds its slot in
+     * the pool, so its genome is one lookup away. */
+    if (w->occupant[i] >= 0) {
+        const Creature *c = &s->pool.items[w->occupant[i]];
+        return palette_creature(c->genome.g[GENE_HUE],
+                               render_meat_share(c->level));
+    }
+    Colour ground = ground_colour(s, i);
+    if (w->rain[i] <= 0.0f) {
+        return ground;
+    }
+    /* A terminal cell cannot show falling streaks, so rain is a pale veil, in
+     * two steps: rain changes only now and then, and few steps keep neighbouring
+     * cells the same colour, as elsewhere here. */
+    return palette_mix(ground, PALETTE_RAIN, w->rain[i] < 0.25f ? 0.08f : 0.18f);
 }
 
 static uint64_t pack(Colour top, Colour bottom)

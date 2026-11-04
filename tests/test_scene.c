@@ -358,12 +358,13 @@ static uint64_t hash_canvas(const Canvas *c)
  * The look, pinned, like SEED_7_AFTER_500 in test_sim.c. If this fails, the
  * picture changed: look at it first, and only then update the numbers, saying
  * why in the commit. Symbols are computed with sinf, so another system's maths
- * library may legitimately give other numbers.
+ * library may legitimately give other numbers. Last changed for the climate: the
+ * ground follows its water, shallows along the shore, and rain falls.
  */
 static void test_known_world_pixels(void)
 {
     static const uint64_t EXPECTED[CAMERA_LEVELS] = {
-        0x2ff27f9f210e01a5u, 0x996cbe6d86deb305u, 0x3c4bb518b439632cu, 0x4010a9c43db53ce5u,
+        0x6daa2d8cc5fa844du, 0x276b29f77586ba7du, 0xa0aabf72a1e6a19bu, 0x8dc09a63d15825u,
     };
     Settings set = settings_default();
     Sim s;
@@ -678,11 +679,70 @@ static void test_panel_pick(void)
     CHECK(scene_panel_pick(&l, 10, 100) == PANEL_PICK_NONE);
 }
 
+/* One soil cell's look, at the closest zoom and the furthest. */
+static uint64_t soil_picture(Scene *sc, Sim *s, Canvas *c, Camera *cam, int level,
+                             float water, float rain)
+{
+    for (int i = 0; i < 64 * 64; i++) {
+        s->world.terrain[i] = TERRAIN_SOIL;
+        s->world.fertility[i] = 0.5f;
+        s->world.veg[i] = 0;
+        s->world.carrion[i] = 0.0f;
+        s->world.water[i] = water;
+        s->world.rain[i] = rain;
+    }
+    cam->level = level;
+    s->tick++; /* the ground layer is redrawn only on a new tick */
+    scene_draw_world(sc, c, cam, s, 0.0f, 0, 0, 0, 0);
+    return hash_canvas(c);
+}
+
+static void test_ground_shows_water_and_rain(void)
+{
+    Settings set = settings_default();
+    set.start_share = 0.0f;
+    Sim s;
+    CHECK(sim_init(&s, &set, 1, 64, 64));
+    Scene sc;
+    CHECK(scene_init(&sc, &s));
+    Canvas c;
+    CHECK(canvas_init(&c, VIEW_W, VIEW_H));
+    Camera cam;
+    camera_init(&cam, 64, 64, VIEW_W, VIEW_H);
+    /* At every zoom, so no drawing path forgets one of them. */
+    for (int level = 0; level < CAMERA_LEVELS; level++) {
+        uint64_t dry = soil_picture(&sc, &s, &c, &cam, level, 0.0f, 0.0f);
+        uint64_t wet = soil_picture(&sc, &s, &c, &cam, level, 1.0f, 0.0f);
+        uint64_t rainy = soil_picture(&sc, &s, &c, &cam, level, 1.0f, 1.0f);
+        CHECK(dry != wet);
+        CHECK(rainy != wet);
+    }
+    canvas_free(&c);
+    scene_free(&sc);
+    sim_free(&s);
+}
+
+/* Streaks must move, or rain reads as a stain on the ground. */
+static void test_rain_falls_from_frame_to_frame(void)
+{
+    uint16_t a[16], b[16];
+    tiles_build(a, TILE_RAIN, 0, 0, 16, 0);
+    tiles_build(b, TILE_RAIN, 0, 0, 16, 1);
+    CHECK(memcmp(a, b, sizeof(a)) != 0);
+    int pixels = 0;
+    for (int j = 0; j < 16; j++) {
+        pixels += a[j] != 0;
+    }
+    CHECK(pixels > 0);
+}
+
 int main(void)
 {
     /* Tests register this one themselves: the real program never has it. */
     CHECK(brain_register(&BRAIN_SCRIPT));
     test_drawing_changes_nothing();
+    test_ground_shows_water_and_rain();
+    test_rain_falls_from_frame_to_frame();
     test_empty_view_draws_nothing();
     test_tiny_world_on_black();
     test_fight_draws_a_mark();

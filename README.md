@@ -163,8 +163,12 @@ for the build that wrote them; a build with a different format refuses them.
 
 ## How the world works
 
-1. Cells are water, rock or soil, from noise that wraps around the edges. Soil
-   has a fertility.
+1. Cells are deep water, shallow water, rock or soil, from noise that wraps around
+   the edges. Soil has a fertility. Rain falls in a slowly changing pattern from
+   the world's seed; soil holds water and slowly loses it, turning to pale sand
+   when dry. Temperature and water together give each cell a region: cold, hot and
+   dry, temperate, wet, or shallows. For now these only show on the ground: plants
+   and creatures do not read them yet.
 2. Every plant carries its own rule: how many planted neighbours let an empty
    cell sprout, and how much crowding it tolerates. A sprout copies a planted
    neighbour's rule, sometimes with one bit flipped.

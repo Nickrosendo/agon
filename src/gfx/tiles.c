@@ -180,6 +180,22 @@ static void build_crumbs(uint16_t rows[16], int size, int frame)
     }
 }
 
+/* Short slanted streaks, placed by the variant, falling a step each frame. */
+static void build_rain(uint16_t rows[16], int variant, int size, int frame)
+{
+    int fall = frame * size / TILE_RAIN_FRAMES;
+    int length = size > 8 ? 3 : 2;
+    for (uint32_t k = 0; k < 2u; k++) {
+        int i = (int)(hash3((uint32_t)variant, k, 8u) % (uint32_t)size);
+        int j = (int)(hash3((uint32_t)variant, k, 9u) % (uint32_t)size);
+        for (int d = 0; d < length; d++) {
+            /* Added to size first so that % never sees a negative number, whose
+             * result would keep the minus sign in C. */
+            set_pixel(rows, size, (i - d + size) % size, (j + fall + d) % size);
+        }
+    }
+}
+
 void tiles_build(uint16_t rows[16], int kind, int variant, int detail, int size,
                  int frame)
 {
@@ -194,6 +210,7 @@ void tiles_build(uint16_t rows[16], int kind, int variant, int detail, int size,
     case TILE_CARRION: build_carrion(rows, variant, size); break;
     case TILE_SLASH: build_slash(rows, size, frame); break;
     case TILE_CRUMBS: build_crumbs(rows, size, frame); break;
+    case TILE_RAIN: build_rain(rows, variant, size, frame); break;
     default: break;
     }
 }

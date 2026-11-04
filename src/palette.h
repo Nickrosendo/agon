@@ -19,6 +19,10 @@ typedef struct {
  * definition, and the link would fail.
  */
 extern const Colour PALETTE_WATER;
+extern const Colour PALETTE_SHALLOW;
+extern const Colour PALETTE_RAIN;
+extern const Colour PALETTE_SAND;
+extern const Colour PALETTE_SOIL_WET;
 extern const Colour PALETTE_ROCK;
 extern const Colour PALETTE_SOIL_DRY;
 extern const Colour PALETTE_SOIL_RICH;
@@ -49,6 +53,8 @@ Colour palette_creature(float hue, float meat);
 
 /* Bare soil's colour, from its fertility (0..1), in a few steps. */
 Colour palette_soil(float fertility);
+/* The same soil as its water changes it: sand when dry, darker when soaked. */
+Colour palette_ground(float fertility, float water);
 
 /* How far a withering plant has gone, from 1 (just started) to
  * PALETTE_WITHER_SHADES (about to disappear). */

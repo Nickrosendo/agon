@@ -17,6 +17,21 @@ Settings settings_default(void)
         .noise_scale = 48.0f,
         .noise_octaves = 4,
         .fertility_scale = 24.0f,
+        .shallow_band = 0.05f,
+        .temperature_scale = 80.0f,
+        /* Fine enough for many blobs of rain at once. At 40, a 160 by 80 world
+         * held about 8, and between 11 % and 82 % of the land had rain at the same
+         * moment: a world-wide drought every so often. */
+        .rain_scale = 20.0f,
+        .rain_threshold = 0.5f,
+        .rain_period = 4000,
+        .climate_every = 25,
+        .rain_gain = 0.008f,
+        .water_loss = 0.0005f,
+        .region_cold_below = 0.33f,
+        .region_hot_above = 0.6f,
+        .region_dry_below = 0.25f,
+        .region_wet_above = 0.7f,
         /* A plant can sprout from a single neighbour. With 3 needed, as this
          * was while stray seeds kept arriving, scattered survivors could never
          * reproduce: with no creatures at all, plants died out on 3 of 5 seeds.
@@ -185,6 +200,18 @@ static const SettingInfo TABLE[] = {
     FLOAT_ROW(noise_scale, 1, BIG, "cells between terrain lattice points"),
     INT_ROW(noise_octaves, 1, 16, "layers of terrain noise"),
     FLOAT_ROW(fertility_scale, 1, BIG, "the same, for the fertility field"),
+    FLOAT_ROW(shallow_band, 0, 1, "heights this far below water_level are shallow"),
+    FLOAT_ROW(temperature_scale, 1, BIG, "the same, for the temperature field"),
+    FLOAT_ROW(rain_scale, 1, BIG, "the same, for the rain"),
+    FLOAT_ROW(rain_threshold, 0, 1, "rain noise needed to rain (0 everywhere, 1 nowhere)"),
+    INT_ROW(rain_period, 1, INT_MAX, "ticks for one rain pattern to fade into the next"),
+    INT_ROW(climate_every, 1, 65535, "ticks between updates of rain and water"),
+    FLOAT_ROW(rain_gain, 0, 1, "water soil takes per tick in full rain"),
+    FLOAT_ROW(water_loss, 0, 1, "share of its water soil loses per tick"),
+    FLOAT_ROW(region_cold_below, 0, 1, "temperature below this is a cold region"),
+    FLOAT_ROW(region_hot_above, 0, 1, "temperature above this can be hot and dry"),
+    FLOAT_ROW(region_dry_below, 0, 1, "water below this, when hot, is hot and dry"),
+    FLOAT_ROW(region_wet_above, 0, 1, "water above this is a wet region"),
     INT_ROW(veg_birth_lo, 1, 4, "starting plants: fewest planted neighbours "
                                 "to sprout"),
     INT_ROW(veg_birth_hi, 1, 7, "starting plants: most planted neighbours "

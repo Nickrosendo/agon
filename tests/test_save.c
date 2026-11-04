@@ -461,8 +461,9 @@ static Tiny tiny_save(void)
     }
     t.layers = OFF_SETTINGS + settings_bytes;
     /* terrain, fertility, veg, veg_age, veg_wither, veg_rule, carrion,
-     * carrion_level, scent, for 64 cells. */
-    t.histories = t.layers + 64 * (1 + 4 + 1 + 2 + 1 + 1 + 4 + 4 + 4);
+     * carrion_level, scent, water, temperature, rain, for 64 cells, and the
+     * rain's seed once. */
+    t.histories = t.layers + 64 * (1 + 4 + 1 + 2 + 1 + 1 + 4 + 4 + 4 + 4 + 4 + 4) + 8;
     t.records = t.histories + 3 * (HISTORY * 4 + 8);
     /* peak, oldest id and age, largest id and size, then the u64 ended_at. */
     t.pool = t.records + 5 * 4 + 8;
@@ -600,7 +601,7 @@ static void test_refuses_impossible_layers(void)
     size_t carrion = veg_rule + 64;
     size_t carrion_level = carrion + 64 * 4;
     size_t scent = carrion_level + 64 * 4;
-    refuses_byte(&t, terrain, 3, "layer");
+    refuses_byte(&t, terrain, TERRAIN_SHALLOW + 1, "layer");
     refuses_u32(&t, fertility, BITS_NAN, "out of range");
     refuses_u32(&t, fertility, 0x40000000u /* 2.0 */, "out of range");
     refuses_u32(&t, fertility, BITS_HUGE, "out of range");
@@ -610,6 +611,14 @@ static void test_refuses_impossible_layers(void)
     refuses_u32(&t, carrion, BITS_HUGE, "out of range");
     refuses_u32(&t, carrion_level, BITS_NAN, "out of range");
     refuses_u32(&t, scent, BITS_NAN, "out of range");
+    /* Drawing turns water into an array index, so it must stay within 0..1. */
+    size_t water = scent + 64 * 4;
+    size_t temperature = water + 64 * 4;
+    size_t rain = temperature + 64 * 4;
+    refuses_u32(&t, water, BITS_NAN, "out of range");
+    refuses_u32(&t, water, 0x40000000u /* 2.0 */, "out of range");
+    refuses_u32(&t, temperature, BITS_NAN, "out of range");
+    refuses_u32(&t, rain, BITS_NAN, "out of range");
     free(t.bytes);
 }
 

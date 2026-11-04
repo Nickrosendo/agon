@@ -494,10 +494,13 @@ static void describe_cell(Lines *l, const Sim *s, const Inspect *in)
     add_text(l, text);
     if (w->terrain[i] == TERRAIN_WATER) {
         add_pair(l, "ground", "water");
+    } else if (w->terrain[i] == TERRAIN_SHALLOW) {
+        add_pair(l, "ground", "shallow water");
     } else if (w->terrain[i] == TERRAIN_ROCK) {
         add_pair(l, "ground", "rock");
     } else {
         add_float(l, "fertility", w->fertility[i], 2);
+        add_float(l, "water", w->water[i], 2);
         add_count(l, "plants", w->veg[i]);
         if (w->veg[i] > 0) {
             /* The cell's rule, unpacked: e.g. "3-4 / 3" for born with 3

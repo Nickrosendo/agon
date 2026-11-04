@@ -34,7 +34,7 @@
  */
 #define SAVE_MAGIC "AGONSAVE"
 #define SAVE_MAGIC_LEN 8
-#define SAVE_VERSION 4u
+#define SAVE_VERSION 5u
 
 /* No value in a healthy world comes near this. Bounding them keeps sums
  * from reaching infinity, and float-to-int conversions defined. */
@@ -161,6 +161,10 @@ static void put_world(Writer *w, const World *world)
     put_floats(w, world->carrion, n);
     put_floats(w, world->carrion_level, n);
     put_floats(w, world->scent, n);
+    put_floats(w, world->water, n);
+    put_floats(w, world->temperature, n);
+    put_floats(w, world->rain, n);
+    put_u64(w, world->rain_seed);
 }
 
 static void put_history(Writer *w, const History *h)
@@ -450,7 +454,7 @@ static void get_small(Reader *r, uint8_t *v, size_t n, unsigned most)
 static void get_world(Reader *r, World *w)
 {
     size_t n = (size_t)w->w * (size_t)w->h;
-    get_small(r, w->terrain, n, TERRAIN_ROCK);
+    get_small(r, w->terrain, n, TERRAIN_SHALLOW);
     /* Fertility is 0..1 by construction (fertility_max is at most 1), and
      * drawing a cell multiplies it and converts the result to an int. */
     get_floats(r, w->fertility, n, 0.0f, 1.0f);
@@ -463,6 +467,10 @@ static void get_world(Reader *r, World *w)
     get_floats(r, w->carrion, n, 0.0f, FLOAT_LIMIT);
     get_floats(r, w->carrion_level, n, 0.0f, FLOAT_LIMIT);
     get_floats(r, w->scent, n, 0.0f, FLOAT_LIMIT);
+    get_floats(r, w->water, n, 0.0f, 1.0f);
+    get_floats(r, w->temperature, n, 0.0f, 1.0f);
+    get_floats(r, w->rain, n, 0.0f, 1.0f);
+    w->rain_seed = get_u64(r);
 }
 
 static void get_history(Reader *r, History *h)

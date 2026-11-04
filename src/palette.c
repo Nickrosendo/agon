@@ -4,6 +4,8 @@
 
 /* How many soil colours, from dry to rich. */
 #define SOIL_SHADES 6
+/* How many looks the ground has, from desert to soaked. */
+#define GROUND_SHADES 4
 
 /* Each creature is coloured by the hue in its genome, light enough to
  * stand out from the terrain, and pulled towards a deep red the more of
@@ -11,9 +13,13 @@
 #define CREATURE_SATURATION 0.55f /* 0 white .. 1 full colour */
 
 const Colour PALETTE_WATER = {34, 66, 112};
+const Colour PALETTE_SHALLOW = {58, 108, 142};
+const Colour PALETTE_RAIN = {176, 200, 232};
 const Colour PALETTE_ROCK = {112, 112, 118};
 const Colour PALETTE_SOIL_DRY = {132, 110, 78};
 const Colour PALETTE_SOIL_RICH = {70, 56, 38};
+const Colour PALETTE_SAND = {196, 170, 116};
+const Colour PALETTE_SOIL_WET = {40, 38, 36};
 const Colour PALETTE_PLANT = {58, 150, 62};
 const Colour PALETTE_BLACK = {0, 0, 0};
 const Colour PALETTE_WITHERED = {196, 168, 84};
@@ -51,6 +57,22 @@ Colour palette_soil(float fertility)
     }
     return palette_mix(PALETTE_SOIL_DRY, PALETTE_SOIL_RICH,
                        (float)shade / (float)(SOIL_SHADES - 1));
+}
+
+Colour palette_ground(float fertility, float water)
+{
+    /* In a few steps, for the same reason palette_soil uses them. */
+    static const float SAND[GROUND_SHADES] = {0.75f, 0.35f, 0.0f, 0.0f};
+    static const float WET[GROUND_SHADES] = {0.0f, 0.0f, 0.0f, 0.4f};
+    int shade = (int)(water * (float)GROUND_SHADES);
+    /* An array index from a float: nothing checks it at run time, so the top
+     * of the range (water exactly 1) must be pulled back in here. */
+    if (shade > GROUND_SHADES - 1) {
+        shade = GROUND_SHADES - 1;
+    }
+    Colour soil = palette_soil(fertility);
+    return palette_mix(palette_mix(soil, PALETTE_SAND, SAND[shade]),
+                       PALETTE_SOIL_WET, WET[shade]);
 }
 
 /* Integer division rounds down, so the + ticks - 1 rounds up instead: the

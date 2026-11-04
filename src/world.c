@@ -18,6 +18,9 @@ void world_free(World *w)
     free(w->carrion_level);
     free(w->scent);
     free(w->scent_next);
+    free(w->water);
+    free(w->temperature);
+    free(w->rain);
     free(w->occupant);
     /* Clear every field, pointers included, so a second world_free (or a
      * use after free) meets NULL instead of a dangling address. A compound
@@ -55,13 +58,17 @@ bool world_init(World *w, int width, int height)
     w->carrion_level = calloc(n, sizeof(float));
     w->scent = calloc(n, sizeof(float));
     w->scent_next = calloc(n, sizeof(float));
+    w->water = calloc(n, sizeof(float));
+    w->temperature = calloc(n, sizeof(float));
+    w->rain = calloc(n, sizeof(float));
     w->occupant = malloc(n * sizeof(int32_t));
 
     if (w->terrain == NULL || w->fertility == NULL || w->veg == NULL ||
         w->veg_next == NULL || w->veg_age == NULL || w->veg_wither == NULL ||
         w->veg_rule == NULL || w->carrion == NULL ||
         w->carrion_level == NULL || w->scent == NULL ||
-        w->scent_next == NULL || w->occupant == NULL) {
+        w->scent_next == NULL || w->water == NULL ||
+        w->temperature == NULL || w->rain == NULL || w->occupant == NULL) {
         /* Partial failure: some layers exist and some do not. Free the
          * ones that do, and leave the struct empty. */
         world_free(w);
@@ -89,6 +96,10 @@ void world_clear(World *w)
     memset(w->carrion_level, 0, n * sizeof(float));
     memset(w->scent, 0, n * sizeof(float));
     memset(w->scent_next, 0, n * sizeof(float));
+    memset(w->water, 0, n * sizeof(float));
+    memset(w->temperature, 0, n * sizeof(float));
+    memset(w->rain, 0, n * sizeof(float));
+    w->rain_seed = 0;
     for (size_t i = 0; i < n; i++) {
         w->occupant[i] = -1;
     }

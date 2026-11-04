@@ -4,6 +4,7 @@
 #include <stdlib.h> /* malloc, free */
 #include <string.h> /* memcpy */
 
+#include "climate.h"
 #include "flora.h"
 #include "terrain.h"
 
@@ -15,6 +16,8 @@
  * not the same series as the world's. Any odd 64-bit constant would do;
  * this one is the fractional part of the golden ratio. */
 #define BRAIN_SEED_SALT 0x9E3779B97F4A7C15ULL
+/* The same idea for the climate's generator. */
+#define CLIMATE_SEED_SALT 0xC2B2AE3D27D4EB4FULL
 
 /* Random starting plants: two draws per soil cell, in row order, so that the
  * count of draws does not depend on what the draws decide. Every starting
@@ -177,6 +180,12 @@ bool sim_reseed(Sim *s, uint64_t seed)
         return false;
     }
     terrain_generate(&s->world, &s->rng, &s->set);
+    /* The climate gets a generator of its own, as the brain does. Drawing from
+     * s->rng would shift every number after it, so plants and creatures would
+     * all come out different for a reason that has nothing to do with them. */
+    Rng climate_rng;
+    rng_seed(&climate_rng, seed ^ CLIMATE_SEED_SALT);
+    climate_generate(&s->world, &climate_rng, &s->set);
     plant_start(&s->world, &s->rng, &s->set);
     int founders = founder_count(s);
     for (int i = 0; i < founders; i++) {
@@ -367,6 +376,7 @@ static bool note_ending(Sim *s)
 
 void sim_step(Sim *s)
 {
+    climate_step(&s->world, &s->set, s->tick);
     flora_step(&s->world, &s->rng, &s->set);
     carrion_step(&s->world, &s->set);
     scent_step(&s->world, &s->set);
@@ -481,6 +491,10 @@ uint64_t sim_checksum(const Sim *s)
     hash = fnv1a(hash, w->carrion, n * sizeof(float));
     hash = fnv1a(hash, w->carrion_level, n * sizeof(float));
     hash = fnv1a(hash, w->scent, n * sizeof(float));
+    hash = fnv1a(hash, w->water, n * sizeof(float));
+    hash = fnv1a(hash, w->temperature, n * sizeof(float));
+    hash = fnv1a(hash, w->rain, n * sizeof(float));
+    hash = fnv1a(hash, &w->rain_seed, sizeof(w->rain_seed));
     hash = fnv1a(hash, w->occupant, n * sizeof(int32_t));
     hash = fnv1a(hash, &s->pool.count, sizeof(s->pool.count));
     hash = fnv1a(hash, &s->pool.next_id, sizeof(s->pool.next_id));

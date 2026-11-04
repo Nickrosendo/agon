@@ -33,6 +33,7 @@ typedef struct {
     uint16_t carrion[2][TILE_VARIANTS][16];
     uint16_t slash[2][TILE_MARK_FRAMES][16];
     uint16_t crumbs[2][TILE_MARK_FRAMES][16];
+    uint16_t rain[2][TILE_VARIANTS][TILE_RAIN_FRAMES][16];
     /* The ground as last drawn, and what it was drawn from. Most frames fall
      * between two ticks and have the same ground, so they only copy it. */
     Canvas ground;

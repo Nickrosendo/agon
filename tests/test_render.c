@@ -3,6 +3,24 @@
 #include "palette.h"
 #include "world.h" /* veg_rule_pack */
 
+static int same(Colour a, Colour b)
+{
+    return a.r == b.r && a.g == b.g && a.b == b.b;
+}
+
+static void test_ground_follows_its_water(void)
+{
+    Colour desert = palette_ground(0.5f, 0.0f);
+    Colour plain = palette_ground(0.5f, 0.6f);
+    Colour soaked = palette_ground(0.5f, 1.0f); /* the top must stay in the table */
+    CHECK(same(plain, palette_soil(0.5f)));
+    CHECK(!same(desert, plain));
+    CHECK(!same(soaked, plain));
+    /* Lighter when dry, darker when soaked. */
+    CHECK(desert.r > plain.r);
+    CHECK(soaked.r < plain.r);
+}
+
 static void test_display_hue_skips_the_greens(void)
 {
     /* Every inherited hue, in steps of 0.001, lands outside the plants'
@@ -55,6 +73,7 @@ static void test_plant_hues_stay_in_the_greens(void)
 
 int main(void)
 {
+    test_ground_follows_its_water();
     test_plant_hues_stay_in_the_greens();
     test_display_hue_skips_the_greens();
     test_display_hue_keeps_the_order();

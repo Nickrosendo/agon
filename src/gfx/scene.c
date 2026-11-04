@@ -55,6 +55,7 @@ bool scene_init(Scene *sc, const Sim *s)
         for (int v = 0; v < TILE_VARIANTS; v++) {
             for (int f = 0; f < TILE_WATER_FRAMES; f++) {
                 tiles_build(sc->water[z][v][f], TILE_WATER, v, 0, size, f);
+                tiles_build(sc->rain[z][v][f], TILE_RAIN, v, 0, size, f);
             }
             tiles_build(sc->rock[z][v], TILE_ROCK, v, 0, size, 0);
             for (int d = 0; d < TILE_SOIL_DETAILS; d++) {
@@ -115,11 +116,14 @@ static Colour carrion_colour(const Sim *s, int i)
 }
 
 /* A cell as one flat colour, for the furthest zoom. */
-static Colour flat_colour(const Sim *s, int i)
+static Colour flat_ground(const Sim *s, int i)
 {
     const World *w = &s->world;
     if (w->terrain[i] == TERRAIN_WATER) {
         return PALETTE_WATER;
+    }
+    if (w->terrain[i] == TERRAIN_SHALLOW) {
+        return PALETTE_SHALLOW;
     }
     if (w->terrain[i] == TERRAIN_ROCK) {
         return PALETTE_ROCK;
@@ -131,7 +135,16 @@ static Colour flat_colour(const Sim *s, int i)
         float t = (float)(w->veg[i] + 1) / (float)(VEG_MAX + 1);
         return palette_mix(BACKGROUND, plant_colour(s, i), t);
     }
-    return palette_mix(BACKGROUND, palette_soil(w->fertility[i]), 0.25f);
+    return palette_mix(BACKGROUND, palette_ground(w->fertility[i], w->water[i]),
+                       0.25f);
+}
+
+/* Too small for streaks: rain is a pale veil over the cell's colour. */
+static Colour flat_colour(const Sim *s, int i)
+{
+    Colour ground = flat_ground(s, i);
+    return s->world.rain[i] > 0.0f ? palette_mix(ground, PALETTE_RAIN, 0.12f)
+                                   : ground;
 }
 
 /* The soil's dot density, 0 .. TILE_SOIL_DETAILS - 1, from its fertility. */
@@ -153,6 +166,9 @@ static void draw_tile(Scene *sc, Canvas *c, const Sim *s, int x, int y, int sx,
     if (w->terrain[i] == TERRAIN_WATER) {
         rows = sc->water[z][v][water_frame];
         colour = PALETTE_WATER;
+    } else if (w->terrain[i] == TERRAIN_SHALLOW) {
+        rows = sc->water[z][v][water_frame];
+        colour = PALETTE_SHALLOW;
     } else if (w->terrain[i] == TERRAIN_ROCK) {
         rows = sc->rock[z][v];
         colour = PALETTE_ROCK;
@@ -164,9 +180,16 @@ static void draw_tile(Scene *sc, Canvas *c, const Sim *s, int x, int y, int sx,
         colour = plant_colour(s, i);
     } else {
         rows = sc->soil[z][v][soil_detail(w->fertility[i])];
-        colour = palette_soil(w->fertility[i]);
+        colour = palette_ground(w->fertility[i], w->water[i]);
     }
     canvas_mask(c, rows, size, sx, sy, scale, false, to_pixel(colour));
+    /* Harder rain falls on more cells: variant 0 shows any rain, variant 3 only
+     * the heaviest. The variant is a hash of the place, so this draws no random
+     * number from the simulation. */
+    if (w->rain[i] * (float)TILE_VARIANTS > (float)v) {
+        canvas_mask(c, sc->rain[z][v][water_frame], size, sx, sy, scale, false,
+                    to_pixel(PALETTE_RAIN));
+    }
 }
 
 /* Every cell the camera sees. */

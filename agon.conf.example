@@ -17,6 +17,42 @@ noise_octaves = 4
 # the same, for the fertility field (1 to 1e+06)
 fertility_scale = 24
 
+# heights this far below water_level are shallow (0 to 1)
+shallow_band = 0.05
+
+# the same, for the temperature field (1 to 1e+06)
+temperature_scale = 80
+
+# the same, for the rain (1 to 1e+06)
+rain_scale = 20
+
+# rain noise needed to rain (0 everywhere, 1 nowhere) (0 to 1)
+rain_threshold = 0.5
+
+# ticks for one rain pattern to fade into the next (1 to 2147483647)
+rain_period = 4000
+
+# ticks between updates of rain and water (1 to 65535)
+climate_every = 25
+
+# water soil takes per tick in full rain (0 to 1)
+rain_gain = 0.008
+
+# share of its water soil loses per tick (0 to 1)
+water_loss = 0.0005
+
+# temperature below this is a cold region (0 to 1)
+region_cold_below = 0.33
+
+# temperature above this can be hot and dry (0 to 1)
+region_hot_above = 0.6
+
+# water below this, when hot, is hot and dry (0 to 1)
+region_dry_below = 0.25
+
+# water above this is a wet region (0 to 1)
+region_wet_above = 0.7
+
 # starting plants: fewest planted neighbours to sprout (1 to 4)
 veg_birth_lo = 1
 

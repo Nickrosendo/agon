@@ -127,7 +127,9 @@ void terrain_generate(World *w, Rng *r, const Settings *s)
                                     s->noise_scale, s->noise_octaves);
             float height = (v - lowest) / range;
             if (height < s->water_level) {
-                w->terrain[i] = TERRAIN_WATER;
+                w->terrain[i] = height >= s->water_level - s->shallow_band
+                                    ? TERRAIN_SHALLOW
+                                    : TERRAIN_WATER;
                 w->fertility[i] = 0.0f;
             } else if (height >= s->rock_level) {
                 w->terrain[i] = TERRAIN_ROCK;

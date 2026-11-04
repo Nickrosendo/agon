@@ -23,6 +23,24 @@ typedef struct {
     int noise_octaves;   /* layers of noise, each twice as fine */
     float fertility_scale; /* the same, for the fertility field */
 
+    /* Climate. Rain is noise above rain_threshold, fading to a new pattern
+     * every rain_period ticks. Each climate_every ticks, a soil cell gains
+     * rain_gain * rain * (1 - water) and loses water_loss * water per tick.
+     * Temperature is fixed noise spread over 0..1. A cell's region comes from
+     * temperature and water, by the region_ limits (climate.h). */
+    float shallow_band;     /* heights this far below water_level are shallow */
+    float temperature_scale; /* cells between lattice points, temperature */
+    float rain_scale;       /* the same, for the rain */
+    float rain_threshold;   /* 0 rains everywhere, 1 nowhere */
+    int rain_period;        /* ticks for one pattern to fade into the next */
+    int climate_every;      /* ticks between updates of rain and water */
+    float rain_gain;        /* water soil takes per tick in full rain */
+    float water_loss;       /* share of its water soil loses per tick */
+    float region_cold_below; /* temperature below this is cold */
+    float region_hot_above;  /* temperature above this can be hot and dry */
+    float region_dry_below;  /* water below this, when hot, is hot and dry */
+    float region_wet_above;  /* water above this is wet ground */
+
     /* Vegetation. n is how many of a soil cell's eight neighbours carry
      * plants. Every planted cell carries its own rule (world.h, veg_rule):
      * a birth range and a crowd limit.
