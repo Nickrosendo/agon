@@ -41,9 +41,10 @@
  * attacks spare similar colours; then the climate: rain, soil water, temperature
  * and shallows in the fingerprint, with plants and creatures unchanged (shown by
  * balance_report giving the same bytes before and after); then living plants:
- * each with its energy, fruit and genes, and two digestion genes for plants.
+ * each with its energy, fruit and genes, and two digestion genes for plants;
+ * then a blocked walk turns aside: one more random draw for each.
  */
-#define SEED_7_AFTER_500 0xcf5d2ba0ceec63f4ULL
+#define SEED_7_AFTER_500 0x921f6b05337323a5ULL
 
 static void test_same_seed_same_checksum(void)
 {

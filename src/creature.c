@@ -138,6 +138,12 @@ static int cell_towards(const World *w, int x, int y, uint8_t heading)
     return world_idx(w, x + STEP_X[heading], y + STEP_Y[heading]);
 }
 
+/* Whether a creature could step onto this cell: soil with nobody on it. */
+static bool cell_is_free(const World *w, int cell)
+{
+    return w->terrain[cell] == TERRAIN_SOIL && w->occupant[cell] < 0;
+}
+
 static float clamp01(float v)
 {
     if (v < 0.0f) {
@@ -388,8 +394,7 @@ void creature_sense(const World *w, const Pool *p, int idx,
     out->v[SENSE_SEASON] = p->in_season ? 1.0f : 0.0f;
     /* The same test act_move makes, so the sense cannot disagree with walking. */
     int ahead = cell_towards(w, c->x, c->y, c->heading);
-    out->v[SENSE_BLOCKED] =
-        w->terrain[ahead] != TERRAIN_SOIL || w->occupant[ahead] >= 0 ? 1.0f : 0.0f;
+    out->v[SENSE_BLOCKED] = cell_is_free(w, ahead) ? 0.0f : 1.0f;
 
     /* The drives. Hunger is the sense of energy the other way up. */
     out->v[SENSE_HUNGER] = 1.0f - out->v[SENSE_ENERGY];
@@ -410,10 +415,27 @@ void creature_sense(const World *w, const Pool *p, int idx,
     }
 }
 
-/* Moves one cell forward if that cell is free soil and the creature has
- * a move point. With a point, the move is paid for either way: trying
- * costs as much as succeeding. Without one, nothing happens. */
-static void act_move(World *w, Creature *c, int idx, const Settings *s)
+/* The heading a blocked creature walks off in: one side or the other by chance,
+ * else the other side, else back the way it came. Its own heading if all are
+ * shut. The random draw comes first, so it is the same however the cells lie. */
+static uint8_t way_around(const World *w, const Creature *c, Rng *r)
+{
+    int first_side = rng_below(r, 2) == 0 ? 1 : 3; /* right or left */
+    const int tries[3] = {first_side, 4 - first_side, 2};
+    for (int k = 0; k < 3; k++) {
+        uint8_t heading = turned(c->heading, tries[k]);
+        if (cell_is_free(w, cell_towards(w, c->x, c->y, heading))) {
+            return heading;
+        }
+    }
+    return c->heading;
+}
+
+/* Walks one cell forward if the creature has a move point; without one, nothing
+ * happens. A blocked way does not stop it: it turns to a free side and walks
+ * there in the same tick, so no brain can stand pushing at a rock. The step is
+ * paid for either way, even by a creature shut in on all sides. */
+static void act_move(World *w, Creature *c, int idx, const Settings *s, Rng *r)
 {
     if (c->move_points < 1.0f - MOVE_SLACK) {
         return;
@@ -422,8 +444,12 @@ static void act_move(World *w, Creature *c, int idx, const Settings *s)
     c->energy -= s->move_cost;
     int from = world_idx(w, c->x, c->y);
     int to = cell_towards(w, c->x, c->y, c->heading);
-    if (w->terrain[to] != TERRAIN_SOIL || w->occupant[to] >= 0) {
-        return;
+    if (!cell_is_free(w, to)) {
+        c->heading = way_around(w, c, r);
+        to = cell_towards(w, c->x, c->y, c->heading);
+        if (!cell_is_free(w, to)) {
+            return;
+        }
     }
     w->occupant[from] = -1;
     w->occupant[to] = idx;
@@ -899,7 +925,7 @@ int creature_act(World *w, Pool *p, int idx, Action a, const Settings *s,
         c->heading = turned(c->heading, 1);
         break;
     case ACT_MOVE:
-        act_move(w, c, idx, s);
+        act_move(w, c, idx, s, r);
         break;
     case ACT_BITE:
         act_bite(w, p, idx, s, r);

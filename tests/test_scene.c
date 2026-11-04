@@ -360,12 +360,14 @@ static uint64_t hash_canvas(const Canvas *c)
  * why in the commit. Symbols are computed with sinf, so another system's maths
  * library may legitimately give other numbers. Last changed for the climate: the
  * ground follows its water, shallows along the shore, and rain falls; then living
- * plants: the green from the water they need, and ripe fruit tinting them orange.
+ * plants: the green from the water they need, and ripe fruit tinting them orange;
+ * then a blocked walk turns aside, so creatures stand elsewhere at the two closest
+ * zooms (the wider two show too little to change).
  */
 static void test_known_world_pixels(void)
 {
     static const uint64_t EXPECTED[CAMERA_LEVELS] = {
-        0x6daa2d8cc5fa844du, 0x276b29f77586ba7du, 0x2e3bfebf1f0ea2e7u, 0xf2ee0d24e054c025u,
+        0x6daa2d8cc5fa844du, 0x276b29f77586ba7du, 0xe1fb509474952498u, 0x4d556682bbb9fdc5u,
     };
     Settings set = settings_default();
     Sim s;

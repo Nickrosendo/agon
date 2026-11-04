@@ -125,7 +125,51 @@ static void test_move_wraps(void)
     world_free(&w);
 }
 
-static void test_move_blocked(void)
+/* Fills the four cells around (x, y) with the given terrain. */
+static void wall_around(World *w, int x, int y, uint8_t terrain)
+{
+    w->terrain[world_idx(w, x, y - 1)] = terrain;
+    w->terrain[world_idx(w, x + 1, y)] = terrain;
+    w->terrain[world_idx(w, x, y + 1)] = terrain;
+    w->terrain[world_idx(w, x - 1, y)] = terrain;
+}
+
+/* Rock or water ahead: the creature turns aside and walks there, in the same
+ * tick, for the price of one step. Which side is left to chance. */
+static void test_move_blocked_turns_aside(void)
+{
+    const uint8_t walls[] = {TERRAIN_WATER, TERRAIN_ROCK};
+    for (int k = 0; k < 2; k++) {
+        bool went_east = false;
+        bool went_west = false;
+        for (uint64_t seed = 1; seed <= 32; seed++) {
+            World w;
+            make_world(&w, 8, 8);
+            Settings s = settings_default();
+            Rng r;
+            rng_seed(&r, seed);
+            Pool p;
+            CHECK(pool_init(&p, 4));
+            int i = spawn(&p, &w, 3, 3); /* heading north */
+            p.items[i].energy = 10.0f;
+            w.terrain[world_idx(&w, 3, 2)] = walls[k];
+            creature_act(&w, &p, i, (Action){.kind = ACT_MOVE, .hold = 1}, &s, &r);
+            const Creature *c = &p.items[i];
+            went_east = went_east || (c->x == 4 && c->heading == HEADING_EAST);
+            went_west = went_west || (c->x == 2 && c->heading == HEADING_WEST);
+            CHECK(c->y == 3 && c->x != 3);
+            CHECK(w.occupant[world_idx(&w, 3, 3)] == -1);
+            CHECK(w.occupant[world_idx(&w, c->x, c->y)] == i);
+            CHECK(fabsf(c->energy - (10.0f - s.move_cost)) < 1e-6f);
+            pool_free(&p);
+            world_free(&w);
+        }
+        CHECK(went_east && went_west);
+    }
+}
+
+/* Another creature ahead blocks the way just as rock does. */
+static void test_move_blocked_by_creature_turns_aside(void)
 {
     World w;
     make_world(&w, 8, 8);
@@ -136,20 +180,78 @@ static void test_move_blocked(void)
     CHECK(pool_init(&p, 4));
     int i = spawn(&p, &w, 3, 3);
     p.items[i].energy = 10.0f;
-    CHECK(spawn(&p, &w, 3, 2) >= 0); /* someone to the north */
+    int other = spawn(&p, &w, 3, 2);
+    CHECK(other >= 0);
     creature_act(&w, &p, i, (Action){.kind = ACT_MOVE, .hold = 1}, &s, &r);
-    CHECK(p.items[i].x == 3 && p.items[i].y == 3);
-    CHECK(fabsf(p.items[i].energy - (10.0f - s.move_cost)) < 1e-6f);
+    CHECK(p.items[i].y == 3 && p.items[i].x != 3);
+    CHECK(p.items[other].x == 3 && p.items[other].y == 2);
+    pool_free(&p);
+    world_free(&w);
+}
 
-    /* Turn right to face east, where there is water, then rock. */
-    creature_act(&w, &p, i, (Action){.kind = ACT_TURN_RIGHT, .hold = 1}, &s, &r);
-    CHECK(p.items[i].heading == HEADING_EAST);
-    w.terrain[world_idx(&w, 4, 3)] = TERRAIN_WATER;
+/* Both sides shut: back the way it came, the only way left. */
+static void test_move_blocked_turns_back(void)
+{
+    World w;
+    make_world(&w, 8, 8);
+    Settings s = settings_default();
+    Rng r;
+    rng_seed(&r, 1);
+    Pool p;
+    CHECK(pool_init(&p, 4));
+    int i = spawn(&p, &w, 3, 3);
+    p.items[i].energy = 10.0f;
+    wall_around(&w, 3, 3, TERRAIN_ROCK);
+    w.terrain[world_idx(&w, 3, 4)] = TERRAIN_SOIL;
     creature_act(&w, &p, i, (Action){.kind = ACT_MOVE, .hold = 1}, &s, &r);
-    w.terrain[world_idx(&w, 4, 3)] = TERRAIN_ROCK;
+    CHECK(p.items[i].x == 3 && p.items[i].y == 4);
+    CHECK(p.items[i].heading == HEADING_SOUTH);
+    pool_free(&p);
+    world_free(&w);
+}
+
+/* Shut in on all four sides: it stays, facing as it was, and has still paid for
+ * the try. */
+static void test_move_shut_in(void)
+{
+    World w;
+    make_world(&w, 8, 8);
+    Settings s = settings_default();
+    Rng r;
+    rng_seed(&r, 1);
+    Pool p;
+    CHECK(pool_init(&p, 4));
+    int i = spawn(&p, &w, 3, 3);
+    p.items[i].energy = 10.0f;
+    wall_around(&w, 3, 3, TERRAIN_WATER);
     creature_act(&w, &p, i, (Action){.kind = ACT_MOVE, .hold = 1}, &s, &r);
     CHECK(p.items[i].x == 3 && p.items[i].y == 3);
-    CHECK(fabsf(p.items[i].energy - (10.0f - 3 * s.move_cost)) < 1e-5f);
+    CHECK(p.items[i].heading == HEADING_NORTH);
+    CHECK(fabsf(p.items[i].energy - (10.0f - s.move_cost)) < 1e-6f);
+    pool_free(&p);
+    world_free(&w);
+}
+
+/* Without a move point it cannot walk, so it does not turn either. */
+static void test_move_blocked_without_a_point(void)
+{
+    World w;
+    make_world(&w, 8, 8);
+    Settings s = settings_default();
+    s.speed_min = 0.0f;
+    Rng r;
+    rng_seed(&r, 1);
+    Pool p;
+    CHECK(pool_init(&p, 4));
+    int i = spawn(&p, &w, 3, 3);
+    p.items[i].energy = 10.0f;
+    p.items[i].genome.g[GENE_SPEED] = 0.0f;
+    p.items[i].move_points = 0.0f;
+    w.terrain[world_idx(&w, 3, 2)] = TERRAIN_ROCK;
+    creature_act(&w, &p, i, (Action){.kind = ACT_MOVE, .hold = 1}, &s, &r);
+    CHECK(p.items[i].x == 3 && p.items[i].y == 3);
+    CHECK(p.items[i].heading == HEADING_NORTH);
+    CHECK(p.items[i].energy == 10.0f);
     pool_free(&p);
     world_free(&w);
 }
@@ -2535,7 +2637,11 @@ int main(void)
     test_pool_slots_and_ids();
     test_spawn_needs_free_soil();
     test_move_wraps();
-    test_move_blocked();
+    test_move_blocked_turns_aside();
+    test_move_blocked_by_creature_turns_aside();
+    test_move_blocked_turns_back();
+    test_move_shut_in();
+    test_move_blocked_without_a_point();
     test_turns();
     test_bite();
     test_mate_needs_both();
