@@ -9,9 +9,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-/* TERRAIN_WATER is deep. TERRAIN_SHALLOW is the band beside the shore: nobody
- * can stand on it yet, but it is a region of its own. Appended, so the numbers
- * of the others do not change. */
+/* TERRAIN_WATER is deep. TERRAIN_SHALLOW is the band beside the shore: anyone
+ * can cross it, at a cost, and it is a region of its own. Appended, so the
+ * numbers of the others do not change. */
 enum { TERRAIN_WATER, TERRAIN_SOIL, TERRAIN_ROCK, TERRAIN_SHALLOW };
 #define VEG_MAX 4
 
@@ -72,5 +72,7 @@ void world_clear(World *w);
 /* Frees every layer and sets the pointers to NULL; safe to call twice. */
 void world_free(World *w);
 int world_idx(const World *w, int x, int y); /* wraps both axes */
+/* Whether a body can stand on this ground at all: soil or shallow water. */
+bool world_walkable(const World *w, int cell);
 
 #endif

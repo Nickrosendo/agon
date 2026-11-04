@@ -34,7 +34,7 @@
  */
 #define SAVE_MAGIC "AGONSAVE"
 #define SAVE_MAGIC_LEN 8
-#define SAVE_VERSION 6u
+#define SAVE_VERSION 7u
 
 /* No value in a healthy world comes near this. Bounding them keeps sums
  * from reaching infinity, and float-to-int conversions defined. */
@@ -614,7 +614,7 @@ static void get_pool(Reader *r, Pool *p, World *w, const Settings *set)
                 return;
             }
             int cell = world_idx(w, c->x, c->y);
-            if (w->terrain[cell] != TERRAIN_SOIL || w->occupant[cell] >= 0) {
+            if (!world_walkable(w, cell) || w->occupant[cell] >= 0) {
                 fail(r, "a creature in the file stands where it cannot");
                 return;
             }

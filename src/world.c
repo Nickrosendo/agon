@@ -105,6 +105,11 @@ void world_clear(World *w)
     }
 }
 
+bool world_walkable(const World *w, int cell)
+{
+    return w->terrain[cell] == TERRAIN_SOIL || w->terrain[cell] == TERRAIN_SHALLOW;
+}
+
 int world_idx(const World *w, int x, int y)
 {
     /* In C, % keeps the sign of the left operand: -1 % 8 is -1. Adding

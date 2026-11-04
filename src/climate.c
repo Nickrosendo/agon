@@ -172,3 +172,11 @@ int climate_region(const World *w, int cell, const Settings *s)
     }
     return REGION_TEMPERATE;
 }
+
+float climate_region_hue(int region)
+{
+    /* In the order of the enum. Blue-white snow, yellow sand, green grass, the
+     * blue-green of a marsh, the blue of the shallows. */
+    static const float HUES[REGION_COUNT] = {0.58f, 0.11f, 0.30f, 0.42f, 0.52f};
+    return HUES[region];
+}

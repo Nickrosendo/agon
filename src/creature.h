@@ -236,6 +236,17 @@ int creature_crowd(const World *w, const Creature *c, int radius);
 float creature_crowd_cost(const World *w, const Creature *c, const Settings *s);
 /* Energy one tick of life costs this creature, before any crowding. */
 float creature_upkeep_cost(const Creature *c, const Settings *s);
+/* Energy the region under it costs per tick, by the size of its body: the cold
+ * spares large bodies, heat and dry ground spare small ones. */
+float creature_region_cost(const World *w, const Creature *c, const Settings *s);
+/* The energy a step onto this cell costs on top of move_cost, by its legs and
+ * swimming body. Paid only for a step really taken. */
+float creature_step_extra(const World *w, const Creature *c, int cell,
+                          const Settings *s);
+/* The share, 0 to 1, of a looker's sight at which this creature, standing on
+ * seen_cell, can be seen: below 1 when its colour matches the ground there. */
+float sight_reach(const Creature *seen, int seen_cell, const World *w,
+                  const Settings *s);
 
 /* True for a creature that digests meat better than plants. Says nothing
  * about who may attack whom: anyone may attack anyone. */

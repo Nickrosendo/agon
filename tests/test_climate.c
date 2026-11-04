@@ -1,5 +1,7 @@
 #include "test.h"
 
+#include <string.h> /* memcmp */
+
 #include "climate.h"
 #include "rng.h"
 #include "settings.h"
@@ -251,17 +253,28 @@ static void test_shallow_lies_at_the_shore(void)
     world_free(&plain);
 }
 
-/* Climate has its own random numbers and nothing reads it yet, so plants
- * and creatures must not notice how the rain falls. */
-static void test_climate_changes_no_life_yet(void)
+/* Climate has its own random numbers, so how the rain falls takes none from
+ * life. Rain does reach life, through plants that need water and regions that
+ * ask things of bodies, so this looks only at the start: the plants' stores
+ * have already felt it, and nothing has yet come of that. With the regions' costs
+ * and camouflage off, since those would reach creatures on the first step. */
+static void test_climate_takes_no_random_numbers(void)
 {
     Settings wet = settings_default();
     Settings dry = settings_default();
     dry.rain_threshold = 1.0f;
+    Settings *both[2] = {&wet, &dry};
+    for (int k = 0; k < 2; k++) {
+        both[k]->camouflage = 0.0f;
+        both[k]->cold_upkeep = 0.0f;
+        both[k]->heat_upkeep = 0.0f;
+        both[k]->rough_step_cost = 0.0f;
+        both[k]->legs_step_cost = 0.0f;
+    }
     Sim a, b;
     CHECK(sim_init(&a, &wet, 11, 64, 32));
     CHECK(sim_init(&b, &dry, 11, 64, 32));
-    for (int t = 0; t < 300; t++) {
+    for (int t = 0; t < 20; t++) {
         sim_step(&a);
         sim_step(&b);
     }
@@ -269,6 +282,9 @@ static void test_climate_changes_no_life_yet(void)
     for (int i = 0; i < 4; i++) {
         CHECK(a.rng.s[i] == b.rng.s[i]);
     }
+    /* Raw bytes are safe to compare: Plant is six floats, with no padding. */
+    size_t bytes = (size_t)(a.world.w * a.world.h) * sizeof(Plant);
+    CHECK(memcmp(a.world.plant, b.world.plant, bytes) != 0);
     sim_free(&a);
     sim_free(&b);
 }
@@ -312,7 +328,7 @@ int main(void)
     test_regions_cover_the_list();
     test_region_changes_with_water();
     test_shallow_lies_at_the_shore();
-    test_climate_changes_no_life_yet();
+    test_climate_takes_no_random_numbers();
     test_fingerprint_covers_climate();
     TEST_SUMMARY();
 }

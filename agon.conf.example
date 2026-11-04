@@ -269,6 +269,30 @@ digest_floor = 0.25
 # upkeep of digesting (0 to 1e+06)
 digest_upkeep = 0.025
 
+# how much the strongest other digestion gene cuts a yield (0 to 1)
+digest_tradeoff = 0.3
+
+# how much of the sight distance a perfect colour match hides (0 to 1)
+camouflage = 0.6
+
+# colour distance at which camouflage stops helping (0.01 to 0.5)
+camouflage_width = 0.15
+
+# energy per tick in the cold, divided by size (0 to 1e+06)
+cold_upkeep = 0.2
+
+# energy per tick in hot dry ground, times size (0 to 1e+06)
+heat_upkeep = 0.05
+
+# extra energy for a step on marsh, sand or shallows (0 to 1e+06)
+rough_step_cost = 0.3
+
+# extra energy for long legs on other ground (0 to 1e+06)
+legs_step_cost = 0.1
+
+# extra energy for a swimming body on land (0 to 1e+06)
+swim_step_cost = 0.1
+
 # how much size decides a fight (0 to 16)
 attack_steepness = 3
 

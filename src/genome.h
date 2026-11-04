@@ -28,6 +28,8 @@ enum {
     GENE_WEAPON, /* adds to every hit landed; costs upkeep */
     GENE_GROWTH, /* the share of surplus energy that goes into body */
     GENE_TERRITORY, /* how readily an adult turns on a stranger beside it */
+    GENE_LEGS, /* long legs: crosses marsh and sand free, pays on other ground */
+    GENE_SWIM, /* a swimming body: crosses shallows free, pays on land */
     GENE_TRAITS
 };
 

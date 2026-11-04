@@ -4,6 +4,7 @@
 #include <stdlib.h> /* malloc, free */
 #include <string.h> /* memset */
 
+#include "climate.h" /* climate_region, climate_region_hue */
 #include "flora.h" /* carrion_add, CARRION_MIN */
 
 /* One step in each heading, in HEADING_ order: north is up, which is
@@ -70,8 +71,7 @@ void pool_free(Pool *p)
 int pool_spawn(Pool *p, World *w, int x, int y)
 {
     int cell = world_idx(w, x, y);
-    if (p->free_head < 0 || w->terrain[cell] != TERRAIN_SOIL ||
-        w->occupant[cell] >= 0) {
+    if (p->free_head < 0 || !world_walkable(w, cell) || w->occupant[cell] >= 0) {
         return -1;
     }
     /* Take the first free slot off the list. */
@@ -138,10 +138,11 @@ static int cell_towards(const World *w, int x, int y, uint8_t heading)
     return world_idx(w, x + STEP_X[heading], y + STEP_Y[heading]);
 }
 
-/* Whether a creature could step onto this cell: soil with nobody on it. */
+/* Whether a creature could step onto this cell: ground it can stand on, with
+ * nobody on it. */
 static bool cell_is_free(const World *w, int cell)
 {
-    return w->terrain[cell] == TERRAIN_SOIL && w->occupant[cell] < 0;
+    return world_walkable(w, cell) && w->occupant[cell] < 0;
 }
 
 static float clamp01(float v)
@@ -212,6 +213,55 @@ float creature_upkeep_cost(const Creature *c, const Settings *s)
            s->armour_upkeep * c->genome.g[GENE_ARMOUR] +
            s->weapon_upkeep * c->genome.g[GENE_WEAPON] +
            s->territory_upkeep * c->genome.g[GENE_TERRITORY];
+}
+
+float creature_region_cost(const World *w, const Creature *c, const Settings *s)
+{
+    int region = climate_region(w, world_idx(w, c->x, c->y), s);
+    if (region == REGION_COLD) {
+        return s->cold_upkeep / creature_size(c, s);
+    }
+    if (region == REGION_HOT_DRY) {
+        return s->heat_upkeep * creature_size(c, s);
+    }
+    return 0.0f;
+}
+
+float creature_step_extra(const World *w, const Creature *c, int cell,
+                          const Settings *s)
+{
+    float legs = c->genome.g[GENE_LEGS];
+    float swim = c->genome.g[GENE_SWIM];
+    int region = climate_region(w, cell, s);
+    if (region == REGION_SHALLOW) {
+        return s->rough_step_cost * (1.0f - swim) + s->legs_step_cost * legs;
+    }
+    float on_land = s->swim_step_cost * swim;
+    if (region == REGION_WET || region == REGION_HOT_DRY) {
+        return s->rough_step_cost * (1.0f - legs) + on_land;
+    }
+    return s->legs_step_cost * legs + on_land;
+}
+
+/* How far apart two colours are, round the wheel: 0.98 and 0.01 are close. */
+static float hue_distance(float a, float b)
+{
+    float d = fabsf(a - b);
+    return d > 0.5f ? 1.0f - d : d;
+}
+
+float sight_reach(const Creature *seen, int seen_cell, const World *w,
+                  const Settings *s)
+{
+    int region = climate_region(w, seen_cell, s);
+    /* REGION_NONE is -1: used as an array index it would read outside the
+     * table of colours, with nothing to stop it. */
+    if (region == REGION_NONE) {
+        return 1.0f;
+    }
+    float apart = hue_distance(seen->genome.g[GENE_HUE], climate_region_hue(region));
+    float match = 1.0f - apart / s->camouflage_width;
+    return match > 0.0f ? 1.0f - s->camouflage * match : 1.0f;
 }
 
 int creature_crowd(const World *w, const Creature *c, int radius)
@@ -337,6 +387,11 @@ static void sense_ray(const World *w, const Pool *p, const Creature *c,
         }
         if (w->occupant[cell] >= 0) {
             const Creature *seen = &p->items[w->occupant[cell]];
+            /* A match too far off goes unseen and hides nothing behind it. The
+             * cell beside the looker is always seen. */
+            if (d > 1 && (float)d > (float)sight * sight_reach(seen, cell, w, s)) {
+                continue;
+            }
             float a = creature_size(c, s);
             float t = creature_size(seen, s);
             out[RAY_NEAR] = 1.0f - (float)(d - 1) / (float)sight;
@@ -451,17 +506,11 @@ static void act_move(World *w, Creature *c, int idx, const Settings *s, Rng *r)
             return;
         }
     }
+    c->energy -= creature_step_extra(w, c, to, s);
     w->occupant[from] = -1;
     w->occupant[to] = idx;
     c->x = to % w->w;
     c->y = to / w->w;
-}
-
-/* How far apart two colours are, round the wheel: 0.98 and 0.01 are close. */
-static float hue_distance(float a, float b)
-{
-    float d = fabsf(a - b);
-    return d > 0.5f ? 1.0f - d : d;
 }
 
 int creature_attack_target(const World *w, const Pool *p, int idx,
@@ -546,16 +595,37 @@ static int plant_take(const World *w, int i, const Creature *c, const Settings *
     return w->veg[i] < mouth ? w->veg[i] : mouth;
 }
 
-/* The share of a food's energy a digestion gene of this value gets out
- * of it: from digest_floor (gene 0) to 1 (gene 1). */
-static float digest_eff(float gene, const Settings *s)
+/* The share of a food's energy a digestion gene of this value gets out of it:
+ * from digest_floor (gene 0) to 1 (gene 1, with the other two genes at 0). A
+ * strong other gene takes from what lies above the floor, never the floor. */
+static float digest_eff(float gene, float other_a, float other_b, const Settings *s)
 {
-    return s->digest_floor + (1.0f - s->digest_floor) * gene;
+    float other = other_a > other_b ? other_a : other_b;
+    float above = (1.0f - s->digest_floor) * gene * (1.0f - s->digest_tradeoff * other);
+    return s->digest_floor + above;
+}
+
+static float leaf_eff(const Creature *c, const Settings *s)
+{
+    return digest_eff(c->genome.g[GENE_LEAF], c->genome.g[GENE_FRUIT],
+                      c->genome.g[GENE_MEAT], s);
+}
+
+static float fruit_eff(const Creature *c, const Settings *s)
+{
+    return digest_eff(c->genome.g[GENE_FRUIT], c->genome.g[GENE_LEAF],
+                      c->genome.g[GENE_MEAT], s);
+}
+
+static float meat_eff(const Creature *c, const Settings *s)
+{
+    return digest_eff(c->genome.g[GENE_MEAT], c->genome.g[GENE_LEAF],
+                      c->genome.g[GENE_FRUIT], s);
 }
 
 static float meat_gain(const Creature *c, float take, const Settings *s)
 {
-    return take * digest_eff(c->genome.g[GENE_MEAT], s);
+    return take * meat_eff(c, s);
 }
 
 /* What one density step of this plant's leaves gives c: nothing from a fruit
@@ -565,7 +635,7 @@ static float leaf_gain(const Creature *c, const Plant *plant, const Settings *s)
     if (plant_offers_fruit(plant)) {
         return 0.0f;
     }
-    return s->bite_veg_energy * digest_eff(c->genome.g[GENE_LEAF], s);
+    return s->bite_veg_energy * leaf_eff(c, s);
 }
 
 /* How many whole fruit a bite by c would take from plant cell i. Worked out in
@@ -620,7 +690,7 @@ static void eat_fruit(World *w, Creature *c, int cell, const Settings *s, Rng *r
     int take = fruit_take(w, cell, c, s);
     plant->fruit -= (float)take;
     float gain = (float)take * s->bite_fruit_energy *
-                 digest_eff(c->genome.g[GENE_FRUIT], s);
+                 fruit_eff(c, s);
     c->energy += gain;
     creature_ate(c, gain, 1.0f);
     if (c->gut_ticks == 0) {
@@ -698,7 +768,7 @@ BiteChoice creature_bite_choice(const World *w, const Pool *p, int idx,
             float leaves = (float)plant_take(w, cell, c, s) *
                            leaf_gain(c, &w->plant[cell], s);
             float fruit = (float)fruit_take(w, cell, c, s) * s->bite_fruit_energy *
-                          digest_eff(c->genome.g[GENE_FRUIT], s);
+                          fruit_eff(c, s);
             float gain = fruit >= leaves ? fruit : leaves;
             if (gain > best_gain) {
                 best_gain = gain;
@@ -774,13 +844,13 @@ static int find_partner(const World *w, const Pool *p, const Creature *c,
     return -1;
 }
 
-/* A free soil cell beside c, looking round from start; -1 for none. */
+/* A free cell a body can stand on beside c, looking round from start; -1 for none. */
 static int free_cell_around(const World *w, const Creature *c, int start)
 {
     for (int k = 0; k < 8; k++) {
         int dir = (start + k) % 8;
         int cell = world_idx(w, c->x + AROUND_X[dir], c->y + AROUND_Y[dir]);
-        if (w->terrain[cell] == TERRAIN_SOIL && w->occupant[cell] < 0) {
+        if (cell_is_free(w, cell)) {
             return cell;
         }
     }

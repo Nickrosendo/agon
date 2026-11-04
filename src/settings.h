@@ -230,6 +230,26 @@ typedef struct {
     float bite_meat_energy;
     float digest_floor;
     float digest_upkeep;
+    /* Better at one food means worse at the others: the part of a gene's yield
+     * above the floor is cut by digest_tradeoff times the strongest of the
+     * other two genes. Never below digest_floor. */
+    float digest_tradeoff;
+
+    /* What regions ask of a body. A creature whose colour matches its region's
+     * ground is seen from only (1 - camouflage) of the distance, falling off to
+     * no effect at camouflage_width of the colour wheel away. Small bodies lose
+     * heat: cold_upkeep / size per tick in a cold region. Big bodies overheat:
+     * heat_upkeep * size per tick in a hot and dry one. A step onto marsh or sand
+     * costs rough_step_cost * (1 - legs) extra, onto shallows the same times
+     * (1 - swim). The price of those bodies: legs_step_cost * legs on any other
+     * ground, swim_step_cost * swim on any land. */
+    float camouflage;
+    float camouflage_width;
+    float cold_upkeep;
+    float heat_upkeep;
+    float rough_step_cost;
+    float legs_step_cost;
+    float swim_step_cost;
 
     /* Attack. Every attack costs attack_cost. It hits with chance
      * a^k / (a^k + t^k), for attacker size a, target size t and k =

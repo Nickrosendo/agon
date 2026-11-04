@@ -42,9 +42,10 @@
  * and shallows in the fingerprint, with plants and creatures unchanged (shown by
  * balance_report giving the same bytes before and after); then living plants:
  * each with its energy, fruit and genes, and two digestion genes for plants;
- * then a blocked walk turns aside: one more random draw for each.
+ * then a blocked walk turns aside: one more random draw for each; then regions'
+ * edges: two more genes, and shallows, colour, size and legs matter.
  */
-#define SEED_7_AFTER_500 0x921f6b05337323a5ULL
+#define SEED_7_AFTER_500 0x575dee3ee6e063aeULL
 
 static void test_same_seed_same_checksum(void)
 {

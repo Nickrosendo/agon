@@ -342,6 +342,7 @@ static void accounting(Sim *s)
         /* In slot order, seeing everyone still standing, the dying included, so a
          * creature's crowd does not depend on who happened to die first. */
         c->energy -= creature_crowd_cost(&s->world, c, &s->set);
+        c->energy -= creature_region_cost(&s->world, c, &s->set);
         bool lives = creature_upkeep(c, &s->set);
         records_note(&s->records, c, &s->set);
         if (!lives) {

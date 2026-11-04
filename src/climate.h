@@ -46,4 +46,8 @@ float climate_rain_at(const World *w, const Settings *s, int x, int y,
  * because water keeps changing. */
 int climate_region(const World *w, int cell, const Settings *s);
 
+/* The colour on the wheel (0 up to 1) a body must wear to match a region's
+ * ground. region must be a real one: REGION_NONE is not an index. */
+float climate_region_hue(int region);
+
 #endif

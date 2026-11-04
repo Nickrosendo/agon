@@ -4,6 +4,7 @@
 #include <stdio.h> /* snprintf */
 
 #include "brain_script.h"
+#include "climate.h"
 #include "creature.h"
 #include "flora.h"
 #include "settings.h"
@@ -252,6 +253,336 @@ static void test_move_blocked_without_a_point(void)
     CHECK(p.items[i].x == 3 && p.items[i].y == 3);
     CHECK(p.items[i].heading == HEADING_NORTH);
     CHECK(p.items[i].energy == 10.0f);
+    pool_free(&p);
+    world_free(&w);
+}
+
+/* The region tests' ground: every cell soil, with this temperature and water. */
+static void set_climate(World *w, float temperature, float water)
+{
+    for (int i = 0; i < w->w * w->h; i++) {
+        w->temperature[i] = temperature;
+        w->water[i] = water;
+    }
+}
+
+/* Sets the whole world to one region, checked against what it is meant to be. */
+static void set_region(World *w, const Settings *s, int region)
+{
+    switch (region) {
+    case REGION_SHALLOW: set_climate(w, 0.5f, 0.5f); break;
+    case REGION_COLD: set_climate(w, 0.0f, 0.5f); break;
+    case REGION_HOT_DRY: set_climate(w, 1.0f, 0.0f); break;
+    case REGION_WET: set_climate(w, 0.5f, 1.0f); break;
+    default: set_climate(w, 0.5f, 0.5f); break;
+    }
+    CHECK(climate_region(w, 0, s) == region);
+}
+
+/* A creature wearing its region's colour is seen from less far, and one of another
+ * colour is seen from as far as ever. */
+static void test_colour_match_hides_and_mismatch_shows(void)
+{
+    World w;
+    make_world(&w, 16, 16);
+    Settings s = settings_default();
+    Pool p;
+    CHECK(pool_init(&p, 4));
+    int i = spawn(&p, &w, 3, 3);
+    Creature *c = &p.items[i];
+    const int regions[] = {REGION_COLD, REGION_HOT_DRY, REGION_TEMPERATE, REGION_WET};
+    for (int k = 0; k < 4; k++) {
+        set_region(&w, &s, regions[k]);
+        float ground = climate_region_hue(regions[k]);
+        int cell = world_idx(&w, 3, 3);
+        c->genome.g[GENE_HUE] = ground;
+        float match = sight_reach(c, cell, &w, &s);
+        CHECK(fabsf(match - (1.0f - s.camouflage)) < 1e-5f);
+        /* The far side of the colour wheel. */
+        c->genome.g[GENE_HUE] = ground < 0.5f ? ground + 0.5f : ground - 0.5f;
+        CHECK(sight_reach(c, cell, &w, &s) == 1.0f);
+    }
+    /* Deep water or rock is no region: the answer must not come from outside
+     * the table of colours. */
+    w.terrain[0] = TERRAIN_ROCK;
+    CHECK(sight_reach(c, 0, &w, &s) == 1.0f);
+    pool_free(&p);
+    world_free(&w);
+}
+
+/* Along a ray: beyond its reach a matching creature is not seen at all, and what
+ * stands behind it can be; right beside the looker it is always seen. */
+static void test_hidden_creature_on_the_ray(void)
+{
+    World w;
+    make_world(&w, 32, 16);
+    Settings s = settings_default();
+    s.sight_max = 10;
+    set_region(&w, &s, REGION_TEMPERATE);
+    float ground = climate_region_hue(REGION_TEMPERATE);
+    Pool p;
+    CHECK(pool_init(&p, 4));
+    int looker = spawn(&p, &w, 5, 8);
+    p.items[looker].heading = HEADING_EAST;
+    p.items[looker].genome.g[GENE_SIGHT] = 1.0f;
+    CHECK(creature_sight(&p.items[looker], &s) == 10);
+    p.items[looker].genome.g[GENE_HUE] = ground;
+    /* Sight 10 with the default camouflage reaches a match only 4 cells out. */
+    int hidden = spawn(&p, &w, 11, 8);
+    p.items[hidden].genome.g[GENE_HUE] = ground;
+    Senses in;
+    creature_sense(&w, &p, looker, &s, &in);
+    CHECK(in.v[SENSE_RAYS + RAY_AHEAD * RAY_VALUES + RAY_NEAR] == 0.0f);
+    /* A different colour behind it is seen through the place it stands. */
+    int bright = spawn(&p, &w, 13, 8);
+    p.items[bright].genome.g[GENE_HUE] = ground + 0.5f;
+    creature_sense(&w, &p, looker, &s, &in);
+    CHECK(fabsf(in.v[SENSE_RAYS + RAY_AHEAD * RAY_VALUES + RAY_NEAR] - 0.3f) < 1e-5f);
+    /* Right beside it, even a perfect match is seen. */
+    pool_kill(&p, &w, hidden, &s, DEATH_HUNGER);
+    int beside = spawn(&p, &w, 6, 8);
+    p.items[beside].genome.g[GENE_HUE] = ground;
+    creature_sense(&w, &p, looker, &s, &in);
+    CHECK(in.v[SENSE_RAYS + RAY_AHEAD * RAY_VALUES + RAY_NEAR] == 1.0f);
+    pool_free(&p);
+    world_free(&w);
+}
+
+/* Gives a test creature a size through what it has grown, whatever else it is. */
+static void set_body_size(Creature *c, const Settings *s, float size)
+{
+    c->genome.g[GENE_SIZE] = 0.0f;
+    c->grown = 0.0f;
+    c->grown = size - creature_size(c, s);
+    CHECK(fabsf(creature_size(c, s) - size) < 1e-5f);
+}
+
+static void test_big_body_gains_in_cold_loses_in_heat(void)
+{
+    World w;
+    make_world(&w, 8, 8);
+    Settings s = settings_default();
+    Pool p;
+    CHECK(pool_init(&p, 2));
+    int i = spawn(&p, &w, 3, 3);
+    Creature *c = &p.items[i];
+
+    set_region(&w, &s, REGION_COLD);
+    set_body_size(c, &s, 1.0f);
+    float small_cold = creature_region_cost(&w, c, &s);
+    set_body_size(c, &s, 4.0f);
+    float big_cold = creature_region_cost(&w, c, &s);
+    CHECK(big_cold < small_cold);
+
+    set_region(&w, &s, REGION_HOT_DRY);
+    float big_hot = creature_region_cost(&w, c, &s);
+    set_body_size(c, &s, 1.0f);
+    float small_hot = creature_region_cost(&w, c, &s);
+    CHECK(big_hot > small_hot);
+
+    /* Ordinary ground asks nothing of any body. */
+    set_region(&w, &s, REGION_TEMPERATE);
+    CHECK(creature_region_cost(&w, c, &s) == 0.0f);
+    set_region(&w, &s, REGION_WET);
+    CHECK(creature_region_cost(&w, c, &s) == 0.0f);
+    pool_free(&p);
+    world_free(&w);
+}
+
+/* The poor region widens the gap a small body already has: the difference in what
+ * a day costs is larger there than on ordinary ground. */
+static void test_small_body_gains_where_poor(void)
+{
+    World w;
+    make_world(&w, 8, 8);
+    Settings s = settings_default();
+    Pool p;
+    CHECK(pool_init(&p, 2));
+    int i = spawn(&p, &w, 3, 3);
+    Creature *c = &p.items[i];
+    float gap[2];
+    const int regions[2] = {REGION_TEMPERATE, REGION_HOT_DRY};
+    for (int k = 0; k < 2; k++) {
+        set_region(&w, &s, regions[k]);
+        set_body_size(c, &s, 0.5f);
+        float small = creature_upkeep_cost(c, &s) + creature_region_cost(&w, c, &s);
+        set_body_size(c, &s, 3.0f);
+        float big = creature_upkeep_cost(c, &s) + creature_region_cost(&w, c, &s);
+        gap[k] = big - small;
+    }
+    CHECK(gap[1] > gap[0]);
+    pool_free(&p);
+    world_free(&w);
+}
+
+static void test_legs_cross_marsh_and_sand_cheaper_cost_elsewhere(void)
+{
+    World w;
+    make_world(&w, 8, 8);
+    Settings s = settings_default();
+    Pool p;
+    CHECK(pool_init(&p, 2));
+    int i = spawn(&p, &w, 3, 3);
+    Creature *c = &p.items[i];
+    int cell = world_idx(&w, 3, 3);
+    const int hard[2] = {REGION_WET, REGION_HOT_DRY};
+    for (int k = 0; k < 2; k++) {
+        set_region(&w, &s, hard[k]);
+        c->genome.g[GENE_LEGS] = 0.0f;
+        float without = creature_step_extra(&w, c, cell, &s);
+        c->genome.g[GENE_LEGS] = 1.0f;
+        CHECK(creature_step_extra(&w, c, cell, &s) == 0.0f);
+        CHECK(without == s.rough_step_cost);
+    }
+    const int easy[2] = {REGION_TEMPERATE, REGION_COLD};
+    for (int k = 0; k < 2; k++) {
+        set_region(&w, &s, easy[k]);
+        c->genome.g[GENE_LEGS] = 0.0f;
+        CHECK(creature_step_extra(&w, c, cell, &s) == 0.0f);
+        c->genome.g[GENE_LEGS] = 1.0f;
+        CHECK(creature_step_extra(&w, c, cell, &s) == s.legs_step_cost);
+    }
+    pool_free(&p);
+    world_free(&w);
+}
+
+static void test_swim_crosses_shallow_cheaper_cost_elsewhere(void)
+{
+    World w;
+    make_world(&w, 8, 8);
+    Settings s = settings_default();
+    Pool p;
+    CHECK(pool_init(&p, 2));
+    int i = spawn(&p, &w, 3, 3);
+    Creature *c = &p.items[i];
+    c->energy = 10.0f;
+    set_region(&w, &s, REGION_TEMPERATE);
+    int land = world_idx(&w, 3, 3);
+    int shallow = world_idx(&w, 3, 2);
+    w.terrain[shallow] = TERRAIN_SHALLOW;
+
+    /* Anyone can cross, and the step is the one to the shallows, paid in full. */
+    Rng r;
+    rng_seed(&r, 1);
+    creature_act(&w, &p, i, (Action){.kind = ACT_MOVE, .hold = 1}, &s, &r);
+    CHECK(c->x == 3 && c->y == 2);
+    CHECK(fabsf(c->energy - (10.0f - s.move_cost - s.rough_step_cost)) < 1e-5f);
+
+    c->genome.g[GENE_SWIM] = 1.0f;
+    CHECK(creature_step_extra(&w, c, shallow, &s) == 0.0f);
+    CHECK(creature_step_extra(&w, c, land, &s) == s.swim_step_cost);
+    c->genome.g[GENE_SWIM] = 0.0f;
+    CHECK(creature_step_extra(&w, c, shallow, &s) == s.rough_step_cost);
+    CHECK(creature_step_extra(&w, c, land, &s) == 0.0f);
+    pool_free(&p);
+    world_free(&w);
+}
+
+/* Shallows hold bodies, born or walking; deep water still holds none. */
+static void test_shallow_can_be_stood_on(void)
+{
+    World w;
+    make_world(&w, 8, 8);
+    Pool p;
+    CHECK(pool_init(&p, 4));
+    w.terrain[world_idx(&w, 1, 1)] = TERRAIN_SHALLOW;
+    w.terrain[world_idx(&w, 2, 1)] = TERRAIN_WATER;
+    CHECK(pool_spawn(&p, &w, 1, 1) >= 0);
+    CHECK(pool_spawn(&p, &w, 2, 1) == -1);
+    CHECK(world_walkable(&w, world_idx(&w, 1, 2)));
+    CHECK(!world_walkable(&w, world_idx(&w, 2, 1)));
+    pool_free(&p);
+    world_free(&w);
+}
+
+/* What leaves give, for a body with these genes: raising fruit digestion or meat
+ * digestion takes from the leaf yield. And back the other way. */
+static float leaf_bite_energy(float leaf, float fruit, float meat)
+{
+    World w;
+    make_world(&w, 8, 8);
+    Settings s = settings_default();
+    Rng r;
+    rng_seed(&r, 1);
+    Pool p;
+    CHECK(pool_init(&p, 2));
+    int i = spawn(&p, &w, 3, 3);
+    Creature *c = &p.items[i];
+    c->genome.g[GENE_LEAF] = leaf;
+    c->genome.g[GENE_FRUIT] = fruit;
+    c->genome.g[GENE_MEAT] = meat;
+    c->energy = 10.0f;
+    /* A bite looks at the cells around; a zeroed plant offers only leaves. */
+    int cell = world_idx(&w, 3, 2);
+    w.veg[cell] = 1;
+    creature_act(&w, &p, i, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
+    float gained = c->energy - 10.0f;
+    pool_free(&p);
+    world_free(&w);
+    return gained;
+}
+
+static void test_digestion_tradeoff(void)
+{
+    float pure = leaf_bite_energy(1.0f, 0.0f, 0.0f);
+    float with_fruit = leaf_bite_energy(1.0f, 1.0f, 0.0f);
+    float with_meat = leaf_bite_energy(1.0f, 0.0f, 1.0f);
+    CHECK(pure > 0.0f);
+    CHECK(with_fruit < pure);
+    CHECK(with_meat < pure);
+    /* And the floor stands: no gene ever gives less than a body without any. */
+    Settings s = settings_default();
+    float floor_gain = s.bite_veg_energy * s.digest_floor;
+    CHECK(leaf_bite_energy(0.5f, 1.0f, 1.0f) > floor_gain);
+}
+
+/* The principle: every edge costs something elsewhere. Each body here loses
+ * somewhere to another, in what standing and stepping cost on that ground. */
+static void test_no_creature_best_everywhere(void)
+{
+    World w;
+    make_world(&w, 8, 8);
+    Settings s = settings_default();
+    Pool p;
+    CHECK(pool_init(&p, 4));
+    enum { BODIES = 3, REGIONS = 5 };
+    const float size[BODIES] = {0.5f, 4.0f, 0.5f};
+    const float legs[BODIES] = {0.0f, 1.0f, 0.0f};
+    const float swim[BODIES] = {0.0f, 0.0f, 1.0f};
+    const int regions[REGIONS] = {REGION_COLD, REGION_HOT_DRY, REGION_TEMPERATE,
+                                  REGION_WET, REGION_SHALLOW};
+    int ids[BODIES];
+    for (int b = 0; b < BODIES; b++) {
+        ids[b] = spawn(&p, &w, b, 0);
+        Creature *c = &p.items[ids[b]];
+        set_body_size(c, &s, size[b]);
+        c->genome.g[GENE_LEGS] = legs[b];
+        c->genome.g[GENE_SWIM] = swim[b];
+    }
+    int cell = world_idx(&w, 4, 4);
+    bool beaten[BODIES] = {false, false, false};
+    for (int k = 0; k < REGIONS; k++) {
+        /* The whole world one region, so each body stands on it too. */
+        bool shallow = regions[k] == REGION_SHALLOW;
+        for (int i = 0; i < w.w * w.h; i++) {
+            w.terrain[i] = shallow ? TERRAIN_SHALLOW : TERRAIN_SOIL;
+        }
+        set_region(&w, &s, regions[k]);
+        float price[BODIES];
+        for (int b = 0; b < BODIES; b++) {
+            const Creature *c = &p.items[ids[b]];
+            price[b] = creature_region_cost(&w, c, &s) +
+                       creature_step_extra(&w, c, cell, &s);
+        }
+        for (int b = 0; b < BODIES; b++) {
+            for (int o = 0; o < BODIES; o++) {
+                beaten[b] = beaten[b] || price[o] < price[b];
+            }
+        }
+    }
+    for (int b = 0; b < BODIES; b++) {
+        CHECK(beaten[b]);
+    }
     pool_free(&p);
     world_free(&w);
 }
@@ -924,6 +1255,7 @@ static void test_fruit_bite_carries_seed(void)
     CHECK(pool_init(&p, 1));
     int i = spawn(&p, &w, 3, 3);
     p.items[i].genome.g[GENE_FRUIT] = 1.0f;
+    p.items[i].genome.g[GENE_LEAF] = 0.0f; /* so the trade-off takes nothing */
     p.items[i].energy = 10.0f;
     int ahead = world_idx(&w, 3, 2);
     w.veg[ahead] = 2;
@@ -2471,6 +2803,9 @@ static void test_crowd_charged_each_tick(void)
     sim.set.crowd_upkeep = 0.5f;
     sim.set.crowd_radius = 1;
     sim.set.crowd_free = 0;
+    /* Those two and the third may stand in different regions. */
+    sim.set.cold_upkeep = 0.0f;
+    sim.set.heat_upkeep = 0.0f;
     int a = spawn(&sim.pool, &sim.world, 2, 2);
     int b = spawn(&sim.pool, &sim.world, 3, 2);
     int alone = spawn(&sim.pool, &sim.world, 8, 8);
@@ -2638,6 +2973,15 @@ int main(void)
     test_spawn_needs_free_soil();
     test_move_wraps();
     test_move_blocked_turns_aside();
+    test_colour_match_hides_and_mismatch_shows();
+    test_hidden_creature_on_the_ray();
+    test_big_body_gains_in_cold_loses_in_heat();
+    test_small_body_gains_where_poor();
+    test_legs_cross_marsh_and_sand_cheaper_cost_elsewhere();
+    test_swim_crosses_shallow_cheaper_cost_elsewhere();
+    test_shallow_can_be_stood_on();
+    test_digestion_tradeoff();
+    test_no_creature_best_everywhere();
     test_move_blocked_by_creature_turns_aside();
     test_move_blocked_turns_back();
     test_move_shut_in();
