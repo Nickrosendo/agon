@@ -161,6 +161,9 @@ plant_dung_start = 5
 # plant energy lost per density step of leaves eaten (0 to 1e+06)
 plant_leaf_harm = 0.2
 
+# density steps of a leaf plant no bite can take (0 to 3)
+plant_leaf_root = 0
+
 # most creatures alive at once (1 to 1000000)
 pool_capacity = 8000
 

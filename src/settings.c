@@ -82,6 +82,7 @@ Settings settings_default(void)
         .plant_gut_max = 400,
         .plant_dung_start = 5.0f,
         .plant_leaf_harm = 0.2f,
+        .plant_leaf_root = 0,
         /* Sized from measurement: with plenty of room, seeds 1 to 5 peak at 5,748,
          * 1,393, 4,772, 1,000 and 3,718 over 20,000 ticks. Reaching the limit changes
          * the world (seed 1 at 4,000), so it stays well clear of the peak. */
@@ -280,6 +281,7 @@ static const SettingInfo TABLE[] = {
     INT_ROW(plant_gut_max, 1, 65535, "ticks a seed stays in an animal, at most"),
     FLOAT_ROW(plant_dung_start, 0, BIG, "energy of a sprout from dropped dung"),
     FLOAT_ROW(plant_leaf_harm, 0, BIG, "plant energy lost per density step of leaves eaten"),
+    INT_ROW(plant_leaf_root, 0, 3, "density steps of a leaf plant no bite can take"),
     INT_ROW(pool_capacity, 1, POOL_MAX, "most creatures alive at once"),
     FLOAT_ROW(start_share, 0, 1, "founders of a new world, as a share of its "
                                  "soil"),

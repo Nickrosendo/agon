@@ -587,6 +587,40 @@ static void test_no_creature_best_everywhere(void)
     world_free(&w);
 }
 
+/* A bite stops at the root: the plant lives on, and offers nothing more until it
+ * regrows. Taken away, the same bite would finish the plant. */
+static void test_leaf_bite_leaves_the_root(void)
+{
+    World w;
+    make_world(&w, 8, 8);
+    Settings s = settings_default();
+    s.plant_leaf_root = 1;
+    Rng r;
+    rng_seed(&r, 1);
+    Pool p;
+    CHECK(pool_init(&p, 2));
+    int i = spawn(&p, &w, 3, 3);
+    p.items[i].energy = 10.0f;
+    int cell = world_idx(&w, 3, 2);
+    w.veg[cell] = 2;
+    w.plant[cell].energy = 5.0f;
+    Action bite = {.kind = ACT_BITE, .hold = 1};
+    creature_act(&w, &p, i, bite, &s, &r);
+    CHECK(w.veg[cell] == 1);
+    float fed = p.items[i].energy;
+    CHECK(fed > 10.0f);
+    /* Only the root left: nothing to eat, and it stays. */
+    creature_act(&w, &p, i, bite, &s, &r);
+    CHECK(w.veg[cell] == 1);
+    CHECK(p.items[i].energy == fed);
+    /* With no root kept, the plant is eaten away. */
+    s.plant_leaf_root = 0;
+    creature_act(&w, &p, i, bite, &s, &r);
+    CHECK(w.veg[cell] == 0);
+    pool_free(&p);
+    world_free(&w);
+}
+
 static void test_turns(void)
 {
     World w;
@@ -3047,6 +3081,7 @@ int main(void)
     test_spawn_needs_free_soil();
     test_move_wraps();
     test_move_blocked_turns_aside();
+    test_leaf_bite_leaves_the_root();
     test_colour_match_hides_and_mismatch_shows();
     test_hidden_creature_on_the_ray();
     test_big_body_gains_in_cold_loses_in_heat();

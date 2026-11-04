@@ -592,7 +592,12 @@ static float carrion_take(const World *w, int i, const Creature *c,
 static int plant_take(const World *w, int i, const Creature *c, const Settings *s)
 {
     int mouth = bite_steps(creature_size(c, s));
-    return w->veg[i] < mouth ? w->veg[i] : mouth;
+    /* What a bite may reach: never the root, which regrows the plant. */
+    int edible = (int)w->veg[i] - s->plant_leaf_root;
+    if (edible <= 0) {
+        return 0;
+    }
+    return edible < mouth ? edible : mouth;
 }
 
 /* The share of a food's energy a digestion gene of this value gets out of it:

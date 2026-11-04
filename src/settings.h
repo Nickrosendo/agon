@@ -128,7 +128,8 @@ typedef struct {
     int plant_gut_min;
     int plant_gut_max;
     float plant_dung_start;
-    /* Leaves. Eating them gives bite_veg_energy per density step, and takes plant_leaf_harm of the plant's stored energy per step. */
+    /* Leaves. Eating them gives bite_veg_energy per density step, and takes plant_leaf_harm of the plant's stored energy per step. No bite takes the last plant_leaf_root steps: grazed down to its root, a plant offers nothing and regrows. 0 is off, for now: on alone, leaf plants take over; see the 2026-11-04 study doc. */
+    int plant_leaf_root;     /* density steps of a leaf plant no bite can take */
     float plant_leaf_harm;
 
     /* Creatures. Energy pays for everything: every tick costs
