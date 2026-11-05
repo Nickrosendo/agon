@@ -45,9 +45,10 @@
  * then a blocked walk turns aside: one more random draw for each; then regions'
  * edges: two more genes, and shallows, colour, size and legs matter; then wet and
  * dry times: rain follows a yearly-like cycle, with a shorter pattern; then soil
- * that dries twice as fast.
+ * that dries twice as fast; then the balance against starving and lost leaf
+ * plants: roots kept, cheaper fruit, leaner leaves, dearer crowding, more founders.
  */
-#define SEED_7_AFTER_500 0x6525dc77febb2588ULL
+#define SEED_7_AFTER_500 0xb22660e267faa0e6ULL
 
 static void test_same_seed_same_checksum(void)
 {

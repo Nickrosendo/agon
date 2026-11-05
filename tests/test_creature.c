@@ -502,6 +502,7 @@ static float leaf_bite_energy(float leaf, float fruit, float meat)
     World w;
     make_world(&w, 8, 8);
     Settings s = settings_default();
+    s.plant_leaf_root = 0; /* about the bite itself: the root rule has its own test */
     Rng r;
     rng_seed(&r, 1);
     Pool p;
@@ -645,6 +646,7 @@ static void test_bite(void)
     World w;
     make_world(&w, 8, 8);
     Settings s = settings_default();
+    s.plant_leaf_root = 0; /* about the bite itself: the root rule has its own test */
     Rng r;
     rng_seed(&r, 1);
     Pool p;
@@ -1295,6 +1297,7 @@ static void test_fruit_tree_has_no_leaves_to_eat(void)
     make_world(&w, 7, 7);
     Settings s = plant_eater_settings();
     s.bite_empty_cost = 0.0f;
+    s.plant_leaf_root = 0; /* about the bite itself: the root rule has its own test */
     Rng r;
     rng_seed(&r, 1);
     Pool p;
@@ -2505,6 +2508,7 @@ static void test_no_top_size(void)
 static void test_big_bites_more(void)
 {
     Settings s = settings_default();
+    s.plant_leaf_root = 0; /* about the bite itself: the root rule has its own test */
     Rng r;
     rng_seed(&r, 3);
     World w;

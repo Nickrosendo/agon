@@ -70,24 +70,30 @@ Settings settings_default(void)
         /* These two keep leaves and fruit both alive. Fruit is never harmed by
          * eating, so with neither, fruit trees left about 2 leaf plants in a
          * world. Thirst leaves dry ground to the leaves, and needing animals to
-         * spread ties the trees to the creatures. */
-        .plant_fruit_thirst = 0.45f,
+         * spread ties the trees to the creatures.
+         * Six values here (thirst, fruit cost, leaf root, founders, a bite of
+         * leaves, crowding) are one balance, Nicolas's choice on 2026-11-05.
+         * Seeds 1 to 15 at 60,000 ticks: 15 alive, fruit 16 to 35 % of plants on
+         * every world, still and starving 9.5 % on average (7 to 12 %), but
+         * creatures of 300+ ticks only about 6 cells from birth (9.5 before). */
+        .plant_fruit_thirst = 0.1f,
         .plant_fruit_near = 0.5f,
         .plant_fruit_energy = 4.0f,
         .plant_fruit_rate = 0.05f,
-        .plant_fruit_cost = 2.0f,
+        .plant_fruit_cost = 1.0f,
         .plant_fruit_max = 3.0f,
         .bite_fruit_energy = 40.0f,
         .plant_gut_min = 50,
         .plant_gut_max = 400,
         .plant_dung_start = 5.0f,
         .plant_leaf_harm = 0.2f,
-        .plant_leaf_root = 0,
+        /* Without it, bites ate leaf plants away: about 2 cells of 2,000 left. */
+        .plant_leaf_root = 1,
         /* Sized from measurement: with plenty of room, seeds 1 to 5 peak at 5,748,
          * 1,393, 4,772, 1,000 and 3,718 over 20,000 ticks. Reaching the limit changes
          * the world (seed 1 at 4,000), so it stays well clear of the peak. */
         .pool_capacity = 8000,
-        .start_share = 0.05f,
+        .start_share = 0.15f,
         .min_creatures = 0,
         /* A char array inside a struct can be initialised from a string
          * literal: the characters are copied in and the rest is zero. */
@@ -96,7 +102,7 @@ Settings settings_default(void)
         /* Slowed at Nicolas's request: 0.1 spent the starting energy in 1.3 years. */
         .upkeep_base = 0.06f,
         .move_cost = 0.3f,
-        .bite_veg_energy = 27.0f,
+        .bite_veg_energy = 18.0f,
         .mate_threshold = 30.0f,
         .mate_share = 0.5f,
         .mate_barrier = 0.55f,
@@ -172,10 +178,12 @@ Settings settings_default(void)
         /* These two together, Nicolas's call to try. Seeds 1 to 15, 20,000 ticks, the
          * best of six tried: 15 alive and the smallest world at 98, deaths from wounds
          * 26.3 % against 2.4 %, still and starving 7 % against 20 %. Alone, territory
-         * lost a world; stronger crowding lost one or two and left worlds of under 70. */
+         * lost a world; stronger crowding lost one or two and left worlds of under 70.
+         * Later, with leaf roots kept and three times the founders, crowding at
+         * 0.08 is what keeps still-and-starving deaths near 10 % (2026-11-05). */
         .territory_drive = 0.3f,
         .territory_upkeep = 0.05f,
-        .crowd_upkeep = 0.01f,
+        .crowd_upkeep = 0.08f,
         .crowd_radius = 2,
         .crowd_free = 1,
         .body_energy = 10.0f,

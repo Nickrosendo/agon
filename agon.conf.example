@@ -129,7 +129,7 @@ plant_mutation = 0.1
 plant_mutation_spread = 0.08
 
 # water a fruit tree needs beyond what its gene says (0 to 1e+06)
-plant_fruit_thirst = 0.45
+plant_fruit_thirst = 0.1
 
 # how often a fruit tree seeds beside itself, against a leaf plant (0 to 1)
 plant_fruit_near = 0.5
@@ -141,7 +141,7 @@ plant_fruit_energy = 4
 plant_fruit_rate = 0.05
 
 # energy one fruit costs its plant (0 to 1e+06)
-plant_fruit_cost = 2
+plant_fruit_cost = 1
 
 # most fruit on one plant (0 to 1e+06)
 plant_fruit_max = 3
@@ -162,13 +162,13 @@ plant_dung_start = 5
 plant_leaf_harm = 0.2
 
 # density steps of a leaf plant no bite can take (0 to 3)
-plant_leaf_root = 0
+plant_leaf_root = 1
 
 # most creatures alive at once (1 to 1000000)
 pool_capacity = 8000
 
 # founders of a new world, as a share of its soil (0 to 1)
-start_share = 0.05
+start_share = 0.15
 
 # the floor: random creatures are added below this (0: never) (0 to 1000000)
 min_creatures = 0
@@ -186,7 +186,7 @@ upkeep_base = 0.06
 move_cost = 0.3
 
 # energy in a bite of plant (0 to 1e+06)
-bite_veg_energy = 27
+bite_veg_energy = 18
 
 # energy needed to mate, by size (0 to 1e+06)
 mate_threshold = 30
@@ -369,7 +369,7 @@ territory_drive = 0.3
 territory_upkeep = 0.05
 
 # energy per tick per neighbour past the free ones (0 to 1e+06)
-crowd_upkeep = 0.01
+crowd_upkeep = 0.08
 
 # how many cells away counts as a neighbour (1 to 8)
 crowd_radius = 2
