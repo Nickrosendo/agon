@@ -75,8 +75,37 @@ static void test_ticks_per_year_cannot_change_a_world(void)
     sim_free(&b);
 }
 
+static void test_years_season(void)
+{
+    /* The default year: 25 ticks each, spring first. */
+    CHECK(strcmp(years_season(0, 100), "spring") == 0);
+    CHECK(strcmp(years_season(24, 100), "spring") == 0);
+    CHECK(strcmp(years_season(25, 100), "summer") == 0);
+    CHECK(strcmp(years_season(50, 100), "autumn") == 0);
+    CHECK(strcmp(years_season(75, 100), "winter") == 0);
+    CHECK(strcmp(years_season(99, 100), "winter") == 0);
+    CHECK(strcmp(years_season(100, 100), "spring") == 0); /* the next year */
+    /* A year too short to split, a bad length, and the largest tick stay safe. */
+    CHECK(strcmp(years_season(5, 1), "spring") == 0);
+    CHECK(strcmp(years_season(5, 0), "spring") == 0);
+    CHECK(strcmp(years_season(UINT64_MAX, 100), "spring") == 0); /* ends in ..15 */
+}
+
+/* With the default settings spring is the mating season: the name a viewer reads
+ * should not contradict what the creatures are doing. */
+static void test_spring_is_the_mating_season(void)
+{
+    Settings s = settings_default();
+    for (uint64_t tick = 0; tick < 400; tick++) {
+        bool spring = strcmp(years_season(tick, s.ticks_per_year), "spring") == 0;
+        CHECK(spring == sim_in_season(tick, &s));
+    }
+}
+
 int main(void)
 {
+    test_years_season();
+    test_spring_is_the_mating_season();
     test_years_format();
     test_years_format_small_buffer();
     test_bad_year_length_is_safe();

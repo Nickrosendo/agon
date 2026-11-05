@@ -17,4 +17,9 @@ void years_format(char *out, size_t len, uint64_t ticks, int ticks_per_year);
 /* Whole years gone, for a date: the largest int when it would not fit. */
 int years_whole(uint64_t ticks, int ticks_per_year);
 
+/* The season of the year these ticks fall in: "spring", "summer", "autumn" or
+ * "winter", a quarter of the year each, spring first. Only a name, like the year:
+ * no rule reads it. The text is a constant the caller must not change or free. */
+const char *years_season(uint64_t ticks, int ticks_per_year);
+
 #endif

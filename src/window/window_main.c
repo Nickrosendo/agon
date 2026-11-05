@@ -282,8 +282,9 @@ static void draw_title(App *a, const Creature *followed)
     }
     char text[400];
     snprintf(text, sizeof(text),
-             " agon | seed 0x%" PRIx64 " | year %s | creatures %d | %d/s%s%s%s%s",
-             a->sim.seed, year, a->sim.pool.count, APP_SPEEDS[a->speed],
+             " agon | seed 0x%" PRIx64 " | year %s, %s | creatures %d | %d/s%s%s%s%s",
+             a->sim.seed, year,
+             years_season(a->sim.tick, a->sim.set.ticks_per_year), a->sim.pool.count, APP_SPEEDS[a->speed],
              sim_is_over(&a->sim) ? " | game over" : a->paused ? " | paused" : "",
              who,
              a->notice[0] != '\0' ? " | " : "", a->notice);

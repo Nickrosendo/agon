@@ -76,8 +76,9 @@ static void draw_title(int cols, const Sim *sim, int speed, int paused,
      * platform ("lx" here); writing %llx would be wrong on some systems.
      * Adjacent string literals are joined into one by the compiler. */
     snprintf(text, sizeof(text),
-             " agon | seed 0x%" PRIx64 " | year %s | creatures %d | %d/s%s%s%s%s",
-             sim->seed, year, sim->pool.count, APP_SPEEDS[speed],
+             " agon | seed 0x%" PRIx64 " | year %s, %s | creatures %d | %d/s%s%s%s%s",
+             sim->seed, year,
+             years_season(sim->tick, sim->set.ticks_per_year), sim->pool.count, APP_SPEEDS[speed],
              sim_is_over(sim) ? " | game over" : paused ? " | paused" : "",
              inspecting ? " | inspect" : "",
              notice[0] != '\0' ? " | " : "", notice);
@@ -198,8 +199,8 @@ static void print_summary(const Sim *sim)
     panel_format_count(year, sizeof(year), years_whole(sim->tick, per_year));
     panel_format_count(plants, sizeof(plants), st->planted);
     years_format(oldest, sizeof(oldest), st->oldest_age, per_year);
-    printf("agon | seed 0x%" PRIx64 " | year %s | world %d x %d\n", sim->seed,
-           year, sim->world.w, sim->world.h);
+    printf("agon | seed 0x%" PRIx64 " | year %s, %s | world %d x %d\n",
+           sim->seed, year, years_season(sim->tick, per_year), sim->world.w, sim->world.h);
     printf("creatures %d: %d eat plants, %d eat meat (%d top hunters) | "
            "%d families\n",
            st->creatures, st->by_level[BAND_PLANT],

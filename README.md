@@ -222,7 +222,9 @@ for the build that wrote them; a build with a different format refuses them.
     stranger right beside it, whatever its brain chose, unless it chose to mate.
     Close relatives are safe.
 16. Time is shown in years. A year is 100 ticks by default (`ticks_per_year`),
-    which is only a way of showing time and changes nothing in a world.
+    which is only a way of showing time and changes nothing in a world. The title
+    also names the season, a quarter of the year each, spring first. It is only a
+    name too: winter is no colder, though by default spring is the mating season.
 
 ## Licence
 
