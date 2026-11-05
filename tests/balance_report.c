@@ -10,6 +10,7 @@
  * died during this tick. The shadow's energy is therefore the energy just
  * before death. What killed it comes from the Pool's own count.
  */
+#include <math.h> /* sqrt */
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -28,6 +29,10 @@
  * Births are always counted. */
 #define COUNT_DEATHS_FROM 5000
 
+/* Younger creatures have had no time to go anywhere, and would hide how far the
+ * grown ones roam. */
+#define TRAVEL_MIN_AGE 300u
+
 /* A hunter keeps being watched for this many ticks after it loses sight of
  * whoever it last saw. */
 #define LOST_SIGHT_TICKS 5
@@ -40,6 +45,7 @@ typedef struct {
     uint32_t age;
     uint8_t last_action;
     uint32_t still_ticks; /* ticks since it changed cell */
+    int born_x, born_y;   /* where it was first seen */
     /* The fight this creature is in as a target, if any. */
     uint32_t hits_taken;
     bool in_fight;
@@ -298,6 +304,10 @@ static void watch_slots(const Sim *s, Shadow *shadow, Report *rep)
         /* A copy to carry on from, or for a new creature an empty one. A struct
          * can be assigned whole; its fields are copied, not shared. */
         Shadow next = same ? *sh : (Shadow){0};
+        if (!same) {
+            next.born_x = c->x;
+            next.born_y = c->y;
+        }
         if (counting) {
             watch_new_hits(s, c, &next, rep);
             watch_fight(s, c, &next, rep);
@@ -317,6 +327,34 @@ static void watch_slots(const Sim *s, Shadow *shadow, Report *rep)
         next.hits_taken = c->hits_taken;
         *sh = next;
     }
+}
+
+/* The shorter way between two coordinates on a world that wraps around. */
+static int wrapped_gap(int a, int b, int size)
+{
+    int gap = abs(a - b);
+    return gap < size - gap ? gap : size - gap;
+}
+
+/* How far the creatures alive now, of TRAVEL_MIN_AGE ticks or more, stand from
+ * where they were born: straight-line cells, the short way round. How far they
+ * roam, not how far they walked: pacing back and forth ends up near the start. */
+static void print_travel(const Sim *s, const Shadow *shadow)
+{
+    double total = 0.0;
+    int adults = 0;
+    for (int i = 0; i < s->pool.capacity; i++) {
+        const Creature *c = &s->pool.items[i];
+        if (!c->alive || c->age < TRAVEL_MIN_AGE) {
+            continue;
+        }
+        double dx = wrapped_gap(c->x, shadow[i].born_x, s->world.w);
+        double dy = wrapped_gap(c->y, shadow[i].born_y, s->world.h);
+        total += sqrt(dx * dx + dy * dy);
+        adults++;
+    }
+    printf("     travel: adults stand %.1f cells from birth (%d of 300+ ticks)\n",
+           adults == 0 ? 0.0 : total / adults, adults);
 }
 
 static int meat_eaters(const Sim *s)
@@ -614,7 +652,7 @@ static void print_behaviour(const Sim *s, const Report *rep)
            (unsigned long long)rep->beside_kin_n);
 }
 
-static void print_row(const Sim *s, const Report *rep)
+static void print_row(const Sim *s, const Shadow *shadow, const Report *rep)
 {
     char extinct[32] = "-";
     if (rep->extinct) {
@@ -654,6 +692,7 @@ static void print_row(const Sim *s, const Report *rep)
            rep->pool_filled ? "YES" : "no", (double)largest, (double)mean_size);
     print_behaviour(s, rep);
     print_plants(s);
+    print_travel(s, shadow);
     print_regions(s);
     print_species(s);
 }
@@ -759,7 +798,7 @@ int main(int argc, char **argv)
     }
     Report rep = {.first_born_id = sim.pool.next_id};
     run(&sim, ticks, shadow, &rep);
-    print_row(&sim, &rep);
+    print_row(&sim, shadow, &rep);
     free(shadow);
     sim_free(&sim);
     return 0;
