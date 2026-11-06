@@ -4,6 +4,7 @@
 #include <string.h> /* strlen */
 
 #include "app.h"
+#include "chronicle.h" /* name_from_id */
 #include "climate.h" /* climate_region, climate_region_hue */
 #include "palette.h"
 
@@ -744,6 +745,59 @@ void scene_draw_cursor(const Scene *sc, Canvas *c, const Camera *cam,
     canvas_rect(c, left, bottom - len + 1, 1, len, white);
     canvas_rect(c, right - len + 1, bottom, len, 1, white);
     canvas_rect(c, right, bottom - len + 1, 1, len, white);
+}
+
+/* One name under the body in this slot, or nothing if it would leave the view. */
+static void draw_name(const Scene *sc, Canvas *c, const Camera *cam,
+                      const Sim *s, int slot, float tick_fraction, int view_x,
+                      int view_y)
+{
+    if (slot >= sc->anim.capacity || !sc->anim.slots[slot].seen) {
+        return;
+    }
+    const Creature *cr = &s->pool.items[slot];
+    AnimPose p;
+    anim_pose(&sc->anim, s, slot, tick_fraction, 0, &p);
+    int sx, sy;
+    camera_to_screen(cam, p.x, p.y, &sx, &sy);
+    int ppc = camera_ppc(cam);
+    char name[16];
+    name_from_id(cr->id, name, sizeof(name));
+    /* strlen counts bytes, which for these ASCII names is also characters.
+     * It returns a size_t; the name is under 16, so the int conversion is safe. */
+    int w = (int)strlen(name) * FONT_W;
+    /* Centred under its own cell, the cell its feet stand on even when large. */
+    int x = sx + ppc / 2 - w / 2;
+    int y = sy + ppc + 1;
+    if (x < 0 || y < 0 || x + w > cam->view_w || y + FONT_H > cam->view_h) {
+        return;
+    }
+    font_text(c, view_x + x, view_y + y, name, to_pixel(WHITE),
+              to_pixel(BACKGROUND));
+}
+
+void scene_draw_names(const Scene *sc, Canvas *c, const Camera *cam,
+                      const Sim *s, const Creature *followed,
+                      float tick_fraction, int view_x, int view_y)
+{
+    if (camera_sprite_size(cam) != 16) {
+        return; /* Far and World: bodies of 8 pixels or less, names would bury them */
+    }
+    int followed_slot = followed != NULL ? (int)(followed - s->pool.items) : -1;
+    int n = s->pool.capacity < sc->anim.capacity ? s->pool.capacity
+                                                 : sc->anim.capacity;
+    for (int i = 0; i < n; i++) {
+        const Creature *cr = &s->pool.items[i];
+        /* & tests one bit of the flags; && would only ask whether both sides
+         * are non-zero. */
+        if (cr->alive && i != followed_slot && (cr->tally.flags & TALLY_GIANT)) {
+            draw_name(sc, c, cam, s, i, tick_fraction, view_x, view_y);
+        }
+    }
+    /* Last, so the followed creature's name is never covered by another. */
+    if (followed_slot >= 0) {
+        draw_name(sc, c, cam, s, followed_slot, tick_fraction, view_x, view_y);
+    }
 }
 
 /* How long a family's average body breathes in and out, in milliseconds. */

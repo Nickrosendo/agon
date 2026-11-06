@@ -50,6 +50,13 @@ make window MODE=release
 The default world is 256x144 cells. `--seed`, `--size`, `--speed`, `--no-floor`,
 `--config`, `--save` and `--load` work as they do below, and save files are shared
 by both programs. `--zoom close|normal|far|world` picks the starting zoom.
+`--keys TEXT`, with `--frames`, presses those keys one a frame in the last
+frames, for tests and screenshots: `--frames 300 --keys l --screenshot page.ppm`.
+
+When a creature first grows to giant size (`giant_size`, 6 by default) the title
+line announces it, with its name, family and year, for ten seconds; `j` jumps to
+it. At the two closest zooms, every living giant and the followed creature have
+their names under them.
 
 | Key or mouse | What it does |
 |---|---|
@@ -59,6 +66,8 @@ by both programs. `--zoom close|normal|far|world` picks the starting zoom.
 | dragging, arrows | move the view |
 | clicking a creature | follow it: the panel shows it, its body enlarged, and its family's bodies over time |
 | clicking "top hunter", "oldest" or the largest family's body on the panel | follow the highest on the food chain, the oldest, or that family's biggest |
+| `l` | the life story page of the followed creature, or, following nobody, of the most notable life recorded; `l` or Esc closes it. The world keeps running behind it |
+| `j` | follow the giant last announced; with the life story page open, follow the creature it tells of |
 | Esc, clicking bare ground, moving the view | let go |
 | `r` | a new world from a new seed |
 | `n` | a new world, after game over |
@@ -108,7 +117,7 @@ These are for the terminal program, `agon`.
 | `+` `-` | faster, slower |
 | `r` | a new world from a new seed |
 | `n` | a new world, after game over |
-| `i` | inspect: arrows or `hjkl` move the cursor (`HJKL` by 5), and the panel shows the plant and creature under it |
+| `i` | inspect: arrows or `hjkl` move the cursor (`HJKL` by 5), and the panel shows the plant and creature under it, starting with the creature's life (below) |
 | `s` | save, if started with `--save` |
 | `q` | quit (and save, if started with `--save`) |
 
@@ -225,6 +234,18 @@ for the build that wrote them; a build with a different format refuses them.
     which is only a way of showing time and changes nothing in a world. The title
     also names the season, a quarter of the year each, spring first. It is only a
     name too: winter is no colder, though by default spring is the mating season.
+17. Every creature's life is written down as it happens, and only what happened:
+    its birth and parents, children, fights it came through, heavy wounds, kills,
+    relatives dying near it, settling in another region, becoming the largest or
+    oldest alive, growing to giant size, and its death. Nothing in the world reads
+    these records, so keeping them (the `chronicle` setting) changes nothing. Names
+    come from a creature's number and titles from its deeds ("the Giant",
+    "Breaker of Hunters", "the Slayer", ...). The panel, in both programs, shows a
+    followed or inspected creature's name, title, family, age, health, kills and
+    its newest five events, newest first and short: `y52 killed Thakou` is year 52,
+    and a `*` after a name marks a hunter. The window's `l` page shows the whole
+    story: every creature keeps its newest 8 events, and the 64 most notable lives,
+    the dead among them, keep 48 each.
 
 ## Licence
 

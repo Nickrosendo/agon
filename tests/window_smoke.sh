@@ -90,5 +90,20 @@ if [ $HAVE_AGON -eq 1 ]; then
     esac
 fi
 
+# 7. The life story page and jumping to a giant are only looking: pressing l, j,
+# Esc and l again leaves the world exactly as a run without keys. Each run's
+# keys come in its last frames, so the screenshot shows the page open.
+keyed=$("$OUT/agon-window" --seed 3 --size 64x32 --speed 30 --frames 500 \
+    --keys "ljlj" --screenshot "$TMP/page.ppm" --checksum) ||
+    fail "the run with --keys failed"
+[ -n "$keyed" ] && [ "$keyed" = "$window" ] ||
+    fail "pressing l and j changed the world: '$keyed' against '$window'"
+[ "$(head -c 16 "$TMP/page.ppm" | tr '\n' ' ')" = "P6 1280 720 255 " ] ||
+    fail "the screenshot with the page open has the wrong header"
+if [ $HAVE_AGON -eq 1 ]; then
+    "$OUT/agon" --keys l >/dev/null 2>&1
+    [ $? -eq 2 ] || fail "agon accepted --keys"
+fi
+
 [ $failed -eq 0 ] && echo "window_smoke: all passed"
 exit $failed

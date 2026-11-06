@@ -67,6 +67,11 @@ typedef struct {
  * Pool's struct Chronicle * and a Chronicle * are the same type. */
 typedef struct Chronicle {
     NotableLife *lives; /* CHRONICLE_NOTABLE entries, allocated once */
+    /* How many creatures have grown to giant size in this world, and the id of
+     * the newest: what the window's announcement watches. Not saved, so they
+     * start again from 0 after a load; the window starts counting afresh too. */
+    uint32_t giants;
+    uint32_t newest_giant;
 } Chronicle;
 
 /* Allocates the table, empty. False when memory runs out; nothing to free. */
@@ -106,5 +111,11 @@ const char *chronicle_title(const LifeTally *t);
  * both parents from it). Always ends with '\0' within len. */
 void chronicle_line(const LifeEvent *e, const LifeTally *t, int ticks_per_year,
                     char *out, size_t len);
+
+/* The same event in at most 19 characters when names are short, for the panel's
+ * narrow log: "y52 killed Thakou". Longer names are cut by whoever draws it.
+ * Facts only, as for chronicle_line. Always ends with '\0' within len. */
+void chronicle_short_line(const LifeEvent *e, int ticks_per_year, char *out,
+                          size_t len);
 
 #endif

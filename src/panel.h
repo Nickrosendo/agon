@@ -70,8 +70,23 @@ void panel_sparkline(char *out, size_t size, const History *h, int cols);
  * wide and rows tall. Lines that do not fit are left out. */
 void panel_draw(const Sim *s, int col, int row0, int rows);
 
-/* Draws inspect mode's panel in the same area: the cell under the cursor
- * and the creature on it, if any. */
+/* How many lines panel_inspect_text can make, and the bytes each takes:
+ * PANEL_COLS characters and the '\0', with room to spare so gcc's
+ * -Wformat-truncation can see snprintf never has to cut a value. */
+#define PANEL_INSPECT_LINES 64
+#define PANEL_LINE_BYTES 48
+/* How many of a creature's newest events the panel's log shows. */
+#define PANEL_LOG_LINES 5
+
+/* Inspect mode's panel as text: when a creature is under the cursor, first its
+ * life (name, title, family, age, health, kills and its newest events, newest
+ * first), then the cell, then the creature's body and genes. Writes at most max
+ * lines into lines, each at most PANEL_COLS characters, and returns how many. */
+int panel_inspect_text(const Sim *s, const Inspect *in,
+                       char lines[][PANEL_LINE_BYTES], int max);
+
+/* Draws inspect mode's panel in the same area: panel_inspect_text's lines, as
+ * many as fit. */
 void panel_draw_inspect(const Sim *s, const Inspect *in, int col, int row0,
                         int rows);
 

@@ -123,7 +123,8 @@ enum {
     OPT_CHECKSUM,
     OPT_FRAMES,
     OPT_SCREENSHOT,
-    OPT_ZOOM
+    OPT_ZOOM,
+    OPT_KEYS
 };
 
 /* The table getopt_long reads: name, whether a value follows, a flag
@@ -146,6 +147,7 @@ static const struct option LONG_OPTIONS[] = {
     {"frames", required_argument, NULL, OPT_FRAMES},
     {"screenshot", required_argument, NULL, OPT_SCREENSHOT},
     {"zoom", required_argument, NULL, OPT_ZOOM},
+    {"keys", required_argument, NULL, OPT_KEYS},
     {NULL, 0, NULL, 0},
 };
 
@@ -169,6 +171,9 @@ static bool take_value(int opt, const char *value, Options *o, char *err,
         return true;
     case OPT_ZOOM:
         o->zoom_name = value;
+        return true;
+    case OPT_KEYS:
+        o->keys = value;
         return true;
     case OPT_FRAMES:
         if (!parse_long(value, 1, OPTIONS_MAX_FRAMES, &n)) {

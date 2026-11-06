@@ -133,6 +133,17 @@ void scene_draw_cursor(const Scene *sc, Canvas *c, const Camera *cam,
                        float tick_fraction, int view_x, int view_y);
 
 /*
+ * Names beside notable creatures: every living giant (one that has reached
+ * giant_size, as its life story records) and the followed creature, under its
+ * body, at the two closest zooms only, where a name fits beside a body. A name
+ * that would reach past the view is left out rather than cut. followed may be
+ * NULL.
+ */
+void scene_draw_names(const Scene *sc, Canvas *c, const Camera *cam,
+                      const Sim *s, const Creature *followed,
+                      float tick_fraction, int view_x, int view_y);
+
+/*
  * The game over screen, a box in the middle of the area with its top left corner
  * at (x, y), holding the app's lines and then the keys. It draws nothing outside
  * the area, cutting what does not fit, and it reads only the Sim's seed and

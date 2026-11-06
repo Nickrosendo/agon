@@ -24,6 +24,8 @@ void chronicle_clear(Chronicle *c)
     for (int i = 0; i < CHRONICLE_NOTABLE; i++) {
         c->lives[i] = (NotableLife){0};
     }
+    c->giants = 0;
+    c->newest_giant = 0;
 }
 
 void chronicle_free(Chronicle *c)
@@ -178,6 +180,12 @@ void chronicle_note(Chronicle *c, Creature *who, LifeEvent e)
     }
     tally_event(&who->tally, &e);
     ring_push(who->events, CREATURE_EVENTS, &who->events_noted, e);
+    /* Counted before the table is looked at: an announcement is owed even for a
+     * giant not notable enough for an entry. */
+    if (e.kind == LIFE_GIANT) {
+        c->giants++;
+        c->newest_giant = who->id;
+    }
     float score = chronicle_notability(&who->tally, who->age);
     NotableLife *n = find_entry(c, who->id);
     if (n != NULL) {
@@ -397,4 +405,95 @@ void chronicle_line(const LifeEvent *e, const LifeTally *t, int ticks_per_year,
     event_words(e, t, words, sizeof(words));
     snprintf(out, len, "year %d: %s", years_whole(e->tick, ticks_per_year),
              words);
+}
+
+/* A region in one short word or two, for the panel's log. */
+static const char *region_short(int region)
+{
+    switch (region) {
+    case REGION_COLD:
+        return "cold";
+    case REGION_HOT_DRY:
+        return "hot dry";
+    case REGION_TEMPERATE:
+        return "mild";
+    case REGION_WET:
+        return "wet";
+    case REGION_SHALLOW:
+        return "shallows";
+    default:
+        return "?";
+    }
+}
+
+static const char *death_short(int cause)
+{
+    switch (cause) {
+    case DEATH_WOUNDS:
+        return "wounds";
+    case DEATH_HUNGER:
+        return "hunger";
+    case DEATH_AGE:
+        return "age";
+    default:
+        return "?";
+    }
+}
+
+void chronicle_short_line(const LifeEvent *e, int ticks_per_year, char *out,
+                          size_t len)
+{
+    if (len == 0) {
+        return;
+    }
+    char other[16];
+    name_from_id(e->other_id, other, sizeof(other));
+    char words[48];
+    switch (e->kind) {
+    case LIFE_BORN:
+        snprintf(words, sizeof(words), e->value == 0 ? "founded" : "born");
+        break;
+    case LIFE_CHILD:
+        snprintf(words, sizeof(words), "child %s", other);
+        break;
+    case LIFE_ATTACKED:
+        snprintf(words, sizeof(words), "hit by %s", other);
+        break;
+    case LIFE_SURVIVED:
+        snprintf(words, sizeof(words), "survived %s", other);
+        break;
+    case LIFE_WOUNDED:
+        snprintf(words, sizeof(words), "wounded, %d%%", (int)e->value);
+        break;
+    case LIFE_KILL:
+        snprintf(words, sizeof(words), "killed %s", other);
+        break;
+    case LIFE_KILL_HUNTER:
+        /* The * marks a hunter, explained in the README: "killed hunter X"
+         * would leave no room for the name. */
+        snprintf(words, sizeof(words), "killed %s*", other);
+        break;
+    case LIFE_KIN_LOST:
+        snprintf(words, sizeof(words), "kin %s died", other);
+        break;
+    case LIFE_MOVED:
+        snprintf(words, sizeof(words), "moved: %s", region_short(e->value));
+        break;
+    case LIFE_LARGEST:
+        snprintf(words, sizeof(words), "largest alive");
+        break;
+    case LIFE_OLDEST:
+        snprintf(words, sizeof(words), "oldest alive");
+        break;
+    case LIFE_GIANT:
+        snprintf(words, sizeof(words), "became a giant");
+        break;
+    case LIFE_DIED:
+        snprintf(words, sizeof(words), "died: %s", death_short(e->value));
+        break;
+    default:
+        snprintf(words, sizeof(words), "?");
+        break;
+    }
+    snprintf(out, len, "y%d %s", years_whole(e->tick, ticks_per_year), words);
 }

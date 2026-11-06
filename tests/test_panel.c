@@ -1,10 +1,14 @@
 #include "test.h"
 
-#include <math.h>   /* fabsf */
+#include <math.h>    /* fabsf */
+#include <stdbool.h>
 #include <stdint.h> /* int64_t, INT64_C */
 #include <string.h> /* strcmp */
 
 #include "brain_script.h"
+#include "chronicle.h"
+#include "inspect.h"
+#include "lifepage.h"
 #include "panel.h"
 #include "settings.h"
 #include "sim.h"
@@ -197,6 +201,237 @@ static void test_band_names(void)
     CHECK(strcmp(panel_band_name(PANEL_HUE_BANDS), "?") == 0);
 }
 
+/* ---- the life log, the L page and the announcement ---- */
+
+/* True when one of the n lines contains text. */
+static bool lines_have(char lines[][PANEL_LINE_BYTES], int n, const char *text)
+{
+    for (int k = 0; k < n; k++) {
+        if (strstr(lines[k], text) != NULL) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/* The same for the page's longer lines. A two-dimensional array parameter must
+ * name its row length, so each line width needs a function of its own. */
+static bool page_has(char lines[][LIFE_PAGE_LINE_BYTES], int n, const char *text)
+{
+    for (int k = 0; k < n; k++) {
+        if (strstr(lines[k], text) != NULL) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/* A creature at (4, 4) with plenty of energy and health, noted as born. */
+static int spawn_living(Sim *sim)
+{
+    int slot = pool_spawn(&sim->pool, &sim->world, 4, 4);
+    CHECK(slot >= 0);
+    Creature *c = &sim->pool.items[slot];
+    c->energy = 1000.0f;
+    c->health = 1000.0f;
+    chronicle_note(&sim->chronicle, c,
+                   (LifeEvent){.tick = 0, .kind = LIFE_BORN, .value = 0});
+    return slot;
+}
+
+/* kills kills of creatures with ids 900, 901, ..., on ticks 100, 200, ... */
+static void note_kills(Sim *sim, Creature *c, int kills)
+{
+    for (int k = 0; k < kills; k++) {
+        chronicle_note(&sim->chronicle, c,
+                       (LifeEvent){.tick = (uint32_t)(100 * (k + 1)),
+                                   .kind = LIFE_KILL,
+                                   .other_id = 900u + (uint32_t)k});
+    }
+}
+
+static void test_panel_shows_name_title_age_health_kills_log(void)
+{
+    Sim sim;
+    make_empty_sim(&sim);
+    int slot = spawn_living(&sim);
+    Creature *c = &sim.pool.items[slot];
+    note_kills(&sim, c, 12);
+    c->age = 250;
+    Inspect in = {0};
+    inspect_follow(&in, &sim, slot);
+
+    char lines[PANEL_INSPECT_LINES][PANEL_LINE_BYTES];
+    int n = panel_inspect_text(&sim, &in, lines, PANEL_INSPECT_LINES);
+    char name[16], killed[32], last[16];
+    name_from_id(c->id, name, sizeof(name));
+    name_from_id(911, last, sizeof(last)); /* the twelfth kill */
+    snprintf(killed, sizeof(killed), "killed %s", last);
+    CHECK(lines_have(lines, n, name));
+    CHECK(lines_have(lines, n, "the Slayer"));
+    CHECK(lines_have(lines, n, "age"));
+    CHECK(lines_have(lines, n, "health"));
+    CHECK(lines_have(lines, n, "kills"));
+    CHECK(lines_have(lines, n, "12"));
+    CHECK(lines_have(lines, n, killed)); /* the newest, in the short log */
+    /* Every line fits the panel. */
+    for (int k = 0; k < n; k++) {
+        CHECK(strlen(lines[k]) <= PANEL_COLS);
+    }
+    sim_free(&sim);
+}
+
+static void test_l_page_lists_a_whole_life(void)
+{
+    Sim sim;
+    make_empty_sim(&sim);
+    int slot = spawn_living(&sim);
+    Creature *c = &sim.pool.items[slot];
+    note_kills(&sim, c, 20); /* more than a creature's own ring of 8 */
+    LifePage page;
+    life_page_open(&page, &sim, c->id);
+    CHECK(page.open && page.known && page.alive && page.in_table);
+    CHECK(page.n_events == 21); /* the birth and 20 kills, oldest first */
+    CHECK(page.events[0].kind == LIFE_BORN);
+
+    char lines[LIFE_PAGE_MAX_LINES][LIFE_PAGE_LINE_BYTES];
+    int n = life_page_text(&page, sim.set.ticks_per_year, 80, lines,
+                           LIFE_PAGE_MAX_LINES);
+    char name[16];
+    name_from_id(c->id, name, sizeof(name));
+    CHECK(page_has(lines, n, name));
+    CHECK(page_has(lines, n, "a founder"));
+    CHECK(page_has(lines, n, "kills 20"));
+    /* The birth once, in the heading, not again in the story. */
+    int births = 0;
+    for (int k = 0; k < n; k++) {
+        births += strstr(lines[k], "a founder") != NULL;
+    }
+    CHECK(births == 1);
+    CHECK(page_has(lines, n, "kill 1"));  /* the first kill */
+    CHECK(page_has(lines, n, "kill 20")); /* and the last */
+    /* Too few lines for every event: the newest stay, and the page says so. */
+    n = life_page_text(&page, sim.set.ticks_per_year, 80, lines, 14);
+    CHECK(n <= 14);
+    CHECK(page_has(lines, n, "a founder")); /* the heading says it now */
+    CHECK(page_has(lines, n, "kill 20"));
+    CHECK(!page_has(lines, n, "kill 1,"));
+    CHECK(page_has(lines, n, "earlier"));
+    sim_free(&sim);
+}
+
+static void test_l_page_when_followed_creature_dies(void)
+{
+    Sim sim;
+    make_empty_sim(&sim);
+    int slot = spawn_living(&sim);
+    Creature *c = &sim.pool.items[slot];
+    uint32_t id = c->id;
+    note_kills(&sim, c, 3);
+    LifePage page;
+    life_page_open(&page, &sim, id);
+    /* No energy and a sliver of health: hunger takes the rest in the next
+     * tick. Health already at 0 would count as an attack's work. */
+    c->energy = 0.0f;
+    c->health = 0.001f;
+    sim_step(&sim);
+    CHECK(!sim.pool.items[slot].alive);
+    /* A newborn takes the slot: the page must not show it. */
+    int other = pool_spawn(&sim.pool, &sim.world, 8, 8);
+    CHECK(other == slot);
+    life_page_update(&page, &sim);
+    CHECK(page.open && page.known && !page.alive && page.id == id);
+    char lines[LIFE_PAGE_MAX_LINES][LIFE_PAGE_LINE_BYTES];
+    int n = life_page_text(&page, sim.set.ticks_per_year, 80, lines,
+                           LIFE_PAGE_MAX_LINES);
+    CHECK(page_has(lines, n, "died of hunger"));
+    CHECK(page_has(lines, n, "kill 3"));
+    /* Even with the table emptied, the page keeps what it last read. */
+    chronicle_clear(&sim.chronicle);
+    life_page_update(&page, &sim);
+    n = life_page_text(&page, sim.set.ticks_per_year, 80, lines,
+                       LIFE_PAGE_MAX_LINES);
+    CHECK(page.known && page_has(lines, n, "died of hunger"));
+    sim_free(&sim);
+}
+
+static void test_l_page_most_notable(void)
+{
+    Sim sim;
+    make_empty_sim(&sim);
+    LifePage page;
+    CHECK(!life_page_open_most_notable(&page, &sim)); /* nothing recorded */
+    CHECK(!page.open);
+    int a = spawn_living(&sim);
+    int b = pool_spawn(&sim.pool, &sim.world, 9, 9);
+    note_kills(&sim, &sim.pool.items[b], 5);
+    CHECK(life_page_open_most_notable(&page, &sim));
+    CHECK(page.id == sim.pool.items[b].id);
+    CHECK(page.id != sim.pool.items[a].id);
+    sim_free(&sim);
+}
+
+/* One creature of size 2.5 in a world whose giants start at 2. */
+static int spawn_large(Sim *sim)
+{
+    sim->set.giant_size = 2.0f;
+    int slot = spawn_living(sim);
+    Genome *g = &sim->pool.items[slot].genome;
+    g->g[GENE_SIZE] = 0.5f; /* size 1 at birth, as in the chronicle's tests */
+    sim->pool.items[slot].grown = 1.5f;
+    return slot;
+}
+
+static void test_announce_once(void)
+{
+    Sim sim;
+    make_empty_sim(&sim);
+    Announce an;
+    announce_reset(&an);
+    char text[128];
+    CHECK(!announce_check(&an, &sim, text, sizeof(text)));
+    int slot = spawn_large(&sim);
+    Creature *c = &sim.pool.items[slot];
+    sim_step(&sim);
+    CHECK(announce_check(&an, &sim, text, sizeof(text)));
+    char name[16];
+    name_from_id(c->id, name, sizeof(name));
+    CHECK(strstr(text, name) != NULL);
+    CHECK(strstr(text, "year") != NULL);
+    CHECK(!announce_check(&an, &sim, text, sizeof(text))); /* only once */
+    /* Shrinking below the line and crossing it again is not news. */
+    c->grown = 0.0f;
+    sim_step(&sim);
+    c->grown = 1.5f;
+    sim_step(&sim);
+    sim_step(&sim);
+    CHECK(!announce_check(&an, &sim, text, sizeof(text)));
+    sim_free(&sim);
+}
+
+static void test_announce_jump_follows(void)
+{
+    Sim sim;
+    make_empty_sim(&sim);
+    Announce an;
+    announce_reset(&an);
+    CHECK(announce_slot(&an, &sim) == -1);
+    int slot = spawn_large(&sim);
+    sim_step(&sim);
+    char text[128];
+    CHECK(announce_check(&an, &sim, text, sizeof(text)));
+    CHECK(announce_slot(&an, &sim) == slot);
+    Inspect in = {0};
+    inspect_follow(&in, &sim, announce_slot(&an, &sim));
+    CHECK(inspect_creature(&in, &sim) == &sim.pool.items[slot]);
+    /* Once it has died there is nobody to jump to. */
+    sim.pool.items[slot].energy = 0.0f;
+    sim.pool.items[slot].health = 0.001f;
+    sim_step(&sim);
+    CHECK(announce_slot(&an, &sim) == -1);
+    sim_free(&sim);
+}
+
 int main(void)
 {
     CHECK(brain_register(&BRAIN_SCRIPT));
@@ -210,5 +445,11 @@ int main(void)
     test_sparkline_small_buffer();
     test_colour_groups();
     test_band_names();
+    test_panel_shows_name_title_age_health_kills_log();
+    test_l_page_lists_a_whole_life();
+    test_l_page_when_followed_creature_dies();
+    test_l_page_most_notable();
+    test_announce_once();
+    test_announce_jump_follows();
     TEST_SUMMARY();
 }

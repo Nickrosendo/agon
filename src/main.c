@@ -295,9 +295,10 @@ int main(int argc, char **argv)
         settings.min_creatures = 0;
     }
     /* These only mean something with a window to draw in. */
-    if (opt.frames > 0 || opt.screenshot_path != NULL || opt.zoom_name != NULL) {
-        fprintf(stderr, "agon: --frames, --screenshot and --zoom are for "
-                        "agon-window\n");
+    if (opt.frames > 0 || opt.screenshot_path != NULL || opt.zoom_name != NULL ||
+        opt.keys != NULL) {
+        fprintf(stderr, "agon: --frames, --screenshot, --zoom and --keys are "
+                        "for agon-window\n");
         return EXIT_USAGE;
     }
     if (opt.once) {

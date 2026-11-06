@@ -1047,6 +1047,47 @@ static void test_drawing_large_leaves_fingerprint_equal(void)
     sim_free(&drawn);
 }
 
+/* How many pixels scene_draw_names changes on a magenta canvas. */
+static int name_pixels(Sim *s, Camera *cam, const Creature *followed)
+{
+    Scene sc;
+    CHECK(scene_init(&sc, s));
+    scene_update(&sc, s, 10);
+    Canvas c;
+    CHECK(canvas_init(&c, cam->view_w, cam->view_h));
+    uint32_t magenta = canvas_rgb(255, 0, 255);
+    canvas_fill(&c, magenta);
+    scene_draw_names(&sc, &c, cam, s, followed, 0.0f, 0, 0);
+    int changed = 0;
+    for (int i = 0; i < c.w * c.h; i++) {
+        changed += c.px[i] != magenta;
+    }
+    canvas_free(&c);
+    scene_free(&sc);
+    return changed;
+}
+
+/* A giant's name shows under it at Normal zoom, not at Far; an ordinary body
+ * gets one only while followed. */
+static void test_names_beside_giants(void)
+{
+    Sim s;
+    make_empty_sim(&s, 64, 64);
+    int slot = place_body(&s, 32, 32, 6.0f);
+    Camera cam;
+    camera_init(&cam, 64, 64, VIEW_W, VIEW_H);
+    camera_centre_on(&cam, 32.5f, 32.5f);
+    CHECK(name_pixels(&s, &cam, NULL) == 0); /* not a giant yet */
+    s.pool.items[slot].tally.flags |= TALLY_GIANT;
+    CHECK(name_pixels(&s, &cam, NULL) > 0);
+    cam.level = CAMERA_FAR;
+    CHECK(name_pixels(&s, &cam, NULL) == 0);
+    cam.level = CAMERA_NORMAL;
+    s.pool.items[slot].tally.flags = 0;
+    CHECK(name_pixels(&s, &cam, &s.pool.items[slot]) > 0);
+    sim_free(&s);
+}
+
 int main(void)
 {
     /* Tests register this one themselves: the real program never has it. */
@@ -1077,5 +1118,6 @@ int main(void)
     test_giant_over_map_edge();
     test_scars_follow_recent_hits();
     test_drawing_large_leaves_fingerprint_equal();
+    test_names_beside_giants();
     TEST_SUMMARY();
 }

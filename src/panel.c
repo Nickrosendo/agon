@@ -6,6 +6,7 @@
 #include <string.h>   /* strlen */
 
 #include "cells.h"
+#include "chronicle.h"
 #include "palette.h"
 #include "years.h"
 
@@ -426,19 +427,15 @@ static const char *const ACTION_NAMES[] = {
 static_assert(sizeof(ACTION_NAMES) / sizeof(ACTION_NAMES[0]) == ACT_COUNT,
               "one name per action");
 
-/* Room for the lines panel_draw_inspect makes. */
-#define INSPECT_LINES 24
-/* Each line's text: PANEL_COLS characters and the '\0', with room to
- * spare so -Wformat-truncation can see snprintf never cuts a value. */
-#define INSPECT_LINE_BYTES 48
-
 /*
- * The lines being built: a two-dimensional array, INSPECT_LINES rows of
- * INSPECT_LINE_BYTES chars, one block of memory. text[k] is row k, itself
- * an array of chars, which can be passed to snprintf as a char pointer.
+ * The lines being built: a pointer to the caller's two-dimensional array, rows
+ * of PANEL_LINE_BYTES chars in one block of memory, and how many there is room
+ * for. text[k] is row k, itself an array of chars, which can be passed to
+ * snprintf as a char pointer.
  */
 typedef struct {
-    char text[INSPECT_LINES][INSPECT_LINE_BYTES];
+    char (*text)[PANEL_LINE_BYTES]; /* a pointer to rows, not an array of pointers */
+    int max;
     int n;
 } Lines;
 
@@ -446,18 +443,23 @@ typedef struct {
  * PANEL_COLS - 1 wide. A line that does not fit is dropped. */
 static void add_pair(Lines *l, const char *key, const char *value)
 {
-    if (l->n < INSPECT_LINES) {
+    if (l->n < l->max) {
         /* %-11s pads the key to 11, %8s right-aligns the value in 8:
-         * 1 + 11 + 8 = 20 = PANEL_COLS. */
-        snprintf(l->text[l->n], INSPECT_LINE_BYTES, " %-11s%8s", key, value);
+         * 1 + 11 + 8 = 20 = PANEL_COLS. A longer value pushes past it, and
+         * the line is cut at PANEL_COLS below. */
+        snprintf(l->text[l->n], PANEL_LINE_BYTES, " %-11s%8s", key, value);
+        l->text[l->n][PANEL_COLS] = '\0';
         l->n++;
     }
 }
 
 static void add_text(Lines *l, const char *text)
 {
-    if (l->n < INSPECT_LINES) {
-        snprintf(l->text[l->n], INSPECT_LINE_BYTES, "%s", text);
+    if (l->n < l->max) {
+        snprintf(l->text[l->n], PANEL_LINE_BYTES, "%s", text);
+        /* Cut to the panel's width. PANEL_COLS < PANEL_LINE_BYTES, so this
+         * index is inside the row; past a shorter text it is harmless. */
+        l->text[l->n][PANEL_COLS] = '\0';
         l->n++;
     }
 }
@@ -489,7 +491,7 @@ static void describe_cell(Lines *l, const Sim *s, const Inspect *in)
 {
     const World *w = &s->world;
     int i = world_idx(w, in->x, in->y);
-    char text[INSPECT_LINE_BYTES];
+    char text[PANEL_LINE_BYTES];
     snprintf(text, sizeof(text), " cell %d, %d", in->x, in->y);
     add_text(l, text);
     if (w->terrain[i] == TERRAIN_WATER) {
@@ -519,7 +521,7 @@ static void describe_cell(Lines *l, const Sim *s, const Inspect *in)
 static void describe_creature(Lines *l, const Sim *s, const Creature *c)
 {
     const Settings *set = &s->set;
-    char text[INSPECT_LINE_BYTES];
+    char text[PANEL_LINE_BYTES];
     /* %u for unsigned int; uint32_t is converted to it explicitly, since
      * C does not promise that uint32_t is unsigned int on every system. */
     snprintf(text, sizeof(text), " creature #%u", (unsigned)c->id);
@@ -527,10 +529,6 @@ static void describe_creature(Lines *l, const Sim *s, const Creature *c)
     snprintf(text, sizeof(text), " family   #%u", (unsigned)c->lineage);
     add_text(l, text);
     add_float(l, "energy", c->energy, 1);
-    add_float(l, "health", c->health, 1);
-    char age[32];
-    years_format(age, sizeof(age), c->age, set->ticks_per_year);
-    add_pair(l, "age", age);
     add_float(l, "level", c->level, 2);
     add_float(l, "food eaten", c->eaten, 0);
     add_pair(l, "hunter", creature_is_hunter(c) ? "yes" : "no");
@@ -554,21 +552,72 @@ static void describe_creature(Lines *l, const Sim *s, const Creature *c)
     add_pair(l, "doing", doing);
 }
 
-void panel_draw_inspect(const Sim *s, const Inspect *in, int col, int row0,
-                        int rows)
+/* The top of the panel for a creature: who it is, and the newest few things that
+ * happened to it, newest first so a short panel cuts the oldest. */
+static void describe_life(Lines *l, const Sim *s, const Creature *c)
 {
-    Lines l = {.n = 0};
-    add_text(&l, " inspect");
+    char name[16], text[PANEL_LINE_BYTES];
+    name_from_id(c->id, name, sizeof(name));
+    snprintf(text, sizeof(text), " %s", name);
+    add_text(l, text);
+    const char *title = chronicle_title(&c->tally);
+    if (title[0] != '\0') {
+        snprintf(text, sizeof(text), " %s", title);
+        add_text(l, text);
+    }
+    name_from_id(c->lineage, name, sizeof(name));
+    snprintf(text, sizeof(text), " family %s", name);
+    add_text(l, text);
+    char age[32];
+    years_format(age, sizeof(age), c->age, s->set.ticks_per_year);
+    add_pair(l, "age", age);
+    add_float(l, "health", c->health, 1);
+    add_count(l, "kills", c->tally.kills);
+    /* The ring holds the newest CREATURE_EVENTS; the newest is at
+     * (events_noted - 1) % CREATURE_EVENTS. Unsigned arithmetic: k runs up
+     * from 1, so events_noted - k never goes below 0 and wraps. */
+    uint32_t kept = c->events_noted < CREATURE_EVENTS ? c->events_noted
+                                                      : CREATURE_EVENTS;
+    for (uint32_t k = 1; k <= kept && k <= PANEL_LOG_LINES; k++) {
+        const LifeEvent *e = &c->events[(c->events_noted - k) % CREATURE_EVENTS];
+        char line[PANEL_LINE_BYTES - 1];
+        chronicle_short_line(e, s->set.ticks_per_year, line, sizeof(line));
+        snprintf(text, sizeof(text), " %s", line);
+        add_text(l, text);
+    }
+}
+
+int panel_inspect_text(const Sim *s, const Inspect *in,
+                       char lines[][PANEL_LINE_BYTES], int max)
+{
+    /* lines arrives as a pointer to its first row: the [] in the parameter
+     * means "pointer", and the row length is what lets lines[k] find row k. */
+    Lines l = {.text = lines, .max = max, .n = 0};
+    const Creature *c = inspect_creature(in, s);
+    if (c != NULL) {
+        describe_life(&l, s, c);
+        add_text(&l, "");
+    } else {
+        add_text(&l, " inspect");
+    }
     describe_cell(&l, s, in);
     add_text(&l, "");
-    const Creature *c = inspect_creature(in, s);
     if (c != NULL) {
         describe_creature(&l, s, c);
     } else {
         add_text(&l, " no creature here");
     }
+    return l.n;
+}
+
+void panel_draw_inspect(const Sim *s, const Inspect *in, int col, int row0,
+                        int rows)
+{
+    /* About 3 KB on the stack, the same as the old Lines struct. */
+    char lines[PANEL_INSPECT_LINES][PANEL_LINE_BYTES];
+    int n = panel_inspect_text(s, in, lines, PANEL_INSPECT_LINES);
     for (int r = 0; r < rows; r++) {
-        render_text(col, row0 + r, r < l.n ? l.text[r] : "", PANEL_COLS);
+        render_text(col, row0 + r, r < n ? lines[r] : "", PANEL_COLS);
     }
 }
 

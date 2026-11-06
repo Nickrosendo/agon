@@ -514,6 +514,16 @@ static void test_no_motive_words(void)
             chronicle_line(&e, &t, 100, line, sizeof(line));
             CHECK(strncmp(line, "year 12: ", 9) == 0);
             CHECK(!has_motive(line));
+            /* The panel's short form: the same facts, no motives, and within
+             * the panel's 19 columns when the name is short. Names run from 4
+             * to 14 letters, about 7 on average: id 42's is "Vudrainaeth", 11,
+             * so the length is checked with id 27's, "Muna". */
+            chronicle_short_line(&e, 100, line, sizeof(line));
+            CHECK(strncmp(line, "y12 ", 4) == 0);
+            CHECK(!has_motive(line));
+            e.other_id = 27;
+            chronicle_short_line(&e, 100, line, sizeof(line));
+            CHECK(strlen(line) <= 19);
         }
     }
     /* And every line a real world wrote. */

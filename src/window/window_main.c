@@ -17,6 +17,7 @@
 #include "family.h"
 #include "font.h"
 #include "inspect.h"
+#include "lifepage.h"
 #include "options.h"
 #include "palette.h"
 #include "panel.h" /* panel_format_count */
@@ -36,6 +37,8 @@
 #define DEFAULT_WORLD_W 256
 #define DEFAULT_WORLD_H 144
 #define NOTICE_FRAMES (2 * FRAMES_PER_SECOND)
+/* A giant's announcement stays longer, so there is time to press j. */
+#define GIANT_NOTICE_FRAMES (10 * FRAMES_PER_SECOND)
 /* How many screen pixels an arrow key pans by. */
 #define ARROW_PAN 48
 
@@ -52,10 +55,15 @@ static const char WINDOW_USAGE[] =
     "  --checksum        print a fingerprint of the world on leaving\n"
     "  --frames N        stop after N frames, without waiting between them\n"
     "  --screenshot PATH write the last frame there as a PPM image\n"
+    "  --keys TEXT       with --frames: press these keys, one a frame, in the\n"
+    "                    last frames (\"l\" shows the life story page)\n"
     "  -h, --help        this text\n"
     "  --version         the version\n"
     "keys: space pause, +/- speed, r new seed, s save, q quit, arrows move,\n"
-    "      [ and ] zoom, Esc lets go of a creature, n new world after game over.\n"
+    "      [ and ] zoom, Esc lets go of a creature, n new world after game over,\n"
+    "      l opens the life story of the followed creature (or of the most\n"
+    "      notable life) and closes it again, j follows the giant last\n"
+    "      announced (or, with the story open, the creature it tells of).\n"
     "mouse: wheel zooms, dragging moves, clicking a creature follows it,\n"
     "       clicking bare ground lets go. On the panel, clicking \"top hunter\",\n"
     "       \"oldest\" or the largest family's body follows that creature.\n";
@@ -69,6 +77,8 @@ typedef struct {
     Camera camera;
     Layout layout;
     Inspect inspect;
+    LifePage page;     /* the L page, drawn over the world while open */
+    Announce announce; /* which giants have been announced */
     const Options *opt;
     Rng seed_source;
     int speed;
@@ -163,8 +173,46 @@ static void new_world(App *a)
     }
     scene_reset(&a->scene);
     inspect_stop(&a->inspect);
+    /* Ids start again in a new world: an old id would name a stranger. */
+    life_page_close(&a->page);
+    announce_reset(&a->announce);
     family_reset(&a->families);
     a->ticks_due = 0;
+}
+
+static void say(App *a, const char *text, int frames)
+{
+    snprintf(a->notice, sizeof(a->notice), "%s", text);
+    a->notice_frames = frames;
+}
+
+/* l: the followed creature's story, else the most notable one; again, closed. */
+static void toggle_page(App *a)
+{
+    if (a->page.open) {
+        life_page_close(&a->page);
+    } else if (a->inspect.following) {
+        life_page_open(&a->page, &a->sim, a->inspect.id);
+    } else if (!life_page_open_most_notable(&a->page, &a->sim)) {
+        say(a, "no life recorded yet", NOTICE_FRAMES);
+    }
+}
+
+/* j: follow the creature the open page tells of, else the giant last announced. */
+static void jump(App *a)
+{
+    int slot = -1;
+    if (a->page.open && a->page.alive) {
+        slot = life_find_slot(&a->sim, a->page.id);
+    } else {
+        slot = announce_slot(&a->announce, &a->sim);
+    }
+    if (slot >= 0) {
+        inspect_follow(&a->inspect, &a->sim, slot);
+    } else {
+        say(a, a->page.open ? "that creature is dead" : "no living giant announced",
+            NOTICE_FRAMES);
+    }
 }
 
 static void handle_key(App *a, int key)
@@ -214,7 +262,21 @@ static void handle_key(App *a, int key)
     case KEY_RIGHT: pan(a, ARROW_PAN, 0); break;
     case KEY_UP: pan(a, 0, -ARROW_PAN); break;
     case KEY_DOWN: pan(a, 0, ARROW_PAN); break;
-    case KEY_ESCAPE: inspect_stop(&a->inspect); break;
+    case 'l':
+    case 'L':
+        toggle_page(a);
+        break;
+    case 'j':
+        jump(a);
+        break;
+    case KEY_ESCAPE:
+        /* The page first, so Esc never lets go of a creature behind it. */
+        if (a->page.open) {
+            life_page_close(&a->page);
+        } else {
+            inspect_stop(&a->inspect);
+        }
+        break;
     default: break;
     }
 }
@@ -276,9 +338,12 @@ static void draw_title(App *a, const Creature *followed)
     char year[32];
     panel_format_count(year, sizeof(year),
                        years_whole(a->sim.tick, a->sim.set.ticks_per_year));
-    char who[32] = "";
+    char who[48] = "";
     if (followed != NULL) {
-        snprintf(who, sizeof(who), " | following #%u", (unsigned)followed->id);
+        char name[16];
+        name_from_id(followed->id, name, sizeof(name));
+        snprintf(who, sizeof(who), " | following %s #%u", name,
+                 (unsigned)followed->id);
     }
     char text[400];
     snprintf(text, sizeof(text),
@@ -299,9 +364,9 @@ static void draw_help(App *a)
     const char *help =
         PLATFORM_IS_PAGE
             ? " space pause | +/- speed | [ ] zoom | click follow | Esc let go"
-              " | r new world"
+              " | l life story | j jump | r new world"
             : " space pause | +/- speed | [ ] zoom | click follow | Esc let go"
-              " | r new world | s save | q quit";
+              " | l life story | j jump | r new world | s save | q quit";
     render_text(0, 0, help, a->canvas.w / FONT_W + 1);
 }
 
@@ -382,6 +447,36 @@ static void draw_panel(App *a, const Creature *followed)
     draw_family(a, followed);
 }
 
+/* The L page over the world's area, inset by a character all round, so the
+ * world keeps showing (and running) at its edges. */
+static void draw_page(App *a)
+{
+    const Layout *l = &a->layout;
+    life_page_update(&a->page, &a->sim);
+    int x = l->view_x + FONT_W, y = l->view_y + FONT_H / 2;
+    int w = l->view_w - 2 * FONT_W, h = l->view_h - FONT_H;
+    if (w < FONT_W * 20 || h < FONT_H * 4) {
+        return; /* too small to read; the world shows instead */
+    }
+    canvas_rect(&a->canvas, x, y, w, h,
+                canvas_rgb(PALETTE_TEXT_BACKGROUND.r, PALETTE_TEXT_BACKGROUND.g,
+                           PALETTE_TEXT_BACKGROUND.b));
+    int cols = w / FONT_W;
+    int rows = h / FONT_H;
+    if (rows > LIFE_PAGE_MAX_LINES) {
+        rows = LIFE_PAGE_MAX_LINES;
+    }
+    /* static: about 7 KB, kept off the stack, which is small in the web
+     * build. Only this function uses it, one frame at a time. */
+    static char lines[LIFE_PAGE_MAX_LINES][LIFE_PAGE_LINE_BYTES];
+    int n = life_page_text(&a->page, a->sim.set.ticks_per_year, cols, lines,
+                           rows);
+    cells_canvas_set(&a->canvas, x, y);
+    for (int r = 0; r < n; r++) {
+        render_text(0, r, lines[r], cols);
+    }
+}
+
 /* Too small for anything else: a minimised window lands here too. */
 static void draw_too_small(App *a)
 {
@@ -418,11 +513,16 @@ static void draw_frame(App *a, float fraction)
                      a->last_ms, a->body_ms, l->view_x, l->view_y);
     scene_draw_cursor(&a->scene, &a->canvas, &a->camera, &a->sim, followed,
                       fraction, l->view_x, l->view_y);
+    scene_draw_names(&a->scene, &a->canvas, &a->camera, &a->sim, followed,
+                     fraction, l->view_x, l->view_y);
     if (sim_is_over(&a->sim)) {
         scene_draw_game_over(&a->canvas, &a->sim,
                              PLATFORM_IS_PAGE ? "n new world"
                                               : "n new world | q quit",
                              l->view_x, l->view_y, l->view_w, l->view_h);
+    }
+    if (a->page.open) {
+        draw_page(a);
     }
     /* After the world: a body near the edge may have been drawn over these. */
     draw_title(a, followed);
@@ -461,6 +561,23 @@ static bool frame_needs_drawing(App *a)
     return needed;
 }
 
+/* --keys: in the last strlen(keys) frames of --frames, one key a frame, so the
+ * frame the screenshot keeps comes after the last of them. */
+static void pretend_keys(App *a)
+{
+    const char *keys = a->opt->keys;
+    if (keys == NULL || a->opt->frames <= 0) {
+        return;
+    }
+    /* strlen gives a size_t; the cast is safe for any text a shell passes. */
+    long len = (long)strlen(keys);
+    long k = a->frames_done - (a->opt->frames - 1 - len);
+    if (k >= 0 && k < len) {
+        handle_key(a, keys[k]);
+        a->redraw = true;
+    }
+}
+
 /* One frame. void * because platform_run knows nothing about App. */
 static void app_frame(void *arg)
 {
@@ -469,6 +586,7 @@ static void app_frame(void *arg)
     while (platform_poll(&e)) {
         handle_event(a, &e);
     }
+    pretend_keys(a);
     /* Before any ticks: a quit means the world stays as it was shown. */
     if (!a->running) {
         platform_stop();
@@ -489,6 +607,11 @@ static void app_frame(void *arg)
     }
     scene_update(&a->scene, &a->sim, APP_SPEEDS[a->speed]);
     family_update(&a->families, &a->sim);
+    char giant[200];
+    if (announce_check(&a->announce, &a->sim, giant, sizeof(giant))) {
+        say(a, giant, GIANT_NOTICE_FRAMES);
+        a->redraw = true;
+    }
     advance_clocks(a);
 
     if (frame_needs_drawing(a)) {
