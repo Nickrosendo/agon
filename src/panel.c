@@ -574,8 +574,9 @@ static void describe_life(Lines *l, const Sim *s, const Creature *c)
     add_float(l, "health", c->health, 1);
     add_count(l, "kills", c->tally.kills);
     /* The ring holds the newest CREATURE_EVENTS; the newest is at
-     * (events_noted - 1) % CREATURE_EVENTS. Unsigned arithmetic: k runs up
-     * from 1, so events_noted - k never goes below 0 and wraps. */
+     * (events_noted - 1) % CREATURE_EVENTS. k is at most kept, which is at most
+     * events_noted, so the unsigned events_noted - k never goes below 0: if it
+     * did, it would wrap round to about 4 billion instead. */
     uint32_t kept = c->events_noted < CREATURE_EVENTS ? c->events_noted
                                                       : CREATURE_EVENTS;
     for (uint32_t k = 1; k <= kept && k <= PANEL_LOG_LINES; k++) {
