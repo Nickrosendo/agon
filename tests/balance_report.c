@@ -37,6 +37,10 @@
  * whoever it last saw. */
 #define LOST_SIGHT_TICKS 5
 
+/* After a relative dies nearby, how long a move to another region still counts as
+ * following the loss. */
+#define AFTER_LOSS_TICKS 300
+
 typedef struct {
     bool alive;
     uint32_t id;
@@ -55,6 +59,11 @@ typedef struct {
     bool saw_someone;
     int seen_x, seen_y;
     int lost_for;
+    /* Its life story as read so far: how many of its events have been looked
+     * at, and the latest kin loss being watched for a move. */
+    uint32_t events_seen;
+    uint32_t kin_lost_at;
+    bool kin_open, kin_moved;
 } Shadow;
 
 typedef struct {
@@ -84,6 +93,9 @@ typedef struct {
     uint64_t still_by_action[ACT_COUNT];
     uint64_t ticks_at_plant_cap;
     uint64_t ticks_counted;
+    /* Moving away after losses: kin losses watched, how many were followed by a
+     * move within AFTER_LOSS_TICKS, all moves, and creature-ticks lived. */
+    uint64_t kin_losses, moved_after_loss, moves, creature_ticks;
 } Report;
 
 /* One death, seen after the fact from the slot's shadow. */
@@ -280,6 +292,36 @@ static void watch_chase(const Sim *s, const Creature *c, const Shadow *before,
 }
 
 /* Compares every slot with its shadow, then brings the shadow up to date. */
+/* The events a creature's story gained since the last tick: kin lost near it,
+ * and settling in another region. Only the newest CREATURE_EVENTS are still in
+ * its ring; in one tick a creature gains far fewer. */
+static void watch_story(const Sim *s, const Creature *c, Shadow *sh, Report *rep)
+{
+    uint32_t now = (uint32_t)s->tick; /* event ticks are the low 32 bits */
+    uint32_t from = sh->events_seen;
+    if (c->events_noted - from > CREATURE_EVENTS) {
+        from = c->events_noted - CREATURE_EVENTS;
+    }
+    for (uint32_t k = from; k < c->events_noted; k++) {
+        const LifeEvent *e = &c->events[k % CREATURE_EVENTS];
+        bool open = sh->kin_open && now - sh->kin_lost_at <= AFTER_LOSS_TICKS;
+        if (e->kind == LIFE_KIN_LOST && !open) {
+            rep->kin_losses++;
+            sh->kin_open = true;
+            sh->kin_moved = false;
+            sh->kin_lost_at = e->tick;
+        } else if (e->kind == LIFE_MOVED) {
+            rep->moves++;
+            if (open && !sh->kin_moved) {
+                rep->moved_after_loss++;
+                sh->kin_moved = true;
+            }
+        }
+    }
+    sh->events_seen = c->events_noted;
+    rep->creature_ticks++;
+}
+
 static void watch_slots(const Sim *s, Shadow *shadow, Report *rep)
 {
     for (int i = 0; i < s->pool.capacity; i++) {
@@ -309,6 +351,7 @@ static void watch_slots(const Sim *s, Shadow *shadow, Report *rep)
             next.born_y = c->y;
         }
         if (counting) {
+            watch_story(s, c, &next, rep);
             watch_new_hits(s, c, &next, rep);
             watch_fight(s, c, &next, rep);
             if (creature_is_hunter(c)) {
@@ -618,6 +661,28 @@ static void print_species(const Sim *s)
     free(size);
 }
 
+/* Giants, from the life stories, and whether losing kin is followed by moving
+ * away more often than moving happens anyway. */
+static void print_giants_and_losses(const Sim *s, const Report *rep)
+{
+    int alive = 0;
+    for (int i = 0; i < s->pool.capacity; i++) {
+        const Creature *c = &s->pool.items[i];
+        alive += c->alive && (c->tally.flags & TALLY_GIANT);
+    }
+    /* By chance: the share of AFTER_LOSS_TICKS-long stretches holding at least
+     * one move, if moves came at the overall rate, 1 - e^(-rate * ticks). */
+    double rate = rep->creature_ticks == 0
+                      ? 0.0
+                      : (double)rep->moves / (double)rep->creature_ticks;
+    double chance = 1.0 - exp(-rate * AFTER_LOSS_TICKS);
+    printf("     giants: %u grew to giant size (%.0f+), %d alive at the end | "
+           "kin lost %llu times, a move within %d ticks after %d%%, by chance %.0f%%\n",
+           (unsigned)s->chronicle.giants, (double)s->set.giant_size, alive,
+           (unsigned long long)rep->kin_losses, AFTER_LOSS_TICKS,
+           percent(rep->moved_after_loss, rep->kin_losses), 100.0 * chance);
+}
+
 static void print_behaviour(const Sim *s, const Report *rep)
 {
     double length = rep->fights == 0
@@ -695,6 +760,7 @@ static void print_row(const Sim *s, const Shadow *shadow, const Report *rep)
     print_travel(s, shadow);
     print_regions(s);
     print_species(s);
+    print_giants_and_losses(s, rep);
 }
 
 /* Runs the world. The Sim is changed only by sim_step. */
