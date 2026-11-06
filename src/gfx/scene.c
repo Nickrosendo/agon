@@ -4,6 +4,7 @@
 #include <string.h> /* strlen */
 
 #include "app.h"
+#include "climate.h" /* climate_region, climate_region_hue */
 #include "palette.h"
 
 /* How long one water frame lasts, in milliseconds. */
@@ -22,6 +23,14 @@ static const Colour SLASH = {255, 70, 50};
 /* Crumbs of meat. Crumbs of plant are the plant's own colour, lightened, or
  * they would vanish against the tree they come from. */
 static const Colour MEAT_CRUMB = {255, 110, 100};
+
+/* How far a region's colour tints the near-black behind a symbol, and the flat
+ * colour of a cell at the furthest zoom. Small, so the ground stays ground. */
+#define REGION_TINT 0.14f
+#define REGION_TINT_FLAT 0.12f
+/* The pale saturation plant-eaters are drawn in, so a body that matches its
+ * region looks like that region's tint, only brighter. */
+#define REGION_SATURATION 0.55f
 
 static uint32_t to_pixel(Colour c)
 {
@@ -115,6 +124,23 @@ static Colour carrion_colour(const Sim *s, int i)
     return palette_mix(BONE, PALETTE_CARRION, amount);
 }
 
+/*
+ * The colour a body must wear to match this cell's region, as a creature of
+ * that hue is drawn: through render_display_hue, the same squeeze creatures go
+ * through. Without it the tint would show the raw hue, and a matching creature
+ * would look nothing like its ground. False for deep water and rock.
+ */
+static bool region_colour(const Sim *s, int i, Colour *out)
+{
+    int region = climate_region(&s->world, i, &s->set);
+    if (region == REGION_NONE) {
+        return false; /* -1: not an index, so climate_region_hue is not asked */
+    }
+    *out = palette_hue(render_display_hue(climate_region_hue(region)),
+                       REGION_SATURATION);
+    return true;
+}
+
 /* A cell as one flat colour, for the furthest zoom. */
 static Colour flat_ground(const Sim *s, int i)
 {
@@ -143,6 +169,10 @@ static Colour flat_ground(const Sim *s, int i)
 static Colour flat_colour(const Sim *s, int i)
 {
     Colour ground = flat_ground(s, i);
+    Colour region;
+    if (region_colour(s, i, &region)) {
+        ground = palette_mix(ground, region, REGION_TINT_FLAT);
+    }
     return s->world.rain[i] > 0.0f ? palette_mix(ground, PALETTE_RAIN, 0.12f)
                                    : ground;
 }
@@ -181,6 +211,14 @@ static void draw_tile(Scene *sc, Canvas *c, const Sim *s, int x, int y, int sx,
     } else {
         rows = sc->soil[z][v][soil_detail(w->fertility[i])];
         colour = palette_ground(w->fertility[i], w->water[i]);
+    }
+    /* The region shows in the gaps between the symbol's pixels. The rest of
+     * the view was filled with BACKGROUND already, so only cells with a region
+     * need this rectangle. */
+    Colour region;
+    if (region_colour(s, i, &region)) {
+        canvas_rect(c, sx, sy, size * scale, size * scale,
+                    to_pixel(palette_mix(BACKGROUND, region, REGION_TINT)));
     }
     canvas_mask(c, rows, size, sx, sy, scale, false, to_pixel(colour));
     /* Harder rain falls on more cells: variant 0 shows any rain, variant 3 only

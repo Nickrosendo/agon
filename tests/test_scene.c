@@ -6,8 +6,10 @@
 
 #include "app.h"
 #include "brain_script.h"
+#include "climate.h"
 #include "family.h"
 #include "inspect.h"
+#include "palette.h"
 #include "scene.h"
 #include "settings.h"
 #include "sim.h"
@@ -364,12 +366,13 @@ static uint64_t hash_canvas(const Canvas *c)
  * then a blocked walk turns aside, so creatures stand elsewhere at the two closest
  * zooms (the wider two show too little to change); then regions' edges, for the
  * same reason; then wet and dry times, which change the rain and the ground's water
- * at every zoom; then soil that dries twice as fast.
+ * at every zoom; then soil that dries twice as fast; then the region tint, at every
+ * zoom but the closest, which in this world shows only deep water and so no region.
  */
 static void test_known_world_pixels(void)
 {
     static const uint64_t EXPECTED[CAMERA_LEVELS] = {
-        0x97c7dc7faf140a9du, 0x25e91a7901331d05u, 0xebc36b8dbe693fe6u, 0x2cf2e1414d9022c5u,
+        0x97c7dc7faf140a9du, 0x2d6dcf0b3080b532u, 0xa4466b6caf15fd7fu, 0x4e5052cf991bc4d5u,
     };
     Settings set = settings_default();
     Sim s;
@@ -727,6 +730,78 @@ static void test_ground_shows_water_and_rain(void)
     sim_free(&s);
 }
 
+/* One picture of a world of soil, every cell the same but its temperature, with
+ * one creature in the middle. Says how many pixels wear the creature's colour. */
+static uint64_t region_picture(Scene *sc, Sim *s, Canvas *c, Camera *cam,
+                               int level, float temperature, int creature,
+                               int *creature_pixels)
+{
+    for (int i = 0; i < 64 * 64; i++) {
+        s->world.terrain[i] = TERRAIN_SOIL;
+        s->world.fertility[i] = 0.5f;
+        s->world.veg[i] = 0;
+        s->world.carrion[i] = 0.0f;
+        s->world.water[i] = 0.5f;
+        s->world.rain[i] = 0.0f;
+        s->world.temperature[i] = temperature;
+    }
+    cam->level = level;
+    s->tick++; /* the ground layer is redrawn only on a new tick */
+    scene_update(sc, s, 10);
+    scene_draw_world(sc, c, cam, s, 0.0f, 0, 0, 0, 0);
+    const Creature *cr = &s->pool.items[creature];
+    Colour colour = palette_creature(cr->genome.g[GENE_HUE],
+                                     render_meat_share(cr->level));
+    uint32_t body = canvas_rgb(colour.r, colour.g, colour.b);
+    *creature_pixels = 0;
+    for (int i = 0; i < VIEW_W * VIEW_H; i++) {
+        *creature_pixels += c->px[i] == body;
+    }
+    return hash_canvas(c);
+}
+
+/* The same ground in two regions looks different, at every zoom, and the
+ * creature standing on it is drawn exactly the same. */
+static void test_region_tint(void)
+{
+    Settings set = settings_default();
+    set.start_share = 0.0f;
+    Sim s;
+    CHECK(sim_init(&s, &set, 1, 64, 64));
+    /* Spawning refuses water and rock, so the cell must be soil first, or the
+     * -1 it returns would be used as an index below. */
+    s.world.terrain[world_idx(&s.world, 32, 32)] = TERRAIN_SOIL;
+    int creature = pool_spawn(&s.pool, &s.world, 32, 32);
+    CHECK(creature >= 0);
+    if (creature < 0) {
+        sim_free(&s);
+        return;
+    }
+    Scene sc;
+    CHECK(scene_init(&sc, &s));
+    Canvas c;
+    CHECK(canvas_init(&c, VIEW_W, VIEW_H));
+    Camera cam;
+    camera_init(&cam, 64, 64, VIEW_W, VIEW_H);
+    /* 0.1 is below region_cold_below; 0.45 with water 0.5 is temperate. The
+     * checks after each picture make sure the test asks what it means to. */
+    for (int level = 0; level < CAMERA_LEVELS; level++) {
+        int cold_pixels, mild_pixels;
+        uint64_t cold = region_picture(&sc, &s, &c, &cam, level, 0.1f, creature,
+                                       &cold_pixels);
+        CHECK(climate_region(&s.world, 0, &s.set) == REGION_COLD);
+        uint64_t mild = region_picture(&sc, &s, &c, &cam, level, 0.45f, creature,
+                                       &mild_pixels);
+        CHECK(climate_region(&s.world, 0, &s.set) == REGION_TEMPERATE);
+        CHECK(cold != mild);
+        CHECK(cold_pixels > 0);
+        CHECK(cold_pixels == mild_pixels);
+    }
+    canvas_free(&c);
+    scene_free(&sc);
+    sim_free(&s);
+}
+
 /* Streaks must move, or rain reads as a stain on the ground. */
 static void test_rain_falls_from_frame_to_frame(void)
 {
@@ -748,6 +823,7 @@ int main(void)
     test_drawing_changes_nothing();
     test_ground_shows_water_and_rain();
     test_rain_falls_from_frame_to_frame();
+    test_region_tint();
     test_empty_view_draws_nothing();
     test_tiny_world_on_black();
     test_fight_draws_a_mark();
