@@ -1,5 +1,6 @@
 #include "test.h"
 
+#include <math.h>   /* INFINITY, NAN */
 #include <stdlib.h> /* calloc, free */
 #include <string.h> /* memcmp */
 
@@ -27,7 +28,11 @@ static int mask_bits(const uint16_t *rows)
 static BodyTraits traits(float size, float speed, float sight, float plant,
                          float meat)
 {
-    BodyTraits t = {size, speed, sight, plant, meat};
+    /* Named fields: any left out are zero, here the four parts. A plain
+     * {a, b, c, d, e} would do the same, but -Wextra warns that it may be a
+     * mistake. */
+    BodyTraits t = {.size = size, .speed = speed, .sight = sight,
+                    .plant = plant, .meat = meat};
     return t;
 }
 
@@ -198,7 +203,7 @@ static void test_slot_rebuilds_on_new_id(void)
  * it, for every frame and at both pixel sizes. */
 static void test_sprite_any_size(void)
 {
-    BodyTraits t = {1000000.0f, 0.5f, 0.5f, 0.5f, 0.5f};
+    BodyTraits t = traits(1000000.0f, 0.5f, 0.5f, 0.5f, 0.5f);
     for (int f = 0; f < FRAME_COUNT; f++) {
         SpriteMask large, small;
         sprite_build(&large, &t, 16, f);
@@ -218,6 +223,191 @@ static void test_sprite_any_size(void)
     }
 }
 
+/* How many bits are set in a 64-bit row. */
+static int wide_bits(uint64_t row)
+{
+    int n = 0;
+    for (; row != 0; row >>= 1) {
+        n += (int)(row & 1u);
+    }
+    return n;
+}
+
+static int wide_mask_bits(const uint64_t *rows, int size)
+{
+    int n = 0;
+    for (int j = 0; j < size; j++) {
+        n += wide_bits(rows[j]);
+    }
+    return n;
+}
+
+/* The steps go up with size and never down. */
+static void test_tiles_step_up_with_size(void)
+{
+    CHECK(sprite_tiles_for(0.5f) == 1);
+    CHECK(sprite_tiles_for(1.5f) == 1);
+    CHECK(sprite_tiles_for(SPRITE_TWO_TILES) == 2);
+    CHECK(sprite_tiles_for(SPRITE_THREE_TILES) == 3);
+    int last = 1;
+    for (int k = 0; k <= 400; k++) {
+        int tiles = sprite_tiles_for((float)k * 0.05f);
+        CHECK(tiles >= last);
+        last = tiles;
+    }
+    CHECK(last == SPRITE_MAX_TILES);
+}
+
+/* No size, however large or strange, asks for more than the largest mask. */
+static void test_tiles_capped_for_huge(void)
+{
+    CHECK(sprite_tiles_for(1000000.0f) == SPRITE_MAX_TILES);
+    CHECK(sprite_tiles_for(INFINITY) == SPRITE_MAX_TILES);
+    CHECK(sprite_tiles_for(NAN) == 1);
+    CHECK(sprite_tiles_for(-5.0f) == 1);
+}
+
+/* Every picture at every step, base size and frame keeps inside its square, and
+ * its body and white never share a pixel. Parts at their largest included. */
+static void test_mask_in_bounds_at_every_step(void)
+{
+    const int bases[2] = {16, 8};
+    for (int b = 0; b < 2; b++) {
+        for (int tiles = 2; tiles <= SPRITE_MAX_TILES; tiles++) {
+            int size = bases[b] * tiles;
+            /* Bits from size up must be clear: (1 << size) - 1 has the low
+             * size bits set. 1ull: a plain 1 is an int, too narrow to shift
+             * by 32 or more, which is undefined. */
+            uint64_t inside = (1ull << size) - 1u;
+            for (int v = 0; v <= 2; v++) {
+                float x = (float)v / 2.0f;
+                BodyTraits t = {x, x, x, x, x, x, x, x, x};
+                for (int f = 0; f < FRAME_COUNT; f++) {
+                    WideMask m;
+                    sprite_build_wide(&m, &t, size, f);
+                    CHECK(m.size == size);
+                    CHECK(wide_mask_bits(m.body, size) > 0);
+                    for (int j = 0; j < SPRITE_MAX_COLS; j++) {
+                        CHECK((m.body[j] & ~inside) == 0);
+                        CHECK((m.white[j] & ~inside) == 0);
+                        CHECK((m.outline[j] & ~inside) == 0);
+                        CHECK((m.body[j] & m.white[j]) == 0);
+                        /* The outline covers the whole body. */
+                        CHECK((m.body[j] & ~m.outline[j]) == 0);
+                        if (j >= size) {
+                            CHECK(m.body[j] == 0 && m.white[j] == 0 &&
+                                  m.outline[j] == 0);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/* Each part gene changes the picture once it passes its step, at one tile and
+ * at three; below the step the picture stays as it was. */
+static void test_parts_follow_genes(void)
+{
+    BodyTraits plain = traits(0.6f, 0.5f, 0.3f, 0.0f, 0.0f);
+    for (int part = 0; part < 4; part++) {
+        BodyTraits weak = plain, strong = plain;
+        float *weak_gene[4] = {&weak.armour, &weak.weapon, &weak.legs, &weak.swim};
+        float *strong_gene[4] = {&strong.armour, &strong.weapon, &strong.legs,
+                                 &strong.swim};
+        *weak_gene[part] = 0.2f;
+        *strong_gene[part] = 1.0f;
+        SpriteMask a, b, c;
+        sprite_build(&a, &plain, 16, FRAME_REST0);
+        sprite_build(&b, &weak, 16, FRAME_REST0);
+        sprite_build(&c, &strong, 16, FRAME_REST0);
+        CHECK(memcmp(&a, &b, sizeof(a)) == 0);
+        CHECK(memcmp(&a, &c, sizeof(a)) != 0);
+        WideMask wa, wc;
+        sprite_build_wide(&wa, &plain, 48, FRAME_REST0);
+        sprite_build_wide(&wc, &strong, 48, FRAME_REST0);
+        CHECK(memcmp(wa.body, wc.body, sizeof(wa.body)) != 0 ||
+              memcmp(wa.white, wc.white, sizeof(wa.white)) != 0);
+    }
+    /* Plates and tusks are white, like bone; long legs and fins are body. */
+    BodyTraits armoured = plain, armed = plain;
+    armoured.armour = 1.0f;
+    armed.weapon = 1.0f;
+    WideMask none, plates, tusks;
+    sprite_build_wide(&none, &plain, 48, FRAME_REST0);
+    sprite_build_wide(&plates, &armoured, 48, FRAME_REST0);
+    sprite_build_wide(&tusks, &armed, 48, FRAME_REST0);
+    CHECK(wide_mask_bits(plates.white, 48) > wide_mask_bits(none.white, 48));
+    CHECK(wide_mask_bits(tusks.white, 48) > wide_mask_bits(none.white, 48));
+}
+
+/* More recent hits, more scar; scars only on the body; none with no hits. */
+static void test_scars_follow_recent_hits(void)
+{
+    BodyTraits t = traits(1.0f, 0.5f, 0.3f, 0.0f, 0.0f);
+    WideMask m;
+    sprite_build_wide(&m, &t, 48, FRAME_REST0);
+    uint64_t scars[SPRITE_MAX_COLS];
+    int last = 0;
+    for (int count = 0; count <= 3; count++) {
+        sprite_scars(scars, m.body, 48, count);
+        int n = wide_mask_bits(scars, 48);
+        CHECK(count == 0 ? n == 0 : n > last);
+        last = n;
+        for (int j = 0; j < SPRITE_MAX_COLS; j++) {
+            CHECK((scars[j] & ~m.body[j]) == 0);
+        }
+    }
+    /* More than three is drawn as three. */
+    uint64_t many[SPRITE_MAX_COLS];
+    sprite_scars(many, m.body, 48, 100);
+    CHECK(memcmp(many, scars, sizeof(many)) == 0);
+    /* An empty body gets nothing, and the 16-pixel body gets some. */
+    uint64_t empty[SPRITE_MAX_COLS] = {0};
+    sprite_scars(scars, empty, 48, 3);
+    CHECK(wide_mask_bits(scars, 48) == 0);
+    SpriteMask small;
+    sprite_build(&small, &t, 16, FRAME_REST0);
+    uint64_t rows[SPRITE_MAX_COLS] = {0};
+    for (int j = 0; j < 16; j++) {
+        rows[j] = small.body[j];
+    }
+    sprite_scars(scars, rows, 16, 2);
+    CHECK(wide_mask_bits(scars, 16) > 0);
+}
+
+/* The large bodies' table: the same entry for the same body, a new picture for
+ * a new size, nothing for sizes it does not draw, and many more bodies than
+ * entries only cost redrawing. */
+static void test_wide_cache(void)
+{
+    SpriteCache c;
+    CHECK(sprite_cache_init(&c, 4));
+    Genome *g = calloc(1, sizeof(*g));
+    g->g[GENE_ARMOUR] = 1.0f;
+    const WideMask *two = sprite_get_wide(&c, 9, g, 2, 16, FRAME_REST0);
+    CHECK(two != NULL && two->size == 32);
+    CHECK(sprite_get_wide(&c, 9, g, 2, 16, FRAME_REST0) == two);
+    const WideMask *three = sprite_get_wide(&c, 9, g, 3, 8, FRAME_WALK1);
+    CHECK(three != NULL && three->size == 24);
+    CHECK(sprite_get_wide(&c, 9, g, 1, 16, FRAME_REST0) == NULL);
+    CHECK(sprite_get_wide(&c, 9, g, 4, 16, FRAME_REST0) == NULL);
+    CHECK(sprite_get_wide(&c, 9, g, 2, 12, FRAME_REST0) == NULL);
+    CHECK(sprite_get_wide(&c, 9, g, 2, 16, FRAME_COUNT) == NULL);
+    WideMask first = *sprite_get_wide(&c, 9, g, 2, 16, FRAME_REST0);
+    for (uint32_t id = 100; id < 100 + 3 * SPRITE_BIG_ENTRIES; id++) {
+        CHECK(sprite_get_wide(&c, id, g, 2, 16, FRAME_REST0) != NULL);
+    }
+    /* Pushed out long ago, and drawn again the same. */
+    const WideMask *again = sprite_get_wide(&c, 9, g, 2, 16, FRAME_REST0);
+    CHECK(memcmp(&first, again, sizeof(first)) == 0);
+    sprite_cache_reset(&c);
+    CHECK(sprite_get_wide(&c, 9, g, 2, 16, FRAME_REST0) != NULL);
+    free(g);
+    sprite_cache_free(&c);
+    sprite_cache_free(&c);
+}
+
 int main(void)
 {
     test_same_traits_same_pixels();
@@ -231,5 +421,11 @@ int main(void)
     test_every_frame_stays_in_tile();
     test_slot_rebuilds_on_new_id();
     test_sprite_any_size();
+    test_tiles_step_up_with_size();
+    test_tiles_capped_for_huge();
+    test_mask_in_bounds_at_every_step();
+    test_parts_follow_genes();
+    test_scars_follow_recent_hits();
+    test_wide_cache();
     TEST_SUMMARY();
 }

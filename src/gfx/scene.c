@@ -23,6 +23,8 @@ static const Colour SLASH = {255, 70, 50};
 /* Crumbs of meat. Crumbs of plant are the plant's own colour, lightened, or
  * they would vanish against the tree they come from. */
 static const Colour MEAT_CRUMB = {255, 110, 100};
+/* A cut not healed yet: a pale pink, to be seen on any family's colour. */
+static const Colour SCAR = {255, 170, 160};
 
 /* How far a region's colour tints the near-black behind a symbol, and the flat
  * colour of a cell at the furthest zoom. Small, so the ground stays ground. */
@@ -263,9 +265,45 @@ static Colour creature_colour(const Creature *c)
     return palette_creature(c->genome.g[GENE_HUE], render_meat_share(c->level));
 }
 
+/* How many of its remembered hits a creature took in the last
+ * SCENE_SCAR_TICKS ticks. Only the first hits_taken entries of the ring mean
+ * anything (see Creature). */
+static int recent_hit_count(const Creature *cr, uint64_t tick)
+{
+    uint32_t kept = cr->hits_taken < HITS_KEPT ? cr->hits_taken : HITS_KEPT;
+    int n = 0;
+    for (uint32_t k = 0; k < kept; k++) {
+        /* Written as an addition: tick - when, on unsigned numbers, would wrap
+         * round to a huge number if a hit were ever stamped after tick. */
+        uint64_t when = cr->recent_hits[k].tick;
+        if (when + SCENE_SCAR_TICKS >= tick) {
+            n++;
+        }
+    }
+    return n;
+}
+
+/* The scars over a body already drawn: body is its rows, size by size. */
+static void draw_scars(Canvas *c, const uint64_t *body, int size, int x, int y,
+                       int scale, bool flip, int count, CanvasClip clip)
+{
+    if (count <= 0) {
+        return;
+    }
+    uint64_t scars[SPRITE_MAX_COLS];
+    sprite_scars(scars, body, size, count);
+    canvas_mask_wide(c, scars, size, x, y, scale, flip, to_pixel(SCAR), clip);
+}
+
+/* The whole canvas, for drawing that only the canvas's edges need to stop. */
+static CanvasClip whole(const Canvas *c)
+{
+    return (CanvasClip){0, 0, c->w, c->h};
+}
+
 /* One creature as a symbol, its tile cleared first so its eye shows black
  * and no plant shows through. A newborn is drawn at half size at first. */
-static void draw_body(Scene *sc, Canvas *c, const Camera *cam,
+static void draw_body(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
                       const Creature *cr, int slot, const AnimPose *p, int sx,
                       int sy)
 {
@@ -290,6 +328,115 @@ static void draw_body(Scene *sc, Canvas *c, const Camera *cam,
                 colour);
     canvas_mask(c, m->white, drawn_size, sx + inset, sy + inset, scale, p->flip,
                 to_pixel(WHITE));
+    /* The scars want 64-bit rows; a uint16_t widens to uint64_t with no loss. */
+    uint64_t rows[16];
+    for (int j = 0; j < 16; j++) {
+        rows[j] = m->body[j];
+    }
+    draw_scars(c, rows, drawn_size, sx + inset, sy + inset, scale, p->flip,
+               recent_hit_count(cr, s->tick), whole(c));
+}
+
+/* Where on the canvas the world shows, and whether it shows whole along each
+ * axis. A whole axis is not repeated on screen, so a body hanging over its
+ * edge must also be drawn on the other side, as the world wraps. */
+typedef struct {
+    CanvasClip clip;
+    bool whole_x, whole_y;
+    int world_px_w, world_px_h; /* the whole world's size in screen pixels */
+} WorldArea;
+
+static WorldArea world_area(const Camera *cam, int view_x, int view_y)
+{
+    CameraCells v;
+    camera_cells(cam, &v);
+    int ppc = camera_ppc(cam);
+    int left = v.screen_x > 0 ? v.screen_x : 0;
+    int top = v.screen_y > 0 ? v.screen_y : 0;
+    int right = v.screen_x + v.cols * ppc;
+    int bottom = v.screen_y + v.rows * ppc;
+    right = right < cam->view_w ? right : cam->view_w;
+    bottom = bottom < cam->view_h ? bottom : cam->view_h;
+    WorldArea a;
+    a.clip = (CanvasClip){view_x + left, view_y + top, right - left, bottom - top};
+    a.world_px_w = cam->world_w * ppc;
+    a.world_px_h = cam->world_h * ppc;
+    a.whole_x = a.world_px_w <= cam->view_w;
+    a.whole_y = a.world_px_h <= cam->view_h;
+    return a;
+}
+
+/* The top left corner of a body drawn tiles wide whose cell's corner is at
+ * (sx, sy): its feet on the bottom of its own cell, centred across it. */
+static void large_corner(int sx, int sy, int ppc, int tiles, int *x, int *y)
+{
+    int extent = tiles * ppc;
+    *x = sx + ppc / 2 - extent / 2;
+    *y = sy + ppc - extent;
+}
+
+/* One picture of a large body with its corner at (x, y), unless it misses the
+ * world's area entirely. */
+static void draw_large_at(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
+                          const Creature *cr, const AnimPose *p, int tiles,
+                          int x, int y, CanvasClip clip)
+{
+    int extent = tiles * camera_ppc(cam);
+    if (x >= clip.x + clip.w || y >= clip.y + clip.h || x + extent <= clip.x ||
+        y + extent <= clip.y) {
+        return;
+    }
+    uint32_t colour = to_pixel(creature_colour(cr));
+    int size = camera_sprite_size(cam);
+    if (size == 0) {
+        canvas_rect_clip(c, x, y, extent, extent, colour, clip);
+        return;
+    }
+    const WideMask *m =
+        sprite_get_wide(&sc->sprites, cr->id, &cr->genome, tiles, size, p->frame);
+    if (m == NULL) {
+        return;
+    }
+    int scale = camera_sprite_scale(cam);
+    canvas_mask_wide(c, m->outline, m->size, x, y, scale, p->flip,
+                     to_pixel(BACKGROUND), clip);
+    canvas_mask_wide(c, m->body, m->size, x, y, scale, p->flip, colour, clip);
+    canvas_mask_wide(c, m->white, m->size, x, y, scale, p->flip, to_pixel(WHITE),
+                     clip);
+    draw_scars(c, m->body, m->size, x, y, scale, p->flip,
+               recent_hit_count(cr, s->tick), clip);
+}
+
+/* A body drawn several tiles wide, over the ground and over smaller bodies,
+ * with no cell cleared: its outline keeps it apart from what is behind. Only
+ * drawing: in the simulation it still stands on one cell. */
+static void draw_large(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
+                       const Creature *cr, const AnimPose *p, int tiles, int sx,
+                       int sy, const WorldArea *area)
+{
+    int x, y;
+    large_corner(sx, sy, camera_ppc(cam), tiles, &x, &y);
+    /* Along a whole axis, the copies one world to either side too: at most
+     * one of them lands in view, the one across the edge. */
+    for (int dy = -1; dy <= 1; dy++) {
+        for (int dx = -1; dx <= 1; dx++) {
+            if ((dx != 0 && !area->whole_x) || (dy != 0 && !area->whole_y)) {
+                continue;
+            }
+            draw_large_at(sc, c, cam, s, cr, p, tiles, x + dx * area->world_px_w,
+                          y + dy * area->world_px_h, area->clip);
+        }
+    }
+}
+
+/* How many tiles wide this creature is drawn. A newborn is drawn small,
+ * whatever its size, while it pops in. */
+static int drawn_tiles(const Creature *cr, const Sim *s, const AnimPose *p)
+{
+    if (p != NULL && p->pop < 0.5f) {
+        return 1;
+    }
+    return sprite_tiles_for(creature_size(cr, &s->set));
 }
 
 static void draw_creatures(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
@@ -300,26 +447,41 @@ static void draw_creatures(Scene *sc, Canvas *c, const Camera *cam, const Sim *s
     int size = camera_sprite_size(cam);
     int n = s->pool.capacity < sc->anim.capacity ? s->pool.capacity
                                                  : sc->anim.capacity;
-    for (int i = 0; i < n; i++) {
-        const Creature *cr = &s->pool.items[i];
-        if (!cr->alive || !sc->anim.slots[i].seen) {
-            continue;
-        }
-        AnimPose p;
-        anim_pose(&sc->anim, s, i, tick_fraction, body_ms, &p);
-        int sx, sy;
-        camera_to_screen(cam, p.x, p.y, &sx, &sy);
-        /* Off the view: skipped before any work. */
-        if (sx <= -ppc || sy <= -ppc || sx >= cam->view_w ||
-            sy >= cam->view_h) {
-            continue;
-        }
-        sx += view_x;
-        sy += view_y;
-        if (size == 0) {
-            canvas_rect(c, sx, sy, ppc, ppc, to_pixel(creature_colour(cr)));
-        } else {
-            draw_body(sc, c, cam, cr, i, &p, sx, sy);
+    WorldArea area = world_area(cam, view_x, view_y);
+    /* Smaller bodies first, so a large one stands in front of those it
+     * covers. Each pass skips the bodies of the other sizes. */
+    for (int tier = 1; tier <= SPRITE_MAX_TILES; tier++) {
+        for (int i = 0; i < n; i++) {
+            const Creature *cr = &s->pool.items[i];
+            if (!cr->alive || !sc->anim.slots[i].seen) {
+                continue;
+            }
+            AnimPose p;
+            anim_pose(&sc->anim, s, i, tick_fraction, body_ms, &p);
+            int tiles = drawn_tiles(cr, s, &p);
+            if (tiles != tier) {
+                continue;
+            }
+            int sx, sy;
+            camera_to_screen(cam, p.x, p.y, &sx, &sy);
+            if (tiles > 1) {
+                /* Off the view or not, decided picture by picture inside. */
+                draw_large(sc, c, cam, s, cr, &p, tiles, view_x + sx,
+                           view_y + sy, &area);
+                continue;
+            }
+            /* Off the view: skipped before any work. */
+            if (sx <= -ppc || sy <= -ppc || sx >= cam->view_w ||
+                sy >= cam->view_h) {
+                continue;
+            }
+            sx += view_x;
+            sy += view_y;
+            if (size == 0) {
+                canvas_rect(c, sx, sy, ppc, ppc, to_pixel(creature_colour(cr)));
+            } else {
+                draw_body(sc, c, cam, s, cr, i, &p, sx, sy);
+            }
         }
     }
 }
@@ -560,10 +722,17 @@ void scene_draw_cursor(const Scene *sc, Canvas *c, const Camera *cam,
     int sx, sy;
     camera_to_screen(cam, p.x, p.y, &sx, &sy);
     int ppc = camera_ppc(cam);
-    int left = view_x + sx - 2;
-    int top = view_y + sy - 2;
-    int right = view_x + sx + ppc + 1; /* the last column of the frame */
-    int bottom = view_y + sy + ppc + 1;
+    /* Round the whole picture: one cell, or a large body's tiles. */
+    int tiles = drawn_tiles(followed, s, &p);
+    int bx = sx, by = sy;
+    if (tiles > 1) {
+        large_corner(sx, sy, ppc, tiles, &bx, &by);
+    }
+    int extent = tiles * ppc;
+    int left = view_x + bx - 2;
+    int top = view_y + by - 2;
+    int right = view_x + bx + extent + 1; /* the last column of the frame */
+    int bottom = view_y + by + extent + 1;
     int len = ppc < 8 ? 2 : ppc / 4;
     uint32_t white = to_pixel(WHITE);
     /* Each corner is two short lines. */
@@ -599,6 +768,12 @@ void scene_draw_followed(Scene *sc, Canvas *c, const Sim *s,
     canvas_mask(c, m->body, 16, x, y, scale, p.flip,
                 to_pixel(creature_colour(followed)));
     canvas_mask(c, m->white, 16, x, y, scale, p.flip, to_pixel(WHITE));
+    uint64_t rows[16];
+    for (int j = 0; j < 16; j++) {
+        rows[j] = m->body[j];
+    }
+    draw_scars(c, rows, 16, x, y, scale, p.flip,
+               recent_hit_count(followed, s->tick), whole(c));
 }
 
 /* One sample's body in this frame, at a scale, on the near-black background. */

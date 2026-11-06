@@ -43,6 +43,18 @@ void canvas_rect(Canvas *c, int x, int y, int w, int h, uint32_t colour);
  */
 void canvas_mask(Canvas *c, const uint16_t *rows, int size, int x, int y,
                  int scale, bool flip, uint32_t colour);
+/* A rectangle drawing may not leave, in canvas pixels. */
+typedef struct {
+    int x, y, w, h;
+} CanvasClip;
+
+/* canvas_rect, kept inside clip as well as inside the canvas. */
+void canvas_rect_clip(Canvas *c, int x, int y, int w, int h, uint32_t colour,
+                      CanvasClip clip);
+/* canvas_mask for rows up to 64 pixels wide, kept inside clip. Each row's set
+ * bits are drawn as runs, one rectangle per run of neighbouring pixels. */
+void canvas_mask_wide(Canvas *c, const uint64_t *rows, int size, int x, int y,
+                      int scale, bool flip, uint32_t colour, CanvasClip clip);
 /* Copies all of from onto c with from's corner at (x, y), clipped. */
 void canvas_copy(Canvas *c, const Canvas *from, int x, int y);
 /* Writes the canvas as a PPM image, the simplest picture format there is:

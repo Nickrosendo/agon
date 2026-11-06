@@ -128,6 +128,45 @@ void canvas_mask(Canvas *c, const uint16_t *rows, int size, int x, int y,
     }
 }
 
+void canvas_rect_clip(Canvas *c, int x, int y, int w, int h, uint32_t colour,
+                      CanvasClip clip)
+{
+    /* The overlap of the two rectangles; canvas_rect then clips to the canvas. */
+    int left = x > clip.x ? x : clip.x;
+    int top = y > clip.y ? y : clip.y;
+    int right = x + w < clip.x + clip.w ? x + w : clip.x + clip.w;
+    int bottom = y + h < clip.y + clip.h ? y + h : clip.y + clip.h;
+    if (left < right && top < bottom) {
+        canvas_rect(c, left, top, right - left, bottom - top, colour);
+    }
+}
+
+void canvas_mask_wide(Canvas *c, const uint64_t *rows, int size, int x, int y,
+                      int scale, bool flip, uint32_t colour, CanvasClip clip)
+{
+    size = size > 64 ? 64 : size;
+    for (int r = 0; r < size; r++) {
+        uint64_t bits = rows[r];
+        int i = 0;
+        while (bits != 0 && i < size) {
+            /* Column i is bit (size - 1 - i): skip clear pixels, then count
+             * the run of set ones. */
+            if (((bits >> (size - 1 - i)) & 1u) == 0) {
+                i++;
+                continue;
+            }
+            int start = i;
+            while (i < size && ((bits >> (size - 1 - i)) & 1u)) {
+                i++;
+            }
+            /* Mirrored, the run [start, i) lands at [size - i, size - start). */
+            int column = flip ? size - i : start;
+            canvas_rect_clip(c, x + column * scale, y + r * scale,
+                             (i - start) * scale, scale, colour, clip);
+        }
+    }
+}
+
 void canvas_copy(Canvas *c, const Canvas *from, int x, int y)
 {
     /* The part of from that lands on c, worked out once for all rows. */

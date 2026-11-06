@@ -51,6 +51,8 @@ typedef struct {
 #define SCENE_MIN_ROWS 6
 #define SCENE_MIN_W (SCENE_MIN_COLS * FONT_W)
 #define SCENE_MIN_H (SCENE_MIN_ROWS * FONT_H)
+/* A hit shows as a scar for this many ticks, a year at the default calendar. */
+#define SCENE_SCAR_TICKS 100u
 /* An enlarged body: 16 pixels, each four screen pixels wide. */
 #define SCENE_BODY_BIG 64
 /* A panel keeps at least this many text rows before the bodies get any: enough

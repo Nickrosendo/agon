@@ -367,12 +367,15 @@ static uint64_t hash_canvas(const Canvas *c)
  * zooms (the wider two show too little to change); then regions' edges, for the
  * same reason; then wet and dry times, which change the rain and the ground's water
  * at every zoom; then soil that dries twice as fast; then the region tint, at every
- * zoom but the closest, which in this world shows only deep water and so no region.
+ * zoom but the closest, which in this world shows only deep water and so no region;
+ * then scars, at the far zoom only: the creature at (20, 24) was hit in the last
+ * year, and the two closer zooms show no creature here (no body in this world is
+ * large enough to be drawn over several tiles).
  */
 static void test_known_world_pixels(void)
 {
     static const uint64_t EXPECTED[CAMERA_LEVELS] = {
-        0x97c7dc7faf140a9du, 0x2d6dcf0b3080b532u, 0xa4466b6caf15fd7fu, 0x4e5052cf991bc4d5u,
+        0x97c7dc7faf140a9du, 0x2d6dcf0b3080b532u, 0x35275a26dd56e9feu, 0x4e5052cf991bc4d5u,
     };
     Settings set = settings_default();
     Sim s;
@@ -816,6 +819,234 @@ static void test_rain_falls_from_frame_to_frame(void)
     CHECK(pixels > 0);
 }
 
+/* A creature placed by hand on soil at (x, y), made large by growth. */
+static int place_body(Sim *s, int x, int y, float grown)
+{
+    s->world.terrain[world_idx(&s->world, x, y)] = TERRAIN_SOIL;
+    int slot = pool_spawn(&s->pool, &s->world, x, y);
+    CHECK(slot >= 0);
+    if (slot >= 0) {
+        s->pool.items[slot].grown = grown;
+        /* Not a newborn, drawn at full size. The drawing side takes the
+         * birth tick as tick - age, never below 0, so the clock must be past
+         * the age too. */
+        s->pool.items[slot].age = 1000;
+        s->tick = s->tick > 2000 ? s->tick : 2000;
+    }
+    return slot;
+}
+
+/*
+ * Draws the world with nobody in it and again with one body, into a canvas
+ * with a border of `border` pixels round the view, and gives the box (in
+ * canvas pixels) holding every pixel that changed. False when nothing did.
+ */
+typedef struct {
+    int left, top, right, bottom; /* right and bottom are the last pixels */
+} Box;
+
+static bool changed_box(Sim *s, int slot, Camera *cam, int border, Box *out)
+{
+    Scene sc;
+    CHECK(scene_init(&sc, s));
+    Canvas a, b;
+    CHECK(canvas_init(&a, cam->view_w + 2 * border, cam->view_h + 2 * border));
+    CHECK(canvas_init(&b, cam->view_w + 2 * border, cam->view_h + 2 * border));
+    uint32_t magenta = canvas_rgb(255, 0, 255);
+    canvas_fill(&a, magenta);
+    canvas_fill(&b, magenta);
+    /* Without: the body is taken away for the first picture, then put back. */
+    s->pool.items[slot].alive = false;
+    scene_update(&sc, s, 10);
+    scene_draw_world(&sc, &a, cam, s, 0.0f, 0, 0, border, border);
+    s->pool.items[slot].alive = true;
+    scene_update(&sc, s, 10);
+    scene_draw_world(&sc, &b, cam, s, 0.0f, 0, 0, border, border);
+    *out = (Box){a.w, a.h, -1, -1};
+    for (int y = 0; y < a.h; y++) {
+        for (int x = 0; x < a.w; x++) {
+            if (a.px[y * a.w + x] != b.px[y * a.w + x]) {
+                out->left = x < out->left ? x : out->left;
+                out->top = y < out->top ? y : out->top;
+                out->right = x > out->right ? x : out->right;
+                out->bottom = y > out->bottom ? y : out->bottom;
+            }
+        }
+    }
+    canvas_free(&a);
+    canvas_free(&b);
+    scene_free(&sc);
+    return out->right >= 0;
+}
+
+/* An ordinary body stays in its cell; a grown one covers more, three tiles at
+ * most, standing on its own cell. */
+static void test_large_body_drawn_large(void)
+{
+    const float grown[3] = {0.0f, 2.5f, 1000000.0f};
+    const int tiles[3] = {1, 2, 3};
+    for (int k = 0; k < 3; k++) {
+        Sim s;
+        make_empty_sim(&s, 64, 64);
+        int slot = place_body(&s, 32, 32, grown[k]);
+        CHECK(sprite_tiles_for(creature_size(&s.pool.items[slot], &s.set)) ==
+              tiles[k]);
+        Camera cam;
+        camera_init(&cam, 64, 64, VIEW_W, VIEW_H);
+        camera_centre_on(&cam, 32.5f, 32.5f);
+        int sx, sy;
+        camera_to_screen(&cam, 32.0f, 32.0f, &sx, &sy);
+        int ppc = camera_ppc(&cam);
+        Box box;
+        CHECK(changed_box(&s, slot, &cam, 0, &box));
+        int extent = tiles[k] * ppc;
+        /* Wider than a cell when large, never wider than its tiles plus the
+         * outline's pixel each side. */
+        CHECK(box.right - box.left + 1 <= extent + 2);
+        CHECK(box.bottom - box.top + 1 <= extent + 2);
+        if (tiles[k] > 1) {
+            CHECK(box.right - box.left + 1 > ppc + 2);
+        }
+        /* Its feet are on its own cell: nothing below that cell's bottom but
+         * the outline. */
+        CHECK(box.bottom <= sy + ppc);
+        sim_free(&s);
+    }
+}
+
+/* A giant at the world's corners, in a world that fits the view and in one
+ * that does not, at every zoom: nothing is drawn outside the view. Where the
+ * whole world shows, nothing is drawn on the black round it either. */
+static void test_giant_over_map_edge(void)
+{
+    const int sizes[2][2] = {{16, 8}, {64, 64}};
+    const int corners[4][2] = {{0, 0}, {1, 0}, {0, 1}, {1, 1}};
+    int border = 40;
+    for (int w = 0; w < 2; w++) {
+        int ww = sizes[w][0], wh = sizes[w][1];
+        for (int k = 0; k < 4; k++) {
+            for (int level = 0; level < CAMERA_LEVELS; level++) {
+                Sim s;
+                make_empty_sim(&s, ww, wh);
+                int x = corners[k][0] * (ww - 1), y = corners[k][1] * (wh - 1);
+                int slot = place_body(&s, x, y, 1000000.0f);
+                Camera cam;
+                camera_init(&cam, ww, wh, VIEW_W, VIEW_H);
+                cam.level = level;
+                /* In the large world, the giant at a corner of the view. */
+                if (w == 1) {
+                    camera_centre_on(&cam, (float)x + 9.0f, (float)y + 5.0f);
+                }
+                Box box;
+                if (changed_box(&s, slot, &cam, border, &box)) {
+                    CHECK(box.left >= border && box.top >= border);
+                    CHECK(box.right < border + VIEW_W);
+                    CHECK(box.bottom < border + VIEW_H);
+                    if (camera_world_fits(&cam)) {
+                        CameraCells v;
+                        camera_cells(&cam, &v);
+                        int ppc = camera_ppc(&cam);
+                        CHECK(box.left >= border + v.screen_x);
+                        CHECK(box.top >= border + v.screen_y);
+                        CHECK(box.right < border + v.screen_x + ww * ppc);
+                        CHECK(box.bottom < border + v.screen_y + wh * ppc);
+                    }
+                }
+                sim_free(&s);
+            }
+        }
+    }
+}
+
+/* How many pixels of the scars' colour a body at Normal zoom shows, with
+ * `hits` hits taken, the newest `ago` ticks ago. */
+static int scar_pixels(float grown, uint32_t hits, uint32_t ago)
+{
+    Sim s;
+    make_empty_sim(&s, 64, 64);
+    int slot = place_body(&s, 32, 32, grown);
+    s.tick = 5000;
+    Creature *cr = &s.pool.items[slot];
+    cr->genome.g[GENE_HUE] = 0.6f; /* blue: far from the scars' pink */
+    for (uint32_t h = 0; h < hits; h++) {
+        cr->recent_hits[h % HITS_KEPT] = (Hit){.by = 99, .tick = 5000 - ago - h};
+    }
+    cr->hits_taken = hits;
+    Scene sc;
+    CHECK(scene_init(&sc, &s));
+    Canvas c;
+    CHECK(canvas_init(&c, VIEW_W, VIEW_H));
+    Camera cam;
+    camera_init(&cam, 64, 64, VIEW_W, VIEW_H);
+    camera_centre_on(&cam, 32.5f, 32.5f);
+    scene_update(&sc, &s, 10);
+    scene_draw_world(&sc, &c, &cam, &s, 0.0f, 0, 0, 0, 0);
+    int n = 0;
+    for (int i = 0; i < VIEW_W * VIEW_H; i++) {
+        n += c.px[i] == canvas_rgb(255, 170, 160);
+    }
+    canvas_free(&c);
+    scene_free(&sc);
+    sim_free(&s);
+    return n;
+}
+
+static void test_scars_follow_recent_hits(void)
+{
+    for (int k = 0; k < 2; k++) {
+        float grown = k == 0 ? 0.0f : 1000000.0f;
+        CHECK(scar_pixels(grown, 0, 0) == 0);
+        CHECK(scar_pixels(grown, 1, 5) > 0);
+        CHECK(scar_pixels(grown, 3, 5) > scar_pixels(grown, 1, 5));
+        /* Healed: hits older than SCENE_SCAR_TICKS leave no scar. */
+        CHECK(scar_pixels(grown, 3, SCENE_SCAR_TICKS + 1) == 0);
+    }
+}
+
+/* Large bodies drawn at every zoom, with the cursor on one: the world runs as
+ * it would with nothing drawn. */
+static void test_drawing_large_leaves_fingerprint_equal(void)
+{
+    Settings set = settings_default();
+    Sim plain, drawn;
+    CHECK(sim_init(&plain, &set, 3, 64, 32));
+    CHECK(sim_init(&drawn, &set, 3, 64, 32));
+    /* The same giants in both. */
+    for (int i = 0; i < plain.pool.capacity; i += 3) {
+        if (plain.pool.items[i].alive) {
+            plain.pool.items[i].grown = (float)(i % 4) * 3.0f;
+            drawn.pool.items[i].grown = (float)(i % 4) * 3.0f;
+        }
+    }
+    CHECK(sim_checksum(&plain) == sim_checksum(&drawn));
+    Scene sc;
+    CHECK(scene_init(&sc, &drawn));
+    Canvas c;
+    CHECK(canvas_init(&c, VIEW_W, VIEW_H));
+    Camera cam;
+    camera_init(&cam, 64, 32, VIEW_W, VIEW_H);
+    for (int t = 0; t < 1000; t++) {
+        sim_step(&plain);
+        sim_step(&drawn);
+        scene_update(&sc, &drawn, 10);
+        cam.level = t % CAMERA_LEVELS;
+        scene_draw_world(&sc, &c, &cam, &drawn, 0.5f, (uint64_t)t * 33u,
+                         (uint64_t)t * 33u, 0, 0);
+        int slot = t % drawn.pool.capacity;
+        if (drawn.pool.items[slot].alive) {
+            scene_draw_cursor(&sc, &c, &cam, &drawn, &drawn.pool.items[slot],
+                              0.5f, 0, 0);
+            scene_draw_followed(&sc, &c, &drawn, &drawn.pool.items[slot],
+                                (uint64_t)t * 33u, 0, 0);
+        }
+    }
+    CHECK(sim_checksum(&plain) == sim_checksum(&drawn));
+    canvas_free(&c);
+    scene_free(&sc);
+    sim_free(&plain);
+    sim_free(&drawn);
+}
+
 int main(void)
 {
     /* Tests register this one themselves: the real program never has it. */
@@ -842,5 +1073,9 @@ int main(void)
     test_game_over_text_longest();
     test_scene_game_over();
     test_panel_pick();
+    test_large_body_drawn_large();
+    test_giant_over_map_edge();
+    test_scars_follow_recent_hits();
+    test_drawing_large_leaves_fingerprint_equal();
     TEST_SUMMARY();
 }
