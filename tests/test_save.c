@@ -14,6 +14,8 @@
 #define remove_folder(path) rmdir(path)
 #endif
 
+#include "chronicle.h"
+#include "climate.h"
 #include "genome.h"
 #include "rng.h"
 #include "save.h"
@@ -123,6 +125,31 @@ static void test_round_trip_and_continue(void)
         sim_step(&a);
         sim_step(&b);
     }
+    CHECK(sim_checksum(&a) == sim_checksum(&b));
+    sim_free(&a);
+    sim_free(&b);
+}
+
+/* Life stories travel with the file: every creature's ring and tally and the
+ * chronicle's table come back the same, and keep growing the same way. */
+static void test_chronicle_saved(void)
+{
+    Settings set = settings_default();
+    Sim a, b;
+    char err[256] = "";
+    CHECK(sim_init(&a, &set, 5, 64, 32));
+    for (int i = 0; i < 1500; i++) {
+        sim_step(&a);
+    }
+    CHECK(a.chronicle.lives[0].used); /* there is a story to keep */
+    CHECK(save_write(&a, SAVE_FILE, err, sizeof(err)));
+    CHECK(save_read(&b, SAVE_FILE, err, sizeof(err)));
+    CHECK(sim_story_checksum(&a) == sim_story_checksum(&b));
+    for (int i = 0; i < 500; i++) {
+        sim_step(&a);
+        sim_step(&b);
+    }
+    CHECK(sim_story_checksum(&a) == sim_story_checksum(&b));
     CHECK(sim_checksum(&a) == sim_checksum(&b));
     sim_free(&a);
     sim_free(&b);
@@ -412,7 +439,20 @@ enum {
     AT_GUT_TICKS = 149,
     AT_MEMORY = 151,
     AT_GENOME = 163,
-    SLOT_LIVING_BYTES = AT_GENOME + 4 * GENOME_LEN,
+    /* The life story: ten u32 counts, max_size, flags, two region bytes and
+     * region_ticks (49 bytes); then events_noted and 8 events of 13 bytes each
+     * (tick, kind, other_id, value: the struct's 3 padding bytes are not written). */
+    AT_TALLY = AT_GENOME + 4 * GENOME_LEN,
+    TALLY_BYTES = 10 * 4 + 4 + 1 + 2 + 2,
+    AT_TALLY_HOME = AT_TALLY + 10 * 4 + 4 + 1,
+    AT_EVENTS_NOTED = AT_TALLY + TALLY_BYTES,
+    EVENT_BYTES = 4 + 1 + 4 + 4,
+    AT_EVENTS = AT_EVENTS_NOTED + 4,
+    SLOT_LIVING_BYTES = AT_EVENTS + CREATURE_EVENTS * EVENT_BYTES,
+    /* The chronicle's table after every slot: per entry, used and alive bytes,
+     * id, lineage, age, score, a tally, and a ring of NOTABLE_EVENTS. */
+    NOTABLE_BYTES = 2 + 4 * 4 + TALLY_BYTES + 4 + NOTABLE_EVENTS * EVENT_BYTES,
+    CHRONICLE_BYTES = CHRONICLE_NOTABLE * NOTABLE_BYTES,
 };
 
 typedef struct {
@@ -480,7 +520,7 @@ static Tiny tiny_save(void)
     /* free_head, next_id, births_refused, deaths by cause */
     t.living = t.pool + 12 + 4 * DEATH_COUNT;
     t.free_slot = t.living + SLOT_LIVING_BYTES;
-    CHECK(t.size == t.free_slot + OFF_SIZE_FREE_SLOT);
+    CHECK(t.size == t.free_slot + OFF_SIZE_FREE_SLOT + CHRONICLE_BYTES);
     return t;
 }
 
@@ -742,6 +782,15 @@ static void test_refuses_impossible_creature(void)
                 "out of range");
     refuses_u32(&t, c + AT_GENOME + 4 * GENE_TRAITS, BITS_NAN, "out of range");
     refuses_u32(&t, c + AT_GENOME + 4 * GENE_TRAITS, BITS_HUGE, "out of range");
+    /* Its story: an event's kind picks its text, and a region its name. */
+    refuses_byte(&t, c + AT_EVENTS + 4, LIFE_COUNT, "event");
+    refuses_byte(&t, c + AT_TALLY_HOME, REGION_COUNT, "region");
+    refuses_u32(&t, c + AT_TALLY + 10 * 4, BITS_NAN, "out of range");
+    /* The table's first entry: its used byte, and its first event's kind. */
+    size_t entry = t.free_slot + OFF_SIZE_FREE_SLOT;
+    refuses_byte(&t, entry, 2, "chronicle");
+    refuses_byte(&t, entry + 2 + 4 * 4 + TALLY_BYTES + 4 + 4, LIFE_COUNT,
+                 "event");
     free(t.bytes);
 }
 
@@ -801,7 +850,7 @@ static void test_refuses_two_on_one_cell(void)
     if (bytes == NULL) {
         return;
     }
-    size_t second = size - SLOT_LIVING_BYTES;
+    size_t second = size - CHRONICLE_BYTES - SLOT_LIVING_BYTES;
     size_t first = second - SLOT_LIVING_BYTES;
     memcpy(bytes + second + AT_X, bytes + first + AT_X, 8); /* x and y */
     CHECK(load_fails(bytes, size, "cannot"));
@@ -864,6 +913,7 @@ static void test_damaged_bytes_never_crash(void)
 int main(void)
 {
     test_round_trip_and_continue();
+    test_chronicle_saved();
     test_settings_travel_with_the_file();
     test_random_brain_reopens();
     test_wrong_magic_and_version();

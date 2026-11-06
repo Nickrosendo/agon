@@ -201,6 +201,8 @@ Settings settings_default(void)
          * on screen. */
         .stats_every = 25,
         .ticks_per_year = 100,
+        .chronicle = 1,
+        .giant_size = 6.0f,
     };
     return s;
 }
@@ -379,6 +381,10 @@ static const SettingInfo TABLE[] = {
                                      "(0: never)"),
     INT_ROW(ticks_per_year, 1, 1000000, "ticks shown as one year (changes only "
                                         "the display)"),
+    INT_ROW(chronicle, 0, 1, "1: record life stories, 0: record none "
+                             "(changes no world)"),
+    FLOAT_ROW(giant_size, 0, BIG, "body size from which a life story counts a "
+                                  "giant"),
 };
 
 int settings_count(void)

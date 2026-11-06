@@ -403,3 +403,9 @@ stats_every = 25
 
 # ticks shown as one year (changes only the display) (1 to 1000000)
 ticks_per_year = 100
+
+# 1: record life stories, 0: record none (changes no world) (0 to 1)
+chronicle = 1
+
+# body size from which a life story counts a giant (0 to 1e+06)
+giant_size = 6

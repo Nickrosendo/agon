@@ -4,6 +4,7 @@
 #include <stdlib.h> /* malloc, free */
 #include <string.h> /* memset */
 
+#include "chronicle.h" /* chronicle_note, LIFE_ kinds */
 #include "climate.h" /* climate_region, climate_region_hue */
 #include "flora.h" /* carrion_add, CARRION_MIN */
 
@@ -543,6 +544,49 @@ static void note_hit(Creature *target, uint32_t by, uint32_t now)
     target->hits_taken++;
 }
 
+/* Whether a hit landing now starts a fight: the first hit of its life, or the
+ * first after more than FIGHT_GAP quiet ticks. Read before the hit joins the ring. */
+static bool starts_fight(const Creature *target, uint32_t now)
+{
+    if (target->hits_taken == 0) {
+        return true;
+    }
+    const Hit *last = &target->recent_hits[(target->hits_taken - 1) % HITS_KEPT];
+    return now - last->tick > FIGHT_GAP;
+}
+
+/* The life stories' side of a landed hit, which took the target's health from
+ * before to where it is now. The target's death itself is noted by the Sim's
+ * accounting, where it dies. */
+static void record_hit(Pool *p, Creature *c, Creature *target, float before,
+                       const Settings *s)
+{
+    if (p->chronicle == NULL) {
+        return;
+    }
+    if (starts_fight(target, p->now)) {
+        chronicle_note(p->chronicle, target,
+                       (LifeEvent){.tick = p->now, .kind = LIFE_ATTACKED,
+                                   .other_id = c->id});
+    }
+    if (target->health <= 0.0f) {
+        uint8_t kind = creature_is_hunter(target) ? LIFE_KILL_HUNTER : LIFE_KILL;
+        chronicle_note(p->chronicle, c,
+                       (LifeEvent){.tick = p->now, .kind = kind,
+                                   .other_id = target->id});
+        return;
+    }
+    float heavy = HEAVY_WOUND * creature_max_health(target, s);
+    if (before >= heavy && target->health < heavy) {
+        /* A share of an unhurt body's health, as a whole percentage. Converting
+         * a float to an int cuts the fraction off; the value is 0 to 25 here. */
+        float left = 100.0f * target->health / creature_max_health(target, s);
+        chronicle_note(p->chronicle, target,
+                       (LifeEvent){.tick = p->now, .kind = LIFE_WOUNDED,
+                                   .other_id = c->id, .value = (int32_t)left});
+    }
+}
+
 /* What one landed hit takes from the target, at attacker size a. A share of it
  * is blocked rather than an amount, so armour never makes anyone untouchable at
  * the default setting. The floor is for an armour_block above 1, where the
@@ -574,7 +618,9 @@ static void act_attack(const World *w, Pool *p, int idx, const Settings *s,
     float chance = attack_odds(a, creature_size(target, s), s->attack_steepness,
                                others, s->gang_bonus);
     if (rng_unit(r) < chance) {
+        float before = target->health;
         target->health -= hit_damage(c, target, a, s);
+        record_hit(p, c, target, before, s); /* reads the ring before the hit */
         note_hit(target, c->id, p->now);
     }
 }
@@ -900,6 +946,22 @@ static void make_child(Creature *child, Creature *a, Creature *b,
     b->mate_wish = 0;
 }
 
+/* The life stories' side of a birth: the child's, and one event for each parent. */
+static void record_birth(Pool *p, Creature *child, Creature *a, Creature *b)
+{
+    if (p->chronicle == NULL) {
+        return;
+    }
+    child->tally.parents[0] = a->id;
+    child->tally.parents[1] = b->id;
+    chronicle_note(p->chronicle, child,
+                   (LifeEvent){.tick = p->now, .kind = LIFE_BORN,
+                               .other_id = a->id, .value = 1});
+    LifeEvent had = {.tick = p->now, .kind = LIFE_CHILD, .other_id = child->id};
+    chronicle_note(p->chronicle, a, had); /* had is copied in: a struct is */
+    chronicle_note(p->chronicle, b, had); /* passed by value, like a number */
+}
+
 /* See creature_act in creature.h. */
 static int act_mate(World *w, Pool *p, int idx, const Settings *s, Rng *r)
 {
@@ -934,6 +996,7 @@ static int act_mate(World *w, Pool *p, int idx, const Settings *s, Rng *r)
     }
     Creature *child = &p->items[child_idx];
     make_child(child, a, b, s, r);
+    record_birth(p, child, a, b);
     /* Read after the crossing: a child can differ from both parents. */
     if (creature_counts_as_plant_eater(child, s)) {
         p->plant_eaters++;

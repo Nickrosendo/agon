@@ -340,6 +340,14 @@ typedef struct {
      * cannot change how a world evolves. At the default speed of 10 ticks a
      * second, the default makes a year 10 seconds. */
     int ticks_per_year;
+
+    /* Life stories (chronicle.h): 1 records them, 0 records nothing. No rule
+     * reads them, so turning this off changes no world, and a test checks it. */
+    int chronicle;
+    /* The body size from which a creature counts as a giant: crossing it is an
+     * event in its story. 6 is where it is drawn three tiles wide. Only the story
+     * reads it. */
+    float giant_size;
 } Settings;
 
 Settings settings_default(void);

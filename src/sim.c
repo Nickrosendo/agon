@@ -4,6 +4,7 @@
 #include <stdlib.h> /* malloc, free */
 #include <string.h> /* memcpy */
 
+#include "chronicle.h"
 #include "climate.h"
 #include "flora.h"
 #include "terrain.h"
@@ -50,6 +51,18 @@ static void plant_start(World *w, Rng *r, const Settings *s)
     }
 }
 
+/* Where this Sim records life stories, or NULL with the chronicle setting off. */
+static Chronicle *recorder(Sim *s)
+{
+    return s->set.chronicle ? &s->chronicle : NULL;
+}
+
+/* The low 32 bits of the tick, the date events carry. */
+static uint32_t story_date(const Sim *s)
+{
+    return (uint32_t)s->tick;
+}
+
 /* Places one creature on a random free soil cell with the starting
  * energy, a random heading and a random genome, and tells the brain.
  * Returns its slot, or -1 if the pool is full or no free cell turned
@@ -75,6 +88,8 @@ static int place_creature(Sim *s)
             genome_random(&c->genome, &s->rng, &s->set);
             c->health = creature_max_health(c, &s->set); /* needs the genes */
             creature_start_family(c);
+            chronicle_note(recorder(s), c,
+                           (LifeEvent){.tick = story_date(s), .kind = LIFE_BORN});
             s->brain.on_birth(&s->brain, c->id, &c->genome);
             return idx;
         }
@@ -141,7 +156,8 @@ bool sim_alloc(Sim *s, const Settings *set, int w, int h)
     }
     s->turns = malloc((size_t)set->pool_capacity * sizeof(*s->turns));
     s->scratch = malloc((size_t)set->pool_capacity * sizeof(*s->scratch));
-    if (s->turns == NULL || s->scratch == NULL) {
+    if (s->turns == NULL || s->scratch == NULL ||
+        !chronicle_init(&s->chronicle)) {
         sim_free(s);
         return false;
     }
@@ -183,6 +199,7 @@ bool sim_reseed(Sim *s, uint64_t seed)
     rng_seed(&s->rng, seed);
     world_clear(&s->world);
     pool_clear(&s->pool);
+    chronicle_clear(&s->chronicle);
     /* The brain's random numbers start over too, so a reseeded Sim and a
      * fresh one make the same decisions. */
     brain_close(&s->brain);
@@ -325,6 +342,126 @@ static DeathCause death_cause(bool hit_to_death, const Creature *c)
     return c->health > 0.0f ? DEATH_AGE : DEATH_HUNGER;
 }
 
+/* ---- life stories, from the accounting ---- */
+
+/* The newest hit c took. Only for a creature that has taken one. */
+static const Hit *last_hit(const Creature *c)
+{
+    return &c->recent_hits[(c->hits_taken - 1) % HITS_KEPT];
+}
+
+/* A living creature at the end of its tick: a fight it came through, a new region
+ * it has settled in, and its size. Reads the world, changes only the story. */
+static void story_living(Sim *s, Creature *c)
+{
+    Chronicle *ch = recorder(s);
+    if (ch == NULL) {
+        return;
+    }
+    uint32_t now = story_date(s);
+    if (c->hits_taken > 0 && now - last_hit(c)->tick == FIGHT_GAP) {
+        chronicle_note(ch, c, (LifeEvent){.tick = now, .kind = LIFE_SURVIVED,
+                                          .other_id = last_hit(c)->by});
+    }
+    LifeTally *t = &c->tally;
+    /* REGION_ values run from -1 to 4, so the conversion to int8_t keeps them. */
+    int8_t region = (int8_t)climate_region(
+        &s->world, world_idx(&s->world, c->x, c->y), &s->set);
+    if (!(t->flags & TALLY_HOME_KNOWN)) {
+        t->flags |= TALLY_HOME_KNOWN; /* where it first stands is home */
+        t->home_region = region;
+        t->region_here = region;
+    }
+    if (region != t->region_here) {
+        t->region_here = region;
+        t->region_ticks = 0;
+    }
+    if (t->region_ticks < UINT16_MAX) {
+        t->region_ticks++;
+    }
+    if (region != t->home_region && region != REGION_NONE &&
+        t->region_ticks >= REGION_SETTLE) {
+        t->home_region = region;
+        chronicle_note(ch, c, (LifeEvent){.tick = now, .kind = LIFE_MOVED,
+                                          .value = region});
+    }
+    float size = creature_size(c, &s->set);
+    if (size > t->max_size) {
+        t->max_size = size;
+    }
+    if (size >= s->set.giant_size && !(t->flags & TALLY_GIANT)) {
+        /* Tenths of a size, as a whole number; + 0.5f rounds to the nearest. */
+        chronicle_note(ch, c, (LifeEvent){.tick = now, .kind = LIFE_GIANT,
+                                          .value = (int32_t)(size * 10.0f + 0.5f)});
+    }
+}
+
+/* A creature about to die: relatives standing near are told, then its death is
+ * noted, while it still holds its slot. */
+static void story_death(Sim *s, Creature *dead, DeathCause cause)
+{
+    Chronicle *ch = recorder(s);
+    if (ch == NULL) {
+        return;
+    }
+    uint32_t now = story_date(s);
+    for (int dy = -KIN_NEAR; dy <= KIN_NEAR; dy++) {
+        for (int dx = -KIN_NEAR; dx <= KIN_NEAR; dx++) {
+            int slot = s->world.occupant[world_idx(&s->world, dead->x + dx,
+                                                   dead->y + dy)];
+            if (slot < 0 || &s->pool.items[slot] == dead) {
+                continue;
+            }
+            Creature *near = &s->pool.items[slot];
+            if (genome_kinship(&near->genome, &dead->genome) >= s->set.kin_sense) {
+                chronicle_note(ch, near,
+                               (LifeEvent){.tick = now, .kind = LIFE_KIN_LOST,
+                                           .other_id = dead->id});
+            }
+        }
+    }
+    LifeEvent died = {.tick = now, .kind = LIFE_DIED, .value = (int32_t)cause};
+    if (cause == DEATH_WOUNDS && dead->hits_taken > 0) {
+        died.other_id = last_hit(dead)->by;
+    }
+    chronicle_note(ch, dead, died);
+}
+
+/* After the accounting: the largest and the oldest creature alive, each told the
+ * first time in its life it holds that place. Ties go to the earlier slot. */
+static void story_leaders(Sim *s)
+{
+    Chronicle *ch = recorder(s);
+    if (ch == NULL || s->pool.count == 0) {
+        return;
+    }
+    Creature *largest = NULL, *oldest = NULL;
+    float largest_size = 0.0f;
+    for (int i = 0; i < s->pool.capacity; i++) {
+        Creature *c = &s->pool.items[i];
+        if (!c->alive) {
+            continue;
+        }
+        float size = creature_size(c, &s->set);
+        if (largest == NULL || size > largest_size) {
+            largest = c;
+            largest_size = size;
+        }
+        if (oldest == NULL || c->age > oldest->age) {
+            oldest = c;
+        }
+    }
+    uint32_t now = story_date(s);
+    if (!(largest->tally.flags & TALLY_WAS_LARGEST)) {
+        chronicle_note(ch, largest,
+                       (LifeEvent){.tick = now, .kind = LIFE_LARGEST,
+                                   .value = (int32_t)(largest_size * 10.0f + 0.5f)});
+    }
+    if (!(oldest->tally.flags & TALLY_WAS_OLDEST)) {
+        chronicle_note(ch, oldest, (LifeEvent){.tick = now, .kind = LIFE_OLDEST});
+    }
+}
+
 /* Upkeep for everyone, in slot order; those left without health die. The
  * records are read here because this already visits every creature, after this
  * tick's births and before this tick's deaths, so a creature's last age counts. */
@@ -345,12 +482,16 @@ static void accounting(Sim *s)
         c->energy -= creature_region_cost(&s->world, c, &s->set);
         bool lives = creature_upkeep(c, &s->set);
         records_note(&s->records, c, &s->set);
-        if (!lives) {
+        if (lives) {
+            story_living(s, c);
+        } else {
+            DeathCause cause = death_cause(hit_to_death, c);
+            story_death(s, c, cause);
             s->brain.on_death(&s->brain, c->id);
-            pool_kill(&s->pool, &s->world, i, &s->set,
-                      death_cause(hit_to_death, c));
+            pool_kill(&s->pool, &s->world, i, &s->set, cause);
         }
     }
+    story_leaders(s);
 }
 
 /* The floor: top the population up to min_creatures, so a long-running
@@ -388,6 +529,9 @@ static bool note_ending(Sim *s)
 
 void sim_step(Sim *s)
 {
+    /* Set each step rather than once: a pointer into this Sim, stored once,
+     * would point at the old place if the Sim were ever copied elsewhere. */
+    s->pool.chronicle = recorder(s);
     climate_step(&s->world, &s->set, s->tick);
     flora_step(&s->world, &s->rng, &s->set);
     carrion_step(&s->world, &s->set);
@@ -413,6 +557,7 @@ void sim_free(Sim *s)
     s->turns = NULL;
     free(s->scratch);
     s->scratch = NULL;
+    chronicle_free(&s->chronicle);
     pool_free(&s->pool);
     world_free(&s->world);
 }
@@ -440,6 +585,10 @@ static uint64_t fnv1a(uint64_t hash, const void *data, size_t len)
  * are not safe to hash. */
 static uint64_t hash_creature(uint64_t hash, const Creature *c)
 {
+    /* tally, events_noted and events are left out on purpose: they are the life
+     * story, which no rule reads, and test_recording_leaves_fingerprints_equal
+     * compares fingerprints with recording on and off. Hashing them would make
+     * that test fail for a reason that says nothing about the world. */
     hash = fnv1a(hash, &c->id, sizeof(c->id));
     hash = fnv1a(hash, &c->lineage, sizeof(c->lineage));
     hash = fnv1a(hash, &c->family_hue, sizeof(c->family_hue));
@@ -520,6 +669,64 @@ uint64_t sim_checksum(const Sim *s)
         if (s->pool.items[i].alive) {
             hash = hash_creature(hash, &s->pool.items[i]);
         }
+    }
+    return hash;
+}
+
+/* One tally, field by field: LifeTally has padding after flags and the regions. */
+static uint64_t hash_tally(uint64_t hash, const LifeTally *t)
+{
+    hash = fnv1a(hash, t->parents, sizeof(t->parents));
+    hash = fnv1a(hash, &t->born, sizeof(t->born));
+    hash = fnv1a(hash, &t->kills, sizeof(t->kills));
+    hash = fnv1a(hash, &t->hunter_kills, sizeof(t->hunter_kills));
+    hash = fnv1a(hash, &t->children, sizeof(t->children));
+    hash = fnv1a(hash, &t->fights, sizeof(t->fights));
+    hash = fnv1a(hash, &t->heavy_wounds, sizeof(t->heavy_wounds));
+    hash = fnv1a(hash, &t->kin_lost, sizeof(t->kin_lost));
+    hash = fnv1a(hash, &t->moves, sizeof(t->moves));
+    hash = fnv1a(hash, &t->max_size, sizeof(t->max_size));
+    hash = fnv1a(hash, &t->flags, sizeof(t->flags));
+    hash = fnv1a(hash, &t->home_region, sizeof(t->home_region));
+    hash = fnv1a(hash, &t->region_here, sizeof(t->region_here));
+    hash = fnv1a(hash, &t->region_ticks, sizeof(t->region_ticks));
+    return hash;
+}
+
+/* Events have 3 bytes of padding after kind, so field by field too. */
+static uint64_t hash_events(uint64_t hash, const LifeEvent *e, int n)
+{
+    for (int i = 0; i < n; i++) {
+        hash = fnv1a(hash, &e[i].tick, sizeof(e[i].tick));
+        hash = fnv1a(hash, &e[i].kind, sizeof(e[i].kind));
+        hash = fnv1a(hash, &e[i].other_id, sizeof(e[i].other_id));
+        hash = fnv1a(hash, &e[i].value, sizeof(e[i].value));
+    }
+    return hash;
+}
+
+uint64_t sim_story_checksum(const Sim *s)
+{
+    uint64_t hash = 14695981039346656037ULL;
+    for (int i = 0; i < s->pool.capacity; i++) {
+        const Creature *c = &s->pool.items[i];
+        if (c->alive) {
+            hash = hash_tally(hash, &c->tally);
+            hash = fnv1a(hash, &c->events_noted, sizeof(c->events_noted));
+            hash = hash_events(hash, c->events, CREATURE_EVENTS);
+        }
+    }
+    for (int i = 0; i < CHRONICLE_NOTABLE; i++) {
+        const NotableLife *n = &s->chronicle.lives[i];
+        hash = fnv1a(hash, &n->used, sizeof(n->used));
+        hash = fnv1a(hash, &n->alive, sizeof(n->alive));
+        hash = fnv1a(hash, &n->id, sizeof(n->id));
+        hash = fnv1a(hash, &n->lineage, sizeof(n->lineage));
+        hash = fnv1a(hash, &n->age, sizeof(n->age));
+        hash = fnv1a(hash, &n->score, sizeof(n->score));
+        hash = hash_tally(hash, &n->tally);
+        hash = fnv1a(hash, &n->events_noted, sizeof(n->events_noted));
+        hash = hash_events(hash, n->events, NOTABLE_EVENTS);
     }
     return hash;
 }

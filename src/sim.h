@@ -9,6 +9,7 @@
 #include <stdint.h>
 
 #include "brain.h"
+#include "chronicle.h"
 #include "creature.h"
 #include "rng.h"
 #include "settings.h"
@@ -53,6 +54,9 @@ typedef struct {
     Rng rng;
     uint64_t seed, tick;
     WorldRecords records;
+    /* Life stories. Saved, but not in sim_checksum: no rule reads them, and the
+     * fingerprint is what proves that (sim_story_checksum covers them). */
+    Chronicle chronicle;
 } Sim;
 
 /* Allocates a w by h world and a creature pool, opens the brain named in
@@ -85,5 +89,8 @@ void sim_free(Sim *s);
 /* A fingerprint of the whole state: equal for equal states, and almost
  * certainly different otherwise. */
 uint64_t sim_checksum(const Sim *s);
+/* A fingerprint of the life stories alone: every living creature's tally and
+ * ring, and the chronicle's table. For checking that a save keeps them. */
+uint64_t sim_story_checksum(const Sim *s);
 
 #endif

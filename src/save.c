@@ -13,6 +13,7 @@
 #include <windows.h> /* MoveFileExA */
 #endif
 
+#include "climate.h" /* REGION_NONE, REGION_COUNT */
 #include "options.h" /* OPTIONS_MAX_SIDE */
 
 /*
@@ -28,13 +29,14 @@
  *   the records: i32 peak, u32 oldest id, u32 oldest age, u32 largest id,
  *   float largest size, u64 ended_at;
  *   i32 free_head, u32 next_id, u32 births_refused, u32 deaths per cause;
- *   then every creature slot.
+ *   then every creature slot, a living one ending with its life story;
+ *   then the chronicle's CHRONICLE_NOTABLE entries.
  *
  * Change anything here and SAVE_VERSION goes up by one.
  */
 #define SAVE_MAGIC "AGONSAVE"
 #define SAVE_MAGIC_LEN 8
-#define SAVE_VERSION 7u
+#define SAVE_VERSION 8u
 
 /* No value in a healthy world comes near this. Bounding them keeps sums
  * from reaching infinity, and float-to-int conversions defined. */
@@ -200,6 +202,60 @@ static void put_records(Writer *w, const WorldRecords *r)
     put_u64(w, r->ended_at);
 }
 
+static void put_event(Writer *w, const LifeEvent *e)
+{
+    put_u32(w, e->tick);
+    put_bytes(w, &e->kind, 1);
+    put_u32(w, e->other_id);
+    put_i32(w, e->value);
+}
+
+static void put_tally(Writer *w, const LifeTally *t)
+{
+    put_u32(w, t->parents[0]);
+    put_u32(w, t->parents[1]);
+    put_u32(w, t->born);
+    put_u32(w, t->kills);
+    put_u32(w, t->hunter_kills);
+    put_u32(w, t->children);
+    put_u32(w, t->fights);
+    put_u32(w, t->heavy_wounds);
+    put_u32(w, t->kin_lost);
+    put_u32(w, t->moves);
+    put_float(w, t->max_size);
+    put_bytes(w, &t->flags, 1);
+    /* int8_t to unsigned char: -1 becomes 255, and get_tally turns it back. */
+    unsigned char regions[2] = {(unsigned char)t->home_region,
+                                (unsigned char)t->region_here};
+    put_bytes(w, regions, sizeof(regions));
+    put_u16(w, t->region_ticks);
+}
+
+/* A ring of events: its count, then every entry, used or not, so the newest
+ * stays at the same place in the ring. */
+static void put_events(Writer *w, uint32_t noted, const LifeEvent *e, int n)
+{
+    put_u32(w, noted);
+    for (int i = 0; i < n; i++) {
+        put_event(w, &e[i]);
+    }
+}
+
+static void put_chronicle(Writer *w, const Chronicle *ch)
+{
+    for (int i = 0; i < CHRONICLE_NOTABLE; i++) {
+        const NotableLife *n = &ch->lives[i];
+        unsigned char flags[2] = {n->used ? 1 : 0, n->alive ? 1 : 0};
+        put_bytes(w, flags, sizeof(flags));
+        put_u32(w, n->id);
+        put_u32(w, n->lineage);
+        put_u32(w, n->age);
+        put_float(w, n->score);
+        put_tally(w, &n->tally);
+        put_events(w, n->events_noted, n->events, NOTABLE_EVENTS);
+    }
+}
+
 static void put_creature(Writer *w, const Creature *c)
 {
     put_u32(w, c->id);
@@ -228,6 +284,8 @@ static void put_creature(Writer *w, const Creature *c)
     put_u16(w, c->gut_ticks);
     put_floats(w, c->memory, MEMORY_VALUES);
     put_floats(w, c->genome.g, GENOME_LEN);
+    put_tally(w, &c->tally);
+    put_events(w, c->events_noted, c->events, CREATURE_EVENTS);
 }
 
 /*
@@ -277,6 +335,7 @@ static void put_everything(Writer *w, const Sim *s)
     put_history(w, &s->stats.hist_planted);
     put_records(w, &s->records);
     put_pool(w, &s->pool);
+    put_chronicle(w, &s->chronicle);
 }
 
 /*
@@ -525,6 +584,79 @@ static void get_genome(Reader *r, Genome *g, const Settings *set)
                set->weight_limit);
 }
 
+/* An event's kind picks its text and region a name, so both are checked; the
+ * rest are numbers that are only ever printed. */
+static void get_event(Reader *r, LifeEvent *e)
+{
+    e->tick = get_u32(r);
+    e->kind = get_byte(r);
+    e->other_id = get_u32(r);
+    e->value = get_i32(r);
+    if (e->kind >= LIFE_COUNT) {
+        fail(r, "an event in the file is impossible");
+    }
+}
+
+/* A region byte back to a REGION_ value: 255 was -1. */
+static int8_t get_region(Reader *r)
+{
+    unsigned char b = get_byte(r);
+    int region = b == 255 ? REGION_NONE : (int)b;
+    if (region >= REGION_COUNT) {
+        fail(r, "a region in the file is impossible");
+        return REGION_NONE;
+    }
+    return (int8_t)region;
+}
+
+static void get_tally(Reader *r, LifeTally *t)
+{
+    t->parents[0] = get_u32(r);
+    t->parents[1] = get_u32(r);
+    t->born = get_u32(r);
+    t->kills = get_u32(r);
+    t->hunter_kills = get_u32(r);
+    t->children = get_u32(r);
+    t->fights = get_u32(r);
+    t->heavy_wounds = get_u32(r);
+    t->kin_lost = get_u32(r);
+    t->moves = get_u32(r);
+    t->max_size = get_float(r, 0.0f, FLOAT_LIMIT);
+    t->flags = get_byte(r);
+    t->home_region = get_region(r);
+    t->region_here = get_region(r);
+    t->region_ticks = get_u16(r);
+}
+
+static void get_events(Reader *r, uint32_t *noted, LifeEvent *e, int n)
+{
+    *noted = get_u32(r);
+    for (int i = 0; i < n && r->problem == NULL; i++) {
+        get_event(r, &e[i]);
+    }
+}
+
+static void get_chronicle(Reader *r, Chronicle *ch)
+{
+    for (int i = 0; i < CHRONICLE_NOTABLE && r->problem == NULL; i++) {
+        NotableLife *n = &ch->lives[i];
+        unsigned char used = get_byte(r);
+        unsigned char alive = get_byte(r);
+        if (used > 1 || alive > 1) {
+            fail(r, "a chronicle entry in the file is impossible");
+            return;
+        }
+        n->used = used == 1;
+        n->alive = alive == 1;
+        n->id = get_u32(r);
+        n->lineage = get_u32(r);
+        n->age = get_u32(r);
+        n->score = get_float(r, -FLOAT_LIMIT, FLOAT_LIMIT);
+        get_tally(r, &n->tally);
+        get_events(r, &n->events_noted, n->events, NOTABLE_EVENTS);
+    }
+}
+
 /*
  * One living creature. Every check here guards something real: heading
  * indexes STEP_X, x and y become a cell index, and the current action's
@@ -567,6 +699,8 @@ static void get_creature(Reader *r, Creature *c, const Settings *set,
     }
     get_floats(r, c->memory, MEMORY_VALUES, -1.0f, 1.0f);
     get_genome(r, &c->genome, set);
+    get_tally(r, &c->tally);
+    get_events(r, &c->events_noted, c->events, CREATURE_EVENTS);
 }
 
 /*
@@ -700,6 +834,7 @@ static void get_body(Reader *r, Sim *s, uint64_t seed, uint64_t tick,
     get_history(r, &s->stats.hist_planted);
     get_records(r, &s->records, s);
     get_pool(r, &s->pool, &s->world, &s->set);
+    get_chronicle(r, &s->chronicle);
     /* Only now is the population known. */
     if (s->records.ended_at != 0 && s->pool.count != 0) {
         fail(r, "the records in the file say a living world has ended");

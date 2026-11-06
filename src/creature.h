@@ -15,6 +15,13 @@
 #include "settings.h"
 #include "world.h"
 
+/* Declares that a struct of this name exists, without saying what is in it, so
+ * that a Pool can hold a pointer to one. chronicle.h defines it, and includes
+ * this header; including that one here would make each header need the other
+ * first. A pointer to a struct whose insides are unknown is allowed: every
+ * object pointer has the same size. Reading a field through it is not. */
+struct Chronicle;
+
 /* Headings in clockwise order, so turning right is + 1 and turning left
  * is + 3 (that is, - 1), both modulo 4. */
 enum { HEADING_NORTH, HEADING_EAST, HEADING_SOUTH, HEADING_WEST,
@@ -41,6 +48,56 @@ typedef enum {
     DEATH_AGE,    /* reached max_age, a limit that is off by default */
     DEATH_COUNT
 } DeathCause;
+
+/*
+ * One thing that happened to a creature, for its life story. tick is the low 32
+ * bits of the Sim's tick, as for a Hit. kind is a LIFE_ value (chronicle.h).
+ * other_id is the other creature involved, when there is one, and value a number
+ * that goes with the kind (a kill's count, a region, health left). Never read by
+ * any rule: the world runs the same without it.
+ *
+ * Laid out as written, the struct takes 16 bytes, not 13: the compiler puts 3
+ * unused bytes after kind so that other_id starts at a multiple of 4.
+ */
+typedef struct {
+    uint32_t tick;
+    uint8_t kind;
+    uint32_t other_id;
+    int32_t value;
+} LifeEvent;
+
+/* How many events a creature's own ring keeps: the newest few, for the panel.
+ * The chronicle's table (chronicle.h) keeps longer stories for notable lives. */
+#define CREATURE_EVENTS 8
+
+/* LifeTally.flags, TALLY_ bits: things that happen once in a life, as single bits of one
+ * byte. Bit k is the number 1 << k, so each flag has a bit of its own. */
+enum {
+    TALLY_FOUNDER = 1 << 0,     /* placed at the start, with no parents */
+    TALLY_WAS_LARGEST = 1 << 1, /* has been the largest creature alive */
+    TALLY_WAS_OLDEST = 1 << 2,  /* has been the oldest creature alive */
+    TALLY_GIANT = 1 << 3,      /* has reached giant_size */
+    TALLY_HOME_KNOWN = 1 << 4   /* home_region has been read from the ground */
+};
+
+/*
+ * The counts a life story needs, kept up by the chronicle as events are noted.
+ * Like the events, never read by a rule. Counts are uint32_t: a uint16_t would
+ * save a few bytes per creature and wrap at 65,535, which a long life could reach.
+ */
+typedef struct {
+    uint32_t parents[2]; /* ids; meaningless for a founder */
+    uint32_t born;       /* the low 32 bits of the tick it was born on */
+    uint32_t kills, hunter_kills, children, fights, heavy_wounds, kin_lost,
+        moves;
+    float max_size;
+    uint8_t flags;       /* TALLY_ bits */
+    /* Regions, as REGION_ values (climate.h), which include -1, so a signed
+     * type. home_region is where it last settled; region_here where it stands,
+     * for region_ticks ticks so far. */
+    int8_t home_region, region_here;
+    uint16_t region_ticks;
+} LifeTally;
 
 typedef struct {
     bool alive;
@@ -89,6 +146,13 @@ typedef struct {
      * (916 bytes) in every slot, allocated with the pool and never freed
      * on its own. */
     Genome genome;
+    /* Its life story: counts, and a ring of the newest events, newest at
+     * events[(events_noted - 1) % CREATURE_EVENTS], as for recent_hits. Not part
+     * of the fingerprint (see hash_creature in sim.c): recording must not change
+     * the world, and a test checks that by comparing fingerprints. */
+    LifeTally tally;
+    uint32_t events_noted;
+    LifeEvent events[CREATURE_EVENTS];
 } Creature;
 
 /* The level of a creature that has eaten nothing yet and has no parent:
@@ -134,6 +198,10 @@ typedef struct {
     /* The low 32 bits of the current tick, set the same way and for the same
      * reason: the rules for hits need the date, and creature_act has no Sim. */
     uint32_t now;
+    /* Where to record life stories, or NULL to record nothing. Set by the Sim
+     * before anyone acts, like now, so it never points into a Sim that has moved.
+     * Neither saved nor hashed. */
+    struct Chronicle *chronicle;
 } Pool;
 
 /* Allocates capacity empty slots. False for a capacity below 1 or when
