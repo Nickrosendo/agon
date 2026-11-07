@@ -1516,6 +1516,135 @@ static void test_ground_follows_within_a_second(void)
     sim_free(&s);
 }
 
+/* How many pixels of two canvases of the view's size differ. */
+static int pixels_differing(const Canvas *a, const Canvas *b)
+{
+    int n = 0;
+    for (int p = 0; p < VIEW_W * VIEW_H; p++) {
+        n += a->px[p] != b->px[p];
+    }
+    return n;
+}
+
+/* A world of soil with a small lake, every cell alike, nothing on it. */
+static void lake_world(Sim *s, int w, int h)
+{
+    make_empty_sim(s, w, h);
+    for (int i = 0; i < w * h; i++) {
+        s->world.fertility[i] = 0.3f;
+        s->world.water[i] = 0.3f;
+        s->world.snow[i] = 0.0f;
+        s->world.rain[i] = 0.0f;
+    }
+    for (int y = 2; y < 5; y++) {
+        for (int x = 2; x < 6; x++) {
+            s->world.terrain[y * w + x] = TERRAIN_WATER;
+        }
+    }
+}
+
+enum { CHANGE_FERTILITY, CHANGE_SNOW, CHANGE_WATER, CHANGE_CARRION, CHANGES };
+
+/*
+ * The ruling, cell by cell: a few single cells change (the world's four
+ * corners among them, whose tiles wrap) on a tick. Carrion shows at once; a
+ * soil colour change is not shown before a second of window time and, after
+ * it, the frame is exactly what a fresh scene draws. In a world larger than
+ * the view and in one smaller (whole, on black), at Close, Normal and Far.
+ */
+static void test_soil_colour_follows_cell_by_cell(void)
+{
+    const int sizes[2][2] = {{64, 32}, {12, 7}};
+    Canvas a, b;
+    CHECK(canvas_init(&a, VIEW_W, VIEW_H));
+    CHECK(canvas_init(&b, VIEW_W, VIEW_H));
+    for (int w = 0; w < 2; w++) {
+        int ww = sizes[w][0], wh = sizes[w][1];
+        const int cells[6] = {0, ww - 1, (wh - 1) * ww, ww * wh - 1,
+                              ww * (wh / 2) + ww / 2, 37 % (ww * wh)};
+        for (int change = 0; change < CHANGES; change++) {
+            for (int level = 0; level < CAMERA_WORLD; level++) {
+                Sim s;
+                lake_world(&s, ww, wh);
+                Camera cam;
+                camera_init(&cam, ww, wh, VIEW_W, VIEW_H);
+                cam.level = level;
+                Scene sc;
+                CHECK(scene_init(&sc, &s));
+                scene_update(&sc, &s, 10);
+                scene_draw_world(&sc, &a, &cam, &s, 0.0f, 0, 0, 0, 0);
+                for (int k = 0; k < 6; k++) {
+                    int i = cells[k];
+                    s.world.fertility[i] = change == CHANGE_FERTILITY ? 1.0f : 0.3f;
+                    s.world.snow[i] = change == CHANGE_SNOW ? 1.0f : 0.0f;
+                    s.world.water[i] = change == CHANGE_WATER ? 1.0f : 0.3f;
+                    s.world.carrion[i] = change == CHANGE_CARRION ? 3.0f : 0.0f;
+                }
+                s.tick++;
+                scene_draw_world(&sc, &a, &cam, &s, 0.0f, 400, 0, 0, 0);
+                draw_fresh(&s, &b, &cam, 400);
+                if (change == CHANGE_CARRION) {
+                    CHECK(pixels_differing(&a, &b) == 0); /* at once */
+                    for (int k = 0; k < 6; k++) {
+                        s.world.carrion[cells[k]] = 0.0f;
+                    }
+                    s.tick++;
+                    scene_draw_world(&sc, &a, &cam, &s, 0.0f, 450, 0, 0, 0);
+                    draw_fresh(&s, &b, &cam, 450);
+                    CHECK(pixels_differing(&a, &b) == 0); /* gone at once */
+                } else {
+                    CHECK(pixels_differing(&a, &b) > 0); /* not yet */
+                }
+                s.tick++;
+                scene_draw_world(&sc, &a, &cam, &s, 0.0f, 1100, 0, 0, 0);
+                draw_fresh(&s, &b, &cam, 1100);
+                CHECK(pixels_differing(&a, &b) == 0);
+                scene_free(&sc);
+                sim_free(&s);
+            }
+        }
+    }
+    canvas_free(&a);
+    canvas_free(&b);
+}
+
+/* Paused (or the world over) right after a tick that changed the soil: no
+ * tick follows, and the colours must still show once the second has passed. */
+static void test_paused_soil_colour_catches_up(void)
+{
+    Canvas a, b;
+    CHECK(canvas_init(&a, VIEW_W, VIEW_H));
+    CHECK(canvas_init(&b, VIEW_W, VIEW_H));
+    for (int level = 0; level < CAMERA_WORLD; level++) {
+        Sim s;
+        lake_world(&s, 64, 32);
+        Camera cam;
+        camera_init(&cam, 64, 32, VIEW_W, VIEW_H);
+        cam.level = level;
+        Scene sc;
+        CHECK(scene_init(&sc, &s));
+        scene_update(&sc, &s, 10);
+        scene_draw_world(&sc, &a, &cam, &s, 0.0f, 0, 0, 0, 0);
+        for (int i = 0; i < 64 * 32; i++) {
+            s.world.fertility[i] = 1.0f - s.world.fertility[i];
+        }
+        s.tick++;
+        scene_draw_world(&sc, &a, &cam, &s, 0.0f, 300, 0, 0, 0);
+        draw_fresh(&s, &b, &cam, 300);
+        CHECK(pixels_differing(&a, &b) > 0); /* not yet */
+        /* Paused: the window time goes on, a frame every ambient step. */
+        for (uint64_t ms = 400; ms <= 1400; ms += SCENE_AMBIENT_MS) {
+            scene_draw_world(&sc, &a, &cam, &s, 0.0f, ms, 0, 0, 0);
+        }
+        draw_fresh(&s, &b, &cam, 1400);
+        CHECK(pixels_differing(&a, &b) == 0);
+        scene_free(&sc);
+        sim_free(&s);
+    }
+    canvas_free(&a);
+    canvas_free(&b);
+}
+
 int main(void)
 {
     /* Tests register this one themselves: the real program never has it. */
@@ -1555,5 +1684,7 @@ int main(void)
     test_paused_ground_still_moves();
     test_more_tufts_on_fertile_soil();
     test_ground_follows_within_a_second();
+    test_soil_colour_follows_cell_by_cell();
+    test_paused_soil_colour_catches_up();
     TEST_SUMMARY();
 }

@@ -2,7 +2,7 @@
 
 #include <math.h>   /* floorf, sinf */
 #include <stdio.h>  /* snprintf */
-#include <stdlib.h> /* free, malloc, qsort, realloc */
+#include <stdlib.h> /* free, malloc, realloc */
 #include <string.h> /* memcmp, memcpy, strlen */
 
 #include "app.h"
@@ -140,6 +140,7 @@ bool scene_init(Scene *sc, const Sim *s)
     }
     sc->ground_valid = false;
     sc->ground_tiled = false;
+    sc->ground_colours_pending = false;
     sc->tiles_level = -1;
     /* Allocated by the first frame that draws tiles. */
     sc->cell_ramps = NULL;
@@ -152,6 +153,7 @@ bool scene_init(Scene *sc, const Sim *s)
     sc->keys_capacity = 0;
     sc->keys_valid = false;
     sc->items = NULL;
+    sc->items_spare = NULL;
     sc->items_capacity = 0;
     for (int i = 0; i < SCENE_SINE_STEPS; i++) {
         sc->sine[i] = sinf((float)i * TWO_PI / (float)SCENE_SINE_STEPS);
@@ -187,6 +189,7 @@ void scene_free(Scene *sc)
     free(sc->keys_terrain);
     free(sc->trees);
     free(sc->items);
+    free(sc->items_spare);
     free(sc->poses);
     sc->cell_ramps = NULL;
     sc->cell_pixels = NULL;
@@ -199,6 +202,7 @@ void scene_free(Scene *sc)
     sc->keys_valid = false;
     sc->trees = NULL;
     sc->items = NULL;
+    sc->items_spare = NULL;
     sc->items_capacity = 0;
     sc->poses = NULL;
     canvas_free(&sc->ground);
@@ -1019,9 +1023,9 @@ static bool terrain_changed(const Scene *sc, const World *w)
 }
 
 /*
- * After a tick, which cells of the view must be drawn again: those whose
- * carrion changed, and when colours is true, those whose ground colours
- * changed (with their neighbours). Otherwise only clears the marks.
+ * Which cells of the view must be drawn again: after a tick, those whose
+ * carrion changed; when colours is true (with or without a tick), those whose
+ * ground colours changed, with their neighbours. Clears the old marks first.
  */
 static void mark_changed_cells(Scene *sc, const Camera *cam, const Sim *s,
                                bool ticked, bool colours)
@@ -1033,12 +1037,12 @@ static void mark_changed_cells(Scene *sc, const Camera *cam, const Sim *s,
     for (int at = 0; at < cells; at++) {
         sc->cell_dirty[at] = false;
     }
-    if (!ticked) {
-        return;
-    }
     if (colours) {
         /* The blocks are already the view's size: this cannot fail here. */
         fill_cell_ramps(sc, s, &v);
+    }
+    if (!ticked) {
+        return;
     }
     const World *w = &s->world;
     for (int r = 0; r < v.rows; r++) {
@@ -1086,19 +1090,27 @@ static void place_ground(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
     uint64_t drift = water_ms / SCENE_DRIFT_MS;
     bool ticked = sc->ground_tick != s->tick;
     bool drifted = sc->ground_drift_step != drift;
-    if (ground_same_view(sc, cam)) {
-        if (!ticked && (!drifted || !sc->ground_tiled)) {
+    /* Unsigned: water_ms below the last refresh (a test going back in time)
+     * is a new clock, and refreshes too. */
+    bool due = water_ms < sc->ground_colour_ms ||
+               water_ms - sc->ground_colour_ms >= SCENE_COLOUR_MS;
+    if (ground_same_view(sc, cam) && sc->ground_tiled) {
+        /* A tick inside the second leaves its colour change for later; it is
+         * remembered, so it still shows if no tick follows (paused, or the
+         * world over). */
+        if (ticked && !due) {
+            sc->ground_colours_pending = true;
+        }
+        bool colours = (ticked || sc->ground_colours_pending) && due;
+        if (!ticked && !drifted && !colours) {
             canvas_copy(c, &sc->ground, view_x, view_y);
             return;
         }
-        if (sc->ground_tiled && !(ticked && terrain_changed(sc, &s->world))) {
-            /* Unsigned: water_ms below the last refresh (a test going back in
-             * time) is a new clock, and refreshes too. */
-            bool colours = ticked && (water_ms < sc->ground_colour_ms ||
-                                      water_ms - sc->ground_colour_ms >= SCENE_COLOUR_MS);
+        if (!(ticked && terrain_changed(sc, &s->world))) {
             mark_changed_cells(sc, cam, s, ticked, colours);
             if (colours) {
                 sc->ground_colour_ms = water_ms;
+                sc->ground_colours_pending = false;
             }
             draw_terrain(sc, &sc->ground, cam, s, water_ms, 0, 0, REDRAW_CELLS, drifted);
             sc->ground_tick = s->tick;
@@ -1106,6 +1118,10 @@ static void place_ground(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
             canvas_copy(c, &sc->ground, view_x, view_y);
             return;
         }
+    } else if (ground_same_view(sc, cam) && !ticked) {
+        /* Flat colours (the World zoom): no water moves, so only a tick. */
+        canvas_copy(c, &sc->ground, view_x, view_y);
+        return;
     }
     /* Out of memory for the layer: draw straight into the frame instead. */
     bool same_size = sc->ground.w == cam->view_w && sc->ground.h == cam->view_h;
@@ -1119,6 +1135,7 @@ static void place_ground(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
     sc->ground_tick = s->tick;
     sc->ground_drift_step = drift;
     sc->ground_colour_ms = water_ms;
+    sc->ground_colours_pending = false;
     sc->ground_level = cam->level;
     sc->ground_cx = cam->cx;
     sc->ground_cy = cam->cy;
@@ -1243,8 +1260,11 @@ static bool pixel_is_soil(const TileEntry *tile, int size, int lx, int ly)
 /*
  * Grass tufts (v9:553): round(fertility * 3) per soil cell, placed by hash, each
  * five pixels of light grass swaying with a slow wave. Only where the tile shows
- * soil at the tuft and two pixels below it. (plan's call: the tuft stays two
- * rows inside its own tile, where v9 lets it reach one into the next.)
+ * soil at the tuft and two pixels below it. The count is the plan's call. The
+ * row is my choice: 2 + hash * (size - 4), where v9 has 2 + hash * 14, so at
+ * the 16-pixel size the tuft's lowest row is 13, not 15, and the pixel two
+ * below it stays in the same tile; reading the tile below would need its key
+ * looked up for every tuft. The 8-pixel size scales the same way.
  */
 static void draw_tufts(Scene *sc, Canvas *c, const Overlay *o, const Sim *s,
                        const TileEntry *tile, int x, int y, int sx, int sy, int ring_at)
@@ -1494,6 +1514,11 @@ static bool grow_items(Scene *sc, int need)
         return false;
     }
     sc->items = items;
+    SceneItem *spare = realloc(sc->items_spare, (size_t)need * sizeof(SceneItem));
+    if (spare == NULL) {
+        return false; /* capacity unchanged: the next frame tries again */
+    }
+    sc->items_spare = spare;
     sc->items_capacity = need;
     return true;
 }
@@ -1570,22 +1595,55 @@ static int add_bodies(Scene *sc, const Camera *cam, const Sim *s, float tick_fra
     return n;
 }
 
-/* qsort's order: by foot row, then column, then index, so two items on the
- * same row always come in the same order and never flicker. qsort passes
- * pointers to the elements as const void *, to be cast back. */
-static int compare_items(const void *pa, const void *pb)
+/* Whether item a is drawn before item b: by foot row, then column, then index
+ * (then kind, for a tree and a body that share an index), so two items on the
+ * same row always come in the same order and never flicker. */
+static bool item_before(const SceneItem *a, const SceneItem *b)
 {
-    const SceneItem *a = pa, *b = pb;
     if (a->foot_y != b->foot_y) {
-        return a->foot_y < b->foot_y ? -1 : 1;
+        return a->foot_y < b->foot_y;
     }
     if (a->foot_x != b->foot_x) {
-        return a->foot_x < b->foot_x ? -1 : 1;
+        return a->foot_x < b->foot_x;
     }
     if (a->index != b->index) {
-        return a->index < b->index ? -1 : 1;
+        return a->index < b->index;
     }
-    return a->kind < b->kind ? -1 : (a->kind > b->kind ? 1 : 0);
+    return a->kind < b->kind;
+}
+
+/* Sorts items[0 .. n - 1] back to front by insertion: each item moves left
+ * past the ones it goes before. Quick on a list that is nearly in order. */
+static void insertion_sort(SceneItem *items, int n)
+{
+    for (int k = 1; k < n; k++) {
+        SceneItem item = items[k]; /* a struct is copied whole by = */
+        int j = k - 1;
+        while (j >= 0 && item_before(&item, &items[j])) {
+            items[j + 1] = items[j];
+            j--;
+        }
+        items[j + 1] = item;
+    }
+}
+
+/*
+ * Sorts the frame's items back to front: the trees (items[0 .. trees - 1],
+ * added row by row, so already nearly in order) and the bodies (the rest, in
+ * slot order) each by insertion, then the two lists merged through the spare
+ * block. Not the C library's qsort: it may allocate memory for a large array,
+ * and nothing is allocated per frame.
+ */
+static void sort_items(SceneItem *items, SceneItem *spare, int trees, int n)
+{
+    insertion_sort(items, trees);
+    insertion_sort(items + trees, n - trees); /* items + trees: the bodies' start */
+    int a = 0, b = trees, out = 0;
+    while (a < trees || b < n) {
+        bool take_a = b >= n || (a < trees && !item_before(&items[b], &items[a]));
+        spare[out++] = take_a ? items[a++] : items[b++];
+    }
+    memcpy(items, spare, (size_t)n * sizeof(SceneItem));
 }
 
 /* The ellipse under a body: as wide as most of its tiles, two pixels high, its
@@ -1623,9 +1681,9 @@ static void draw_items(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
         return; /* out of memory: no trees or bodies this frame */
     }
     WorldArea area = world_area(cam, view_x, view_y);
-    int n = add_trees(sc, cam, s, &area, view_x, view_y, 0);
-    n = add_bodies(sc, cam, s, tick_fraction, body_ms, view_x, view_y, n);
-    qsort(sc->items, (size_t)n, sizeof(SceneItem), compare_items);
+    int trees = add_trees(sc, cam, s, &area, view_x, view_y, 0);
+    int n = add_bodies(sc, cam, s, tick_fraction, body_ms, view_x, view_y, trees);
+    sort_items(sc->items, sc->items_spare, trees, n);
 
     int size = camera_sprite_size(cam);
     int scale = camera_sprite_scale(cam);

@@ -96,6 +96,7 @@ typedef struct {
     /* What is drawn back to front, each frame. Room for every body and every
      * cell of the view with its ring; grown only on a zoom or a resize. */
     SceneItem *items;
+    SceneItem *items_spare; /* as many again, for merging two sorted lists */
     int items_capacity;
     AnimPose *poses; /* each slot's pose this frame, for bodies drawn as items */
     /* Every cell's tile key, and the terrain they were worked out from: keys
@@ -114,6 +115,7 @@ typedef struct {
     uint64_t ground_tick;
     uint64_t ground_drift_step; /* water_ms / SCENE_DRIFT_MS, not wrapped */
     uint64_t ground_colour_ms;  /* water_ms when the cells' colours were worked out */
+    bool ground_colours_pending; /* a tick came since, its colours not shown yet */
     int ground_level;
     float ground_cx, ground_cy;
 } Scene;
