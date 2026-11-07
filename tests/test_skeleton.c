@@ -211,14 +211,51 @@ static void test_lifted_leg_bends(void)
     }
 }
 
+/* shapes counts every shape a body asks for, also any past the list's end,
+ * so this fails if a species in some pose wants more than the list holds. */
 static void test_shape_list_fits(void)
 {
+    SpritePose poses[3];
+    skeleton_pose_standing(&poses[0]);
+    skeleton_pose_standing(&poses[1]);
+    poses[1].jaw = 0.85f; /* an open mouth adds the mouth triangle */
+    skeleton_pose_standing(&poses[2]);
+    poses[2].action = ACTION_WALK;
+    poses[2].phase = 2.0f;
+    int most = 0;
     for (int s = 0; s < SPECIES_COUNT; s++) {
-        raster_standing(&raster_a, s, largest_k(s), false);
-        CHECK(raster_a.shapes > 10 && raster_a.shapes <= SKELETON_SHAPES_MAX);
-        raster_standing(&raster_a, s, largest_k(s) * 1.6f, true);
-        CHECK(raster_a.shapes > 10 && raster_a.shapes <= SKELETON_SHAPES_MAX);
+        for (int n = 0; n < 3; n++) {
+            raster_species(&raster_a, s, largest_k(s), &poses[n], true, false);
+            CHECK(raster_a.shapes > 10 && raster_a.shapes <= SKELETON_SHAPES_MAX);
+            most = raster_a.shapes > most ? raster_a.shapes : most;
+            raster_species(&raster_a, s, largest_k(s) * 1.6f, &poses[n], true, true);
+            CHECK(raster_a.shapes > 10 && raster_a.shapes <= SKELETON_SHAPES_MAX);
+        }
     }
+    printf("  the most shapes a body asks for: %d of %d\n", most, SKELETON_SHAPES_MAX);
+}
+
+/* Poses will come from timing maths (task 11): a number that is not a number,
+ * or a huge one, must neither crash nor ink outside the grid. */
+static void test_wild_pose_is_safe(void)
+{
+    SpritePose p;
+    skeleton_pose_standing(&p);
+    p.phase = 1e30f;
+    p.action = ACTION_WALK;
+    raster_species(&raster_a, SPECIES_WOLF, largest_k(SPECIES_WOLF), &p, true, false);
+    CHECK(raster_a.x1 <= raster_a.w && raster_a.y1 <= raster_a.h);
+    p.head_dx = NAN;  /* NAN and INFINITY come from math.h */
+    p.bob = INFINITY;
+    p.jaw = NAN;
+    raster_species(&raster_a, SPECIES_WOLF, largest_k(SPECIES_WOLF), &p, true, false);
+    CHECK(raster_a.x1 <= raster_a.w && raster_a.y1 <= raster_a.h);
+    CHECK(raster_a.eye_x >= -1 && raster_a.eye_x < raster_a.w);
+    p.head_dx = 1e30f;
+    p.bob = -1e30f;
+    raster_species(&raster_a, SPECIES_ELEPHANT, largest_k(SPECIES_ELEPHANT), &p, true, true);
+    CHECK(raster_a.x1 <= raster_a.w && raster_a.y1 <= raster_a.h);
+    CHECK(raster_a.eye_x >= -1 && raster_a.eye_x < raster_a.w);
 }
 
 /* The centre of the PART_BODY pixels, as an offset from the ground point. */
@@ -243,18 +280,13 @@ static void test_large_grid_keeps_the_ground_point(void)
         raster_standing(&raster_b, s, k * 1.6f, true);
         CHECK(raster_a.w == SKELETON_W && raster_a.oy == SKELETON_OY);
         CHECK(raster_b.w == SKELETON_DETAIL_W && raster_b.oy == SKELETON_DETAIL_OY);
-        /* The lowest ink is the outline under the feet, on the ground row.
-         * Pillar legs end in the mockup's round cap of 0.72 leg widths, 0.4 K
-         * above the ground (v9:283), so they dip below it by a few pixels: by
-         * the same amount, scaled, on both grids. */
-        int below_small = raster_a.y1 - 1 - raster_a.oy;
-        int below_large = raster_b.y1 - 1 - raster_b.oy;
-        if (SPECIES[s].pillar) {
-            CHECK(below_small > 0 && below_small <= 4);
-            CHECK(fabsf((float)below_large - 1.6f * (float)below_small) <= 1.5f);
-        } else {
-            CHECK(below_small == 0);
-            CHECK(below_large == 0);
+        /* The lowest ink is the outline under the feet, on the ground row,
+         * for every species, pillar legs included. */
+        CHECK(raster_a.y1 - 1 == raster_a.oy);
+        CHECK(raster_b.y1 - 1 == raster_b.oy);
+        if (raster_a.y1 - 1 != raster_a.oy || raster_b.y1 - 1 != raster_b.oy) {
+            fprintf(stderr, "  %s: lowest rows %d, %d\n", SPECIES[s].name, raster_a.y1 - 1,
+                    raster_b.y1 - 1);
         }
         CHECK(fabsf(body_centre_dx(&raster_b) - 1.6f * body_centre_dx(&raster_a)) <= 2.0f);
     }
@@ -385,6 +417,7 @@ int main(void)
     test_planted_leg_is_straight();
     test_lifted_leg_bends();
     test_shape_list_fits();
+    test_wild_pose_is_safe();
     test_large_grid_keeps_the_ground_point();
     test_crouch_bends_the_knees();
     test_no_lone_shade_pixel();

@@ -64,12 +64,13 @@ typedef struct {
 
 /* The shapes of one body, in painting order. When the list is full, a new
  * shape goes into spare, which is never painted: a body that needs too many
- * shapes loses its last ones rather than writing past the array. box holds
+ * shapes loses its last ones rather than writing past the array. wanted counts
+ * every shape asked for, spare ones too, so a test can tell. box holds
  * every pixel a shape may touch, grown by one for the outline: the passes
  * after painting look only there, as nothing outside it is ever inked. */
 typedef struct {
     Shape shape[SKELETON_SHAPES_MAX];
-    int count;
+    int count, wanted;
     Shape spare;
     Box box;
 } ShapeList;
@@ -95,9 +96,11 @@ static float lerp(float a, float b, float u)
     return a + (b - a) * u;
 }
 
+/* v kept between lo and hi. A value that is not a number (NaN) gives lo:
+ * every comparison with NaN is false, so !(v >= lo) catches it. */
 static float clampf(float v, float lo, float hi)
 {
-    return v < lo ? lo : v > hi ? hi : v;
+    return !(v >= lo) ? lo : v > hi ? hi : v;
 }
 
 /* v9:160: slow at both ends. */
@@ -116,7 +119,7 @@ static bool hit_oval(const Oval *o, float x, float y, Hit *h)
 {
     float nx = (x - o->cx) / o->rx, ny = (y - o->cy) / o->ry;
     float d = nx * nx + ny * ny;
-    if (d > 1.0f) {
+    if (!(d <= 1.0f)) { /* also true for NaN */
         return false;
     }
     h->nx = nx;
@@ -217,6 +220,7 @@ static bool hit_shape(const Shape *s, float x, float y, Hit *out)
 
 static Shape *new_shape(ShapeList *list, int part, int bias)
 {
+    list->wanted++;
     Shape *s = list->count < SKELETON_SHAPES_MAX ? &list->shape[list->count++] : &list->spare;
     memset(s, 0, sizeof *s);
     s->part = part;
@@ -449,7 +453,15 @@ static void add_leg(ShapeList *list, const Body *b, int leg)
     float fx = b->foot[leg][0], fy = b->foot[leg][1];
     /* The thigh starts inside the body, above the hip. */
     new_cone(list, part, bias, ax, ay - 0.8f * k, kx, ky, top, mid)->leg = 0;
-    new_cone(list, part, bias, kx, ky, fx, fy - 0.4f * k, mid, bot)->leg = 1;
+    /* The shin ends 0.4 K above the ground, as v9:283. A pillar's shin is so
+     * wide that its round end would reach about 1 K below the ground, so it
+     * ends higher: its round end comes down to the bottom of the foot
+     * (controller's ruling, a change from the mockup). */
+    float shin_end = fy - 0.4f * k;
+    if (pillar) {
+        shin_end = fminf(shin_end, fy + 0.1f * k - bot);
+    }
+    new_cone(list, part, bias, kx, ky, fx, shin_end, mid, bot)->leg = 1;
     Shape *foot;
     if (!pillar) {
         /* Hooves are three shades darker. */
@@ -621,6 +633,7 @@ static void add_head(ShapeList *list, const Body *b)
 static void build_shapes(ShapeList *list, const Body *b)
 {
     list->count = 0;
+    list->wanted = 0;
     add_leg(list, b, 0);
     add_leg(list, b, 1);
     add_tail(list, b);
@@ -838,9 +851,14 @@ static void put_mark(SkeletonRaster *r, int x, int y, int ink)
     }
 }
 
-/* floorf to an int: the grid pixel a point falls in. */
+/* floorf to an int: the grid pixel a point falls in. Converting a float that
+ * is not a number, or too large for an int, is undefined in C, so those give
+ * -1, a pixel off the grid. Any pixel past 4096 is off every grid too. */
 static int pixel(float v)
 {
+    if (!(v > -4096.0f && v < 4096.0f)) {
+        return -1;
+    }
     return (int)floorf(v);
 }
 
@@ -856,6 +874,9 @@ static void place_marks(SkeletonRaster *r, const Body *b, bool marks)
     }
     r->eye_x = pixel(b->hx + a->skull * 0.38f + ox);
     r->eye_y = pixel(b->hy - a->skull * 0.22f + oy);
+    if (r->eye_x < 0 || r->eye_y < 0 || r->eye_x >= r->w || r->eye_y >= r->h) {
+        r->eye_x = r->eye_y = -1; /* off the grid: no eye to draw */
+    }
     if ((b->sp->features & FEATURE_TRUNK) == 0) {
         put_mark(r, pixel(b->mx + a->muzzle_r * 0.7f + ox),
                  pixel(b->my - a->muzzle_r * 0.25f + oy), INK_NOSE);
@@ -910,7 +931,7 @@ void skeleton_raster(SkeletonRaster *out, const Anatomy *a, const SpritePose *p,
     out->h = b.h;
     out->ox = b.ox;
     out->oy = b.oy;
-    out->shapes = list.count;
+    out->shapes = list.wanted; /* more than SKELETON_SHAPES_MAX means some were lost */
     out->eye_big = a->eye_big;
     for (int leg = 0; leg < 4; leg++) {
         for (int c = 0; c < 2; c++) {
@@ -975,6 +996,9 @@ static bool fits_at(int species, const BodyTraits *t, float k, SkeletonRaster *r
  * so a corner that fits at the cap found so far cannot lower it, and costs one
  * raster; only a corner that does not fit is searched, by halving the gap
  * between a K that fits and one that does not, ten times (to within 0.004). */
+/* The smallest K the search tries. */
+#define CAP_LOWEST 0.3f
+
 float skeleton_k_cap(int species)
 {
     /* static: a raster is 22 KB, more than this function should put on the
@@ -990,7 +1014,7 @@ float skeleton_k_cap(int species)
         if (fits_at(species, &t, cap, &r)) {
             continue;
         }
-        float lo = 0.3f, hi = cap;
+        float lo = CAP_LOWEST, hi = cap;
         for (int step = 0; step < 10; step++) {
             float mid = (lo + hi) * 0.5f;
             if (fits_at(species, &t, mid, &r)) {
@@ -999,6 +1023,10 @@ float skeleton_k_cap(int species)
                 hi = mid;
             }
         }
+        /* If the corner did not fit even at CAP_LOWEST, lo is still
+         * CAP_LOWEST: that is returned, though such a body would overflow. No
+         * species comes near it (the smallest cap is about 1.85), and the test
+         * asks for a cap above it. */
         cap = lo;
     }
     return cap;
