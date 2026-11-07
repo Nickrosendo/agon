@@ -49,6 +49,11 @@ typedef struct {
     int32_t victim_slot;
     uint32_t victim_id;
     int32_t hit_by;       /* the slot attacking this one this frame, or -1 */
+    /* The body time its attack last reached the bite (POSE_IMPACT_AT), when
+     * blood flies; 0 for never. And the body time of its last dust, leaf or
+     * Z, which come every so often (scene.c). */
+    uint64_t struck_ms;
+    uint64_t puff_ms;
 } AnimSlot;
 
 typedef struct {

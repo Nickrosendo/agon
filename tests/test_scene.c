@@ -36,6 +36,7 @@ static void test_drawing_changes_nothing(void)
     Families f;
     CHECK(family_init(&f, drawn.pool.capacity));
     long fights = 0; /* slot-frames with a fight on screen */
+    long particles = 0; /* particles alive, frame after frame */
     for (int t = 0; t < 2000; t++) {
         sim_step(&plain);
         sim_step(&drawn);
@@ -46,6 +47,7 @@ static void test_drawing_changes_nothing(void)
         cam.level = t % CAMERA_LEVELS;
         scene_draw_world(&sc, &c, &cam, &drawn, 0.5f, (uint64_t)t * 33u,
                          (uint64_t)t * 33u, 0, 0);
+        particles += sc.particles.count;
         /* The panel's bodies, and asking which creature was clicked on. */
         family_update(&f, &drawn);
         uint32_t largest = family_largest(&f, &drawn);
@@ -63,6 +65,7 @@ static void test_drawing_changes_nothing(void)
     }
     CHECK(sim_checksum(&plain) == sim_checksum(&drawn));
     CHECK(fights > 0); /* the attack's drawing was in it */
+    CHECK(particles > 0); /* and the particles' */
     family_free(&f);
     canvas_free(&c);
     scene_free(&sc);
@@ -130,33 +133,42 @@ static bool near_white(uint32_t px)
            (px & 0xFFu) >= 191u;
 }
 
+/* A 16 by 16 world of bare soil with a hunter at (8, 8) facing east, doing
+ * `action`, and a plant-eater beside it at (9, 8): written to *hunter and
+ * *prey. */
+static void make_fight(Sim *s, int action, int *hunter, int *prey)
+{
+    Settings set = settings_default();
+    CHECK(sim_init(s, &set, 3, 16, 16));
+    for (int i = 0; i < s->pool.capacity; i++) {
+        if (s->pool.items[i].alive) {
+            pool_kill(&s->pool, &s->world, i, &s->set, DEATH_WOUNDS);
+        }
+    }
+    for (int i = 0; i < 16 * 16; i++) {
+        s->world.terrain[i] = TERRAIN_SOIL;
+        s->world.veg[i] = 0;
+        s->world.carrion[i] = 0.0f;
+    }
+    *hunter = pool_spawn(&s->pool, &s->world, 8, 8);
+    *prey = pool_spawn(&s->pool, &s->world, 9, 8);
+    s->pool.items[*hunter].current.kind = (uint8_t)action;
+    s->pool.items[*hunter].heading = HEADING_EAST; /* the prey is ahead */
+    s->set.family_peace = 2.0f; /* near-identical genomes would be spared */
+    s->set.colour_peace = 0.0f;
+    s->pool.items[*hunter].genome.g[GENE_MEAT] = 1.0f;
+    s->pool.items[*prey].genome.g[GENE_LEAF] = 1.0f;
+    s->pool.items[*prey].energy = 10.0f;
+}
+
 /* Draws a hunter beside its prey at Normal zoom, doing `action`, after
  * `steps` frames of 33 ms, and says how many pixels are near white. With
  * attacking set, also checks the hunter is drawn attacking. */
 static int near_white_count(int action, int steps)
 {
-    Settings set = settings_default();
     Sim s;
-    CHECK(sim_init(&s, &set, 3, 16, 16));
-    for (int i = 0; i < s.pool.capacity; i++) {
-        if (s.pool.items[i].alive) {
-            pool_kill(&s.pool, &s.world, i, &s.set, DEATH_WOUNDS);
-        }
-    }
-    for (int i = 0; i < 16 * 16; i++) {
-        s.world.terrain[i] = TERRAIN_SOIL;
-        s.world.veg[i] = 0;
-        s.world.carrion[i] = 0.0f;
-    }
-    int hunter = pool_spawn(&s.pool, &s.world, 8, 8);
-    int prey = pool_spawn(&s.pool, &s.world, 9, 8);
-    s.pool.items[hunter].current.kind = (uint8_t)action;
-    s.pool.items[hunter].heading = HEADING_EAST; /* the prey is ahead */
-    s.set.family_peace = 2.0f; /* near-identical genomes would be spared */
-    s.set.colour_peace = 0.0f;
-    s.pool.items[hunter].genome.g[GENE_MEAT] = 1.0f;
-    s.pool.items[prey].genome.g[GENE_LEAF] = 1.0f;
-    s.pool.items[prey].energy = 10.0f;
+    int hunter, prey;
+    make_fight(&s, action, &hunter, &prey);
     Scene sc;
     CHECK(scene_init(&sc, &s));
     Canvas c;
@@ -1838,6 +1850,171 @@ static void test_bodies_sort_by_row(void)
     sim_free(&s);
 }
 
+/* ---- Particles ---- */
+
+/* How many particles of the pool have this colour, within `cells` cells
+ * (16 art pixels each) of cell (cx, cy)'s middle; and how many have it at all. */
+static int particles_near(const Scene *sc, bool (*is)(uint32_t), int cx, int cy,
+                          float cells, int *all)
+{
+    int near = 0;
+    *all = 0;
+    for (int i = 0; i < sc->particles.count; i++) {
+        const Particle *p = &sc->particles.p[i];
+        if (!is(p->colour)) {
+            continue;
+        }
+        (*all)++;
+        float x, y;
+        particle_position(p, p->age, &x, &y);
+        float dx = x / 16.0f - ((float)cx + 0.5f);
+        float dy = y / 16.0f - ((float)cy + 0.5f);
+        near += fabsf(dx) <= cells && fabsf(dy) <= cells;
+    }
+    return near;
+}
+
+/* The blood's colours (v9:689): red 176..216, green 28, blue 40. */
+static bool is_blood(uint32_t px)
+{
+    uint32_t r = (px >> 16) & 0xFFu, g = (px >> 8) & 0xFFu, b = px & 0xFFu;
+    return r >= 176u && r <= 216u && g == 28u && b == 40u;
+}
+
+static bool is_dust(uint32_t px)
+{
+    return px == canvas_rgb(176, 160, 128);
+}
+
+static bool is_z(uint32_t px)
+{
+    return px == canvas_rgb(220, 230, 255);
+}
+
+/* At the bite (the attack at 0.5, 28 frames in) seven drops of blood fly from
+ * the victim, and not before; they are drawn red on the canvas. */
+static void test_blood_on_a_hit(void)
+{
+    Sim s;
+    int hunter, prey;
+    make_fight(&s, ACT_ATTACK, &hunter, &prey);
+    Scene sc;
+    CHECK(scene_init(&sc, &s));
+    Canvas c;
+    CHECK(canvas_init(&c, VIEW_W, VIEW_H));
+    Camera cam;
+    camera_init(&cam, 16, 16, VIEW_W, VIEW_H);
+    uint64_t ms = 0;
+    int all = 0;
+    for (int i = 0; i <= 31; i++) {
+        scene_update(&sc, &s, 10, ms);
+        scene_draw_world(&sc, &c, &cam, &s, 0.0f, ms, ms, 0, 0);
+        if (i == 20) {
+            particles_near(&sc, is_blood, 9, 8, 2.0f, &all);
+            CHECK(all == 0); /* still stalking */
+        }
+        ms += 33u;
+    }
+    int near = particles_near(&sc, is_blood, 9, 8, 2.0f, &all);
+    CHECK(all == 7);
+    CHECK(near == 7);
+    if (all != 7) {
+        printf("  blood: %d particles, %d near the victim\n", all, near);
+    }
+    int red = 0;
+    for (int i = 0; i < VIEW_W * VIEW_H; i++) {
+        red += is_blood(c.px[i]);
+    }
+    CHECK(red > 0);
+    canvas_free(&c);
+    scene_free(&sc);
+    sim_free(&s);
+}
+
+/* A sleeper sends up a Z every 1.2 s, from above its body; a resting
+ * creature none. */
+static void test_zs_over_sleepers(void)
+{
+    Sim s;
+    int sleeper, rester;
+    make_fight(&s, ACT_SLEEP, &sleeper, &rester);
+    s.pool.items[rester].current.kind = ACT_REST;
+    Scene sc;
+    CHECK(scene_init(&sc, &s));
+    Canvas c;
+    CHECK(canvas_init(&c, VIEW_W, VIEW_H));
+    Camera cam;
+    camera_init(&cam, 16, 16, VIEW_W, VIEW_H);
+    int most = 0, above = 0;
+    for (int i = 0; i < 90; i++) { /* 3 s */
+        uint64_t ms = 1000u + (uint64_t)i * 33u;
+        scene_update(&sc, &s, 10, ms);
+        scene_draw_world(&sc, &c, &cam, &s, 0.0f, ms, ms, 0, 0);
+        int count = 0;
+        for (int k = 0; k < sc.particles.count; k++) {
+            const Particle *p = &sc.particles.p[k];
+            if (p->kind != PARTICLE_Z || !is_z(p->colour)) {
+                continue;
+            }
+            count++;
+            float x, y;
+            particle_position(p, p->age, &x, &y);
+            /* Over the sleeper's cell (8, 8), above its feet. */
+            above += x >= 8.0f * 16.0f - 8.0f && x < 9.0f * 16.0f + 8.0f && y < 8.0f * 16.0f + 13.0f;
+        }
+        most = count > most ? count : most;
+    }
+    CHECK(most >= 1 && most <= 2); /* a 1.6 s life, one every 1.2 s */
+    CHECK(above > 0);
+    canvas_free(&c);
+    scene_free(&sc);
+    sim_free(&s);
+}
+
+/* Dust rises behind a walker in view, and only there: a walker far off the
+ * view sends up none. The walk is set in the drawing's memory by hand, a
+ * glide from the next cell west that never ends. */
+static void test_dust_only_in_view(void)
+{
+    Sim s;
+    make_empty_sim(&s, 64, 64);
+    int seen = pool_spawn(&s.pool, &s.world, 10, 10);
+    int unseen = pool_spawn(&s.pool, &s.world, 40, 40);
+    CHECK(seen >= 0 && unseen >= 0);
+    Scene sc;
+    CHECK(scene_init(&sc, &s));
+    Canvas c;
+    CHECK(canvas_init(&c, 160, 96));
+    Camera cam;
+    camera_init(&cam, 64, 64, 160, 96);
+    cam.level = CAMERA_NORMAL;
+    camera_centre_on(&cam, 10.5f, 10.5f);
+    int slots[2] = {seen, unseen};
+    int sum_near = 0, sum_all = 0;
+    for (int i = 0; i < 60; i++) { /* 2 s */
+        uint64_t ms = 1000u + (uint64_t)i * 33u;
+        scene_update(&sc, &s, 10, ms);
+        for (int k = 0; k < 2; k++) {
+            AnimSlot *m = &sc.anim.slots[slots[k]];
+            m->from_x = m->x - 1;
+            m->moved_tick = s.tick;
+            m->move_ticks = 1000.0f;
+        }
+        scene_draw_world(&sc, &c, &cam, &s, 0.5f, ms, ms, 0, 0);
+        CHECK(sc.poses[seen].action == ACTION_WALK);
+        /* A puff every 0.4 s living 0.4 s: one at a time, so count each
+         * frame's. */
+        int all;
+        sum_near += particles_near(&sc, is_dust, 10, 10, 2.0f, &all);
+        sum_all += all;
+    }
+    CHECK(sum_all > 20);
+    CHECK(sum_near == sum_all);
+    canvas_free(&c);
+    scene_free(&sc);
+    sim_free(&s);
+}
+
 int main(void)
 {
     /* Tests register this one themselves: the real program never has it. */
@@ -1881,5 +2058,8 @@ int main(void)
     test_ground_follows_within_a_second();
     test_soil_colour_follows_cell_by_cell();
     test_paused_soil_colour_catches_up();
+    test_blood_on_a_hit();
+    test_zs_over_sleepers();
+    test_dust_only_in_view();
     TEST_SUMMARY();
 }

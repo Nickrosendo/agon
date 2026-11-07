@@ -1,12 +1,13 @@
 #include "lab.h"
 
-#include <math.h>   /* sinf */
+#include <math.h>   /* floorf, sinf */
 #include <stdio.h>  /* snprintf */
 #include <string.h> /* strlen */
 
 #include "font.h"
 #include "gfx_hash.h"
 #include "palette.h"
+#include "particles.h" /* Particle, particle_position, particle_paint */
 #include "pose.h"     /* pose_frame, pose_cycle_seconds, pose_eyes */
 #include "species.h"
 
@@ -334,6 +335,139 @@ static void place_by_foot(const SpritePicture *p, int foot_x, int line_y, int s,
     *top = line_y + 2 * s - (p->oy - p->y0 + 1) * s;
 }
 
+/* ---- Particles, worked out from the clock ----
+ *
+ * The lab keeps nothing between frames, so its particles are not a pool: a
+ * puff is due every period_ms, and at any moment the ones still alive are the
+ * last few due, each as old as the time since. Where each one is follows from
+ * its age (particle_position), and its random numbers from gfx_hash of its
+ * number, so a frame is the same however it is reached. */
+
+/* The lab's leaves (v9:690): always this green. */
+static const Colour LEAF = {130, 210, 100};
+static const Colour Z_COLOUR = {220, 230, 255};
+
+/* One particle, its numbers in art pixels from the ground point at canvas
+ * (foot_x, foot_y), at this age. */
+static void paint_particle(Canvas *c, const Particle *p, float age, int foot_x, int foot_y,
+                           int s, CanvasClip clip)
+{
+    float x, y;
+    particle_position(p, age, &x, &y);
+    /* floorf(v + 0.5f) rounds as the mockup's Math.round; (int) of a negative
+     * number would cut towards zero instead. */
+    particle_paint(p, c, foot_x + (int)floorf(x + 0.5f) * s,
+                   foot_y + (int)floorf(y + 0.5f) * s, s, clip);
+}
+
+/* Where on the drawn picture puffs start, in art pixels from its ground
+ * point: its front edge (+ east) and its top (negative: up). */
+typedef struct {
+    float front, top;
+} PuffPlace;
+
+/* Fills *out with the puff that came k periods after the species' first.
+ * A pointer to a function: paint_puffs is handed which maker to call. */
+typedef void (*PuffMaker)(Particle *out, int species, uint32_t k, PuffPlace at);
+
+/* Every puff of a species still alive at body_ms: one every period_ms, the
+ * species shifting its own start so the page is not in step. */
+static void paint_puffs(Canvas *c, PuffMaker make, int species, PuffPlace at,
+                        uint64_t period_ms, float life, uint64_t body_ms, int foot_x,
+                        int foot_y, int s, CanvasClip clip)
+{
+    uint64_t offset = (uint64_t)species * 97u % period_ms;
+    if (body_ms < offset) {
+        return; /* none due yet: unsigned subtraction would wrap */
+    }
+    uint64_t k = (body_ms - offset) / period_ms; /* the newest puff */
+    for (;;) {
+        float age = (float)(body_ms - offset - k * period_ms) / 1000.0f;
+        if (age >= life) {
+            break;
+        }
+        Particle p;
+        make(&p, species, (uint32_t)k, at);
+        paint_particle(c, &p, age, foot_x, foot_y, s, clip);
+        if (k == 0) {
+            break; /* k is unsigned: k-- past 0 would wrap to a huge number */
+        }
+        k--;
+    }
+}
+
+/* A leaf flying forward off the grass at the grazing mouth (v9:690): from the
+ * picture's front edge, low down, where the head comes down to the grass. */
+static void make_leaf(Particle *out, int species, uint32_t k, PuffPlace at)
+{
+    *out = (Particle){.x = at.front, .y = -4.0f, .life = 0.5f, .grav = 1.0f,
+                      .colour = canvas_rgb(LEAF.r, LEAF.g, LEAF.b), .kind = PARTICLE_DOT};
+    out->vx = 10.0f + gfx_hash((int)k, species, 1) * 25.0f;
+    out->vy = -25.0f - gfx_hash((int)k, species, 2) * 10.0f;
+}
+
+/* A Z rising over a sleeper (v9:691): just above its lying body, its own 5
+ * rows clear of the picture's top. */
+static void make_z(Particle *out, int species, uint32_t k, PuffPlace at)
+{
+    (void)species; /* every sleeper's Z is the same: (void) says "unused" */
+    (void)k;
+    *out = (Particle){.x = 6.0f, .y = at.top - 7.0f, .vx = 3.0f, .vy = -6.0f, .life = 1.6f,
+                      .colour = canvas_rgb(Z_COLOUR.r, Z_COLOUR.g, Z_COLOUR.b),
+                      .kind = PARTICLE_Z};
+}
+
+/* Blood and fur from the deer's neck at a bite (v9:689), drop j of 12 (seven
+ * drops, then five tufts) after the bite numbered k, flying away from the
+ * hunter, which stands to the west. The point is 7 art pixels in front of the
+ * deer's feet and 13 up. */
+static void make_blood(Particle *out, uint32_t fur, uint32_t k, int j)
+{
+    float r1 = gfx_hash((int)k, j, 1), r2 = gfx_hash((int)k, j, 2);
+    float r3 = gfx_hash((int)k, j, 3);
+    if (j < 7) {
+        *out = (Particle){.x = -7.0f, .y = -13.0f + r1 * 3.0f, .vx = 8.0f + r2 * 30.0f,
+                          .vy = -20.0f - r3 * 25.0f, .grav = 1.2f,
+                          .life = 0.55f + gfx_hash((int)k, j, 4) * 0.2f,
+                          .colour = canvas_rgb((uint8_t)(176.0f + r1 * 40.0f), 28, 40),
+                          .kind = PARTICLE_DOT};
+    } else {
+        *out = (Particle){.x = -7.0f, .y = -13.0f, .vx = (r1 - 0.3f) * 30.0f,
+                          .vy = -15.0f - r2 * 15.0f, .grav = 0.25f, .life = 0.8f,
+                          .colour = fur, .kind = PARTICLE_DOT};
+    }
+}
+
+/* The blood and fur of the hunter's last bite, if still flying: the attack
+ * reaches the bite at frame IMPACT_FRAME of its cycle, so the bite's age is
+ * the frames since then, plus the time into the present frame. */
+#define IMPACT_FRAME 27 /* POSE_IMPACT_AT of the attack's 54 frames */
+static void paint_bite(Canvas *c, int frame, uint64_t body_ms, uint32_t fur, int prey_x,
+                       int foot_y, int s, CanvasClip clip)
+{
+    int n = SPRITE_FRAMES[ACTION_ATTACK];
+    float frame_ms = 1000.0f * POSE_ATTACK_SECONDS / (float)n;
+    uint64_t cycle_ms = (uint64_t)(POSE_ATTACK_SECONDS * 1000.0f + 0.5f);
+    uint64_t in_cycle = body_ms % cycle_ms;
+    /* pose_frame's own split of the cycle into frames (pose.c). */
+    uint64_t by_time = in_cycle * (uint64_t)n / cycle_ms;
+    float into_frame = (float)in_cycle - (float)by_time * frame_ms;
+    int since = (frame - IMPACT_FRAME + n) % n; /* + n: % keeps a minus sign */
+    float age_ms = (float)since * frame_ms + into_frame;
+    if (age_ms >= 800.0f || age_ms > (float)body_ms) {
+        return; /* all landed, or the bite is from before the clock started */
+    }
+    uint32_t k = (uint32_t)(((float)body_ms - age_ms) / (float)cycle_ms);
+    for (int j = 0; j < 12; j++) {
+        Particle p;
+        make_blood(&p, fur, k, j);
+        float age = age_ms / 1000.0f;
+        if (age < p.life) {
+            paint_particle(c, &p, age, prey_x, foot_y, s, clip);
+        }
+    }
+}
+
 /* One species standing on its strip: shadow, then the picture cut to its inked
  * bounds and centred, its feet on the first row of ground. */
 static void draw_animal(SpriteCache *sprites, Canvas *c, const LabLayout *l, int species,
@@ -358,7 +492,17 @@ static void draw_animal(SpriteCache *sprites, Canvas *c, const LabLayout *l, int
     int line_y = sy + strip_h - GROUND_ROWS * s;
     int left = sx + (l->cell_w - w * s) / 2;
     int top = line_y + 2 * s - h * s;  /* the feet's last row is the ground's first */
-    paint_animal(c, &p, &pal, eyes, left, top, s, false, strip_clip(l, sx, sy, strip_h));
+    CanvasClip strip = strip_clip(l, sx, sy, strip_h);
+    paint_animal(c, &p, &pal, eyes, left, top, s, false, strip);
+    /* The ground point on the canvas: the column of ox, the row of oy. */
+    int foot_x = left + (p.ox - p.x0) * s;
+    int foot_y = top + (p.oy - p.y0) * s;
+    PuffPlace at = {(float)(p.x1 - p.ox), (float)(p.y0 - p.oy)};
+    if (action == ACTION_GRAZE) {
+        paint_puffs(c, make_leaf, species, at, 150u, 0.5f, body_ms, foot_x, foot_y, s, strip);
+    } else if (action == ACTION_SLEEP) {
+        paint_puffs(c, make_z, species, at, 1200u, 1.6f, body_ms, foot_x, foot_y, s, strip);
+    }
 }
 
 /* How far apart the hunter's and the deer's ground points stand, in art
@@ -393,14 +537,15 @@ static void draw_attack(SpriteCache *sprites, Canvas *c, const LabLayout *l, int
     SpriteBody deer = lab_body(SPECIES_DEER);
     int deer_frame = pose_frame(body_ms, id, ACTION_REST, POSE_REST_SECONDS);
     SpritePicture prey = sprite_picture(sprites, &deer, ACTION_REST, deer_frame);
+    SpritePalette look;
+    sprite_palette_look(&look, SPECIES_DEER);
+    /* Knock-back in the hunter's K units, tremble in art pixels (v9:682). */
+    float t = (float)(body_ms % 60000u) / 1000.0f;
+    float push = knock * sprite_k(&hunter) + tremble * sinf(t * 40.0f);
+    int foot_x = attacker_x + PREY_GAP * s + (int)(push * (float)s);
     if (prey.x1 > prey.x0) {
-        SpritePalette look, pal;
-        sprite_palette_look(&look, SPECIES_DEER);
+        SpritePalette pal;
         sprite_palette_flash(&pal, &look, flash);
-        /* Knock-back in the hunter's K units, tremble in art pixels (v9:682). */
-        float t = (float)(body_ms % 60000u) / 1000.0f;
-        float push = knock * sprite_k(&hunter) + tremble * sinf(t * 40.0f);
-        int foot_x = attacker_x + PREY_GAP * s + (int)(push * (float)s);
         int left, top;
         place_by_foot(&prey, foot_x, line_y, s, true, &left, &top);
         paint_animal(c, &prey, &pal, 1.0f, left, top, s, true, strip);
@@ -415,6 +560,8 @@ static void draw_attack(SpriteCache *sprites, Canvas *c, const LabLayout *l, int
         place_by_foot(&p, attacker_x, line_y, s, false, &left, &top);
         paint_animal(c, &p, &pal, 1.0f, left, top, s, false, strip);
     }
+    /* Over both: the ground point's row is the line's next (place_by_foot). */
+    paint_bite(c, frame, body_ms, look.ink[INK_LIGHT], foot_x, line_y + s, s, strip);
 }
 
 void lab_draw(SpriteCache *sprites, Canvas *c, int action, uint64_t body_ms, int x, int y,

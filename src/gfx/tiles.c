@@ -32,26 +32,6 @@ static void set_pixel(uint16_t rows[16], int size, int i, int j)
     }
 }
 
-/* Three crumbs on arcs up and out from the middle; each frame moves them on. */
-static void build_crumbs(uint16_t rows[16], int size, int frame)
-{
-    /* Whole-pixel steps in sixteenths of a tile, one list per crumb. */
-    static const int STEP_X[3][TILE_MARK_FRAMES] = {
-        {7, 5, 3, 2}, {8, 9, 10, 12}, {9, 7, 6, 5}};
-    static const int STEP_Y[3][TILE_MARK_FRAMES] = {
-        {9, 6, 4, 5}, {8, 5, 4, 6}, {10, 8, 7, 9}};
-    int f = frame % TILE_MARK_FRAMES;
-    for (int k = 0; k < 3; k++) {
-        int x = STEP_X[k][f] * size / 16;
-        int y = STEP_Y[k][f] * size / 16;
-        set_pixel(rows, size, x, y);
-        /* Two pixels wide at the larger size, or it would be hard to see. */
-        if (size > 8) {
-            set_pixel(rows, size, x + 1, y);
-        }
-    }
-}
-
 /* Short slanted streaks, placed by the variant, falling a step each frame. */
 static void build_rain(uint16_t rows[16], int variant, int size, int frame)
 {
@@ -74,7 +54,6 @@ void tiles_build(uint16_t rows[16], int kind, int variant, int size, int frame)
      * pointer, and sizeof would give the pointer's size. Hence 16 * .... */
     memset(rows, 0, 16 * sizeof(rows[0]));
     switch (kind) {
-    case TILE_CRUMBS: build_crumbs(rows, size, frame); break;
     case TILE_RAIN: build_rain(rows, variant, size, frame); break;
     default: break;
     }

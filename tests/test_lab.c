@@ -162,6 +162,51 @@ static void test_hunters_attack_a_deer(void)
     canvas_free(&attack);
 }
 
+/* How many pixels of the canvas pass `is`. */
+static int pixels_where(const Canvas *c, bool (*is)(uint32_t))
+{
+    int n = 0;
+    for (int i = 0; i < c->w * c->h; i++) {
+        n += is(c->px[i]);
+    }
+    return n;
+}
+
+static bool is_z(uint32_t px) { return px == canvas_rgb(220, 230, 255); }
+static bool is_leaf(uint32_t px) { return px == canvas_rgb(130, 210, 100); }
+static bool is_blood(uint32_t px)
+{
+    uint32_t r = (px >> 16) & 0xFFu, g = (px >> 8) & 0xFFu, b = px & 0xFFu;
+    return r >= 176u && r <= 216u && g == 28u && b == 40u;
+}
+
+/* Over three seconds the lab's sleepers send up z's, its grazers leaves, and
+ * its hunters' bites blood (v9:689-693); resting, none of them. */
+static void test_lab_particles(void)
+{
+    Canvas c;
+    CHECK(canvas_init(&c, 1112, 688));
+    int zs = 0, leaves = 0, blood = 0, resting = 0;
+    for (uint64_t ms = 0; ms < 3000u; ms += 50u) {
+        lab_draw(&sprites, &c, ACTION_SLEEP, ms, 0, 0, 1112, 688);
+        zs += pixels_where(&c, is_z) > 0;
+        lab_draw(&sprites, &c, ACTION_GRAZE, ms, 0, 0, 1112, 688);
+        leaves += pixels_where(&c, is_leaf) > 0;
+        lab_draw(&sprites, &c, ACTION_BITE, ms, 0, 0, 1112, 688);
+        blood += pixels_where(&c, is_blood) > 0;
+        lab_draw(&sprites, &c, ACTION_REST, ms, 0, 0, 1112, 688);
+        resting += pixels_where(&c, is_z) + pixels_where(&c, is_leaf) + pixels_where(&c, is_blood);
+    }
+    CHECK(zs > 30);     /* a Z lives 1.6 s of every 1.2 s, offset per animal */
+    CHECK(leaves > 30); /* a leaf every 0.15 s */
+    CHECK(blood > 5);   /* 0.75 s after each bite, once per 1.8 s cycle */
+    CHECK(resting == 0);
+    if (zs <= 30 || leaves <= 30 || blood <= 5) {
+        printf("  frames with z's %d, leaves %d, blood %d of 60\n", zs, leaves, blood);
+    }
+    canvas_free(&c);
+}
+
 /* The window's world area at 1280x720 (the panel beside it) is big enough for
  * scale 2; a small area falls back to 1; a very large one may take 3. */
 static void test_lab_scale_at_window_size(void)
@@ -253,6 +298,7 @@ int main(void)
     test_lab_cells_not_empty();
     test_every_action_draws();
     test_hunters_attack_a_deer();
+    test_lab_particles();
     test_lab_scale_at_window_size();
     test_lab_tiny_area_is_safe();
     test_lab_pixels();

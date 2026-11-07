@@ -58,6 +58,8 @@ static void first_sight(AnimSlot *m, const Creature *c, uint64_t tick)
     m->face = 1;
     m->fight = FIGHT_NONE; /* a new creature in the slot has no fight yet */
     m->hit_by = -1;
+    m->struck_ms = 0;
+    m->puff_ms = 0;
 }
 
 static void update_slot(AnimSlot *m, const Creature *c, const Sim *s)
@@ -176,6 +178,7 @@ static void update_fight(AnimSlot *m, const Sim *s, int slot, bool jump, uint64_
     uint64_t elapsed = body_ms > m->fight_ms ? body_ms - m->fight_ms : 0;
     float step = (float)elapsed / (1000.0f * POSE_ATTACK_SECONDS);
     m->fight_ms = body_ms;
+    float before = m->fight != FIGHT_NONE ? m->fight_c : 1.0f;
     switch (m->fight) {
     case FIGHT_NONE:
         if (target >= 0) {
@@ -192,6 +195,12 @@ static void update_fight(AnimSlot *m, const Sim *s, int slot, bool jump, uint64_
     default: /* FIGHT_ENDING plays out, whatever the simulation does now */
         advance_fight(m, step, jump);
         break;
+    }
+    /* Crossing the bite this frame, by playing on or by a jump to it. A
+     * fight that has just started at 0.5 or past it has crossed nothing:
+     * before stands at 1 then. */
+    if (m->fight != FIGHT_NONE && before < POSE_IMPACT_AT && m->fight_c >= POSE_IMPACT_AT) {
+        m->struck_ms = body_ms;
     }
 }
 

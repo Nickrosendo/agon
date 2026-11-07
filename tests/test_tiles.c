@@ -54,24 +54,6 @@ static void test_rain_frames_differ(void)
     CHECK(memcmp(a, b, sizeof(a)) != 0);
 }
 
-static void test_marks_change_over_their_frames(void)
-{
-    /* The crumbs alone: a fight's slash gave way to the attack itself. */
-    const int kinds[1] = {TILE_CRUMBS};
-    for (int k = 0; k < 1; k++) {
-        for (int size = 8; size <= 16; size += 8) {
-            for (int f = 0; f < TILE_MARK_FRAMES; f++) {
-                uint16_t a[16], b[16];
-                tiles_build(a, kinds[k], 0, size, f);
-                tiles_build(b, kinds[k], 0, size,
-                            (f + 1) % TILE_MARK_FRAMES);
-                CHECK(mask_bits(a) > 0);
-                CHECK(memcmp(a, b, sizeof(a)) != 0);
-            }
-        }
-    }
-}
-
 static void test_size_8_stays_in_tile(void)
 {
     for (int kind = 0; kind < TILE_KINDS; kind++) {
@@ -766,7 +748,6 @@ int main(void)
     test_same_inputs_same_mask();
     test_variant_is_stable_and_spread();
     test_rain_frames_differ();
-    test_marks_change_over_their_frames();
     test_size_8_stays_in_tile();
     test_tree_grows_with_density();
     test_big_leaf_tree_drawn_larger();

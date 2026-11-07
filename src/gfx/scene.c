@@ -18,20 +18,16 @@
 /* How many autotiles the scene keeps. Real maps use a few hundred keys. */
 #define SCENE_TILE_CACHE 2048
 #define TWO_PI 6.2831853f
-/* How long one frame of a fight's or a meal's mark lasts. */
-#define MARK_FRAME_MS 110u
+/* The particles' own generator's seed (plan's call). */
+#define PARTICLES_SEED 0x2545F491u
 
 /* The near-black behind names and the panel's bodies; outside the world it is
  * true black. */
 static const Colour BACKGROUND = {6, 6, 8};
-/* Names, the cursor's corners, and plant crumbs mixed with it. */
+/* Names, the cursor's corners, and leaves mixed with it. */
 static const Colour WHITE = {245, 240, 235};
 /* Bones; and the colour of carrion: a little is pale bone, a lot dark red. */
 static const Colour BONE = {196, 176, 150};
-/* The flash of a fight: brighter than anything else in the world. */
-/* Crumbs of meat. Crumbs of plant are the plant's own colour, lightened, or
- * they would vanish against the tree they come from. */
-static const Colour MEAT_CRUMB = {255, 110, 100};
 /* A cut not healed yet: a pale pink, to be seen on any family's colour. */
 static const Colour SCAR = {255, 170, 160};
 
@@ -197,15 +193,14 @@ bool scene_init(Scene *sc, const Sim *s)
     sc->items = NULL;
     sc->items_spare = NULL;
     sc->items_capacity = 0;
+    sc->item_count = 0;
+    particles_init(&sc->particles, PARTICLES_SEED);
     for (int i = 0; i < SCENE_SINE_STEPS; i++) {
         sc->sine[i] = sinf((float)i * TWO_PI / (float)SCENE_SINE_STEPS);
     }
     /* Every symbol once, here, so drawing a frame only copies bits. */
     for (int z = 0; z < 2; z++) {
         int size = z == 0 ? 16 : 8;
-        for (int f = 0; f < TILE_MARK_FRAMES; f++) {
-            tiles_build(sc->crumbs[z][f], TILE_CRUMBS, 0, size, f);
-        }
         for (int v = 0; v < TILE_VARIANTS; v++) {
             for (int f = 0; f < TILE_RAIN_FRAMES; f++) {
                 tiles_build(sc->rain[z][v][f], TILE_RAIN, v, size, f);
@@ -256,6 +251,7 @@ void scene_reset(Scene *sc)
     /* A new world's creature can have an old one's id in the same slot. */
     memset(sc->palette_species, PALETTE_NONE, (size_t)sc->slots);
     anim_reset(&sc->anim);
+    particles_reset(&sc->particles); /* no blood from the old world's fights */
     tiles_cache_reset(&sc->tiles);
     sc->keys_valid = false;
     forget_cell_colours(sc); /* a new world's cell can match an old one's index */
@@ -869,59 +865,6 @@ static WorldArea world_area(const Camera *cam, int view_x, int view_y)
     a.whole_x = a.world_px_w <= cam->view_w;
     a.whole_y = a.world_px_h <= cam->view_h;
     return a;
-}
-
-/* The mark over the cell a creature is eating from: crumbs whose colour says
- * what is being eaten. A fight has no mark: the attack itself is drawn. */
-static void draw_mark(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
-                      const Creature *cr, const AnimPose *p, uint64_t body_ms,
-                      int view_x, int view_y)
-{
-    int ppc = camera_ppc(cam);
-    int size = camera_sprite_size(cam);
-    int scale = camera_sprite_scale(cam);
-    int z = size == 16 ? 0 : 1;
-    int sx, sy;
-    camera_to_screen(cam, (float)p->target_x, (float)p->target_y, &sx, &sy);
-    if (sx <= -ppc || sy <= -ppc || sx >= cam->view_w || sy >= cam->view_h) {
-        return;
-    }
-    /* The id keeps neighbouring marks out of step. */
-    int f = (int)((body_ms / MARK_FRAME_MS + cr->id) % TILE_MARK_FRAMES);
-    const uint16_t *rows = sc->crumbs[z][f];
-    Colour colour = MEAT_CRUMB;
-    if (p->bite == BITE_PLANT) {
-        const World *w = &s->world;
-        Colour plant = palette_plant(&w->plant[p->target_y * w->w + p->target_x]);
-        colour = palette_mix(plant, WHITE, 0.6f);
-    }
-    canvas_mask(c, rows, size, view_x + sx, view_y + sy, scale, false,
-                to_pixel(colour));
-}
-
-/* After every body, so no creature's cleared tile can hide a mark. */
-static void draw_marks(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
-                       float tick_fraction, uint64_t body_ms, int view_x,
-                       int view_y)
-{
-    if (camera_sprite_size(cam) == 0) {
-        return; /* a coloured square per cell has no room for a mark */
-    }
-    int n = s->pool.capacity < sc->anim.capacity ? s->pool.capacity
-                                                 : sc->anim.capacity;
-    for (int i = 0; i < n; i++) {
-        const Creature *cr = &s->pool.items[i];
-        /* Tested first: most creatures are not eating, and this saves
-         * working out their pose a second time. */
-        if (!cr->alive || !sc->anim.slots[i].seen || cr->current.kind != ACT_BITE) {
-            continue;
-        }
-        AnimPose p;
-        anim_pose(&sc->anim, s, i, tick_fraction, body_ms, &p);
-        if (p.bite != BITE_NOTHING) {
-            draw_mark(sc, c, cam, s, cr, &p, body_ms, view_x, view_y);
-        }
-    }
 }
 
 /* True when the ground layer was drawn for this view: same size, zoom and
@@ -1813,6 +1756,7 @@ static void draw_items(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
     camera_cells(cam, &v);
     int count = s->pool.capacity < sc->anim.capacity ? s->pool.capacity
                                                      : sc->anim.capacity;
+    sc->item_count = 0;
     if (!grow_items(sc, count + (v.cols + 2) * (v.rows + 2))) {
         return; /* out of memory: no trees or bodies this frame */
     }
@@ -1820,6 +1764,7 @@ static void draw_items(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
     int trees = add_trees(sc, cam, s, &area, view_x, view_y, 0);
     int n = add_bodies(sc, cam, s, tick_fraction, body_ms, view_x, view_y, trees);
     sort_items(sc->items, sc->items_spare, trees, n);
+    sc->item_count = n;
 
     int size = camera_sprite_size(cam);
     int scale = camera_sprite_scale(cam);
@@ -1864,6 +1809,201 @@ static void draw_items(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
     }
 }
 
+/* ---- Particles: dust, leaves, blood, fur and z's ---- */
+
+/* How often a walker kicks up dust, a runner, a grazer's leaves and a
+ * sleeper's z's, in body milliseconds (v9:655-658, 691). */
+#define DUST_WALK_MS 400u
+#define DUST_RUN_MS 180u
+#define LEAF_MS 200u
+#define Z_MS 1200u
+/* Art pixels in a cell, whatever the zoom; and how far down a cell a body's
+ * feet stand (world_body: ppc * 13 / 16). */
+#define ART_CELL 16.0f
+#define ART_FOOT 13.0f
+
+static const Colour DUST = {176, 160, 128};
+static const Colour Z_COLOUR = {220, 230, 255};
+
+/* The lengths of a creature's body in art pixels, at Normal, where an art
+ * pixel is a screen pixel. */
+static Anatomy art_anatomy(const Creature *cr, const Sim *s)
+{
+    SpriteBody b = sprite_body(cr, &s->set, SPRITE_BASE_NORMAL);
+    Anatomy a;
+    species_anatomy(&a, b.species, &b.traits, sprite_k(&b));
+    return a;
+}
+
+/* A particle starting at (x, y) in art pixels; the other fields 0. */
+static Particle particle_at(float x, float y, Colour colour, float life)
+{
+    return (Particle){.x = x, .y = y, .life = life, .colour = to_pixel(colour),
+                      .kind = PARTICLE_DOT};
+}
+
+/* Whether a slot's every-so-often particle is due, by its own timer; if so,
+ * the timer is set to now. A timer ahead of the clock (a new world's clock
+ * started again) counts as due. */
+static bool puff_due(AnimSlot *m, uint64_t body_ms, uint64_t every_ms)
+{
+    if (m->puff_ms <= body_ms && body_ms - m->puff_ms < every_ms) {
+        return false;
+    }
+    m->puff_ms = body_ms;
+    return true;
+}
+
+/* Dust behind the feet (v9:655): a puff drifting backwards and up. */
+static void emit_dust(Scene *sc, const Sim *s, int slot, float fx, float fy, float face)
+{
+    Anatomy a = art_anatomy(&s->pool.items[slot], s);
+    Particle p = particle_at(fx - face * a.body_len * 0.6f, fy - 1.0f, DUST, 0.4f);
+    p.vx = -face * 8.0f;
+    p.vy = -5.0f;
+    p.grav = 0.1f;
+    particles_add(&sc->particles, &p); /* false when full: then no dust */
+}
+
+/* A leaf off the grazed plant (v9:658), in the plant's colour, lightened. */
+static void emit_leaf(Scene *sc, const Sim *s, const AnimPose *pose)
+{
+    const World *w = &s->world;
+    Colour plant = palette_plant(&w->plant[pose->target_y * w->w + pose->target_x]);
+    Particles *ps = &sc->particles;
+    float x = ((float)pose->target_x + 0.5f) * ART_CELL + (particles_random(ps) - 0.5f) * 8.0f;
+    float y = ((float)pose->target_y + 0.5f) * ART_CELL;
+    Particle p = particle_at(x, y, palette_mix(plant, WHITE, 0.4f), 0.6f);
+    p.vx = (particles_random(ps) - 0.5f) * 40.0f;
+    p.vy = -28.0f;
+    p.grav = 1.0f;
+    particles_add(ps, &p);
+}
+
+/* A Z rising from a sleeper (v9:691): above its lying body, drifting up and
+ * right, no gravity. */
+static void emit_z(Scene *sc, const Sim *s, int slot, float fx, float fy)
+{
+    Anatomy a = art_anatomy(&s->pool.items[slot], s);
+    Particle p = particle_at(fx + 6.0f, fy - 2.0f * a.chest_r - 8.0f, Z_COLOUR, 1.6f);
+    p.kind = PARTICLE_Z;
+    p.vx = 3.0f;
+    p.vy = -6.0f;
+    particles_add(&sc->particles, &p);
+}
+
+/* The bite lands (v9:689-690): seven drops of blood and five tufts of fur fly
+ * from the victim's neck side, away from the attacker. toward is +1 when the
+ * attacker stands east of the victim, -1 west. */
+static void emit_blood(Scene *sc, const Sim *s, int victim, float fx, float fy,
+                       float toward)
+{
+    const Creature *cr = &s->pool.items[victim];
+    Anatomy a = art_anatomy(cr, s);
+    /* The neck's side, as the mockup's 7 pixels in front of a deer and 12 up:
+     * half the body along, and the legs and chest up (plan's call). */
+    float x = fx + toward * a.body_len * 0.5f;
+    float y = fy - (a.leg_len + a.chest_r);
+    Particles *ps = &sc->particles;
+    for (int k = 0; k < 7; k++) {
+        Colour red = {(uint8_t)(176.0f + particles_random(ps) * 40.0f), 28, 40};
+        Particle p = particle_at(x, y + particles_random(ps) * 3.0f, red,
+                                 0.55f + particles_random(ps) * 0.2f);
+        p.vx = -toward * (8.0f + particles_random(ps) * 30.0f);
+        p.vy = -20.0f - particles_random(ps) * 25.0f;
+        p.grav = 1.2f;
+        particles_add(ps, &p);
+    }
+    /* The fur in the victim's own light colour: its palette was made when its
+     * body was drawn, this frame. */
+    uint32_t fur = sc->palettes[victim].ink[INK_LIGHT];
+    for (int k = 0; k < 5; k++) {
+        Particle p = particle_at(x, y, (Colour){0, 0, 0}, 0.8f);
+        p.colour = fur;
+        p.vx = -toward * (particles_random(ps) - 0.3f) * 30.0f;
+        p.vy = -15.0f - particles_random(ps) * 15.0f;
+        p.grav = 0.25f;
+        particles_add(ps, &p);
+    }
+}
+
+/* Whether a body item's feet are inside the view: only creatures that show
+ * send up particles. */
+static bool feet_in_view(const SceneItem *it, const Camera *cam, int view_x, int view_y)
+{
+    int ppc = camera_ppc(cam);
+    int fy = it->foot_y - ppc + ppc * 13 / 16;
+    return it->foot_x >= view_x && it->foot_x < view_x + cam->view_w && fy >= view_y &&
+           fy < view_y + cam->view_h;
+}
+
+/* One body's particles for the body time since the last emission, `since`
+ * (exclusive), to body_ms. */
+static void emit_for(Scene *sc, const Sim *s, int slot, uint64_t since, uint64_t body_ms)
+{
+    AnimSlot *m = &sc->anim.slots[slot];
+    const AnimPose *p = &sc->poses[slot];
+    /* The feet, in art pixels of the world. */
+    float fx = (p->x + 0.5f) * ART_CELL;
+    float fy = p->y * ART_CELL + ART_FOOT;
+    float face = p->flip ? -1.0f : 1.0f;
+    if (p->action == ACTION_WALK || p->action == ACTION_RUN) {
+        if (puff_due(m, body_ms, p->action == ACTION_RUN ? DUST_RUN_MS : DUST_WALK_MS)) {
+            emit_dust(sc, s, slot, fx, fy, face);
+        }
+    } else if (p->action == ACTION_GRAZE && p->bite == BITE_PLANT) {
+        if (puff_due(m, body_ms, LEAF_MS)) {
+            emit_leaf(sc, s, p);
+        }
+    } else if (p->action == ACTION_SLEEP) {
+        if (puff_due(m, body_ms, Z_MS)) {
+            emit_z(sc, s, slot, fx, fy);
+        }
+    }
+    /* Being bitten: did its attacker's bite land in this stretch of time? */
+    int by = m->hit_by;
+    if (by >= 0 && by < sc->anim.capacity) {
+        const AnimSlot *a = &sc->anim.slots[by];
+        bool same = a->victim_slot == slot && a->victim_id == s->pool.items[slot].id;
+        if (same && a->struck_ms > since && a->struck_ms <= body_ms) {
+            /* The attacker's side, the short way round the world. */
+            int dx = s->pool.items[by].x - s->pool.items[slot].x;
+            int w = s->world.w;
+            dx = dx > w / 2 ? dx - w : (dx < -w / 2 ? dx + w : dx);
+            float toward = dx > 0 ? 1.0f : (dx < 0 ? -1.0f : -(float)a->face);
+            emit_blood(sc, s, slot, fx, fy, toward);
+        }
+    }
+}
+
+/*
+ * After the trees and bodies: ages the particles by the body clock, adds new
+ * ones for the bodies in view, and draws them all. Emitting only when the
+ * body clock has moved on means a paused window, which redraws for its water,
+ * adds nothing; and a bite between two drawn frames still bleeds once.
+ */
+static void draw_particles(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
+                           uint64_t body_ms, int view_x, int view_y)
+{
+    Particles *ps = &sc->particles;
+    bool was_started = ps->started;
+    uint64_t since = ps->last_ms;
+    particles_step(ps, body_ms);
+    if (camera_sprite_size(cam) == 0) {
+        return; /* squares, not bodies: nothing flies off them */
+    }
+    if (was_started && body_ms > since) {
+        for (int k = 0; k < sc->item_count; k++) {
+            const SceneItem *it = &sc->items[k];
+            if (it->kind == SCENE_ITEM_BODY && feet_in_view(it, cam, view_x, view_y)) {
+                emit_for(sc, s, it->index, since, body_ms);
+            }
+        }
+    }
+    WorldArea area = world_area(cam, view_x, view_y);
+    particles_draw(ps, c, cam, view_x, view_y, area.clip);
+}
+
 void scene_draw_world(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
                       float tick_fraction, uint64_t water_ms, uint64_t body_ms,
                       int view_x, int view_y)
@@ -1874,7 +2014,7 @@ void scene_draw_world(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
     place_ground(sc, c, cam, s, water_ms, view_x, view_y);
     draw_overlays(sc, c, cam, s, water_ms, view_x, view_y);
     draw_items(sc, c, cam, s, tick_fraction, water_ms, body_ms, view_x, view_y);
-    draw_marks(sc, c, cam, s, tick_fraction, body_ms, view_x, view_y);
+    draw_particles(sc, c, cam, s, body_ms, view_x, view_y);
 }
 
 /* Shares the panel's rows between its text and the bodies below it. */

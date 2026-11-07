@@ -16,6 +16,7 @@
 #include "font.h"
 #include "inspect.h"
 #include "panel.h"
+#include "particles.h"
 #include "sim.h"
 #include "ramp.h"
 #include "sprite.h"
@@ -79,7 +80,9 @@ typedef struct {
     SpriteBody *bodies;
     int slots;
     Anim anim;
-    uint16_t crumbs[2][TILE_MARK_FRAMES][16];
+    /* Dust, leaves, blood, fur and z's: a pool inside the Scene (40 KB), so
+     * nothing is allocated for them. */
+    Particles particles;
     uint16_t rain[2][TILE_VARIANTS][TILE_RAIN_FRAMES][16];
     uint8_t bones[2][TILE_VARIANTS][TILE_MAX * TILE_MAX];
     /* The ground's autotiles, built as their keys are first seen, and the
@@ -106,6 +109,7 @@ typedef struct {
     SceneItem *items;
     SceneItem *items_spare; /* as many again, for merging two sorted lists */
     int items_capacity;
+    int item_count; /* how many items the last frame drew */
     AnimPose *poses; /* each slot's pose this frame, for bodies drawn as items */
     /* Every cell's tile key, and the terrain they were worked out from: keys
      * change only when the terrain does, so they are not redone each redraw. */

@@ -13,17 +13,14 @@
 
 #include "world.h" /* World */
 
-/* The one-colour marks still drawn the old way: TILE_CRUMBS goes in task 13.
- * Crumbs are not ground but a mark drawn over a bitten cell, food flying off.
- * Rain streaks are drawn over the ground each frame. (The fight's slash was
- * here too, until the attack itself was drawn.) */
-enum { TILE_CRUMBS, TILE_RAIN, TILE_KINDS };
+/* The one-colour marks still drawn the old way: rain streaks, drawn over the
+ * ground each frame. (A fight's slash and a meal's crumbs were here too, until
+ * the attack itself and the particles, particles.h, replaced them.) */
+enum { TILE_RAIN, TILE_KINDS };
 #define TILE_VARIANTS 4
 /* How many pictures rain cycles through, one per step of the scene's ambient
  * clock. */
 #define TILE_RAIN_FRAMES 4
-/* How many pictures the crumbs cycle through. */
-#define TILE_MARK_FRAMES 4
 
 /*
  * Draws one symbol into rows, as canvas_mask reads it. size is 16 or 8;
