@@ -3,6 +3,8 @@
 #include <math.h>   /* sqrtf, cosf, sinf, floorf, fabsf, fmaxf */
 #include <string.h> /* memset */
 
+#include "gfx_hash.h" /* gfx_hash: the mane's ragged edge */
+
 #define PI 3.14159265f
 #define TWO_PI 6.2831853f
 
@@ -35,7 +37,10 @@ typedef struct {
 enum {
     SHAPE_INNER = 1u << 0, /* the inside of an ear: belly colour */
     SHAPE_DARK = 1u << 1,  /* the tassel at a tail's end: the darkest shade */
-    SHAPE_FLAT = 1u << 2   /* a flat flap (the elephant's ear): softer shading */
+    SHAPE_FLAT = 1u << 2,  /* a flat flap (the elephant's ear): softer shading */
+    SHAPE_IVORY = 1u << 3, /* tusks: the ivory ramp, not the horn one */
+    SHAPE_RAGGED = 1u << 4, /* the mane: its edge trimmed by a hash (v9:319) */
+    SHAPE_CUT = 1u << 5    /* nothing below cut_y: the shell's flat bottom */
 };
 
 /*
@@ -53,6 +58,7 @@ typedef struct {
     int points;
     float pt[TUBE_POINTS][2];
     float r0, r1;
+    float cut_y; /* with SHAPE_CUT: pixels below this line miss */
     bool triangle;
     int gx0, gy0, gx1, gy1;
 } Shape;
@@ -89,6 +95,7 @@ typedef struct {
     float jaw, jpx, jpy, jtx, jty;
     float hip[4][2], knee[4][2], foot[4][2];
     int w, h, ox, oy;
+    bool marks; /* false: the far zoom's silhouette, without marks */
 } Body;
 
 static float lerp(float a, float b, float u)
@@ -195,6 +202,9 @@ static bool hit_shape(const Shape *s, float x, float y, Hit *out)
     if (s->triangle) {
         return hit_triangle(s, x, y, out);
     }
+    if ((s->flags & SHAPE_CUT) && y > s->cut_y) {
+        return false;
+    }
     bool found = false;
     for (int i = 0; i < s->ovals; i++) {
         Hit h;
@@ -212,6 +222,13 @@ static bool hit_shape(const Shape *s, float x, float y, Hit *out)
     if (found && (s->flags & SHAPE_FLAT)) {
         out->nx *= 0.6f;
         out->ny *= 0.6f;
+    }
+    /* A shaggy edge: near the rim, a hash of the place drops some pixels, so
+     * the outline is ragged, not a clean oval (v9:319). x and y are a pixel's
+     * centre inside the grid, so the int casts are safe. */
+    if (found && (s->flags & SHAPE_RAGGED) && out->d > 0.72f &&
+        gfx_hash((int)floorf(x * 1.3f), (int)floorf(y * 1.3f), 41) > 0.55f) {
+        return false;
     }
     return found;
 }
@@ -489,6 +506,22 @@ static void tail_curve(Shape *s, const Body *b, float len, float a0, float a1, i
     }
 }
 
+/* The beaver's paddle (plan's call, the mockup has none): a broad flat tail,
+ * three points over 3.2 K, two shades darker than the body. The plan's angles,
+ * 1.3 to 1.5, hang it straight down, where the haunch (painted after it)
+ * hides all but a few pixels; held out behind instead, 0.2 to 0.5, it shows
+ * (implementer's change, to be confirmed). */
+#define PADDLE_ANGLE_ROOT 0.2f
+#define PADDLE_ANGLE_TIP 0.5f
+static void add_paddle_tail(Shape *s, const Body *b)
+{
+    float k = b->k;
+    tail_curve(s, b, 3.2f * k, PADDLE_ANGLE_ROOT, PADDLE_ANGLE_TIP, 2);
+    s->r0 = 1.1f * k;
+    s->r1 = 1.0f * k;
+    s->bias = -2;
+}
+
 /* v9:291-301. */
 static void add_tail(ShapeList *list, const Body *b)
 {
@@ -523,7 +556,10 @@ static void add_tail(ShapeList *list, const Body *b)
         tail_curve(s, b, 3.2f * k, 1.2f, 1.5f, 3);
         s->r0 = 0.3f * k; s->r1 = 0.25f * k;
         break;
-    default: /* TAIL_STUB; TAIL_PADDLE until task 7 gives it its own shape */
+    case TAIL_PADDLE:
+        add_paddle_tail(s, b);
+        break;
+    default: /* TAIL_STUB */
         tail_curve(s, b, 1.4f * k, 0.3f, 0.6f, 2);
         s->r0 = 0.7f * k; s->r1 = 0.5f * k;
         break;
@@ -628,8 +664,185 @@ static void add_head(ShapeList *list, const Body *b)
     s->r1 = a->muzzle_r;
 }
 
-/* Every shape in the mockup's order: far legs, tail, body, neck, far ear,
- * mouth, jaw, head, near ear, near legs. Task 7's features go in between. */
+/* ---- the species' own parts (v9:309-391) ---- */
+
+/* A tube through n points, each a pair x, y. "float pts[][2]" is an array
+ * of pairs whose length the caller knows: C passes only a pointer to the
+ * first pair, so n says how many there are. Not const: before C23, C will not
+ * quietly turn a float[3][2] into a pointer to const pairs (-Wpedantic). */
+static Shape *new_chain(ShapeList *list, int part, float pts[][2], int n, float r0,
+                        float r1)
+{
+    Shape *s = new_shape(list, part, 0);
+    for (int i = 0; i < n; i++) {
+        add_point(s, pts[i][0], pts[i][1]);
+    }
+    s->r0 = r0;
+    s->r1 = r1;
+    return s;
+}
+
+/* The point (x + dx * scale, y + dy * scale) into out: a horn's next point,
+ * its offset grown by the horn's scale. */
+static void offset(float out[2], const float from[2], float dx, float dy, float scale)
+{
+    out[0] = from[0] + dx * scale;
+    out[1] = from[1] + dy * scale;
+}
+
+/* Where horns and antlers sit: the top of the skull, behind the ears. */
+static void skull_top(const Body *b, float top[2])
+{
+    top[0] = b->hx - b->a->skull * 0.05f;
+    top[1] = b->hy - b->a->skull * 0.75f;
+}
+
+/* The armadillo's shell: an oval over the back, cut flat below (v9:309).
+ * Armour grows its radii. */
+static void add_shell(ShapeList *list, const Body *b)
+{
+    float k = b->k, grow = b->a->shell_scale;
+    Shape *s = new_ellipse(list, PART_SHELL, 0, b->bx - 0.3f * k, b->by - 0.2f * k,
+                           b->body_len * 1.02f * grow, b->hip_r * 1.12f * grow);
+    s->flags = SHAPE_CUT;
+    s->cut_y = b->by + b->hip_r * 0.35f;
+}
+
+/* The lion's mane: a big oval round the back of the head, with a ragged edge
+ * when marks are drawn (v9:315-320). */
+static void add_mane(ShapeList *list, const Body *b)
+{
+    float skull = b->a->skull;
+    Shape *s = new_ellipse(list, PART_MANE, 0, b->hx - skull * 0.55f, b->hy + skull * 0.35f,
+                           skull * 1.75f, skull * 1.85f);
+    s->flags = b->marks ? SHAPE_RAGGED : 0u;
+}
+
+/* The zebra's upright mane along the top of the neck (v9:321). */
+static void add_neck_mane(ShapeList *list, const Body *b)
+{
+    float k = b->k, skull = b->a->skull;
+    new_cone(list, PART_MANE, 0, b->nbx - 0.2f * k, b->nby - b->chest_r * 0.5f,
+             b->hx - skull * 0.5f, b->hy - skull * 0.8f, 0.7f * k, 0.6f * k);
+}
+
+/* The deer's antlers: a beam back and up, and three tines (v9:348-353). */
+static void add_antlers(ShapeList *list, const Body *b)
+{
+    float k = b->k, grow = b->a->horn_scale * k;
+    float beam[3][2], tine[2][2];
+    skull_top(b, beam[0]);
+    offset(beam[1], beam[0], -1.2f, -3.2f, grow);
+    offset(beam[2], beam[0], -2.4f, -5.2f, grow);
+    new_chain(list, PART_HORN, beam, 3, 0.42f * k, 0.3f * k);
+    tine[0][0] = beam[1][0];
+    tine[0][1] = beam[1][1];
+    offset(tine[1], beam[1], 1.3f, -1.6f, grow);
+    new_chain(list, PART_HORN, tine, 2, 0.32f * k, 0.25f * k);
+    tine[0][0] = lerp(beam[0][0], beam[1][0], 0.4f);
+    tine[0][1] = lerp(beam[0][1], beam[1][1], 0.4f);
+    offset(tine[1], beam[0], 0.6f, -2.0f, grow);
+    new_chain(list, PART_HORN, tine, 2, 0.3f * k, 0.25f * k);
+    tine[0][0] = beam[2][0];
+    tine[0][1] = beam[2][1];
+    offset(tine[1], beam[2], 0.9f, -1.2f, grow);
+    new_chain(list, PART_HORN, tine, 2, 0.3f * k, 0.22f * k);
+}
+
+/* The gazelle's lyre horns: up, back, up and back again (v9:355). */
+static void add_lyre_horns(ShapeList *list, const Body *b)
+{
+    float k = b->k, grow = b->a->horn_scale * k;
+    float pts[4][2];
+    skull_top(b, pts[0]);
+    offset(pts[1], pts[0], -0.9f, -2.0f, grow);
+    offset(pts[2], pts[0], -0.7f, -4.0f, grow);
+    offset(pts[3], pts[0], -1.4f, -5.2f, grow);
+    new_chain(list, PART_HORN, pts, 4, 0.45f * k, 0.22f * k);
+}
+
+/* The goat's curled horns: nine points round a circle, drifting down, so the
+ * horn curls back past the ear (v9:356). Weapon grows the whole curl. */
+static void add_curl_horns(ShapeList *list, const Body *b)
+{
+    float k = b->k, grow = b->a->horn_scale * k;
+    float top[2], pts[9][2];
+    skull_top(b, top);
+    for (int i = 0; i <= 8; i++) {
+        float a = -0.3f + (float)i * 0.5f;
+        offset(pts[i], top, -1.2f - cosf(a) * 1.6f, -0.6f - sinf(a) * 1.6f + (float)i * 0.25f,
+               grow);
+    }
+    new_chain(list, PART_HORN, pts, 9, 0.75f * k, 0.35f * k);
+}
+
+/* The goat's beard under the jaw's tip: dark, though the jaw's pale
+ * underside rule still lightens its lower side, as in the mockup (v9:368). */
+static void add_beard(ShapeList *list, const Body *b)
+{
+    float k = b->k;
+    new_cone(list, PART_JAW, 0, b->jtx - 0.6f * k, b->jty, b->jtx - 0.9f * k, b->jty + 2.2f * k,
+             0.55f * k, 0.25f * k)->flags = SHAPE_DARK;
+}
+
+/* The rhino's two horns on the muzzle, a big one in front (v9:374-379). The
+ * second sits further back on the nose; weapon grows their lengths only. */
+static void add_rhino_horns(ShapeList *list, const Body *b)
+{
+    float k = b->k, grow = b->a->horn_scale * k, mr = b->a->muzzle_r;
+    float front[3][2], back[2][2];
+    front[0][0] = b->mx - mr * 0.3f;
+    front[0][1] = b->my - mr * 0.7f;
+    offset(front[1], front[0], 0.5f, -1.6f, grow);
+    offset(front[2], front[0], 0.2f, -3.0f, grow);
+    new_chain(list, PART_HORN, front, 3, 0.95f * k, 0.15f * k);
+    offset(back[0], front[0], -1.6f, -0.4f, k);
+    offset(back[1], back[0], 0.2f, -1.3f, grow);
+    new_chain(list, PART_HORN, back, 2, 0.6f * k, 0.15f * k);
+}
+
+/* The elephant's trunk: six steps down from the muzzle, bending as the pose's
+ * trunk swings it, the tip curling forward (v9:380-387). */
+static void add_trunk(ShapeList *list, const Body *b)
+{
+    float k = b->k, swing = b->p->trunk;
+    float pts[8][2];
+    float x = b->mx, y = b->my, a = -1.2f + swing;
+    pts[0][0] = x;
+    pts[0][1] = y;
+    for (int i = 1; i <= 6; i++) {
+        a += 0.05f + swing * 0.12f;
+        x += cosf(a) * 1.05f * k;
+        y -= sinf(a) * 1.05f * k;
+        pts[i][0] = x;
+        pts[i][1] = y;
+    }
+    pts[7][0] = x + 0.6f * k;
+    pts[7][1] = y - 0.2f * k;
+    new_chain(list, PART_TRUNK, pts, 8, b->a->muzzle_r * 1.05f, 0.5f * k);
+}
+
+/* The elephant's tusks: ivory, forward and down from under the muzzle, then
+ * up a little (v9:388). */
+static void add_tusks(ShapeList *list, const Body *b)
+{
+    float k = b->k, grow = b->a->horn_scale * k;
+    float pts[3][2];
+    pts[0][0] = b->mx - 0.4f * k;
+    pts[0][1] = b->my + 0.8f * k;
+    offset(pts[1], pts[0], 1.3f, 0.9f, grow);
+    offset(pts[2], pts[0], 2.4f, 0.4f, grow);
+    new_chain(list, PART_HORN, pts, 3, 0.55f * k, 0.25f * k)->flags = SHAPE_IVORY;
+}
+
+static bool has(const Body *b, unsigned feature)
+{
+    return (b->sp->features & feature) != 0;
+}
+
+/* Every shape in the mockup's order: far legs, tail, body, shell, neck,
+ * manes, far ear, horns and antlers, mouth, jaw, beard, head, the rhino's
+ * horns, trunk, tusks, near ear, near legs. */
 static void build_shapes(ShapeList *list, const Body *b)
 {
     list->count = 0;
@@ -638,10 +851,40 @@ static void build_shapes(ShapeList *list, const Body *b)
     add_leg(list, b, 1);
     add_tail(list, b);
     add_body(list, b);
+    if (has(b, FEATURE_SHELL)) {
+        add_shell(list, b);
+    }
     add_neck(list, b);
+    if (has(b, FEATURE_MANE)) {
+        add_mane(list, b);
+    }
+    if (has(b, FEATURE_NECK_MANE)) {
+        add_neck_mane(list, b);
+    }
     add_ear(list, b, -0.6f * b->k, -2, PART_EAR_BACK);
+    if (has(b, FEATURE_ANTLERS)) {
+        add_antlers(list, b);
+    }
+    if (has(b, FEATURE_LYRE_HORNS)) {
+        add_lyre_horns(list, b);
+    }
+    if (has(b, FEATURE_CURL_HORNS)) {
+        add_curl_horns(list, b);
+    }
     add_mouth_and_jaw(list, b);
+    if (has(b, FEATURE_BEARD)) {
+        add_beard(list, b);
+    }
     add_head(list, b);
+    if (has(b, FEATURE_RHINO_HORN)) {
+        add_rhino_horns(list, b);
+    }
+    if (has(b, FEATURE_TRUNK)) {
+        add_trunk(list, b);
+    }
+    if (has(b, FEATURE_TUSKS)) {
+        add_tusks(list, b);
+    }
     add_ear(list, b, 0.0f, 0, PART_EAR);
     add_leg(list, b, 2);
     add_leg(list, b, 3);
@@ -674,12 +917,122 @@ static int light_index(const Hit *h, int bias)
     return i < 0 ? 0 : i > 4 ? 4 : i;
 }
 
-/* The ink of a pixel the shape s covers (v9:398-408). */
-static int ink_of(const Shape *s, const Hit *h, const Body *b)
+/* A float rounded as JavaScript's Math.round (halves go up, also below 0),
+ * to an int. 0 for a value that is not a number or too large for an int. */
+static int round_js(float v)
+{
+    if (!(v > -1e6f && v < 1e6f)) {
+        return 0;
+    }
+    return (int)floorf(v + 0.5f);
+}
+
+/* The shell's shades, from the shell's own ramp, with a dark band every
+ * 2.2 K across it (v9:404). gx is the pixel's column on the grid, as in the
+ * mockup, which also adds 100 before the second %: C's %, like JavaScript's,
+ * keeps the sign of the left side, so a column left of the body gives a
+ * negative remainder. */
+static int ink_shell(const Hit *h, const Body *b, int gx)
+{
+    /* The mockup's period is 1 below K 0.68 (every column a band) and 0 below
+     * K 0.23 (a division by zero in C): at least 2 (plan's call). */
+    int period = round_js(2.2f * b->k);
+    period = period < 2 ? 2 : period;
+    bool band = ((gx - round_js(b->bx)) % period + 100) % period == 0;
+    if (band && b->marks) {
+        return INK_SHELL_BAND;
+    }
+    int l = light_index(h, 0);
+    return INK_SHELL1 + (l < 1 ? 1 : l) - 1; /* shades 1..4 of the shell's ramp */
+}
+
+/* Tiger and zebra stripes: the stripe colour where a sine across the body,
+ * wobbled by the height, is high (v9:409-412). Not on the pale belly. */
+static bool on_stripe(const Shape *s, int ink, const Body *b, float lx, float ly)
+{
+    int part = s->part;
+    bool striped = part == PART_BODY || part == PART_NECK || part == PART_TAIL ||
+                   ((part == PART_LEG || part == PART_FAR) && s->leg == 0);
+    if (!striped || ink == INK_BELLY) {
+        return false;
+    }
+    float k = b->k;
+    float wobble = sinf(ly * 0.45f / k * 2.0f) * 0.9f;
+    return sinf((lx / k + wobble) * b->sp->stripe_freq * 3.0f) > 0.55f;
+}
+
+/* The gazelle's dark band along the flank (v9:413). */
+static bool on_side_stripe(const Shape *s, const Hit *h)
+{
+    return s->part == PART_BODY && h->ny > 0.22f && h->ny < 0.42f;
+}
+
+/* The fox's dark lower legs: shins and feet (v9:414). */
+static bool on_stocking(const Shape *s)
+{
+    return (s->part == PART_LEG || s->part == PART_FAR) && s->leg >= 1;
+}
+
+/* The lemur's dark mask round the eye (v9:415). */
+static bool on_mask(const Shape *s, const Hit *h)
+{
+    return s->part == PART_HEAD && h->nx > -0.1f && h->nx < 0.55f && h->ny < 0.15f &&
+           h->ny > -0.65f;
+}
+
+/* The tiger's and otter's pale lower face (v9:416). */
+static bool on_pale_face(const Shape *s, const Hit *h)
+{
+    return s->part == PART_HEAD && h->ny > 0.0f;
+}
+
+/* The rhino's and hippo's skin folds: a one-pixel line in front of the haunch
+ * and one behind the chest, on the upper body (v9:417). */
+static bool on_fold(const Shape *s, const Hit *h, const Body *b, float lx)
+{
+    float haunch = b->hip_x + b->hip_r * 0.55f, chest = b->chest_x - b->chest_r * 0.6f;
+    return s->part == PART_BODY && (fabsf(lx - haunch) < 0.5f || fabsf(lx - chest) < 0.5f) &&
+           h->ny < 0.4f;
+}
+
+/* The marks over a shaded pixel, when marks are drawn: each species' own. */
+static int ink_marks(const Shape *s, const Hit *h, const Body *b, int ink, float lx, float ly)
+{
+    if (has(b, FEATURE_STRIPES) && on_stripe(s, ink, b, lx, ly)) {
+        ink = INK_STRIPE;
+    }
+    if (has(b, FEATURE_SIDE_STRIPE) && on_side_stripe(s, h)) {
+        ink = INK_DEEP;
+    }
+    if (has(b, FEATURE_STOCKINGS) && on_stocking(s)) {
+        ink = INK_DEEP;
+    }
+    if (has(b, FEATURE_MASK) && on_mask(s, h)) {
+        ink = INK_DEEP;
+    }
+    if (has(b, FEATURE_PALE_FACE) && on_pale_face(s, h)) {
+        ink = INK_BELLY;
+    }
+    if (has(b, FEATURE_FOLDS) && on_fold(s, h, b, lx)) {
+        ink = INK_SHADOW;
+    }
+    return ink;
+}
+
+/* The ink of a pixel the shape s covers (v9:398-417). lx, ly is the pixel's
+ * centre in the body's units, gx its column on the grid. */
+static int ink_of(const Shape *s, const Hit *h, const Body *b, float lx, float ly, int gx)
 {
     int part = s->part;
     if (part == PART_MOUTH) {
         return INK_MOUTH;
+    }
+    /* Horns, tusks and manes have their own fixed ramps, and no other rule. */
+    if (part == PART_HORN) {
+        return ((s->flags & SHAPE_IVORY) ? INK_IVORY0 : INK_HORN0) + light_index(h, 0);
+    }
+    if (part == PART_MANE) {
+        return INK_MANE0 + light_index(h, 0);
     }
     int ink;
     if (s->flags & SHAPE_INNER) {
@@ -696,6 +1049,9 @@ static int ink_of(const Shape *s, const Hit *h, const Body *b)
     if (part == PART_JAW && h->ny > 0.0f) {
         ink = INK_BELLY;
     }
+    if (part == PART_SHELL) {
+        ink = ink_shell(h, b, gx);
+    }
     if (part == PART_TAIL) {
         int tail = b->sp->tail;
         if (tail == TAIL_TUFT && h->ny > 0.2f) {
@@ -711,7 +1067,7 @@ static int ink_of(const Shape *s, const Hit *h, const Body *b)
             ink = INK_STRIPE;
         }
     }
-    return ink;
+    return b->marks ? ink_marks(s, h, b, ink, lx, ly) : ink;
 }
 
 /* Each shape over its box, in order: a later shape wins its pixels. */
@@ -729,7 +1085,7 @@ static void paint(SkeletonRaster *out, const ShapeList *list, const Body *b)
                 }
                 int i = gy * b->w + gx;
                 out->part[i] = (uint8_t)s->part;
-                out->ink[i] = (uint8_t)ink_of(s, &h, b);
+                out->ink[i] = (uint8_t)ink_of(s, &h, b, lx, ly, gx);
             }
         }
     }
@@ -924,6 +1280,7 @@ void skeleton_raster(SkeletonRaster *out, const Anatomy *a, const SpritePose *p,
     Body b;
     ShapeList list; /* about 11 KB on the stack, gone when the function returns */
     lay_out(&b, a, p, large);
+    b.marks = marks;
     build_shapes(&list, &b);
 
     memset(out, 0, sizeof *out);
@@ -953,12 +1310,17 @@ void skeleton_raster(SkeletonRaster *out, const Anatomy *a, const SpritePose *p,
     measure(out, &list.box);
 }
 
-/* How many traits a standing body's outline depends on (task 6): size, speed,
- * sight, plant, meat and legs. */
+/* How many traits a standing body's outline depends on, besides armour and
+ * weapon: size, speed, sight, plant, meat and legs (task 6). */
 #define CAP_TRAITS 6
 
-/* Corner c of the traits the skeleton reads (size, speed, sight, plant, meat,
- * legs): each 0 or 1 by one bit of c. The others stay 0. */
+/* Corner c of those six traits: each 0 or 1 by one bit of c. Armour and
+ * weapon are always 1, their largest: they only grow parts outwards. The
+ * shell's radii grow round a fixed centre; each horn, antler or tusk is a
+ * tube whose points move away from its own fixed base as weapon grows, so
+ * its farthest pixel in every direction can only move further out. A body
+ * with them at 1 is therefore at least as wide and tall as with any smaller
+ * value, and fits the cap if they do. Swim stays 0: it changes nothing. */
 static BodyTraits corner_traits(int c)
 {
     BodyTraits t = {0};
@@ -968,6 +1330,8 @@ static BodyTraits corner_traits(int c)
     t.plant = (float)((c >> 3) & 1);
     t.meat = (float)((c >> 4) & 1);
     t.legs = (float)((c >> 5) & 1);
+    t.armour = 1.0f;
+    t.weapon = 1.0f;
     return t;
 }
 

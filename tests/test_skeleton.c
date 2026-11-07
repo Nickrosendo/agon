@@ -1,7 +1,7 @@
 #include "test.h"
 
-#include <math.h>   /* fabsf, sqrtf, floorf */
-#include <string.h> /* memcmp */
+#include <math.h>   /* fabsf, sqrtf, floorf, ceilf, fmaxf */
+#include <string.h> /* memcmp, memcpy */
 
 #include "skeleton.h"
 #include "species.h"
@@ -33,18 +33,35 @@ static BodyTraits role_traits(int role)
     return species_round(&raw);
 }
 
-/* Corner number c (0..63) of the six traits a skeleton reads: trait i
- * (size, speed, sight, plant, meat, legs) is 1 when bit i of c is set, else 0.
- * Armour, weapon and swim stay 0: test_other_traits_change_nothing shows they
- * change no pixel here (task 7's horns and shell will read the first two). */
+/* Corner number c of the traits a skeleton reads: trait i (size, speed,
+ * sight, plant, meat, legs) is 1 when bit i of c is set, else 0; bit 6 sets
+ * armour and weapon together (no species has both a shell and horns, so
+ * this covers both values of the one it reads). Swim stays 0:
+ * test_other_traits_change_nothing shows it changes no pixel. */
 static BodyTraits corner(int c)
 {
-    float v[6];
-    for (int i = 0; i < 6; i++) {
+    float v[7];
+    for (int i = 0; i < 7; i++) {
         v[i] = ((c >> i) & 1) ? 1.0f : 0.0f;
     }
-    BodyTraits t = {v[0], v[1], v[2], v[3], v[4], 0.0f, 0.0f, v[5], 0.0f};
+    BodyTraits t = {v[0], v[1], v[2], v[3], v[4], v[6], v[6], v[5], 0.0f};
     return t;
+}
+
+/* Horns, antlers and tusks grow with weapon, the shell with armour; a species
+ * with none of these does not read either trait. */
+static bool reads_weapon_or_armour(int species)
+{
+    unsigned parts = FEATURE_ANTLERS | FEATURE_CURL_HORNS | FEATURE_LYRE_HORNS |
+                     FEATURE_RHINO_HORN | FEATURE_TUSKS | FEATURE_SHELL;
+    return (SPECIES[species].features & parts) != 0;
+}
+
+/* How many corners matter for a species: 128 with armour and weapon, or the
+ * 64 of the first six traits when it reads neither. */
+static int corners_of(int species)
+{
+    return reads_weapon_or_armour(species) ? 128 : 64;
 }
 
 /* Each species' cap, worked out once: it takes a few hundred rasters. */
@@ -134,7 +151,7 @@ static void test_everything_inside_the_grid(void)
         float cap = cap_of(s);
         CHECK(cap > 0.3f);
         bool small_ok = true, large_ok = true, width_ok = true;
-        for (int c = 0; c < 64; c++) {
+        for (int c = 0; c < corners_of(s); c++) {
             Anatomy a;
             BodyTraits t = corner(c);
             species_anatomy(&a, s, &t, cap);
@@ -155,6 +172,8 @@ static void test_everything_inside_the_grid(void)
     }
 }
 
+/* Swim changes no pixel of any species; weapon and armour none of a species
+ * without horns, tusks or a shell. */
 static void test_other_traits_change_nothing(void)
 {
     SpritePose p;
@@ -164,7 +183,15 @@ static void test_other_traits_change_nothing(void)
         BodyTraits t = corner(63);
         species_anatomy(&a, s, &t, largest_k(s));
         skeleton_raster(&raster_a, &a, &p, true, false);
-        t.armour = t.weapon = t.swim = 1.0f;
+        /* corner() sets armour and weapon together: fine while no species
+         * has both a shell and horns or tusks. */
+        unsigned horns = FEATURE_ANTLERS | FEATURE_CURL_HORNS | FEATURE_LYRE_HORNS |
+                         FEATURE_RHINO_HORN | FEATURE_TUSKS;
+        CHECK((SPECIES[s].features & horns) == 0 || (SPECIES[s].features & FEATURE_SHELL) == 0);
+        t.swim = 1.0f;
+        if (!reads_weapon_or_armour(s)) {
+            t.armour = t.weapon = 1.0f;
+        }
         species_anatomy(&a, s, &t, largest_k(s));
         skeleton_raster(&raster_b, &a, &p, true, false);
         CHECK(memcmp(raster_a.ink, raster_b.ink, sizeof raster_a.ink) == 0);
@@ -409,6 +436,279 @@ static void test_far_silhouette_has_no_marks(void)
     CHECK(count_ink(&raster_a, INK_EYE) == 0);
 }
 
+/* ---- the species' own parts and marks (task 7) ---- */
+
+static void raster_traits(SkeletonRaster *r, int species, const BodyTraits *t, float k,
+                          bool marks)
+{
+    SpritePose p;
+    Anatomy a;
+    skeleton_pose_standing(&p);
+    species_anatomy(&a, species, t, k);
+    skeleton_raster(r, &a, &p, marks, false);
+}
+
+/* Pixels of this part whose ink is lo..hi; part -1 is any part. */
+static int count_part_inks(const SkeletonRaster *r, int part, int lo, int hi)
+{
+    int n = 0;
+    for (int i = 0; i < r->w * r->h; i++) {
+        bool part_ok = part < 0 || r->part[i] == part;
+        n += part_ok && r->ink[i] >= lo && r->ink[i] <= hi;
+    }
+    return n;
+}
+
+static int count_part(const SkeletonRaster *r, int part)
+{
+    int n = 0;
+    for (int i = 0; i < r->w * r->h; i++) {
+        n += r->part[i] == part;
+    }
+    return n;
+}
+
+/* The highest (smallest) row holding this part; h when there is none. */
+static int top_row(const SkeletonRaster *r, int part)
+{
+    for (int i = 0; i < r->w * r->h; i++) {
+        if (r->part[i] == part) {
+            return i / r->w;
+        }
+    }
+    return r->h;
+}
+
+/* The lowest row holding this part; -1 when there is none. */
+static int bottom_row(const SkeletonRaster *r, int part)
+{
+    for (int i = r->w * r->h - 1; i >= 0; i--) {
+        if (r->part[i] == part) {
+            return i / r->w;
+        }
+    }
+    return -1;
+}
+
+/* The longest run down one column of pixels of this part. */
+static int longest_column_run(const SkeletonRaster *r, int part)
+{
+    int best = 0;
+    for (int x = 0; x < r->w; x++) {
+        int run = 0;
+        for (int y = 0; y < r->h; y++) {
+            run = r->part[y * r->w + x] == part ? run + 1 : 0;
+            best = run > best ? run : best;
+        }
+    }
+    return best;
+}
+
+/* PART_LEG pixels below the near knees by more than the knee's radius: the
+ * shins and feet. Counts them, and how many are INK_DEEP. */
+static void count_lower_legs(const SkeletonRaster *r, float knee_r, int *all, int *deep)
+{
+    float knee_y = fmaxf(r->knee[2][1], r->knee[3][1]);
+    *all = *deep = 0;
+    for (int y = (int)ceilf(knee_y + knee_r + 1.0f); y < r->h; y++) {
+        for (int x = 0; x < r->w; x++) {
+            int i = y * r->w + x;
+            if (r->part[i] == PART_LEG) {
+                (*all)++;
+                *deep += r->ink[i] == INK_DEEP;
+            }
+        }
+    }
+}
+
+static void test_each_species_shows_its_marks(void)
+{
+    SkeletonRaster *r = &raster_a;
+    /* Stripes: zebra and tiger. */
+    raster_standing(r, SPECIES_ZEBRA, largest_k(SPECIES_ZEBRA), false);
+    CHECK(count_ink(r, INK_STRIPE) > 20);
+    CHECK(count_part(r, PART_MANE) > 0); /* the neck mane */
+    raster_standing(r, SPECIES_TIGER, largest_k(SPECIES_TIGER), false);
+    CHECK(count_ink(r, INK_STRIPE) > 20);
+    /* The lion's mane, in its own five shades. */
+    raster_standing(r, SPECIES_LION, largest_k(SPECIES_LION), false);
+    CHECK(count_part_inks(r, PART_MANE, INK_MANE0, INK_MANE0 + 4) > 30);
+    /* The fox's dark stockings: every shin and foot pixel is the deepest
+     * shade; the wolf's are not. */
+    for (int i = 0; i < 2; i++) {
+        int s = i == 0 ? SPECIES_FOX : SPECIES_WOLF;
+        Anatomy a;
+        BodyTraits t = role_traits(SPECIES[s].role);
+        species_anatomy(&a, s, &t, largest_k(s));
+        raster_standing(r, s, largest_k(s), false);
+        int all, deep;
+        count_lower_legs(r, a.leg_w * 0.45f, &all, &deep);
+        CHECK(all > 4);
+        CHECK(i == 0 ? deep == all : deep < all);
+    }
+    /* The lemur: a ringed tail and a dark mask, which the fennec lacks. */
+    raster_standing(r, SPECIES_FENNEC, largest_k(SPECIES_FENNEC), false);
+    int fennec_face = count_part_inks(r, PART_HEAD, INK_DEEP, INK_DEEP);
+    raster_standing(r, SPECIES_LEMUR, largest_k(SPECIES_LEMUR), false);
+    CHECK(count_part_inks(r, PART_TAIL, INK_STRIPE, INK_STRIPE) > 5);
+    CHECK(count_part_inks(r, PART_HEAD, INK_DEEP, INK_DEEP) > fennec_face + 3);
+    /* The elephant: a trunk and ivory tusks. */
+    raster_standing(r, SPECIES_ELEPHANT, largest_k(SPECIES_ELEPHANT), false);
+    CHECK(count_part(r, PART_TRUNK) > 10);
+    CHECK(count_part_inks(r, PART_HORN, INK_IVORY0, INK_IVORY0 + 4) > 3);
+    /* The rhino: horn above the nose, near it. */
+    raster_standing(r, SPECIES_RHINO, largest_k(SPECIES_RHINO), false);
+    int nose = -1;
+    for (int i = 0; i < r->w * r->h && nose < 0; i++) {
+        nose = r->ink[i] == INK_NOSE ? i : -1;
+    }
+    CHECK(nose >= 0);
+    int horn_above = 0;
+    for (int i = 0; i < r->w * r->h && nose >= 0; i++) {
+        int dx = i % r->w - nose % r->w;
+        horn_above += r->part[i] == PART_HORN && i / r->w < nose / r->w && dx > -8 && dx < 8 &&
+                      r->ink[i] >= INK_HORN0 && r->ink[i] <= INK_HORN0 + 4;
+    }
+    CHECK(horn_above > 5);
+    /* The armadillo's shell, banded. */
+    raster_standing(r, SPECIES_ARMADILLO, largest_k(SPECIES_ARMADILLO), false);
+    CHECK(count_part_inks(r, PART_SHELL, INK_SHELL1, INK_SHELL1 + 3) > 20);
+    CHECK(count_part_inks(r, PART_SHELL, INK_SHELL_BAND, INK_SHELL_BAND) > 3);
+    /* Antlers and lyre horns stand above the head. */
+    const int horned[2] = {SPECIES_DEER, SPECIES_GAZELLE};
+    for (int i = 0; i < 2; i++) {
+        raster_standing(r, horned[i], largest_k(horned[i]), false);
+        CHECK(count_part_inks(r, PART_HORN, INK_HORN0, INK_HORN0 + 4) > 5);
+        CHECK(top_row(r, PART_HORN) < top_row(r, PART_HEAD));
+    }
+    /* The gazelle's dark side stripe and the goat's dark beard are thin
+     * marks: looked for on the large grid, where they are a few pixels
+     * wide. The side stripe: many more deep pixels on the body than the
+     * deer has. */
+    raster_standing(r, SPECIES_DEER, largest_k(SPECIES_DEER) * 1.6f, true);
+    int deer_deep = count_part_inks(r, PART_BODY, INK_DEEP, INK_DEEP);
+    raster_standing(r, SPECIES_GAZELLE, largest_k(SPECIES_GAZELLE) * 1.6f, true);
+    int gazelle_deep = count_part_inks(r, PART_BODY, INK_DEEP, INK_DEEP);
+    CHECK(gazelle_deep > deer_deep + 10);
+    /* The goat: curled horns and a dark beard hanging below the head (its
+     * lower side pale, as the jaw's underside rule makes it). */
+    raster_standing(r, SPECIES_GOAT, largest_k(SPECIES_GOAT) * 1.6f, true);
+    CHECK(count_part_inks(r, PART_HORN, INK_HORN0, INK_HORN0 + 4) > 10);
+    int head_bottom = bottom_row(r, PART_HEAD), beard = 0;
+    for (int i = (head_bottom + 1) * r->w; i < r->w * r->h; i++) {
+        beard += r->part[i] == PART_JAW && r->ink[i] == INK_DEEP;
+    }
+    CHECK(beard >= 2);
+    /* The beaver's paddle: where it shows behind the haunch, a flat tail
+     * about 2 K thick, far thicker than a thin tail's root (0.6 K). */
+    float k = largest_k(SPECIES_BEAVER);
+    raster_standing(r, SPECIES_BEAVER, k, false);
+    CHECK((float)longest_column_run(r, PART_TAIL) >= 1.8f * k);
+}
+
+/* The proportions of a table row, to compare two rows. */
+static void proportions(const Species *sp, float out[12])
+{
+    const float v[12] = {sp->scale, sp->body_len, sp->chest, sp->hip, sp->leg_len, sp->leg_w,
+                         sp->neck_len, sp->neck_angle, sp->skull, sp->muzzle, sp->muzzle_r,
+                         sp->ear_size};
+    memcpy(out, v, sizeof v);
+}
+
+/* The design's anti-goal: two species of a role must not be two colours of
+ * one animal. */
+static void test_species_of_a_role_differ_in_shape(void)
+{
+    for (int s1 = 0; s1 < SPECIES_COUNT; s1++) {
+        for (int s2 = s1 + 1; s2 < SPECIES_COUNT; s2++) {
+            const Species *a = &SPECIES[s1], *b = &SPECIES[s2];
+            if (a->role != b->role) {
+                continue;
+            }
+            float pa[12], pb[12];
+            proportions(a, pa);
+            proportions(b, pb);
+            bool differ = a->ear != b->ear || a->tail != b->tail || a->features != b->features;
+            for (int i = 0; i < 12; i++) {
+                differ = differ || fabsf(pa[i] - pb[i]) >= 0.1f;
+            }
+            CHECK(differ);
+            /* Rastered standing at the same K, with the role's genes. */
+            BodyTraits t = role_traits(a->role);
+            raster_traits(&raster_a, s1, &t, 1.2f, true);
+            raster_traits(&raster_b, s2, &t, 1.2f, true);
+            int filled_px = 0, different = 0;
+            for (int i = 0; i < raster_a.w * raster_a.h; i++) {
+                bool any = raster_a.part[i] != PART_NONE || raster_b.part[i] != PART_NONE;
+                filled_px += any;
+                different += any && raster_a.part[i] != raster_b.part[i];
+            }
+            CHECK(different * 20 >= filled_px);
+            if (different * 20 < filled_px) {
+                fprintf(stderr, "  %s and %s: %d of %d differ\n", a->name, b->name, different,
+                        filled_px);
+            }
+        }
+    }
+}
+
+static void test_weapon_lengthens_horns(void)
+{
+    const int horned[5] = {SPECIES_DEER, SPECIES_GOAT, SPECIES_GAZELLE, SPECIES_RHINO,
+                           SPECIES_ELEPHANT};
+    for (int i = 0; i < 5; i++) {
+        int s = horned[i];
+        BodyTraits t = role_traits(SPECIES[s].role);
+        t.weapon = 0.0f;
+        raster_traits(&raster_a, s, &t, 1.2f, true);
+        t.weapon = 1.0f;
+        raster_traits(&raster_b, s, &t, 1.2f, true);
+        int short_horns = count_part(&raster_a, PART_HORN);
+        int long_horns = count_part(&raster_b, PART_HORN);
+        CHECK(short_horns > 0);
+        CHECK(long_horns > short_horns);
+        if (s != SPECIES_ELEPHANT) { /* tusks point forward, horns up */
+            CHECK(top_row(&raster_b, PART_HORN) < top_row(&raster_a, PART_HORN));
+        }
+    }
+}
+
+static void test_armour_grows_the_shell(void)
+{
+    BodyTraits t = role_traits(ROLE_ARMOURED);
+    t.armour = 0.0f;
+    raster_traits(&raster_a, SPECIES_ARMADILLO, &t, 1.2f, true);
+    t.armour = 1.0f;
+    raster_traits(&raster_b, SPECIES_ARMADILLO, &t, 1.2f, true);
+    CHECK(count_part(&raster_a, PART_SHELL) > 0);
+    CHECK(count_part(&raster_b, PART_SHELL) > count_part(&raster_a, PART_SHELL));
+    CHECK(top_row(&raster_b, PART_SHELL) <= top_row(&raster_a, PART_SHELL));
+}
+
+/* The far zoom's silhouette: no marks, but horns, tusks, trunk, mane and
+ * shell stay, as parts of the outline. */
+static void test_far_silhouette_keeps_parts_drops_marks(void)
+{
+    const int species[6] = {SPECIES_ZEBRA, SPECIES_TIGER, SPECIES_ARMADILLO, SPECIES_DEER,
+                            SPECIES_ELEPHANT, SPECIES_LION};
+    for (int i = 0; i < 6; i++) {
+        int s = species[i];
+        BodyTraits t = role_traits(SPECIES[s].role);
+        raster_traits(&raster_a, s, &t, largest_k(s), true);
+        raster_traits(&raster_b, s, &t, largest_k(s), false);
+        CHECK(count_part_inks(&raster_b, PART_BODY, INK_STRIPE, INK_STRIPE) == 0);
+        CHECK(count_ink(&raster_b, INK_SHELL_BAND) == 0);
+        CHECK(count_part(&raster_b, PART_HORN) == count_part(&raster_a, PART_HORN));
+        CHECK(count_part(&raster_b, PART_TRUNK) == count_part(&raster_a, PART_TRUNK));
+        CHECK(count_part(&raster_b, PART_SHELL) == count_part(&raster_a, PART_SHELL));
+        /* Untrimmed, the mane is a whole oval: never smaller. */
+        CHECK(count_part(&raster_b, PART_MANE) >= count_part(&raster_a, PART_MANE));
+    }
+    BodyTraits bare = {0}; /* every trait 0: the smallest shell */
+    raster_traits(&raster_b, SPECIES_ARMADILLO, &bare, 1.2f, false);
+    CHECK(count_part_inks(&raster_b, PART_SHELL, INK_SHELL1, INK_SHELL1 + 3) > 0);
+}
+
 int main(void)
 {
     test_same_input_same_pixels();
@@ -424,5 +724,10 @@ int main(void)
     test_outline_touches_body_and_softens_on_top();
     test_jaw_opens();
     test_far_silhouette_has_no_marks();
+    test_each_species_shows_its_marks();
+    test_species_of_a_role_differ_in_shape();
+    test_weapon_lengthens_horns();
+    test_armour_grows_the_shell();
+    test_far_silhouette_keeps_parts_drops_marks();
     TEST_SUMMARY();
 }
