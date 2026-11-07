@@ -134,19 +134,24 @@ GroundRamp ramp_ground_mix(GroundRamp g, Colour towards, float t)
     return g;
 }
 
-GroundRamp ramp_soil(float fertility, float water, float snow)
+Colour ramp_soil_step(float fertility, float water, float snow, int step)
 {
     static const float SAND_SHADE[3] = {-0.15f, 0.0f, 0.1f};
+    Colour c = palette_mix(RAMP_DIRT.c[step], RAMP_GRASS.c[step], fertility);
+    if (water < 0.25f) {
+        float dry = (0.25f - water) / 0.25f * 0.5f;
+        c = palette_mix(c, ramp_shade(PALETTE_SAND, SAND_SHADE[step]), dry);
+    } else if (water > 0.75f) {
+        c = ramp_shade(c, -0.15f * (water - 0.75f) / 0.25f);
+    }
+    return palette_snowed(c, snow);
+}
+
+GroundRamp ramp_soil(float fertility, float water, float snow)
+{
     GroundRamp g;
     for (int i = 0; i < 3; i++) {
-        Colour c = palette_mix(RAMP_DIRT.c[i], RAMP_GRASS.c[i], fertility);
-        if (water < 0.25f) {
-            float dry = (0.25f - water) / 0.25f * 0.5f;
-            c = palette_mix(c, ramp_shade(PALETTE_SAND, SAND_SHADE[i]), dry);
-        } else if (water > 0.75f) {
-            c = ramp_shade(c, -0.15f * (water - 0.75f) / 0.25f);
-        }
-        g.c[i] = palette_snowed(c, snow);
+        g.c[i] = ramp_soil_step(fertility, water, snow, i);
     }
     return g;
 }

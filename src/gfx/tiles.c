@@ -340,7 +340,7 @@ static int land_edge(uint32_t key, int size, int lx, int ly, int cls, int varian
             edge = EDGE_ROCK_LIT;
         }
         if (gfx_hash(lx, ly, 8 + 16 * variant) > 0.92f) {
-            edge = EDGE_ROCK_SPECK;
+            edge = edge == EDGE_ROCK_LIT ? EDGE_ROCK_LIT_SPECK : EDGE_ROCK_SPECK;
         }
     } else if (cls == CLASS_SOIL && gfx_hash(lx, ly, 1 + 16 * variant) > 0.97f) {
         edge = EDGE_GRASS_SPECK;
@@ -348,25 +348,80 @@ static int land_edge(uint32_t key, int size, int lx, int ly, int cls, int varian
     return edge;
 }
 
+/* Whether the key holds both deep and shallow water: only then can a tile
+ * have a border between the two. */
+static bool has_both_waters(uint32_t key)
+{
+    bool deep = false, shallow = false;
+    for (int k = 0; k < 9; k++) {
+        int cls = tiles_key_class(key, k);
+        deep |= cls == CLASS_WATER;
+        shallow |= cls == CLASS_SHALLOW;
+    }
+    return deep && shallow;
+}
+
+/*
+ * The source a water pixel of class cls borrows its colour from, plus 1, or 0
+ * for its own. It looks for the other water (deep for shallow, shallow for
+ * deep) up to reach pixels away; the nearer it is, the more likely the pixel
+ * borrows its colour. "Likely" is an ordered 4 by 4 dither on the pixel's
+ * place: a tile's corner is always a multiple of 4 pixels into the world, so
+ * the pattern runs on across tiles without a seam.
+ */
+static unsigned water_alt(uint32_t key, int size, int lx, int ly, int cls)
+{
+    static const int BAYER[4][4] = {{0, 8, 2, 10}, {12, 4, 14, 6},
+                                    {3, 11, 1, 9}, {15, 7, 13, 5}};
+    int other = cls == CLASS_WATER ? CLASS_SHALLOW : CLASS_WATER;
+    int reach = size >= 16 ? 3 : 2;
+    for (int d = 1; d <= reach; d++) {
+        /* The ring of pixels exactly d away (the larger of |dx| and |dy|). */
+        for (int oy = -d; oy <= d; oy++) {
+            for (int ox = -d; ox <= d; ox++) {
+                bool on_ring = ox == -d || ox == d || oy == -d || oy == d;
+                if (!on_ring) {
+                    continue;
+                }
+                int dx, dy;
+                resolve(size, lx + ox, ly + oy, &dx, &dy);
+                if (key_class(key, dx, dy) != other) {
+                    continue;
+                }
+                /* Chance (reach + 1 - d) / (2 (reach + 1)): 3/8, 2/8, 1/8 at 16. */
+                int threshold = BAYER[ly & 3][lx & 3];
+                bool borrow = threshold * 2 * (reach + 1) < 16 * (reach + 1 - d);
+                return borrow ? (unsigned)((dy + 1) * 3 + (dx + 1)) + 1u : 0u;
+            }
+        }
+    }
+    return 0u;
+}
+
 void tiles_build_auto(uint16_t *code, uint32_t key, int size)
 {
     int variant = (int)(key & 7u);
+    bool both_waters = has_both_waters(key);
     for (int ly = 0; ly < size; ly++) {
         for (int lx = 0; lx < size; lx++) {
             int dx, dy;
             resolve(size, lx, ly, &dx, &dy);
             int cls = key_class(key, dx, dy);
             unsigned source = (unsigned)((dy + 1) * 3 + (dx + 1));
-            unsigned shade = 0, edge, foam = 0;
+            unsigned shade = 0, edge, foam = 0, alt = 0;
             if (class_is_wet(cls)) {
                 /* Water's shade moves with time, so scene works it out. */
                 edge = (unsigned)bank_edge(key, size, lx, ly);
+                /* A bank pixel can get foam too: the foam overlay (task 4)
+                 * must let the bank's colour win there, as v9 does. */
                 foam = touches_land(key, size, lx, ly) ? TILE_FOAM : 0u;
+                alt = both_waters ? water_alt(key, size, lx, ly, cls) : 0u;
             } else {
                 shade = (unsigned)land_shade(size, lx, ly, variant);
                 edge = (unsigned)land_edge(key, size, lx, ly, cls, variant);
             }
-            code[ly * size + lx] = (uint16_t)(source | shade << 4 | edge << 6 | foam);
+            code[ly * size + lx] =
+                (uint16_t)(source | shade << 4 | edge << 6 | foam | alt << 11);
         }
     }
 }
@@ -409,6 +464,30 @@ void tiles_cache_reset(TileCache *c)
         c->entries[i].used = false;
     }
     c->clock = 0;
+}
+
+/* Fills a built tile's looks and inks (see TileEntry). */
+static void find_looks(TileEntry *t, uint32_t key)
+{
+    uint16_t first_slot[TILE_MAX * TILE_MAX]; /* of each look */
+    int slots = 0;
+    t->looks = 0;
+    for (int i = 0; i < t->size * t->size; i++) {
+        bool wet = class_is_wet(tiles_key_class(key, (int)TILE_SOURCE(t->code[i])));
+        uint16_t look = (uint16_t)((t->code[i] & ~TILE_FOAM) | (wet ? TILE_INK_WET : 0u));
+        int k = 0;
+        /* A plain search: a tile has a few dozen looks at most. */
+        while (k < t->looks && t->look[k] != look) {
+            k++;
+        }
+        if (k == t->looks) {
+            t->look[k] = look;
+            first_slot[k] = (uint16_t)slots;
+            slots += wet ? 3 : 1;
+            t->looks++;
+        }
+        t->ink[i] = (uint16_t)(first_slot[k] | (wet ? TILE_INK_WET : 0u));
+    }
 }
 
 /* Which bucket a key and size live in: one per entry, so chains stay short. */
@@ -473,9 +552,12 @@ const TileEntry *tiles_cache_get(TileCache *c, uint32_t key, int size)
     t->last_used = ++c->clock;
     tiles_build_auto(t->code, key, size);
     t->has_foam = false;
+    t->has_wet = false;
     for (int i = 0; i < size * size; i++) {
         t->has_foam |= (t->code[i] & TILE_FOAM) != 0;
+        t->has_wet |= class_is_wet(tiles_key_class(key, (int)TILE_SOURCE(t->code[i])));
     }
+    find_looks(t, key);
     c->next[e] = c->head[b];
     c->head[b] = e;
     c->builds++;

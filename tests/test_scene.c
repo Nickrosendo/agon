@@ -461,6 +461,44 @@ static void test_ground_layer_refreshes_when_it_should(void)
     sim_free(&s);
 }
 
+/* When only the water's clock moves, the layer redraws only the cells with
+ * water or rain: the picture must be the one a whole redraw would give. */
+static void test_water_only_redraw_matches_whole(void)
+{
+    Settings set = settings_default();
+    Sim s;
+    CHECK(sim_init(&s, &set, 3, 64, 32));
+    for (int t = 0; t < 50; t++) {
+        sim_step(&s);
+    }
+    /* Rain on some cells, so dry land with rain is redrawn too. */
+    for (int i = 0; i < 64 * 32; i += 7) {
+        s.world.rain[i] = 1.0f;
+    }
+    Canvas a, b;
+    CHECK(canvas_init(&a, VIEW_W, VIEW_H));
+    CHECK(canvas_init(&b, VIEW_W, VIEW_H));
+    Camera cam;
+    camera_init(&cam, 64, 32, VIEW_W, VIEW_H);
+    for (int level = 0; level < CAMERA_LEVELS; level++) {
+        cam.level = level;
+        Scene partly, whole_scene;
+        CHECK(scene_init(&partly, &s));
+        CHECK(scene_init(&whole_scene, &s));
+        scene_update(&partly, &s, 10);
+        scene_update(&whole_scene, &s, 10);
+        scene_draw_world(&partly, &a, &cam, &s, 0.5f, 0, 1000, 0, 0);
+        scene_draw_world(&partly, &a, &cam, &s, 0.5f, 250, 1000, 0, 0);
+        scene_draw_world(&whole_scene, &b, &cam, &s, 0.5f, 250, 1000, 0, 0);
+        CHECK(hash_canvas(&a) == hash_canvas(&b));
+        scene_free(&partly);
+        scene_free(&whole_scene);
+    }
+    canvas_free(&a);
+    canvas_free(&b);
+    sim_free(&s);
+}
+
 static void test_strip_and_enlarged_bodies(void)
 {
     Sim s;
@@ -1177,6 +1215,7 @@ int main(void)
     test_strip_and_enlarged_bodies();
     test_known_world_pixels();
     test_ground_layer_refreshes_when_it_should();
+    test_water_only_redraw_matches_whole();
     test_layout_family_area();
     test_game_over_text();
     test_game_over_text_longest();

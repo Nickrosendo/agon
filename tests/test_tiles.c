@@ -173,6 +173,7 @@ typedef struct {
     int size, w, h;
     uint16_t code[PIC_H][PIC_W];
     int cls[PIC_H][PIC_W];
+    int alt_cls[PIC_H][PIC_W]; /* the borrowed colour's class, or -1 */
 } Picture;
 
 static void assemble(Picture *p, const World *w, int size)
@@ -193,6 +194,13 @@ static void assemble(Picture *p, const World *w, int size)
                     p->code[y * size + ly][x * size + lx] = code;
                     p->cls[y * size + ly][x * size + lx] =
                         tiles_class(w->terrain[cell]);
+                    int alt = (int)TILE_ALT(code) - 1; /* -1: its own colour */
+                    int alt_cls = -1;
+                    if (alt >= 0) {
+                        int alt_cell = world_idx(w, x + alt % 3 - 1, y + alt / 3 - 1);
+                        alt_cls = tiles_class(w->terrain[alt_cell]);
+                    }
+                    p->alt_cls[y * size + ly][x * size + lx] = alt_cls;
                 }
             }
         }
@@ -282,11 +290,40 @@ static void check_foam(const Picture *p)
     }
 }
 
+/* Where the two waters meet: a pixel borrows only the other water's colour,
+ * and only within a few pixels of that water, read from the picture itself.
+ * Returns how many pixels borrowed. */
+static int check_water_dither(const Picture *p)
+{
+    int reach = p->size == 16 ? 3 : 2;
+    int borrowed = 0;
+    for (int y = 0; y < p->h; y++) {
+        for (int x = 0; x < p->w; x++) {
+            int alt = p->alt_cls[y][x];
+            if (alt < 0) {
+                continue;
+            }
+            borrowed++;
+            int own = p->cls[y][x];
+            int other = own == CLASS_WATER ? CLASS_SHALLOW : CLASS_WATER;
+            CHECK(is_wet(own) && alt == other);
+            bool near = false;
+            for (int dy = -reach; dy <= reach; dy++) {
+                for (int dx = -reach; dx <= reach; dx++) {
+                    near |= pic_class(p, x + dx, y + dy) == other;
+                }
+            }
+            CHECK(near);
+        }
+    }
+    return borrowed;
+}
+
 static void test_tiles_assemble_like_one_picture(void)
 {
     World w;
     CHECK(make_map(&w, MAP, MAP_W, MAP_H));
-    /* static: a picture of 165 kB is too large to be comfortable on the
+    /* static: a picture of 275 kB is too large to be comfortable on the
      * stack, so it lives with the program's other fixed data instead. */
     static Picture p;
     for (int size = 8; size <= 16; size += 8) {
@@ -294,6 +331,7 @@ static void test_tiles_assemble_like_one_picture(void)
         check_inner_pixels_own_cell(&p);
         CHECK(check_banks(&p) > 0);
         check_foam(&p);
+        CHECK(check_water_dither(&p) > 0);
     }
     world_free(&w);
 }
@@ -373,15 +411,18 @@ static void test_ground_variants_spread(void)
 }
 
 /* Every key a map of only deep water and soil can make: each of the 9 cells
- * one or the other, with every variant. */
+ * one or the other, with every variant. Then the same with shallow water in
+ * place of soil, so the border between the two waters is built too. */
 static void test_no_tile_writes_outside_itself(void)
 {
     enum { GUARD = 8 };
-    for (int size = 8; size <= 16; size += 8) {
+    const uint32_t SECOND[2] = {CLASS_SOIL, CLASS_SHALLOW};
+    for (int pass = 0; pass < 4; pass++) {
+        int size = pass % 2 == 0 ? 16 : 8;
         for (uint32_t cells = 0; cells < 512u; cells++) {
             uint32_t classes = 0;
             for (int k = 0; k < 9; k++) {
-                uint32_t cls = (cells >> k) & 1u ? CLASS_SOIL : CLASS_WATER;
+                uint32_t cls = (cells >> k) & 1u ? SECOND[pass / 2] : CLASS_WATER;
                 classes |= cls << (3 + 2 * k);
             }
             for (uint32_t v = 0; v < TILE_GROUND_VARIANTS; v++) {
@@ -394,8 +435,9 @@ static void test_no_tile_writes_outside_itself(void)
                 for (int i = 0; i < size * size; i++) {
                     inside_ok &= TILE_SOURCE(code[i]) <= 8u &&
                                  TILE_SHADE(code[i]) <= 2u &&
-                                 TILE_EDGE(code[i]) <= EDGE_GRASS_SPECK &&
-                                 (code[i] >> 11) == 0;
+                                 TILE_EDGE(code[i]) < EDGE_KINDS &&
+                                 TILE_ALT(code[i]) <= 9u &&
+                                 (code[i] >> 15) == 0;
                 }
                 for (int i = size * size; i < TILE_MAX * TILE_MAX + GUARD; i++) {
                     outside_ok &= code[i] == 0xBEEFu;
@@ -453,6 +495,55 @@ static void test_cache_reuses_and_replaces(void)
     tiles_cache_free(&c); /* twice is safe */
 }
 
+/* A kept tile's looks and inks say the same as its codes: each pixel's ink
+ * points at the slot of a look equal to its code without the foam bit, and
+ * water looks (three slots) are exactly the water pixels'. */
+static void test_cache_looks_match_codes(void)
+{
+    World w;
+    CHECK(make_map(&w, MAP, MAP_W, MAP_H));
+    TileCache c;
+    CHECK(tiles_cache_init(&c, 64));
+    for (int size = 8; size <= 16; size += 8) {
+        for (int y = 0; y < MAP_H; y++) {
+            for (int x = 0; x < MAP_W; x++) {
+                uint32_t key = tiles_key(&w, x, y);
+                const TileEntry *t = tiles_cache_get(&c, key, size);
+                if (t == NULL) {
+                    CHECK(false);
+                    continue;
+                }
+                uint16_t slot_look[3 * TILE_MAX * TILE_MAX];
+                int slots = 0;
+                for (int k = 0; k < t->looks; k++) {
+                    bool wet = (t->look[k] & TILE_INK_WET) != 0;
+                    for (int j = 0; j < (wet ? 3 : 1); j++) {
+                        slot_look[slots + j] = t->look[k];
+                    }
+                    slots += wet ? 3 : 1;
+                }
+                bool ok = true;
+                for (int i = 0; i < size * size; i++) {
+                    unsigned slot = TILE_INK_SLOT(t->ink[i]);
+                    int cls = tiles_key_class(key, (int)TILE_SOURCE(t->code[i]));
+                    bool wet = is_wet(cls);
+                    ok &= (int)slot < slots;
+                    if ((int)slot < slots) {
+                        uint16_t look = slot_look[slot];
+                        ok &= (uint16_t)(look & ~TILE_INK_WET) ==
+                              (uint16_t)(t->code[i] & ~TILE_FOAM);
+                        ok &= ((look & TILE_INK_WET) != 0) == wet;
+                        ok &= ((t->ink[i] & TILE_INK_WET) != 0) == wet;
+                    }
+                }
+                CHECK(ok);
+            }
+        }
+    }
+    tiles_cache_free(&c);
+    world_free(&w);
+}
+
 static void test_bones_inside_tile(void)
 {
     enum { GUARD = 8 };
@@ -500,6 +591,7 @@ int main(void)
     test_ground_variants_spread();
     test_no_tile_writes_outside_itself();
     test_cache_reuses_and_replaces();
+    test_cache_looks_match_codes();
     test_bones_inside_tile();
     TEST_SUMMARY();
 }

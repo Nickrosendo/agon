@@ -21,6 +21,23 @@
 #include "sprite.h"
 #include "tiles.h"
 
+/* How many steps the water's sine table has: a power of two, so a step number
+ * is wrapped into the table with & (SCENE_SINE_STEPS - 1). */
+#define SCENE_SINE_STEPS 1024
+
+/* One cell's ground colours as pixels: [EDGE_NONE] the plain three steps, each
+ * other edge's three worked out the first time a pixel needs them (bit e of
+ * done says edge e is ready), as most cells use only one or two edges. And what
+ * they were worked out from: if a cell's ground is unchanged at the next
+ * redraw (most of it changes only every few dozen ticks), they are kept. */
+typedef struct {
+    uint32_t pixel[EDGE_KINDS][3];
+    uint32_t done;
+    bool known; /* false: worked out from nothing yet */
+    int cell, terrain, region;
+    float fertility, water, snow;
+} GroundPixels;
+
 /* Index 0 of each table's first dimension is the 16-pixel size, 1 the
  * 8-pixel size. These are arrays of arrays, all one block inside the Scene:
  * rain[s][v][f] is a row table of 16 numbers, with no pointers to follow. */
@@ -38,15 +55,23 @@ typedef struct {
     int tiles_level;
     /* Each visible cell's colours, plus a ring of one cell around the view,
      * since a tile's ragged edge shows its neighbours' ground. Worked out once
-     * per redraw; the block grows only when the view needs more cells. */
+     * per redraw; the blocks grow only when the view needs more cells. */
     GroundRamp *cell_ramps;
+    GroundPixels *cell_pixels; /* the same cells' colours as pixels */
     int cell_ramps_capacity;
-    /* sin over one turn in 1024 steps, for the water's slow ripple. */
-    float sine[1024];
+    /* Every cell's tile key, and the terrain they were worked out from: keys
+     * change only when the terrain does, so they are not redone each redraw. */
+    uint32_t *keys;
+    uint8_t *keys_terrain;
+    int keys_capacity;
+    bool keys_valid;
+    /* sin over one turn in steps, for the water's slow ripple. */
+    float sine[SCENE_SINE_STEPS];
     /* The ground as last drawn, and what it was drawn from. Most frames fall
      * between two ticks and have the same ground, so they only copy it. */
     Canvas ground;
     bool ground_valid;
+    bool ground_tiled; /* drawn as tiles: the water alone can be redrawn */
     uint64_t ground_tick;
     uint64_t ground_water_step; /* water_ms / the water's step, not wrapped */
     int ground_level;

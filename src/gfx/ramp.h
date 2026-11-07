@@ -24,6 +24,8 @@ extern const Colour RAMP_GLINT, RAMP_FOAM, RAMP_BANK, RAMP_BANK_DARK;
 /* Bare soil: dirt turning to grass with fertility, sandy when dry, darker when
  * soaked, whitened by snow (0..1). */
 GroundRamp ramp_soil(float fertility, float water, float snow);
+/* One step (0 dark, 1 middle, 2 light) of ramp_soil, for when only one is used. */
+Colour ramp_soil_step(float fertility, float water, float snow, int step);
 /* Every step of g, t of the way towards a colour. */
 GroundRamp ramp_ground_mix(GroundRamp g, Colour towards, float t);
 

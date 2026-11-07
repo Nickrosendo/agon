@@ -66,10 +66,16 @@ void tiles_jitter(int size, int lx, int ly, int *jx, int *jy);
 #define TILE_SOURCE(code) ((code) & 15u)
 #define TILE_SHADE(code) (((code) >> 4) & 3u)
 #define TILE_EDGE(code) (((code) >> 6) & 15u)
-/* Water touching land: foam comes and goes here. */
+/* Water touching land: foam comes and goes here. Bank pixels get it too; the
+ * bank's colour wins over the foam, as in v9. */
 #define TILE_FOAM 0x400u
+/* Where shallow and deep water meet, a pixel may wear the other water's colour,
+ * in a dithered band a few pixels wide, so the border does not follow the cell
+ * grid in hard steps. 0: its own; else which of the 9 cells it borrows, plus 1. */
+#define TILE_ALT(code) (((code) >> 11) & 15u)
+/* EDGE_ROCK_LIT_SPECK: both at once, lit and then darkened (v9:546). */
 enum { EDGE_NONE, EDGE_BANK, EDGE_BANK_DARK, EDGE_SHADOW, EDGE_ROCK_LIT,
-       EDGE_ROCK_SPECK, EDGE_GRASS_SPECK };
+       EDGE_ROCK_SPECK, EDGE_GRASS_SPECK, EDGE_ROCK_LIT_SPECK, EDGE_KINDS };
 /* The class of a key's cell, source 0..8 as TILE_SOURCE gives it. */
 int tiles_key_class(uint32_t key, int source);
 /* Fills code[0 .. size * size - 1], row after row, for a tile of this key.
@@ -88,8 +94,23 @@ typedef struct {
     int size;
     uint32_t last_used; /* the cache's clock when it was last asked for */
     bool used, has_foam;
+    bool has_wet; /* any pixel of water: redrawn when only the water moves */
     uint16_t code[TILE_MAX * TILE_MAX];
+    /*
+     * The same picture, ready to paint fast. A tile uses only a few different
+     * codes ("looks"), so a drawing works out one colour per look, and each
+     * pixel only picks its look's colour. look[k] is a code without its foam
+     * bit, with TILE_INK_WET set for water. A look of land takes one colour
+     * slot, a look of water three (one per shade, chosen per pixel as the
+     * water moves), in the order of the looks. ink[i] is pixel i's first
+     * slot, with TILE_INK_WET set for water.
+     */
+    uint16_t look[TILE_MAX * TILE_MAX];
+    int looks;
+    uint16_t ink[TILE_MAX * TILE_MAX];
 } TileEntry;
+#define TILE_INK_WET 0x8000u
+#define TILE_INK_SLOT(ink) ((ink) & 0x7FFFu)
 
 typedef struct {
     TileEntry *entries;
