@@ -75,23 +75,17 @@ static void check_cells_not_empty(int w, int h)
     Canvas c;
     CHECK(canvas_init(&c, w, h));
     lab_draw(&sprites, &c, ACTION_REST, 0, 0, 0, w, h);
-    uint32_t bg = canvas_rgb(PALETTE_TEXT_BACKGROUND.r, PALETTE_TEXT_BACKGROUND.g,
-                             PALETTE_TEXT_BACKGROUND.b);
-    /* The cells sit in three equal columns from after the name column; find each
-     * strip by its sky pixels, and count animal pixels between its edges. */
-    int cells_x = 8 + 96 + 8, cell_w = (w - 8 - cells_x - 2 * 8) / LAB_COLUMNS;
-    int row_h = (h - 4 - (16 + 4)) / ROLE_COUNT;
     for (int role = 0; role < ROLE_COUNT; role++) {
         for (int col = 0; col < LAB_COLUMNS; col++) {
             if (lab_species_at(role, col) < 0) {
                 continue;
             }
-            int x0 = cells_x + col * (cell_w + 8), y0 = 20 + role * row_h;
+            int bx, by, bw, bh;
+            CHECK(lab_cell_box(&sprites, ACTION_REST, w, h, role, col, &bx, &by, &bw, &bh) > 0);
             int animal = 0;
-            for (int y = y0; y < y0 + row_h - 22; y++) {
-                for (int x = x0; x < x0 + cell_w; x++) {
-                    uint32_t p = c.px[y * c.w + x];
-                    if (!is_scenery(p) && p != bg) {
+            for (int y = by; y < by + bh; y++) {
+                for (int x = bx; x < bx + bw; x++) {
+                    if (!is_scenery(c.px[y * c.w + x])) {
                         animal++;
                     }
                 }
@@ -104,8 +98,19 @@ static void check_cells_not_empty(int w, int h)
 
 static void test_lab_cells_not_empty(void)
 {
-    check_cells_not_empty(960, 688);   /* scale 1, the window's size */
+    check_cells_not_empty(1112, 688);  /* the window's world area */
     check_cells_not_empty(1400, 1000); /* scale 2 */
+}
+
+/* The window's world area at 1280x720 (the panel beside it) is big enough for
+ * scale 2; a small area falls back to 1; a very large one may take 3. */
+static void test_lab_scale_at_window_size(void)
+{
+    int bx, by, bw, bh;
+    CHECK(lab_cell_box(&sprites, ACTION_REST, 1112, 688, 0, 0, &bx, &by, &bw, &bh) >= 2);
+    CHECK(lab_cell_box(&sprites, ACTION_REST, 1280, 720, 0, 0, &bx, &by, &bw, &bh) >= 2);
+    CHECK(lab_cell_box(&sprites, ACTION_REST, 600, 400, 0, 0, &bx, &by, &bw, &bh) == 1);
+    CHECK(lab_cell_box(&sprites, ACTION_REST, 20, 20, 0, 0, &bx, &by, &bw, &bh) == 0);
 }
 
 /* An area from nothing to 40 pixels each way, on a guard canvas: nothing outside
@@ -148,6 +153,7 @@ int main(void)
     test_lab_shows_every_species_once();
     test_lab_stays_in_its_area();
     test_lab_cells_not_empty();
+    test_lab_scale_at_window_size();
     test_lab_tiny_area_is_safe();
     sprite_cache_free(&sprites);
     TEST_SUMMARY();

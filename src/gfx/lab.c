@@ -83,52 +83,98 @@ static SpriteBody lab_body(int species)
     return sprite_body_of(&genes, species, lab_size(species), SPRITE_BASE_DETAIL);
 }
 
-/* Where the page puts things, worked out from the area. */
+/* Where the page puts things, worked out from the area. Each row's strip is as
+ * tall as its tallest animal needs, so a row of otters does not pay for the
+ * elephant's. */
 typedef struct {
     bool full;          /* false: the area is too small for the page */
     CanvasClip area;
-    int rows_y, row_h;  /* the first row's top and every row's height */
-    int cells_x, cell_w, strip_h;
+    int row_y[ROLE_COUNT], strip_h[ROLE_COUNT];
+    int cells_x, cell_w;
     int scale;
 } LabLayout;
 
-/* The widest and tallest inked picture of any species, in art pixels. */
-static void largest_picture(SpriteCache *sprites, int *max_w, int *max_h)
+/* The tallest picture of each role's row and the widest of all, in art pixels,
+ * from the inked bounds of the pictures at this action and frame. */
+static void largest_pictures(SpriteCache *sprites, int action, int frame,
+                             int row_h[ROLE_COUNT], int *max_w)
 {
     *max_w = 0;
-    *max_h = 0;
+    for (int r = 0; r < ROLE_COUNT; r++) {
+        row_h[r] = 0;
+    }
     for (int s = 0; s < SPECIES_COUNT; s++) {
         SpriteBody b = lab_body(s);
-        SpritePicture p = sprite_picture(sprites, &b, ACTION_REST, 0);
+        SpritePicture p = sprite_picture(sprites, &b, action, frame);
+        int role = SPECIES[s].role;
         if (p.x1 - p.x0 > *max_w) {
             *max_w = p.x1 - p.x0;
         }
-        if (p.y1 - p.y0 > *max_h) {
-            *max_h = p.y1 - p.y0;
+        if (p.y1 - p.y0 > row_h[role]) {
+            row_h[role] = p.y1 - p.y0;
         }
     }
 }
 
-static LabLayout make_layout(SpriteCache *sprites, int x, int y, int w, int h)
+/* Spare pixels a strip may take as headroom, per art pixel of scale. */
+#define MAX_SPARE_PER_SCALE 8
+#define MAX_SCALE 3
+
+static LabLayout make_layout(SpriteCache *sprites, int action, int frame, int x, int y,
+                             int w, int h)
 {
     LabLayout l = {0}; /* full false, everything else 0 */
     l.area = (CanvasClip){x, y, w, h};
     l.cells_x = x + MARGIN + NAME_COLUMN + MARGIN;
     l.cell_w = (x + w - MARGIN - l.cells_x - (LAB_COLUMNS - 1) * MARGIN) / LAB_COLUMNS;
-    l.rows_y = y + FONT_H + 4;  /* the title line, then a little air */
-    l.row_h = (y + h - 4 - l.rows_y) / ROLE_COUNT;
-    l.strip_h = l.row_h - FONT_H - ROW_GAP;
-    if (w <= 0 || h <= 0 || l.cell_w < 24 || l.strip_h < 24) {
+    int top = y + FONT_H + 4;  /* the title line, then a little air */
+    int room = y + h - 4 - top;
+    if (w <= 0 || h <= 0 || l.cell_w < 24 || room < ROLE_COUNT * (FONT_H + ROW_GAP + 24)) {
         return l;
     }
+    int row_h[ROLE_COUNT], max_w;
+    largest_pictures(sprites, action, frame, row_h, &max_w);
+    /* The largest scale at which every row fits: its animal, the ground under
+     * it and two pixels of air, then the caption; and the widest fits a cell. */
+    for (int s = MAX_SCALE; s >= 1; s--) {
+        int need = ROLE_COUNT * (FONT_H + ROW_GAP);
+        for (int r = 0; r < ROLE_COUNT; r++) {
+            need += (row_h[r] + GROUND_ROWS + 2) * s;
+        }
+        if ((need <= room && (max_w + 2) * s <= l.cell_w) || s == 1) {
+            l.scale = s;
+            int spare = (room - need) / ROLE_COUNT;  /* negative at 1 when cramped */
+            if (spare < 0) {
+                spare = 0;
+            }
+            if (spare > MAX_SPARE_PER_SCALE * s) {
+                spare = MAX_SPARE_PER_SCALE * s;
+            }
+            int at = top;
+            for (int r = 0; r < ROLE_COUNT; r++) {
+                l.strip_h[r] = (row_h[r] + GROUND_ROWS + 2) * s + spare;
+                l.row_y[r] = at;
+                at += l.strip_h[r] + FONT_H + ROW_GAP;
+            }
+            break;
+        }
+    }
     l.full = true;
-    int max_w, max_h;
-    largest_picture(sprites, &max_w, &max_h);
-    /* Scale 2 when the biggest animal, the ground under it and two pixels of
-     * air above fit a strip, and its width fits a cell. */
-    bool fits = (max_h + GROUND_ROWS + 2) * 2 <= l.strip_h && (max_w + 2) * 2 <= l.cell_w;
-    l.scale = fits ? 2 : 1;
     return l;
+}
+
+int lab_cell_box(SpriteCache *sprites, int action, int w, int h, int role, int column,
+                 int *bx, int *by, int *bw, int *bh)
+{
+    LabLayout l = make_layout(sprites, action, 0, 0, 0, w, h);
+    if (!l.full || role < 0 || role >= ROLE_COUNT || column < 0 || column >= LAB_COLUMNS) {
+        return 0;
+    }
+    *bx = l.cells_x + column * (l.cell_w + MARGIN);
+    *by = l.row_y[role];
+    *bw = l.cell_w;
+    *bh = l.strip_h[role];
+    return l.scale;
 }
 
 /* Text kept whole inside the area: cut to the columns that fit, and not drawn
@@ -180,13 +226,15 @@ static void draw_title(Canvas *c, const LabLayout *l, int action, uint32_t bg)
 /* A strip of the mockup's lab ground: sky above, a line, then ground of two
  * greens by hash, in art pixels of `scale` screen pixels. salt keeps strips
  * from repeating one another. */
-static void draw_strip_ground(Canvas *c, const LabLayout *l, int sx, int sy, int salt)
+static void draw_strip_ground(Canvas *c, const LabLayout *l, int role, int sx, int sy,
+                              int salt)
 {
     int s = l->scale;
-    int line_y = sy + l->strip_h - GROUND_ROWS * s;
+    int strip_h = l->strip_h[role];
+    int line_y = sy + strip_h - GROUND_ROWS * s;
     canvas_rect_clip(c, sx, sy, l->cell_w, line_y - sy, SKY, l->area);
     canvas_rect_clip(c, sx, line_y, l->cell_w, s, GROUND_LINE, l->area);
-    for (int y = line_y + s; y < sy + l->strip_h; y += s) {
+    for (int y = line_y + s; y < sy + strip_h; y += s) {
         int run_start = sx;
         uint32_t run_colour = 0;
         for (int x = sx; x < sx + l->cell_w; x += s) {
@@ -235,6 +283,7 @@ static void draw_animal(SpriteCache *sprites, Canvas *c, const LabLayout *l, int
                         int action, int frame, int sx, int sy)
 {
     int s = l->scale;
+    int strip_h = l->strip_h[SPECIES[species].role];
     SpriteBody body = lab_body(species);
     SpritePicture p = sprite_picture(sprites, &body, action, frame);
     SpritePalette pal;
@@ -243,13 +292,13 @@ static void draw_animal(SpriteCache *sprites, Canvas *c, const LabLayout *l, int
     if (w <= 0 || h <= 0) {
         return;
     }
-    int line_y = sy + l->strip_h - GROUND_ROWS * s;
+    int line_y = sy + strip_h - GROUND_ROWS * s;
     int left = sx + (l->cell_w - w * s) / 2;
     int top = line_y + 2 * s - h * s;  /* the feet's last row is the ground's first */
     /* The ground point (ox, oy) is where the shadow goes. */
     int foot_x = left + (p.ox - p.x0) * s + p.shadow_dx * s;
     int foot_y = top + (p.oy - p.y0) * s;
-    CanvasClip strip = {sx, sy, l->cell_w, l->strip_h};
+    CanvasClip strip = {sx, sy, l->cell_w, strip_h};
     /* The strip, cut by the area too: a clip is a plain rectangle. */
     int x1 = strip.x + strip.w < l->area.x + l->area.w ? strip.x + strip.w : l->area.x + l->area.w;
     int y1 = strip.y + strip.h < l->area.y + l->area.h ? strip.y + strip.h : l->area.y + l->area.h;
@@ -270,19 +319,19 @@ void lab_draw(SpriteCache *sprites, Canvas *c, int action, uint64_t body_ms, int
         return;
     }
     uint32_t bg = pixel_of(PALETTE_TEXT_BACKGROUND);
-    LabLayout l = make_layout(sprites, x, y, w, h);
-    canvas_rect_clip(c, x, y, w, h, bg, l.area);
-    if (!l.full) {
-        return;
-    }
     if (action < 0 || action >= ACTION_COUNT) {
         action = ACTION_REST;
     }
     int frame = (int)(body_ms * LAB_FRAMES_PER_SECOND / 1000u);
+    LabLayout l = make_layout(sprites, action, frame, x, y, w, h);
+    canvas_rect_clip(c, x, y, w, h, bg, l.area);
+    if (!l.full) {
+        return;
+    }
     draw_title(c, &l, action, bg);
     for (int role = 0; role < ROLE_COUNT; role++) {
-        int row_y = l.rows_y + role * l.row_h;
-        text_in(c, &l, x + MARGIN, row_y + (l.strip_h - FONT_H) / 2, ROLE_TITLES[role],
+        int row_y = l.row_y[role];
+        text_in(c, &l, x + MARGIN, row_y + (l.strip_h[role] - FONT_H) / 2, ROLE_TITLES[role],
                 pixel_of(PALETTE_TEXT), bg);
         for (int col = 0; col < LAB_COLUMNS; col++) {
             int species = lab_species_at(role, col);
@@ -290,11 +339,11 @@ void lab_draw(SpriteCache *sprites, Canvas *c, int action, uint64_t body_ms, int
                 continue;
             }
             int sx = l.cells_x + col * (l.cell_w + MARGIN);
-            draw_strip_ground(c, &l, sx, row_y, species);
+            draw_strip_ground(c, &l, role, sx, row_y, species);
             draw_animal(sprites, c, &l, species, action, frame, sx, row_y);
             const char *name = SPECIES[species].name;
             int name_x = sx + (l.cell_w - (int)strlen(name) * FONT_W) / 2;
-            text_in(c, &l, name_x > sx ? name_x : sx, row_y + l.strip_h + 2, name,
+            text_in(c, &l, name_x > sx ? name_x : sx, row_y + l.strip_h[role] + 2, name,
                     dimmed(PALETTE_TEXT), bg);
         }
     }

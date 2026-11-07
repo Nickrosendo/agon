@@ -28,4 +28,10 @@ int lab_species_at(int role, int column);
 void lab_draw(SpriteCache *sprites, Canvas *c, int action, uint64_t body_ms,
               int x, int y, int w, int h);
 
+/* Where one cell's strip is for an area of w by h at the origin: its box in
+ * (bx, by, bw, bh), and the scale the page is drawn at (0, with the box
+ * untouched, when the area is too small for the page). The tests read it. */
+int lab_cell_box(SpriteCache *sprites, int action, int w, int h, int role, int column,
+                 int *bx, int *by, int *bw, int *bh);
+
 #endif
