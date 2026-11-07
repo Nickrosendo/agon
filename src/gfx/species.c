@@ -159,27 +159,51 @@ static bool allowed_at(int species, float real_size)
     }
 }
 
-int species_pick(uint32_t lineage, int role, float real_size)
+/* The index-th species (in table order) of this role that passes the filter:
+ * every species of the role when only_allowed is false, else only those
+ * allowed at real_size. Returns -1 when there are fewer than index + 1. */
+static int nth_of_role(int role, int index, bool only_allowed, float real_size)
+{
+    for (int s = 0; s < SPECIES_COUNT; s++) {
+        if (SPECIES[s].role == role && (!only_allowed || allowed_at(s, real_size))) {
+            if (index == 0) {
+                return s;
+            }
+            index--;
+        }
+    }
+    return -1;
+}
+
+static int count_of_role(int role, bool only_allowed, float real_size)
 {
     int count = 0;
     for (int s = 0; s < SPECIES_COUNT; s++) {
-        if (SPECIES[s].role == role && allowed_at(s, real_size)) {
+        if (SPECIES[s].role == role && (!only_allowed || allowed_at(s, real_size))) {
             count++;
         }
     }
-    if (count == 0) {
+    return count;
+}
+
+int species_pick(uint32_t lineage, int role, float real_size)
+{
+    int all = count_of_role(role, false, real_size);
+    if (all == 0) {
         return SPECIES_WOLF; /* a role out of range: nothing to choose from */
     }
-    int want = (int)(species_hash(lineage, role) % (uint32_t)count);
-    for (int s = 0; s < SPECIES_COUNT; s++) {
-        if (SPECIES[s].role == role && allowed_at(s, real_size)) {
-            if (want == 0) {
-                return s;
-            }
-            want--;
-        }
+    uint32_t h = species_hash(lineage, role);
+    /* First the pick from the whole list, whatever the size, so a family keeps
+     * its species as it grows. */
+    int pick = nth_of_role(role, (int)(h % (uint32_t)all), false, real_size);
+    if (allowed_at(pick, real_size)) {
+        return pick;
     }
-    return SPECIES_WOLF; /* not reached */
+    /* Not allowed at this size (a hippo too small, an armadillo too big): a
+     * second hash picks among the allowed ones. Every role has at least one. */
+    int allowed = count_of_role(role, true, real_size);
+    uint32_t h2 = gfx_mix(h ^ 0xC2B2AE35u);
+    return nth_of_role(role, (int)(h2 % (uint32_t)allowed), true, real_size);
 }
 
 const float SPECIES_K[SPECIES_K_LEVELS] = {0.70f, 0.80f, 0.95f, 1.05f,

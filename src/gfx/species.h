@@ -70,8 +70,11 @@ extern const Species SPECIES[SPECIES_COUNT];
 
 /* A number from the founder's id and the role, the same every time. */
 uint32_t species_hash(uint32_t lineage, int role);
-/* The family's species in this role at this real size: species_hash modulo the
- * species allowed at that size, in table order. */
+/* The family's species in this role at this real size. The hash picks from the
+ * role's whole list, in table order, whatever the size, so a family keeps its
+ * species as it grows. Only when that species is not allowed at this size
+ * (hippo below SPRITE_THREE_TILES, armadillo at or above SPRITE_TWO_TILES,
+ * elephant and rhino below it) does a second hash pick among the allowed ones. */
 int species_pick(uint32_t lineage, int role, float real_size);
 
 #define SPECIES_K_LEVELS 8

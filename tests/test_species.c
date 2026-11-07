@@ -69,6 +69,22 @@ static void test_every_species_listed_once_in_its_role(void)
     for (int r = 0; r < ROLE_COUNT; r++) {
         CHECK(in_role[r] >= 2);
     }
+    /* A few values pinned, so a transcription slip fails. */
+    CHECK(SPECIES[SPECIES_ELEPHANT].leg_w == 1.9f);
+    CHECK(SPECIES[SPECIES_ZEBRA].stripe_freq == 0.95f);
+    CHECK(SPECIES[SPECIES_TIGER].stripe.r == 30 && SPECIES[SPECIES_TIGER].stripe.g == 20 &&
+          SPECIES[SPECIES_TIGER].stripe.b == 24);
+    CHECK(SPECIES[SPECIES_TIGER].stripe_freq == 0.6f);
+    CHECK(SPECIES[SPECIES_HARE].hop && !SPECIES[SPECIES_WOLF].hop);
+    CHECK(SPECIES[SPECIES_RHINO].neck_angle == -0.45f);
+    CHECK(SPECIES[SPECIES_OTTER].neck_angle == -0.35f);
+    CHECK(SPECIES[SPECIES_HIPPO].muzzle_r == 1.6f);
+    CHECK(SPECIES[SPECIES_LION].look.r == 0xd9 && SPECIES[SPECIES_LION].look.g == 0xa4 &&
+          SPECIES[SPECIES_LION].look.b == 0x56);
+    CHECK(SPECIES[SPECIES_GAZELLE].hoof && SPECIES[SPECIES_ELEPHANT].pillar);
+    CHECK(SPECIES[SPECIES_TIGER].feline && SPECIES[SPECIES_LION].feline);
+    CHECK(SPECIES[SPECIES_ELEPHANT].features == (FEATURE_TRUNK | FEATURE_TUSKS));
+    CHECK(SPECIES[SPECIES_GOAT].ear == EAR_LEAF && SPECIES[SPECIES_GOAT].tail == TAIL_TUFT);
     CHECK(SPECIES[SPECIES_OTTER].role == ROLE_SWIMMER);
     CHECK(SPECIES[SPECIES_HIPPO].role == ROLE_SWIMMER);
     CHECK(SPECIES[SPECIES_LEMUR].role == ROLE_WATCHER);
@@ -143,6 +159,42 @@ static void test_size_rules(void)
     CHECK(hippos > 0);
 }
 
+/* A family keeps its species as it grows, except across its own threshold. */
+static void test_family_keeps_species_while_growing(void)
+{
+    const float sizes[5] = {1.0f, 3.0f, 5.9f, 6.0f, 9.0f};
+    int kept_swimmers = 0, hippos_seen = 0, kept_armoured = 0;
+    for (uint32_t l = 0; l < 2000; l++) {
+        int at[5];
+        for (int i = 0; i < 5; i++) {
+            at[i] = species_pick(l, ROLE_SWIMMER, sizes[i]);
+        }
+        if (at[3] != SPECIES_HIPPO) {
+            /* Not a hippo family: the same species at every size. */
+            for (int i = 0; i < 5; i++) {
+                CHECK(at[i] == at[3]);
+            }
+            kept_swimmers++;
+        } else {
+            hippos_seen++;
+            CHECK(at[4] == SPECIES_HIPPO);
+            CHECK(at[0] != SPECIES_HIPPO && at[2] != SPECIES_HIPPO);
+            /* Small enough, it is the same otter or beaver at every small size. */
+            CHECK(at[0] == at[1] && at[1] == at[2]);
+        }
+        /* Armoured: the large pick (elephant or rhino) is the same at every
+         * large size; the small one is always the armadillo. */
+        int large_a = species_pick(l, ROLE_ARMOURED, SPRITE_TWO_TILES);
+        int large_b = species_pick(l, ROLE_ARMOURED, 20.0f);
+        CHECK(large_a == large_b);
+        CHECK(species_pick(l, ROLE_ARMOURED, 1.0f) == SPECIES_ARMADILLO);
+        kept_armoured += large_a != SPECIES_ARMADILLO;
+    }
+    CHECK(kept_swimmers > 1000);
+    CHECK(hippos_seen > 500);
+    CHECK(kept_armoured == 2000);
+}
+
 static void test_small_gene_change_same_body(void)
 {
     BodyTraits a = {0.40f, 0.3f, 0.3f, 0.5f, 0.1f, 0.2f, 0.2f, 0.2f, 0.2f};
@@ -151,8 +203,15 @@ static void test_small_gene_change_same_body(void)
     BodyTraits ra = species_round(&a), rb = species_round(&b);
     CHECK(ra.size == rb.size);
     CHECK(species_role(&ra) == species_role(&rb));
-    CHECK(species_pick(9, species_role(&ra), 2.0f) ==
-          species_pick(9, species_role(&rb), 2.0f));
+    /* The whole drawing choice, for the raw and the changed genes. */
+    for (uint32_t l = 0; l < 50; l++) {
+        CHECK(species_pick(l, species_role(&ra), 2.0f) ==
+              species_pick(l, species_role(&rb), 2.0f));
+    }
+    /* A change big enough to cross a step does change the rounded trait. */
+    b.size = 0.60f;
+    rb = species_round(&b);
+    CHECK(ra.size != rb.size);
 }
 
 static void test_k_levels(void)
@@ -219,6 +278,7 @@ int main(void)
     test_every_species_listed_once_in_its_role();
     test_species_hash_stable_and_spread();
     test_size_rules();
+    test_family_keeps_species_while_growing();
     test_small_gene_change_same_body();
     test_k_levels();
     test_anatomy_follows_genes();
