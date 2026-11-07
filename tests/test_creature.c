@@ -2630,6 +2630,43 @@ static void test_no_top_size(void)
     CHECK(isfinite(attack_chance(0.5f, size, 16.0f)));
 }
 
+/* The seasons design, section 4.5: a healthy adult that is fed lives through
+ * several winters. A size 8 creature with middling genes walks every tick and
+ * is given, every tick, what it cost on the day it was born plus the step: as
+ * if it found one bite a tick. Only the rise in its ageing cost is left for its
+ * own store to pay. With the default settings it must still be alive after 4
+ * years (2,400 ticks), and age must then cost it less than three times what its
+ * whole body cost at birth. */
+static void test_fed_giant_lives_four_years(void)
+{
+    Settings s = settings_default();
+    Creature c = {.alive = true, .energy = s.energy_start};
+    for (int g = 0; g < GENE_TRAITS; g++) {
+        c.genome.g[g] = 0.5f;
+    }
+    c.genome.g[GENE_SIZE] = 1.0f;
+    c.genome.g[GENE_GROWTH] = 0.0f; /* stays the size it is */
+    /* grown is the body added after birth, on top of what the size gene gives. */
+    c.grown = 8.0f - creature_size(&c, &s);
+    c.health = creature_max_health(&c, &s);
+    c.current.kind = ACT_MOVE;
+    CHECK(near(creature_size(&c, &s), 8.0f));
+    float at_birth = creature_upkeep_cost(&c, &s);
+    bool alive = true;
+    for (int t = 0; t < 2400 && alive; t++) {
+        c.energy += at_birth + s.move_cost; /* the bite */
+        c.energy -= s.move_cost;            /* the step */
+        alive = creature_upkeep(&c, &s);
+    }
+    CHECK(alive);
+    CHECK(c.age == 2400);
+    /* The ageing cost at 2,400 ticks, as the rise in upkeep since birth: the
+     * body has not changed, so nothing else in the upkeep has. */
+    float ageing = creature_upkeep_cost(&c, &s) - at_birth;
+    CHECK(isfinite(ageing));
+    CHECK(ageing < at_birth * 3.0f);
+}
+
 static void test_big_bites_more(void)
 {
     Settings s = settings_default();
@@ -3515,6 +3552,7 @@ int main(void)
     test_growth_needs_surplus();
     test_growth_follows_gene();
     test_no_top_size();
+    test_fed_giant_lives_four_years();
     test_big_bites_more();
     test_bite_steps_any_size();
     test_senses_handle_any_size();

@@ -98,7 +98,11 @@ Settings settings_default(void)
         .plant_fruit_rate = 0.05f,
         .plant_fruit_cost = 1.0f,
         .plant_fruit_max = 3.0f,
-        .bite_fruit_energy = 40.0f,
+        /* Doubled for the seasons (task 8): leaf plants stand bare in autumn and
+         * winter, so a year's food has to be eaten in half of it. Seeds 1 to 15,
+         * 60,000 ticks: 3 worlds alive with 40, 7 with 80 (and the leaf bite at
+         * 36, founders at 0.05). */
+        .bite_fruit_energy = 80.0f,
         .plant_gut_min = 50,
         .plant_gut_max = 400,
         .plant_dung_start = 5.0f,
@@ -109,6 +113,11 @@ Settings settings_default(void)
          * 1,393, 4,772, 1,000 and 3,718 over 20,000 ticks. Reaching the limit changes
          * the world (seed 1 at 4,000), so it stays well clear of the peak. */
         .pool_capacity = 8000,
+        /* Kept at 0.15 through the seasons tuning (task 8), though the design asked
+         * for fewer: with the food above, 0.05 left 6 of 15 worlds alive at 60,000
+         * ticks, 0.10 11 and 0.15 14. The founders die off in the first winters,
+         * so even at 0.15 the first 10 years were half as crowded as before on 12
+         * of 15 worlds (on 14 of 15 at 0.10). */
         .start_share = 0.15f,
         .min_creatures = 0,
         /* A char array inside a struct can be initialised from a string
@@ -118,7 +127,10 @@ Settings settings_default(void)
         /* Slowed at Nicolas's request: 0.1 spent the starting energy in 1.3 years. */
         .upkeep_base = 0.06f,
         .move_cost = 0.3f,
-        .bite_veg_energy = 18.0f,
+        /* Doubled for the seasons (task 8). At 18 every world died out within 60
+         * years; at 27 11 of 15 lived, at 36 14 of 15 (with fruit at 80, meat at
+         * 16 and the founders at 0.15). */
+        .bite_veg_energy = 36.0f,
         .mate_threshold = 30.0f,
         .mate_share = 0.5f,
         .mate_barrier = 0.55f,
@@ -126,7 +138,10 @@ Settings settings_default(void)
         .mate_age = 50,
         .sense_age_half = 200.0f,
         .ageing_upkeep = 0.3f,
-        .ageing_span = 1500.0f,
+        /* 1500 until the seasons (task 8): a fed size 8 body with middling genes
+         * then starved of its own age before 4 years (2,000 still did, 2,500 was
+         * the first to pass; test_fed_giant_lives_four_years). */
+        .ageing_span = 3000.0f,
         .ageing_min_rate = 0.25f,
         .slow_ageing_upkeep = 0.05f,
         .max_age = 0,
@@ -150,7 +165,9 @@ Settings settings_default(void)
         .size_upkeep = 0.1f,
         .speed_upkeep = 0.1f,
         .sight_upkeep = 0.01f,
-        .bite_meat_energy = 8.0f,
+        /* Doubled for the seasons (task 8), the design's "larger rise" for meat.
+         * Measured alone it changed little: 6 worlds of 15 alive against 7. */
+        .bite_meat_energy = 16.0f,
         .digest_floor = 0.25f,
         .digest_upkeep = 0.025f,
         .digest_tradeoff = 0.3f,
