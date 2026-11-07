@@ -1309,6 +1309,61 @@ static void test_plant_eater_cap(void)
     world_free(&w);
 }
 
+/* Asks a for a child of a crowded pair: a and b side by side with two more
+ * creatures near a, so a has 3 neighbours within crowd_radius 2, 2 past the
+ * first crowd_free. True when a child was born. b asks first, as a partner
+ * must already wish to mate. */
+static bool crowded_pair_has_child(const Settings *s, Rng *r)
+{
+    World w;
+    Pool p;
+    int a, b;
+    adult_pair(&w, &p, &a, &b, s, r);
+    spawn(&p, &w, 2, 2);
+    spawn(&p, &w, 2, 4);
+    CHECK(creature_crowd(&w, &p.items[a], s->crowd_radius) == 3);
+    Action mate = {.kind = ACT_MATE, .hold = 1};
+    creature_act(&w, &p, b, mate, s, r);
+    bool born = creature_act(&w, &p, a, mate, s, r) >= 0;
+    pool_free(&p);
+    world_free(&w);
+    return born;
+}
+
+static void test_births_that_answer_crowding(void)
+{
+    Settings s = settings_default();
+    CHECK(s.crowd_radius == 2 && s.crowd_free == 1);
+    CHECK(near(s.mate_threshold, 30.0f)); /* each parent holds 40 */
+    Rng r;
+    rng_seed(&r, 1);
+    CHECK(s.birth_room == 0 && s.birth_crowd_price == 0.0f &&
+          s.birth_capacity == 0);
+    CHECK(crowded_pair_has_child(&s, &r)); /* all three off */
+
+    /* Room: 3 neighbours is too many for a limit of 2, enough for 3. */
+    s.birth_room = 2;
+    CHECK(!crowded_pair_has_child(&s, &r));
+    s.birth_room = 3;
+    CHECK(crowded_pair_has_child(&s, &r));
+    s.birth_room = 0;
+
+    /* Price: 2 neighbours past the free one. At 0.5 a child needs 30 * 2 = 60,
+     * more than 40; at 0.1 it needs 30 * 1.2 = 36. */
+    s.birth_crowd_price = 0.5f;
+    CHECK(!crowded_pair_has_child(&s, &r));
+    s.birth_crowd_price = 0.1f;
+    CHECK(crowded_pair_has_child(&s, &r));
+    s.birth_crowd_price = 0.0f;
+
+    /* Capacity: 4 alive at a capacity of 4 is full; at 4,000,000 the chance of
+     * a refusal is one in a million. */
+    s.birth_capacity = 4;
+    CHECK(!crowded_pair_has_child(&s, &r));
+    s.birth_capacity = 4000000;
+    CHECK(crowded_pair_has_child(&s, &r));
+}
+
 static void test_fruit_tree_has_no_leaves_to_eat(void)
 {
     /* A leaf plant feeds a bite in full. A fruit tree with no ripe fruit gives
@@ -3507,6 +3562,7 @@ int main(void)
     test_senses_plant_along_ray();
     test_empty_bite_costs();
     test_plant_eater_cap();
+    test_births_that_answer_crowding();
     test_fruit_tree_has_no_leaves_to_eat();
     test_bare_leaves_cannot_be_bitten();
     test_leaf_bite_harms_plant();

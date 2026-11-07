@@ -207,6 +207,18 @@ typedef struct {
      * hunter genes that lives on plants is never capped. An int, not a bool,
      * so the settings file can read it like every other whole number. */
     int cap_by_level;
+    /* Three births that answer crowding, to compare (2026-11-08); each 0 by
+     * default, which leaves the world exactly as without it.
+     * birth_room: a pair has no child while the one asking has more than
+     * this many creatures within crowd_radius cells: no room to raise one.
+     * birth_crowd_price: crowding makes a child dearer. The one asking needs
+     * what mating needs times (1 + birth_crowd_price for each neighbour past
+     * crowd_free within crowd_radius).
+     * birth_capacity: the land's room for everyone. A birth goes ahead with
+     * chance 1 - alive / birth_capacity, and never at or above it. */
+    int birth_room;
+    float birth_crowd_price;
+    int birth_capacity;
 
     /* Inheritance. A child's genome is its parent's with each value, with
      * probability mutation_rate, moved by a normal step whose spread is

@@ -251,6 +251,15 @@ max_plant_eaters = 0
 # count plant-eaters by level (1) or by genes (0) (0 to 1)
 cap_by_level = 1
 
+# no child while more neighbours than this (0: off) (0 to 288)
+birth_room = 0
+
+# a child's extra price per crowding neighbour, as a share (0: off) (0 to 1e+06)
+birth_crowd_price = 0
+
+# births slow as the alive near this (0: off) (0 to 1000000)
+birth_capacity = 0
+
 # chance each gene changes in a child (0 to 1)
 mutation_rate = 0.05
 
