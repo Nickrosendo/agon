@@ -545,7 +545,8 @@ void sim_step(Sim *s)
      * would point at the old place if the Sim were ever copied elsewhere. */
     s->pool.chronicle = recorder(s);
     climate_step(&s->world, &s->set, s->tick);
-    flora_step(&s->world, &s->rng, &s->set);
+    flora_step(&s->world, &s->rng, &s->set,
+               years_season_of(s->tick, s->set.ticks_per_year));
     carrion_step(&s->world, &s->set);
     scent_step(&s->world, &s->set);
     creatures_act(s);

@@ -374,12 +374,13 @@ static uint64_t hash_canvas(const Canvas *c)
  * spring as the mating season, and two year senses re-rolled every brain, so
  * creatures stand elsewhere at every zoom but the closest; then snow and drier
  * summers: 300 ticks end a summer with less rain, so the ground's water and the
- * plants on it differ at every zoom.
+ * plants on it differ at every zoom; then plants follow the seasons: spring's
+ * plenty changes the plants and creatures at every zoom but the closest.
  */
 static void test_known_world_pixels(void)
 {
     static const uint64_t EXPECTED[CAMERA_LEVELS] = {
-        0x10cfb74e4201643du, 0x4db150e495361634u, 0xe115bd6e21185026u, 0x2ca3d1d9db0d7025u,
+        0x10cfb74e4201643du, 0xb5fb2349fed7e16eu, 0xaee3fa9f3a5bb966u, 0xe51cee13c54db365u,
     };
     Settings set = settings_default();
     Sim s;

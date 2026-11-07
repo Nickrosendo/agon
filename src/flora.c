@@ -2,6 +2,8 @@
 
 #include <math.h> /* fabsf */
 
+#include "years.h" /* SEASON_ */
+
 /* Wraps a coordinate that is at most one world width (or height) outside
  * 0..size-1. A compare and an add are much cheaper than the two %
  * operations world_idx needs for any distance, and plant_mass runs this
@@ -137,17 +139,39 @@ bool plant_sow(World *w, int cell, const Plant *seed, float energy)
     return true;
 }
 
-/* One tick of a living plant: what it gains, then what it pays, then any fruit,
- * paid for out of energy above plant_fruit_energy. */
-static void plant_live(Plant *p, float fit, const Settings *s)
+bool plant_is_growing(const Plant *p, int season)
 {
+    if (season == SEASON_WINTER) {
+        return false;
+    }
+    return season != SEASON_AUTUMN || !plant_offers_fruit(p);
+}
+
+bool plant_is_bare(const Plant *p, int season)
+{
+    return !plant_offers_fruit(p) &&
+           (season == SEASON_AUTUMN || season == SEASON_WINTER);
+}
+
+/* One tick of a living plant: what it gains, then what it pays, then any fruit,
+ * paid for out of energy above plant_fruit_energy. A resting plant only pays,
+ * and its share of the upkeep is plant_rest_upkeep. */
+static void plant_live(Plant *p, float fit, const Settings *s, int season)
+{
+    if (!plant_is_growing(p, season)) {
+        float rested = p->energy - s->plant_upkeep * s->plant_rest_upkeep;
+        p->energy = rested < 0.0f ? 0.0f : rested;
+        return;
+    }
+    float plenty = season == SEASON_SPRING ? s->spring_plenty : 1.0f;
     float vigour = s->plant_thrift + (1.0f - s->plant_thrift) * p->water_need;
-    float energy = p->energy + s->plant_gain * fit * vigour - s->plant_upkeep;
+    float energy =
+        p->energy + s->plant_gain * plenty * fit * vigour - s->plant_upkeep;
     energy = energy > s->plant_energy_max ? s->plant_energy_max : energy;
     energy = energy < 0.0f ? 0.0f : energy;
     if (fit >= s->plant_seed_fit && energy >= s->plant_fruit_energy &&
         p->fruit < s->plant_fruit_max && plant_offers_fruit(p)) {
-        float made = s->plant_fruit_rate;
+        float made = s->plant_fruit_rate * plenty;
         p->fruit += made;
         energy -= made * s->plant_fruit_cost;
         energy = energy < 0.0f ? 0.0f : energy;
@@ -156,9 +180,10 @@ static void plant_live(Plant *p, float fit, const Settings *s)
 }
 
 /* Whether the plant on this cell can give a seed right now. */
-static bool can_seed(const World *w, int i, const Settings *s)
+static bool can_seed(const World *w, int i, const Settings *s, int season)
 {
-    return w->plant[i].energy >= s->plant_seed_energy &&
+    return plant_is_growing(&w->plant[i], season) &&
+           w->plant[i].energy >= s->plant_seed_energy &&
            plant_fit(&w->plant[i], w->water[i], w->temperature[i], s) >=
                s->plant_seed_fit;
 }
@@ -308,7 +333,7 @@ static int count_planted(const World *w)
     return count;
 }
 
-void flora_step(World *w, Rng *r, const Settings *s)
+void flora_step(World *w, Rng *r, const Settings *s, int season)
 {
     /* wrap_near needs the reach to be no larger than the world; a tiny
      * world (allowed by world_init) would otherwise be read out of
@@ -356,7 +381,7 @@ void flora_step(World *w, Rng *r, const Settings *s)
                 }
                 Plant *plant = &w->plant[i];
                 float fit = plant_fit(plant, w->water[i], w->temperature[i], s);
-                plant_live(plant, fit, s);
+                plant_live(plant, fit, s, season);
                 bool old_age = w->veg_age[i] >= s->veg_mature_age &&
                                draw < s->veg_wither_chance;
                 if (old_age || plant->energy <= 0.0f) {
@@ -365,7 +390,8 @@ void flora_step(World *w, Rng *r, const Settings *s)
                     continue;
                 }
                 int mass = plant_mass(w, x, y, reach);
-                bool can_grow = fit >= s->plant_seed_fit &&
+                bool can_grow = plant_is_growing(plant, season) &&
+                                fit >= s->plant_seed_fit &&
                                 plant->energy >= s->plant_grow_cost;
                 uint8_t next = planted_density(w->veg[i], mass, w->fertility[i],
                                                grow_draw, can_grow, s);
@@ -393,7 +419,7 @@ void flora_step(World *w, Rng *r, const Settings *s)
             }
             int parent =
                 planted_neighbour_at(w, x, y, draw_parent(parent_draw, n));
-            if (!can_seed(w, parent, s)) {
+            if (!can_seed(w, parent, s, season)) {
                 continue;
             }
             int mass = plant_mass(w, x, y, reach);

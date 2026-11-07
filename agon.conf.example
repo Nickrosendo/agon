@@ -95,6 +95,12 @@ plant_gain = 0.3
 # energy a plant pays per tick (0 to 1e+06)
 plant_upkeep = 0.02
 
+# plant income and fruit in spring, times the usual (1 to 10)
+spring_plenty = 1.5
+
+# share of its upkeep a plant pays while resting (0 to 1)
+plant_rest_upkeep = 1
+
 # most energy a plant can store (0 to 1e+06)
 plant_energy_max = 10
 

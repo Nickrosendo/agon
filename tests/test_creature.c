@@ -1343,6 +1343,42 @@ static void test_fruit_tree_has_no_leaves_to_eat(void)
     world_free(&w);
 }
 
+/* Autumn and winter strip a leaf plant: a bite finds nothing on it however
+ * dense it stands, while a fruit tree's hanging fruit can still be eaten. */
+static void test_bare_leaves_cannot_be_bitten(void)
+{
+    World w;
+    make_world(&w, 7, 7);
+    Settings s = plant_eater_settings();
+    s.plant_leaf_root = 0;
+    Pool p;
+    CHECK(pool_init(&p, 1));
+    int i = spawn(&p, &w, 3, 3);
+    p.items[i].energy = 10.0f;
+    int ahead = world_idx(&w, 3, 2);
+    w.veg[ahead] = 4;
+    w.plant[ahead].fruit_share = 0.0f;
+    w.plant[ahead].energy = 5.0f;
+    p.season = SEASON_SUMMER;
+    CHECK(creature_bite_choice(&w, &p, i, &s).kind == BITE_PLANT);
+    p.season = SEASON_AUTUMN;
+    CHECK(creature_bite_choice(&w, &p, i, &s).kind == BITE_NOTHING);
+    p.season = SEASON_WINTER;
+    CHECK(creature_bite_choice(&w, &p, i, &s).kind == BITE_NOTHING);
+    /* And biting anyway takes nothing from it. */
+    Rng r;
+    rng_seed(&r, 1);
+    creature_act(&w, &p, i, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
+    CHECK(w.veg[ahead] == 4 && w.plant[ahead].energy == 5.0f);
+
+    w.plant[ahead].fruit_share = 1.0f;
+    w.plant[ahead].fruit = 2.0f;
+    BiteChoice fruit = creature_bite_choice(&w, &p, i, &s);
+    CHECK(fruit.kind == BITE_PLANT && fruit.fruit);
+    pool_free(&p);
+    world_free(&w);
+}
+
 /* Leaves: the bite takes the plant's body and hurts what it has stored. */
 static void test_leaf_bite_harms_plant(void)
 {
@@ -3136,6 +3172,7 @@ int main(void)
     test_empty_bite_costs();
     test_plant_eater_cap();
     test_fruit_tree_has_no_leaves_to_eat();
+    test_bare_leaves_cannot_be_bitten();
     test_leaf_bite_harms_plant();
     test_fruit_bite_carries_seed();
     test_gut_keeps_first_seed();

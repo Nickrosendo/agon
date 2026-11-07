@@ -98,6 +98,12 @@ typedef struct {
      * energy stays within 0..plant_energy_max. */
     float plant_gain;
     float plant_upkeep;
+    /* Seasons. In spring plant_gain and plant_fruit_rate are multiplied by
+     * spring_plenty. A plant that is not growing (every plant in winter, a
+     * fruit tree in autumn) gains nothing, grows, seeds and fruits not at all,
+     * and pays plant_upkeep * plant_rest_upkeep. */
+    float spring_plenty;
+    float plant_rest_upkeep;
     float plant_energy_max;
     float plant_start_energy; /* a starting plant's energy */
     float plant_thrift;

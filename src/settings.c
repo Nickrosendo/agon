@@ -59,6 +59,11 @@ Settings settings_default(void)
          * that, and every world died within 5,000 ticks with fruit left hanging. */
         .plant_gain = 0.3f,
         .plant_upkeep = 0.02f,
+        /* Both from the seasons design: 1.5 a starting guess, and 1 its "upkeep
+         * still runs" while resting. The second is a lever if trees die in
+         * every winter. */
+        .spring_plenty = 1.5f,
+        .plant_rest_upkeep = 1.0f,
         .plant_energy_max = 10.0f,
         .plant_start_energy = 5.0f,
         .plant_thrift = 0.6f,
@@ -271,6 +276,8 @@ static const SettingInfo TABLE[] = {
     INT_ROW(veg_max_cells, 0, INT_MAX, "cap on planted cells (0: no cap)"),
     FLOAT_ROW(plant_gain, 0, BIG, "energy a plant gains per tick where it fits best"),
     FLOAT_ROW(plant_upkeep, 0, BIG, "energy a plant pays per tick"),
+    FLOAT_ROW(spring_plenty, 1, 10, "plant income and fruit in spring, times the usual"),
+    FLOAT_ROW(plant_rest_upkeep, 0, 1, "share of its upkeep a plant pays while resting"),
     FLOAT_ROW(plant_energy_max, 0, BIG, "most energy a plant can store"),
     FLOAT_ROW(plant_start_energy, 0, BIG, "energy of a starting plant"),
     FLOAT_ROW(plant_thrift, 0, 1, "growth of a plant needing no water, against a thirsty one"),

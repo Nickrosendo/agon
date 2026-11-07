@@ -50,9 +50,10 @@
  * plants: roots kept, cheaper fruit, leaner leaves, dearer crowding, more founders;
  * then the year became 600 ticks with spring as the mating season, and two year
  * senses re-rolled every brain; then snow and drier summers: less rain from
- * tick 150 on changes the plants and so everyone.
+ * tick 150 on changes the plants and so everyone; then plants follow the
+ * seasons: more in spring, fruit trees resting from tick 300, bare leaves.
  */
-#define SEED_7_AFTER_500 0x837682818e8fa774ULL
+#define SEED_7_AFTER_500 0x8218fee3fbdc8cebULL
 
 static void test_same_seed_same_checksum(void)
 {

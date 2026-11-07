@@ -7,6 +7,7 @@
 #include "rng.h"
 #include "settings.h"
 #include "world.h"
+#include "years.h" /* SEASON_SUMMER: "as today" in the design */
 
 /* A world of all soil with fertility 1, full water, a middling temperature, and
  * no vegetation. */
@@ -70,11 +71,11 @@ static void test_lone_cell_grows_to_max(void)
     rng_seed(&r, 2);
     w.veg[world_idx(&w, 3, 3)] = 1;
     for (int i = 0; i < 3; i++) {
-        flora_step(&w, &r, &s);
+        flora_step(&w, &r, &s, SEASON_SUMMER);
     }
     CHECK(veg_at(&w, 3, 3) == VEG_MAX);
     for (int i = 0; i < 5; i++) {
-        flora_step(&w, &r, &s);
+        flora_step(&w, &r, &s, SEASON_SUMMER);
     }
     CHECK(veg_at(&w, 3, 3) == VEG_MAX);
     world_free(&w);
@@ -98,7 +99,7 @@ static void test_water_and_rock_stay_bare(void)
         }
     }
     for (int i = 0; i < 10; i++) {
-        flora_step(&w, &r, &s);
+        flora_step(&w, &r, &s, SEASON_SUMMER);
         CHECK(w.veg[water] == 0 && w.veg[rock] == 0);
     }
     world_free(&w);
@@ -117,7 +118,7 @@ static void test_barren_world_stays_empty(void)
     }
     int empty = 1;
     for (int step = 0; step < 100; step++) {
-        flora_step(&w, &r, &s);
+        flora_step(&w, &r, &s, SEASON_SUMMER);
     }
     for (int i = 0; i < w.w * w.h; i++) {
         if (w.veg[i] != 0) {
@@ -178,7 +179,7 @@ static void test_capacity_blocks_sprouting(void)
     rng_seed(&r, 6);
     ring(&w, 5, 5, 2, 1);
     clear_corners(&w, 5, 5);
-    flora_step(&w, &r, &s);
+    flora_step(&w, &r, &s, SEASON_SUMMER);
     CHECK(veg_at(&w, 5, 5) == 0);
 
     /* Same neighbourhood with room to spare: it sprouts. */
@@ -188,7 +189,7 @@ static void test_capacity_blocks_sprouting(void)
     s.veg_capacity = 30.0f;
     ring(&w, 5, 5, 2, 1);
     clear_corners(&w, 5, 5);
-    flora_step(&w, &r, &s);
+    flora_step(&w, &r, &s, SEASON_SUMMER);
     CHECK(veg_at(&w, 5, 5) == 1);
     world_free(&w);
 }
@@ -208,7 +209,7 @@ static void test_planted_cells_cap(void)
     plants_everywhere(&w);
     s.veg_max_cells = 8;
     ring(&w, 5, 5, 1, 1);
-    flora_step(&w, &r, &s);
+    flora_step(&w, &r, &s, SEASON_SUMMER);
     CHECK(planted_cells(&w) == 8);
     world_free(&w);
 
@@ -218,7 +219,7 @@ static void test_planted_cells_cap(void)
     plants_everywhere(&w);
     s.veg_max_cells = 9;
     ring(&w, 5, 5, 1, 1);
-    flora_step(&w, &r, &s);
+    flora_step(&w, &r, &s, SEASON_SUMMER);
     CHECK(planted_cells(&w) > 9);
     world_free(&w);
 
@@ -227,7 +228,7 @@ static void test_planted_cells_cap(void)
     plants_everywhere(&w);
     s.veg_max_cells = 0;
     ring(&w, 5, 5, 1, 1);
-    flora_step(&w, &r, &s);
+    flora_step(&w, &r, &s, SEASON_SUMMER);
     CHECK(planted_cells(&w) > 8);
     world_free(&w);
 }
@@ -254,7 +255,7 @@ static void test_capacity_scales_with_fertility(void)
     for (int i = 0; i < 20; i++) {
         uint8_t saved[121];
         memcpy(saved, w.veg, sizeof(saved));
-        flora_step(&w, &r, &s);
+        flora_step(&w, &r, &s, SEASON_SUMMER);
         if (veg_at(&w, 5, 5) != 0) {
             ever_sprouted = 1;
         }
@@ -280,7 +281,7 @@ static void test_over_capacity_shrinks(void)
     ring(&w, 5, 5, 2, 2);
     w.veg[world_idx(&w, 4, 4)] = 0;
     w.veg[world_idx(&w, 5, 5)] = 3;
-    flora_step(&w, &r, &s);
+    flora_step(&w, &r, &s, SEASON_SUMMER);
     CHECK(veg_at(&w, 5, 5) == 2);
     world_free(&w);
 }
@@ -299,7 +300,7 @@ static void test_tiny_world_is_safe(void)
     rng_seed(&r, 9);
     w.veg[0] = 1;
     for (int i = 0; i < 10; i++) {
-        flora_step(&w, &r, &s);
+        flora_step(&w, &r, &s, SEASON_SUMMER);
     }
     CHECK(w.veg[0] <= VEG_MAX);
     world_free(&w);
@@ -322,14 +323,14 @@ static void test_plant_withers_then_disappears(void)
     int i = world_idx(&w, 3, 3);
     w.veg[i] = 1;
 
-    flora_step(&w, &r, &s); /* age 1: not mature yet, grows */
+    flora_step(&w, &r, &s, SEASON_SUMMER); /* age 1: not mature yet, grows */
     CHECK(w.veg[i] == 2 && w.veg_age[i] == 1 && w.veg_wither[i] == 0);
-    flora_step(&w, &r, &s); /* age 2: mature, starts withering */
+    flora_step(&w, &r, &s, SEASON_SUMMER); /* age 2: mature, starts withering */
     CHECK(w.veg[i] == 2 && w.veg_wither[i] == 1);
-    flora_step(&w, &r, &s); /* withering: no growth */
-    flora_step(&w, &r, &s);
+    flora_step(&w, &r, &s, SEASON_SUMMER); /* withering: no growth */
+    flora_step(&w, &r, &s, SEASON_SUMMER);
     CHECK(w.veg[i] == 2 && w.veg_wither[i] == 3);
-    flora_step(&w, &r, &s); /* withering is over: gone */
+    flora_step(&w, &r, &s, SEASON_SUMMER); /* withering is over: gone */
     CHECK(w.veg[i] == 0 && w.veg_age[i] == 0 && w.veg_wither[i] == 0);
     world_free(&w);
 }
@@ -346,7 +347,7 @@ static void test_no_wither_chance_lives_on(void)
     int i = world_idx(&w, 3, 3);
     w.veg[i] = 1;
     for (int step = 0; step < 300; step++) {
-        flora_step(&w, &r, &s);
+        flora_step(&w, &r, &s, SEASON_SUMMER);
     }
     CHECK(w.veg[i] == VEG_MAX && w.veg_wither[i] == 0);
     CHECK(w.veg_age[i] == 300);
@@ -369,7 +370,7 @@ static void test_sprout_starts_young(void)
     int side = world_idx(&w, 3, 4);
     w.veg_age[side] = 500;
     w.veg_wither[side] = 7;
-    flora_step(&w, &r, &s);
+    flora_step(&w, &r, &s, SEASON_SUMMER);
     CHECK(w.veg[side] == 1 && w.veg_age[side] == 0 && w.veg_wither[side] == 0);
     world_free(&w);
 }
@@ -394,7 +395,7 @@ static void test_growth_follows_its_chance(void)
             w.veg[world_idx(&w, x, y)] = 1;
         }
     }
-    flora_step(&w, &r, &s);
+    flora_step(&w, &r, &s, SEASON_SUMMER);
     int grown = 0;
     for (int i = 0; i < w.w * w.h; i++) {
         grown += w.veg[i] == 2;
@@ -405,7 +406,7 @@ static void test_growth_follows_its_chance(void)
     /* A chance of 0: nothing ever thickens. */
     s.veg_grow_chance = 0.0f;
     for (int step = 0; step < 50; step++) {
-        flora_step(&w, &r, &s);
+        flora_step(&w, &r, &s, SEASON_SUMMER);
     }
     int above_two = 0;
     for (int i = 0; i < w.w * w.h; i++) {
@@ -433,7 +434,7 @@ static void test_sprouting_follows_its_rate(void)
             w.veg[world_idx(&w, x, y)] = (x + y) % 2 == 0 ? 1 : 0;
         }
     }
-    flora_step(&w, &r, &s);
+    flora_step(&w, &r, &s, SEASON_SUMMER);
     int sprouted = 0;
     for (int y = 0; y < w.h; y++) {
         for (int x = 0; x < w.w; x++) {
@@ -468,7 +469,7 @@ static void test_sprout_copies_its_parent(void)
     Rng r;
     rng_seed(&r, 15);
     column_of_three(&w, 0.25f, 0.25f, 0.25f);
-    flora_step(&w, &r, &s);
+    flora_step(&w, &r, &s, SEASON_SUMMER);
     CHECK(veg_at(&w, 3, 4) == 1 && veg_at(&w, 5, 4) == 1);
     CHECK(w.plant[world_idx(&w, 3, 4)].fruit_share == 0.25f);
     CHECK(w.plant[world_idx(&w, 5, 4)].fruit_share == 0.25f);
@@ -492,7 +493,7 @@ static void test_sprout_picks_one_neighbour(void)
         make_world(&w, 9, 9);
         plants_everywhere(&w);
         column_of_three(&w, shares[0], shares[1], shares[2]);
-        flora_step(&w, &r, &s);
+        flora_step(&w, &r, &s, SEASON_SUMMER);
         float got = w.plant[world_idx(&w, 3, 4)].fruit_share;
         int known = 0;
         for (int k = 0; k < 3; k++) {
@@ -555,7 +556,7 @@ static void test_plant_needs_energy_and_climate(void)
     plants_everywhere(&w);
     side = world_idx(&w, 3, 4);
     w.veg[world_idx(&w, 4, 4)] = 1;
-    flora_step(&w, &r, &s);
+    flora_step(&w, &r, &s, SEASON_SUMMER);
     CHECK(w.veg[side] == 1);
     world_free(&w);
 
@@ -564,7 +565,7 @@ static void test_plant_needs_energy_and_climate(void)
     plants_everywhere(&w);
     w.veg[world_idx(&w, 4, 4)] = 1;
     w.water[world_idx(&w, 4, 4)] = 0.0f;
-    flora_step(&w, &r, &s);
+    flora_step(&w, &r, &s, SEASON_SUMMER);
     CHECK(w.veg[side] == 0);
     world_free(&w);
 
@@ -573,7 +574,7 @@ static void test_plant_needs_energy_and_climate(void)
     plants_everywhere(&w);
     w.veg[world_idx(&w, 4, 4)] = 1;
     w.temperature[world_idx(&w, 4, 4)] = 0.0f;
-    flora_step(&w, &r, &s);
+    flora_step(&w, &r, &s, SEASON_SUMMER);
     CHECK(w.veg[side] == 0);
     world_free(&w);
 
@@ -582,7 +583,7 @@ static void test_plant_needs_energy_and_climate(void)
     plants_everywhere(&w);
     w.veg[world_idx(&w, 4, 4)] = 1;
     w.plant[world_idx(&w, 4, 4)].energy = s.plant_seed_energy * 0.5f;
-    flora_step(&w, &r, &s);
+    flora_step(&w, &r, &s, SEASON_SUMMER);
     CHECK(w.veg[side] == 0);
     world_free(&w);
 }
@@ -619,7 +620,7 @@ static void test_plant_starves_where_dry(void)
     /* energy / upkeep ticks to run out, then withering. */
     int ticks = (int)(1.0f / s.plant_upkeep) + s.veg_wither_ticks + 5;
     for (int t = 0; t < ticks; t++) {
-        flora_step(&w, &r, &s);
+        flora_step(&w, &r, &s, SEASON_SUMMER);
     }
     CHECK(w.veg[cell] == 0);
     world_free(&w);
@@ -647,19 +648,159 @@ static void test_fruit_costs_the_tree(void)
     float before = w.plant[tree].energy;
     Rng r;
     rng_seed(&r, 20);
-    flora_step(&w, &r, &s);
+    flora_step(&w, &r, &s, SEASON_SUMMER);
     CHECK(fabsf(w.plant[tree].fruit - 0.5f) < 1e-5f);
     CHECK(fabsf(w.plant[tree].energy - (before - 1.0f)) < 1e-5f);
     CHECK(w.plant[bush].fruit == 0.0f);
     CHECK(w.plant[bush].energy == before);
     for (int t = 0; t < 10; t++) {
-        flora_step(&w, &r, &s);
+        flora_step(&w, &r, &s, SEASON_SUMMER);
     }
     CHECK(w.plant[tree].fruit <= 2.5f); /* the last step may overshoot once */
     float settled = w.plant[tree].energy;
-    flora_step(&w, &r, &s);
+    flora_step(&w, &r, &s, SEASON_SUMMER);
     CHECK(w.plant[tree].energy == settled);
     world_free(&w);
+}
+
+/* One plant in the middle of a 9 by 9 world, the rest bare. */
+static int lone_plant(World *w, float fruit_share, float energy)
+{
+    make_world(w, 9, 9);
+    int at = world_idx(w, 4, 4);
+    w->veg[at] = 1;
+    w->plant[at] = healthy_plant();
+    w->plant[at].fruit_share = fruit_share;
+    w->plant[at].energy = energy;
+    return at;
+}
+
+/* Spring: the same plant gains spring_plenty times what it gains in summer,
+ * and a fruit tree makes spring_plenty times the fruit. */
+static void test_spring_grows_more(void)
+{
+    Settings s = rules();
+    s.veg_sprout_rate = 0.0f;
+    s.veg_grow_chance = 0.0f;
+    s.plant_fruit_rate = 0.1f;
+    s.plant_fruit_cost = 0.0f;
+    for (int kind = 0; kind < 2; kind++) {
+        float share = kind == 0 ? 0.0f : 1.0f;
+        World spring, summer;
+        int a = lone_plant(&spring, share, 5.0f);
+        lone_plant(&summer, share, 5.0f);
+        Rng r1, r2;
+        rng_seed(&r1, 3);
+        rng_seed(&r2, 3);
+        flora_step(&spring, &r1, &s, SEASON_SPRING);
+        flora_step(&summer, &r2, &s, SEASON_SUMMER);
+        float spring_gain = spring.plant[a].energy - 5.0f;
+        float summer_gain = summer.plant[a].energy - 5.0f;
+        CHECK(summer_gain > 0.0f);
+        CHECK(fabsf(spring_gain - s.spring_plenty * summer_gain) < 1e-5f);
+        if (kind == 1) {
+            CHECK(fabsf(summer.plant[a].fruit - 0.1f) < 1e-6f);
+            CHECK(fabsf(spring.plant[a].fruit - 0.1f * s.spring_plenty) < 1e-6f);
+        }
+        world_free(&spring);
+        world_free(&summer);
+    }
+}
+
+/* How many cells of the world carry a plant. */
+static int planted_count(const World *w)
+{
+    int count = 0;
+    for (int i = 0; i < w->w * w->h; i++) {
+        count += w->veg[i] > 0;
+    }
+    return count;
+}
+
+/* Autumn: a fruit tree rests (no income, no fruit, no seeds, no growth) and
+ * keeps the fruit it holds; a leaf plant goes on gaining and seeding. */
+static void test_autumn_stops_fruit_trees(void)
+{
+    Settings s = rules();
+    s.plant_upkeep = 0.02f;
+    s.plant_fruit_rate = 0.1f;
+    World w;
+    int at = lone_plant(&w, 1.0f, 8.0f);
+    w.plant[at].fruit = 2.0f;
+    Rng r;
+    rng_seed(&r, 4);
+    flora_step(&w, &r, &s, SEASON_AUTUMN);
+    CHECK(w.plant[at].fruit == 2.0f);
+    CHECK(fabsf(w.plant[at].energy - (8.0f - 0.02f)) < 1e-6f);
+    CHECK(w.veg[at] == 1);
+    CHECK(planted_count(&w) == 1);
+    world_free(&w);
+
+    at = lone_plant(&w, 0.0f, 8.0f);
+    flora_step(&w, &r, &s, SEASON_AUTUMN);
+    CHECK(w.plant[at].energy > 8.0f - 0.02f);
+    CHECK(w.veg[at] == 2);
+    CHECK(planted_count(&w) > 1); /* sprouts around it */
+    world_free(&w);
+}
+
+/* Winter: neither kind gains, grows, seeds or fruits, and both pay the
+ * resting share of their upkeep. */
+static void test_winter_stops_all_plants(void)
+{
+    Settings s = rules();
+    s.plant_upkeep = 0.02f;
+    s.plant_rest_upkeep = 0.5f;
+    s.plant_fruit_rate = 0.1f;
+    for (int kind = 0; kind < 2; kind++) {
+        World w;
+        int at = lone_plant(&w, kind == 0 ? 0.0f : 1.0f, 8.0f);
+        Rng r;
+        rng_seed(&r, 5);
+        flora_step(&w, &r, &s, SEASON_WINTER);
+        CHECK(fabsf(w.plant[at].energy - (8.0f - 0.01f)) < 1e-6f);
+        CHECK(w.plant[at].fruit == 0.0f);
+        CHECK(w.veg[at] == 1);
+        CHECK(planted_count(&w) == 1);
+        world_free(&w);
+    }
+    /* A resting plant with nothing stored stays at 0, never below. */
+    World w;
+    int at = lone_plant(&w, 1.0f, 0.001f);
+    Rng r;
+    rng_seed(&r, 5);
+    flora_step(&w, &r, &s, SEASON_WINTER);
+    CHECK(w.plant[at].energy == 0.0f);
+    world_free(&w);
+}
+
+/* The season changes what plants do, never how many numbers flora_step draws.
+ * Every cell is planted, so no sprout can add a seed's own draws (those come
+ * only when a sprout really happens, in any season), and half the plants are
+ * fruit trees so that autumn's rule is in play too. */
+static void test_seasons_keep_three_draws(void)
+{
+    Settings s = rules();
+    s.veg_wither_chance = 0.01f;
+    Rng after[SEASON_COUNT];
+    for (int season = 0; season < SEASON_COUNT; season++) {
+        World w;
+        make_world(&w, 10, 10);
+        plants_everywhere(&w);
+        for (int i = 0; i < 100; i++) {
+            w.veg[i] = 1;
+            w.plant[i].fruit_share = i % 2 == 0 ? 1.0f : 0.0f;
+        }
+        rng_seed(&after[season], 9);
+        flora_step(&w, &after[season], &s, season);
+        world_free(&w);
+    }
+    /* A struct cannot be compared with ==; the generator is four uint64_t. */
+    for (int season = 0; season < SEASON_COUNT; season++) {
+        for (int k = 0; k < 4; k++) {
+            CHECK(after[season].s[k] == after[SEASON_SUMMER].s[k]);
+        }
+    }
 }
 
 /* Spec section 12: an area that stops getting rain loses its plants, and when
@@ -686,7 +827,7 @@ static void test_desert_and_back(void)
         }
     }
     for (int t = 0; t < 2000; t++) {
-        flora_step(&w, &r, &s);
+        flora_step(&w, &r, &s, SEASON_SUMMER);
     }
     int dry_planted = 0;
     int wet_planted = 0;
@@ -712,7 +853,7 @@ static void test_desert_and_back(void)
     int near_edge = 0;
     int middle = 0;
     for (int t = 0; t < 40; t++) {
-        flora_step(&w, &r, &s);
+        flora_step(&w, &r, &s, SEASON_SUMMER);
     }
     for (int y = 0; y < 12; y++) {
         for (int x = 15; x < 45; x++) {
@@ -723,7 +864,7 @@ static void test_desert_and_back(void)
     }
     CHECK(near_edge > middle);
     for (int t = 0; t < 3000; t++) {
-        flora_step(&w, &r, &s);
+        flora_step(&w, &r, &s, SEASON_SUMMER);
     }
     middle = 0;
     for (int y = 0; y < 12; y++) {
@@ -745,7 +886,7 @@ static void test_no_sprout_from_nothing(void)
     Rng r;
     rng_seed(&r, 18);
     for (int t = 0; t < 10000; t++) {
-        flora_step(&w, &r, &s);
+        flora_step(&w, &r, &s, SEASON_SUMMER);
     }
     int planted = 0;
     for (int i = 0; i < w.w * w.h; i++) {
@@ -854,6 +995,10 @@ int main(void)
     test_plant_fit();
     test_plant_starves_where_dry();
     test_fruit_costs_the_tree();
+    test_spring_grows_more();
+    test_autumn_stops_fruit_trees();
+    test_winter_stops_all_plants();
+    test_seasons_keep_three_draws();
     test_desert_and_back();
     test_no_sprout_from_nothing();
     test_carrion_merges();

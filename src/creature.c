@@ -640,9 +640,14 @@ static float carrion_take(const World *w, int i, const Creature *c,
 }
 
 /* How many density steps a bite by c would take from plant cell i: what its
- * mouth can take, up to what the plant holds. */
-static int plant_take(const World *w, int i, const Creature *c, const Settings *s)
+ * mouth can take, up to what the plant holds. A leaf plant standing bare for
+ * the season (flora.h) has nothing to take. */
+static int plant_take(const World *w, int i, const Creature *c, const Settings *s,
+                      int season)
 {
+    if (plant_is_bare(&w->plant[i], season)) {
+        return 0;
+    }
     int mouth = bite_steps(creature_size(c, s));
     /* What a bite may reach: never the root, which regrows the plant. */
     int edible = (int)w->veg[i] - s->plant_leaf_root;
@@ -724,10 +729,11 @@ static void eat_carrion(World *w, Creature *c, int ahead, const Settings *s)
 /* Eats what its mouth can take of the leaves on this cell. When that leaves
  * the cell bare, flora_step resets the cell's age on the next tick. Harm may
  * take the plant's energy to 0, and then it starts withering on the next tick. */
-static void eat_leaves(World *w, Creature *c, int cell, const Settings *s)
+static void eat_leaves(World *w, Creature *c, int cell, const Settings *s,
+                       int season)
 {
     Plant *plant = &w->plant[cell];
-    int take = plant_take(w, cell, c, s);
+    int take = plant_take(w, cell, c, s, season);
     /* veg is a uint8_t, promoted to int for the subtraction. The result is
      * between 0 and what it held, so the cast back loses nothing. */
     w->veg[cell] = (uint8_t)(w->veg[cell] - take);
@@ -822,7 +828,7 @@ BiteChoice creature_bite_choice(const World *w, const Pool *p, int idx,
             }
         }
         if (w->veg[cell] > 0) {
-            float leaves = (float)plant_take(w, cell, c, s) *
+            float leaves = (float)plant_take(w, cell, c, s, p->season) *
                            leaf_gain(c, &w->plant[cell], s);
             float fruit = (float)fruit_take(w, cell, c, s) * s->bite_fruit_energy *
                           fruit_eff(c, s);
@@ -857,7 +863,7 @@ static void act_bite(World *w, Pool *p, int idx, const Settings *s, Rng *r)
         if (choice.fruit) {
             eat_fruit(w, c, choice.cell, s, r);
         } else {
-            eat_leaves(w, c, choice.cell, s);
+            eat_leaves(w, c, choice.cell, s, p->season);
         }
         break;
     default:
