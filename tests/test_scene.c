@@ -449,10 +449,13 @@ static void test_known_world_pixels(void)
          * Re-pinned for the attack: Far changed because its fights are now
          * drawn as the attack's first frame (this test's body clock stands at
          * 0) instead of a bite with a red slash over the victim; the attack
-         * itself was looked at in the lab, frame by frame. */
+         * itself was looked at in the lab, frame by frame. Re-pinned when the
+         * seasons' tuned settings were merged (bigger bites of leaves, fruit and
+         * meat, slower ageing): creatures stand elsewhere at the two wider
+         * levels; both pictures were saved and looked at. */
         static const uint64_t EXPECTED[CAMERA_LEVELS] = {
             0xbe5f57fb7c7bdabdu, 0x5a015897532bfe08u,
-            0x257dfcd68e10d4f5u, 0x8467a0fcd9991445u,
+            0xe9b41c570e2b3e0bu, 0xb09f8110c87d3d35u,
         };
         if (hashes[level] != EXPECTED[level]) {
             printf("level %d: 0x%llxu\n", level,
