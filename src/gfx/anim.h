@@ -43,7 +43,8 @@ typedef struct {
 /* How to draw one creature right now. */
 typedef struct {
     float x, y;  /* in cells, possibly between two */
-    int frame;   /* a FRAME_ value (sprite.h) */
+    int action;  /* an ACTION_ value (skeleton.h): which cycle */
+    int frame;   /* the frame of that cycle */
     bool flip;   /* true when facing left */
     float pop;   /* 0..1; 1 is full size */
     int bite;    /* a BITE_ value (creature.h), or POSE_ATTACK: what its mouth is doing */

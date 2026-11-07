@@ -3,7 +3,7 @@
 #include <stdlib.h> /* calloc, free */
 #include <string.h> /* memset */
 
-#include "sprite.h" /* the FRAME_ values */
+#include "skeleton.h" /* the ACTION_ values */
 
 /* How long one breath of a resting creature lasts, in milliseconds. */
 #define BREATH_MS 625u
@@ -99,18 +99,25 @@ void anim_update(Anim *a, const Sim *s, int ticks_per_second)
     }
 }
 
-/* The frame for a creature not doing anything with a frame of its own. The
- * id offsets the breath, so a crowd does not pulse together. */
-static int idle_or_walk_frame(const Anim *a, const AnimSlot *m, const Sim *s,
-                              float t, bool moved, uint64_t now_ms)
+/* The action and frame for a creature not doing anything with a picture of
+ * its own: walking (frames 0..3 of the walk) or resting (the breath, frames 0
+ * and 1). The id offsets the breath, so a crowd does not pulse together.
+ * Today's rules, reported as actions; task 11 replaces them. */
+static void idle_or_walk(const Anim *a, const AnimSlot *m, const Sim *s, float t,
+                         bool moved, uint64_t now_ms, AnimPose *out)
 {
     if (moved && a->jump && s->tick - m->moved_tick <= 1) {
-        return FRAME_WALK0 + (int)(s->tick % 4u);
+        out->action = ACTION_WALK;
+        out->frame = (int)(s->tick % 4u);
+        return;
     }
     if (moved && !a->jump && t < 1.0f) {
-        return FRAME_WALK0 + (int)(t * 4.0f);
+        out->action = ACTION_WALK;
+        out->frame = (int)(t * 4.0f);
+        return;
     }
-    return FRAME_REST0 + (int)((now_ms / BREATH_MS + m->id) % 2u);
+    out->action = ACTION_REST;
+    out->frame = (int)((now_ms / BREATH_MS + m->id) % 2u);
 }
 
 void anim_pose(const Anim *a, const Sim *s, int slot, float tick_fraction,
@@ -154,11 +161,13 @@ void anim_pose(const Anim *a, const Sim *s, int slot, float tick_fraction,
     if (out->bite != BITE_NOTHING) {
         /* Mouth open, mouth shut. The id keeps a crowd out of step. */
         bool open = (now_ms / CHOMP_MS + c->id) % 2u == 0;
-        out->frame = open ? FRAME_BITE : FRAME_REST0;
+        out->action = open ? ACTION_BITE : ACTION_REST;
+        out->frame = 0;
     } else if (c->current.kind == ACT_MATE) {
-        out->frame = FRAME_MATE;
+        out->action = ACTION_REST; /* no picture of its own until task 11 */
+        out->frame = 0;
     } else {
-        out->frame = idle_or_walk_frame(a, m, s, t, moved, now_ms);
+        idle_or_walk(a, m, s, t, moved, now_ms, out);
     }
     out->flip = m->face < 0;
     /* A biter faces what it bites, whatever its heading says; straight above

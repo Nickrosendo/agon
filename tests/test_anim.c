@@ -66,7 +66,7 @@ static void test_glide_halfway(void)
     anim_pose(&a, &s, slot, 0.0f, 0, &p);
     CHECK(NEAR(p.x, 10.5f));
     CHECK(NEAR(p.y, 10.0f));
-    CHECK(p.frame >= FRAME_WALK0 && p.frame <= FRAME_WALK3);
+    CHECK(p.action == ACTION_WALK && p.frame >= 0 && p.frame <= 3);
     /* The fraction of a tick counts too: smooth between ticks. */
     anim_pose(&a, &s, slot, 0.5f, 0, &p);
     CHECK(NEAR(p.x, 10.625f));
@@ -75,7 +75,7 @@ static void test_glide_halfway(void)
     anim_update(&a, &s, 10);
     anim_pose(&a, &s, slot, 0.0f, 0, &p);
     CHECK(NEAR(p.x, 11.0f));
-    CHECK(p.frame == FRAME_REST0 || p.frame == FRAME_REST1);
+    CHECK(p.action == ACTION_REST && (p.frame == 0 || p.frame == 1));
     anim_free(&a);
     sim_free(&s);
 }
@@ -116,7 +116,7 @@ static void test_jump_above_15_ticks(void)
     AnimPose p;
     anim_pose(&a, &s, slot, 0.5f, 0, &p);
     CHECK(NEAR(p.x, 11.0f));
-    CHECK(p.frame >= FRAME_WALK0 && p.frame <= FRAME_WALK3); /* legs still */
+    CHECK(p.action == ACTION_WALK && p.frame >= 0 && p.frame <= 3); /* legs still */
     anim_free(&a);
     sim_free(&s);
 }
@@ -155,7 +155,7 @@ static void test_first_sight_does_not_glide(void)
     anim_pose(&a, &s, slot, 0.0f, 0, &p);
     CHECK(NEAR(p.x, 40.0f));
     CHECK(NEAR(p.y, 20.0f));
-    CHECK(p.frame == FRAME_REST0 || p.frame == FRAME_REST1);
+    CHECK(p.action == ACTION_REST && (p.frame == 0 || p.frame == 1));
     CHECK(NEAR(p.pop, 1.0f)); /* old: no birth to show */
     anim_free(&a);
     sim_free(&s);
@@ -257,6 +257,7 @@ static void test_rest_breathing_offset(void)
     AnimPose p1, p2;
     anim_pose(&a, &s, one, 0.0f, 0, &p1);
     anim_pose(&a, &s, two, 0.0f, 0, &p2);
+    CHECK(p1.action == ACTION_REST && p2.action == ACTION_REST);
     CHECK(p1.frame != p2.frame);
     /* A breath later, each has changed. */
     AnimPose later;
@@ -266,7 +267,8 @@ static void test_rest_breathing_offset(void)
     sim_free(&s);
 }
 
-static void test_mate_frame(void)
+/* Mating has no picture of its own until task 11: the creature rests. */
+static void test_mating_creature_rests(void)
 {
     Sim s;
     empty_sim(&s, 64, 32);
@@ -277,7 +279,7 @@ static void test_mate_frame(void)
     anim_update(&a, &s, 10);
     AnimPose p;
     anim_pose(&a, &s, slot, 0.0f, 0, &p);
-    CHECK(p.frame == FRAME_MATE);
+    CHECK(p.action == ACTION_REST);
     CHECK(p.bite == BITE_NOTHING);
     anim_free(&a);
     sim_free(&s);
@@ -310,7 +312,7 @@ static void test_bite_at_nothing_shows_no_bite(void)
     AnimPose p;
     anim_pose(&a, &s, slot, 0.0f, 0, &p);
     CHECK(p.bite == BITE_NOTHING);
-    CHECK(p.frame == FRAME_REST0 || p.frame == FRAME_REST1);
+    CHECK(p.action == ACTION_REST && (p.frame == 0 || p.frame == 1));
     anim_free(&a);
     sim_free(&s);
 }
@@ -329,8 +331,9 @@ static void test_eating_a_plant_chomps_and_faces_it(void)
     CHECK(p0.target_x == 9 && p0.target_y == 10);
     CHECK(p0.flip); /* the plant is on its left, and it was facing right */
     /* Mouth open, then shut. */
-    CHECK(p0.frame != p1.frame);
-    CHECK(p0.frame == FRAME_BITE || p1.frame == FRAME_BITE);
+    CHECK(p0.action != p1.action);
+    CHECK(p0.action == ACTION_BITE || p1.action == ACTION_BITE);
+    CHECK(p0.action == ACTION_REST || p1.action == ACTION_REST);
     anim_free(&a);
     sim_free(&s);
 }
@@ -429,7 +432,7 @@ int main(void)
     test_reset_after_ids_restart();
     test_facing_north_keeps_last();
     test_rest_breathing_offset();
-    test_mate_frame();
+    test_mating_creature_rests();
     test_bite_at_nothing_shows_no_bite();
     test_eating_a_plant_chomps_and_faces_it();
     test_bite_straight_up_keeps_facing();

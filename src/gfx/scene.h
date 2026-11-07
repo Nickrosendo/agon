@@ -68,7 +68,16 @@ typedef struct {
  * 8-pixel size. These are arrays of arrays, all one block inside the Scene:
  * rain[s][v][f] is a row table of 16 numbers, with no pointers to follow. */
 typedef struct {
+    /* The creatures' pictures, kept picture by picture (sprite.h). */
     SpriteCache sprites;
+    /* Per pool slot: its creature's colours, and the id and species they were
+     * made for (palette_species PALETTE_NONE: not made yet); they are made
+     * again when either changes. And the body each slot is drawn as this frame. */
+    SpritePalette *palettes;
+    uint32_t *palette_id;
+    uint8_t *palette_species;
+    SpriteBody *bodies;
+    int slots;
     Anim anim;
     uint16_t slash[2][TILE_MARK_FRAMES][16];
     uint16_t crumbs[2][TILE_MARK_FRAMES][16];
@@ -130,7 +139,7 @@ typedef struct {
 #define SCENE_MIN_H (SCENE_MIN_ROWS * FONT_H)
 /* A hit shows as a scar for this many ticks, a year at the default calendar. */
 #define SCENE_SCAR_TICKS 100u
-/* An enlarged body: 16 pixels, each four screen pixels wide. */
+/* The panel's enlarged body: the detailed picture, cut to a box this size. */
 #define SCENE_BODY_BIG 64
 /* A panel keeps at least this many text rows before the bodies get any: enough
  * for all of its lines but the family colours. */
@@ -176,17 +185,19 @@ void scene_draw_world(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
                       float tick_fraction, uint64_t water_ms, uint64_t body_ms,
                       int view_x, int view_y);
 
-/* The followed creature four times its size, in its live animation frame,
- * with its top left corner at (x, y). */
+/* The followed creature's detailed picture, standing, cut to a SCENE_BODY_BIG
+ * box with its top left corner at (x, y). */
 void scene_draw_followed(Scene *sc, Canvas *c, const Sim *s,
                          const Creature *followed, uint64_t now_ms, int x, int y);
-/* A family's average body at the same size, breathing. */
-void scene_draw_sample(Canvas *c, const FamilySample *sample, uint64_t now_ms,
-                       int x, int y);
-/* A family's bodies over time, oldest on the left, as many as fit in w pixels.
- * Nothing when the family has no record. */
-void scene_draw_strip(Canvas *c, const Families *f, uint32_t lineage, int x,
-                      int y, int w);
+/* A family's average body, as the family's species (picked from its founder's
+ * id, lineage), standing at Normal size in the same box. Task 14 gives it its
+ * real size. */
+void scene_draw_sample(Scene *sc, Canvas *c, const FamilySample *sample,
+                       uint32_t lineage, uint64_t now_ms, int x, int y);
+/* A family's bodies over time, oldest on the left, one in each 16 pixels, as
+ * many as fit in w pixels. Nothing when the family has no record. */
+void scene_draw_strip(Scene *sc, Canvas *c, const Families *f, uint32_t lineage,
+                      int x, int y, int w);
 /* What a click on the panel asks for. */
 typedef enum {
     PANEL_PICK_NONE,
@@ -205,8 +216,9 @@ void scene_click(Inspect *in, const Sim *s, float wx, float wy);
  * nobody is followed: if it has just died, the camera stays where it was. */
 const Creature *scene_follow(const Scene *sc, Camera *cam, Inspect *in,
                              const Sim *s, float tick_fraction);
-/* Corner marks around the followed creature, over the world. */
-void scene_draw_cursor(const Scene *sc, Canvas *c, const Camera *cam,
+/* Corner marks around the followed creature's picture, over the world. The
+ * Scene is not const here: the picture may have to be drawn into its cache. */
+void scene_draw_cursor(Scene *sc, Canvas *c, const Camera *cam,
                        const Sim *s, const Creature *followed,
                        float tick_fraction, int view_x, int view_y);
 
@@ -217,7 +229,7 @@ void scene_draw_cursor(const Scene *sc, Canvas *c, const Camera *cam,
  * that would reach past the view is left out rather than cut. followed may be
  * NULL.
  */
-void scene_draw_names(const Scene *sc, Canvas *c, const Camera *cam,
+void scene_draw_names(Scene *sc, Canvas *c, const Camera *cam,
                       const Sim *s, const Creature *followed,
                       float tick_fraction, int view_x, int view_y);
 

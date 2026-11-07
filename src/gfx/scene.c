@@ -13,15 +13,18 @@
 #include "palette.h"
 #include "years.h"   /* years_season_of */
 
+/* No palette has been made for a pool slot yet. */
+#define PALETTE_NONE 0xFFu
 /* How many autotiles the scene keeps. Real maps use a few hundred keys. */
 #define SCENE_TILE_CACHE 2048
 #define TWO_PI 6.2831853f
 /* How long one frame of a fight's or a meal's mark lasts. */
 #define MARK_FRAME_MS 110u
 
-/* The near-black behind every symbol; outside the world it is true black. */
+/* The near-black behind names and the panel's bodies; outside the world it is
+ * true black. */
 static const Colour BACKGROUND = {6, 6, 8};
-/* The second colour of a creature: teeth and spots. */
+/* Names, the cursor's corners, and plant crumbs mixed with it. */
 static const Colour WHITE = {245, 240, 235};
 /* Bones; and the colour of carrion: a little is pale bone, a lot dark red. */
 static const Colour BONE = {196, 176, 150};
@@ -113,16 +116,55 @@ static bool build_trees(Scene *sc)
     return true;
 }
 
+/* The per-slot blocks of the creatures' colours and bodies. False when memory
+ * runs out; whatever was allocated is then in sc, for free_slot_blocks. */
+static bool alloc_slot_blocks(Scene *sc, int slots)
+{
+    size_t n = (size_t)slots;
+    sc->slots = slots;
+    sc->palettes = malloc(n * sizeof(SpritePalette));
+    sc->palette_id = malloc(n * sizeof(uint32_t));
+    sc->palette_species = malloc(n);
+    sc->bodies = malloc(n * sizeof(SpriteBody));
+    if (sc->palettes == NULL || sc->palette_id == NULL || sc->palette_species == NULL ||
+        sc->bodies == NULL) {
+        return false;
+    }
+    /* memset fills a block with one byte: every slot "no palette yet". */
+    memset(sc->palette_species, PALETTE_NONE, n);
+    return true;
+}
+
+static void free_slot_blocks(Scene *sc)
+{
+    free(sc->palettes); /* free(NULL) does nothing */
+    free(sc->palette_id);
+    free(sc->palette_species);
+    free(sc->bodies);
+    sc->palettes = NULL;
+    sc->palette_id = NULL;
+    sc->palette_species = NULL;
+    sc->bodies = NULL;
+    sc->slots = 0;
+}
+
 bool scene_init(Scene *sc, const Sim *s)
 {
-    if (!sprite_cache_init(&sc->sprites, s->pool.capacity)) {
+    if (!sprite_cache_init(&sc->sprites, SPRITE_ENTRIES, SPRITE_DETAIL_ENTRIES)) {
+        return false;
+    }
+    if (!alloc_slot_blocks(sc, s->pool.capacity)) {
+        free_slot_blocks(sc);
+        sprite_cache_free(&sc->sprites);
         return false;
     }
     if (!anim_init(&sc->anim, s->pool.capacity)) {
+        free_slot_blocks(sc);
         sprite_cache_free(&sc->sprites);
         return false;
     }
     if (!tiles_cache_init(&sc->tiles, SCENE_TILE_CACHE)) {
+        free_slot_blocks(sc);
         sprite_cache_free(&sc->sprites);
         anim_free(&sc->anim);
         return false;
@@ -133,6 +175,7 @@ bool scene_init(Scene *sc, const Sim *s)
     if (sc->poses == NULL || !build_trees(sc) || !canvas_init(&sc->ground, 0, 0)) {
         free(sc->poses); /* free(NULL) does nothing */
         free(sc->trees);
+        free_slot_blocks(sc);
         sprite_cache_free(&sc->sprites);
         anim_free(&sc->anim);
         tiles_cache_free(&sc->tiles);
@@ -178,6 +221,7 @@ bool scene_init(Scene *sc, const Sim *s)
 void scene_free(Scene *sc)
 {
     sprite_cache_free(&sc->sprites);
+    free_slot_blocks(sc);
     anim_free(&sc->anim);
     tiles_cache_free(&sc->tiles);
     /* free(NULL) does nothing, so blocks never allocated are fine here. */
@@ -211,6 +255,8 @@ void scene_free(Scene *sc)
 void scene_reset(Scene *sc)
 {
     sprite_cache_reset(&sc->sprites);
+    /* A new world's creature can have an old one's id in the same slot. */
+    memset(sc->palette_species, PALETTE_NONE, (size_t)sc->slots);
     anim_reset(&sc->anim);
     tiles_cache_reset(&sc->tiles);
     sc->keys_valid = false;
@@ -798,54 +844,6 @@ static int recent_hit_count(const Creature *cr, uint64_t tick)
     return n;
 }
 
-/* The scars over a body already drawn: body is its rows, size by size. */
-static void draw_scars(Canvas *c, const uint64_t *body, int size, int x, int y,
-                       int scale, bool flip, int count, CanvasClip clip)
-{
-    if (count <= 0) {
-        return;
-    }
-    uint64_t scars[SPRITE_MAX_COLS];
-    sprite_scars(scars, body, size, count);
-    canvas_mask_wide(c, scars, size, x, y, scale, flip, to_pixel(SCAR), clip);
-}
-
-/* One creature as a symbol, its tile cleared first so its eye shows black
- * and no plant shows through. A newborn is drawn at half size at first. */
-static void draw_body(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
-                      const Creature *cr, int slot, const AnimPose *p, int sx,
-                      int sy)
-{
-    int ppc = camera_ppc(cam);
-    int size = camera_sprite_size(cam);
-    int scale = camera_sprite_scale(cam);
-    uint32_t colour = to_pixel(creature_colour(cr));
-    canvas_rect(c, sx, sy, ppc, ppc, to_pixel(BACKGROUND));
-    bool newborn = p->pop < 0.5f;
-    if (newborn && size == 8) {
-        canvas_rect(c, sx + ppc / 4, sy + ppc / 4, ppc / 2, ppc / 2, colour);
-        return;
-    }
-    int drawn_size = newborn ? 8 : size;
-    int inset = newborn ? ppc / 4 : 0;
-    const SpriteMask *m = sprite_get(&sc->sprites, slot, cr->id, &cr->genome,
-                                     drawn_size, p->frame);
-    if (m == NULL) {
-        return;
-    }
-    canvas_mask(c, m->body, drawn_size, sx + inset, sy + inset, scale, p->flip,
-                colour);
-    canvas_mask(c, m->white, drawn_size, sx + inset, sy + inset, scale, p->flip,
-                to_pixel(WHITE));
-    /* The scars want 64-bit rows; a uint16_t widens to uint64_t with no loss. */
-    uint64_t rows[16];
-    for (int j = 0; j < 16; j++) {
-        rows[j] = m->body[j];
-    }
-    draw_scars(c, rows, drawn_size, sx + inset, sy + inset, scale, p->flip,
-               recent_hit_count(cr, s->tick), whole(c));
-}
-
 /* Where on the canvas the world shows, and whether it shows whole along each
  * axis. A whole axis is not repeated on screen, so a body hanging over its
  * edge must also be drawn on the other side, as the world wraps. */
@@ -873,79 +871,6 @@ static WorldArea world_area(const Camera *cam, int view_x, int view_y)
     a.whole_x = a.world_px_w <= cam->view_w;
     a.whole_y = a.world_px_h <= cam->view_h;
     return a;
-}
-
-/* The top left corner of a body drawn tiles wide whose cell's corner is at
- * (sx, sy): its feet on the bottom of its own cell, centred across it. */
-static void large_corner(int sx, int sy, int ppc, int tiles, int *x, int *y)
-{
-    int extent = tiles * ppc;
-    *x = sx + ppc / 2 - extent / 2;
-    *y = sy + ppc - extent;
-}
-
-/* One picture of a large body with its corner at (x, y), unless it misses the
- * world's area entirely. */
-static void draw_large_at(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
-                          const Creature *cr, const AnimPose *p, int tiles,
-                          int x, int y, CanvasClip clip)
-{
-    int extent = tiles * camera_ppc(cam);
-    if (x >= clip.x + clip.w || y >= clip.y + clip.h || x + extent <= clip.x ||
-        y + extent <= clip.y) {
-        return;
-    }
-    uint32_t colour = to_pixel(creature_colour(cr));
-    int size = camera_sprite_size(cam);
-    if (size == 0) {
-        canvas_rect_clip(c, x, y, extent, extent, colour, clip);
-        return;
-    }
-    const WideMask *m =
-        sprite_get_wide(&sc->sprites, cr->id, &cr->genome, tiles, size, p->frame);
-    if (m == NULL) {
-        return;
-    }
-    int scale = camera_sprite_scale(cam);
-    canvas_mask_wide(c, m->outline, m->size, x, y, scale, p->flip,
-                     to_pixel(BACKGROUND), clip);
-    canvas_mask_wide(c, m->body, m->size, x, y, scale, p->flip, colour, clip);
-    canvas_mask_wide(c, m->white, m->size, x, y, scale, p->flip, to_pixel(WHITE),
-                     clip);
-    draw_scars(c, m->body, m->size, x, y, scale, p->flip,
-               recent_hit_count(cr, s->tick), clip);
-}
-
-/* A body drawn several tiles wide, over the ground and over smaller bodies,
- * with no cell cleared: its outline keeps it apart from what is behind. Only
- * drawing: in the simulation it still stands on one cell. */
-static void draw_large(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
-                       const Creature *cr, const AnimPose *p, int tiles, int sx,
-                       int sy, const WorldArea *area)
-{
-    int x, y;
-    large_corner(sx, sy, camera_ppc(cam), tiles, &x, &y);
-    /* Along a whole axis, the copies one world to either side too: at most
-     * one of them lands in view, the one across the edge. */
-    for (int dy = -1; dy <= 1; dy++) {
-        for (int dx = -1; dx <= 1; dx++) {
-            if ((dx != 0 && !area->whole_x) || (dy != 0 && !area->whole_y)) {
-                continue;
-            }
-            draw_large_at(sc, c, cam, s, cr, p, tiles, x + dx * area->world_px_w,
-                          y + dy * area->world_px_h, area->clip);
-        }
-    }
-}
-
-/* How many tiles wide this creature is drawn. A newborn is drawn small,
- * whatever its size, while it pops in. */
-static int drawn_tiles(const Creature *cr, const Sim *s, const AnimPose *p)
-{
-    if (p != NULL && p->pop < 0.5f) {
-        return 1;
-    }
-    return sprite_tiles_for(creature_size(cr, &s->set));
 }
 
 /* The mark over the cell a creature is biting: a red flash for a fight, and
@@ -1396,6 +1321,237 @@ static int copy_offsets(const WorldArea *a, int dx[9], int dy[9])
     return n;
 }
 
+/* ---- Bodies: pictures from the cache, in their family's colours ---- */
+
+/* How much light a body's shadow keeps, out of 256: v9's 0.55, as a tree's. */
+#define BODY_SHADOW_KEEP 141
+
+/* Which picture size a zoom level draws: Close draws the Normal pictures twice
+ * as large (one pixel of art is then the same size on the ground and on a
+ * body), Far its own half-size silhouettes. */
+static int zoom_base(const Camera *cam)
+{
+    return cam->level == CAMERA_FAR ? SPRITE_BASE_FAR : SPRITE_BASE_NORMAL;
+}
+
+/* A creature's body at a picture size; a newborn, while it pops in, at the
+ * smallest size level, as the old two-step pop drew it small. */
+static SpriteBody creature_body(const Creature *cr, const Sim *s, const AnimPose *p,
+                                int base)
+{
+    SpriteBody b = sprite_body(cr, &s->set, base);
+    if (p != NULL && p->pop < 0.5f) {
+        b.k_level = 0;
+    }
+    return b;
+}
+
+/* The pool slot's colours, made again only when the slot holds another
+ * creature or its species changed (a family's species can change with size). */
+static const SpritePalette *slot_palette(Scene *sc, const Creature *cr, int slot,
+                                         int species)
+{
+    if (sc->palette_species[slot] != species || sc->palette_id[slot] != cr->id) {
+        sprite_palette(&sc->palettes[slot], species, cr->genome.g[GENE_HUE]);
+        sc->palette_species[slot] = (uint8_t)species;
+        sc->palette_id[slot] = cr->id;
+    }
+    return &sc->palettes[slot];
+}
+
+/* What one body is drawn with: its picture, its colours, and where its ground
+ * point lands on the canvas. */
+typedef struct {
+    SpritePicture pic;
+    const SpritePalette *palette;
+    int foot_x, foot_y;
+    int scale;
+    bool flip;
+} BodyDraw;
+
+/* The canvas column of picture column gx: flipped about the ground point when
+ * facing left (v9:453), so a body turns round where it stands. */
+static int body_column(const BodyDraw *d, int gx)
+{
+    int lx = d->flip ? 2 * d->pic.ox - 1 - gx : gx;
+    return d->foot_x + (lx - d->pic.ox) * d->scale;
+}
+
+static int body_row(const BodyDraw *d, int gy)
+{
+    return d->foot_y + (gy - d->pic.oy) * d->scale;
+}
+
+/* The canvas box the picture's ink covers; right and bottom are one past. */
+static void body_box(const BodyDraw *d, int *left, int *top, int *right, int *bottom)
+{
+    int a = body_column(d, d->pic.x0), b = body_column(d, d->pic.x1 - 1);
+    *left = a < b ? a : b;
+    *right = (a > b ? a : b) + d->scale;
+    *top = body_row(d, d->pic.y0);
+    *bottom = body_row(d, d->pic.y1 - 1) + d->scale;
+}
+
+/* One picture pixel of the body moved by (dx, dy), inside clip. */
+static void body_pixel(Canvas *c, const BodyDraw *d, int gx, int gy, int dx, int dy,
+                       uint32_t colour, CanvasClip clip)
+{
+    canvas_pixel(c, body_column(d, gx) + dx, body_row(d, gy) + dy, d->scale, colour,
+                 clip);
+}
+
+/* The picture's ink, moved by (dx, dy). Written straight into the pixels when
+ * it lies wholly inside, as there are hundreds of bodies. */
+static void paint_body(Canvas *c, const BodyDraw *d, int dx, int dy, CanvasClip clip)
+{
+    const SpritePicture *p = &d->pic;
+    if (p->x1 <= p->x0) {
+        return; /* an empty picture */
+    }
+    int left, top, right, bottom;
+    body_box(d, &left, &top, &right, &bottom);
+    left += dx;
+    right += dx;
+    top += dy;
+    bottom += dy;
+    if (right <= clip.x || bottom <= clip.y || left >= clip.x + clip.w ||
+        top >= clip.y + clip.h) {
+        return;
+    }
+    bool inside = left >= clip.x && top >= clip.y && right <= clip.x + clip.w &&
+                  bottom <= clip.y + clip.h && left >= 0 && top >= 0 &&
+                  right <= c->w && bottom <= c->h;
+    int scale = d->scale;
+    /* Across the picture, the canvas moves scale pixels a column, or back. */
+    int step = d->flip ? -scale : scale;
+    const uint32_t *colours = d->palette->ink;
+    for (int gy = p->y0; gy < p->y1; gy++) {
+        const uint8_t *row = p->ink + gy * p->w;
+        int py = body_row(d, gy) + dy;
+        int px = body_column(d, p->x0) + dx;
+        for (int gx = p->x0; gx < p->x1; gx++, px += step) {
+            uint8_t k = row[gx];
+            if (k == INK_NONE) {
+                continue;
+            }
+            if (!inside) {
+                canvas_pixel(c, px, py, scale, colours[k], clip);
+                continue;
+            }
+            for (int j = 0; j < scale; j++) {
+                uint32_t *out = c->px + (py + j) * c->w + px;
+                for (int i = 0; i < scale; i++) {
+                    out[i] = colours[k];
+                }
+            }
+        }
+    }
+}
+
+/* The open eye over the picture (v9:483-492): larger in a big-eyed species or
+ * a body above K 1.6, with a white glint. Far's silhouettes have none. */
+static void paint_eye(Canvas *c, const BodyDraw *d, int dx, int dy, CanvasClip clip)
+{
+    int ex = d->pic.eye_x, ey = d->pic.eye_y;
+    if (ex < 0 || ey < 0) {
+        return;
+    }
+    uint32_t dark = d->palette->ink[INK_EYE], white = d->palette->ink[INK_EYE_WHITE];
+    if (d->pic.eye_big && d->pic.eye_detail) {
+        for (int a = -1; a <= 1; a++) {
+            for (int b = 0; b < 3; b++) {
+                body_pixel(c, d, ex + a, ey + b - 1, dx, dy, dark, clip);
+            }
+        }
+        body_pixel(c, d, ex, ey - 1, dx, dy, white, clip);
+    } else if (d->pic.eye_big || d->pic.eye_detail) {
+        body_pixel(c, d, ex, ey, dx, dy, dark, clip);
+        body_pixel(c, d, ex + 1, ey, dx, dy, dark, clip);
+        body_pixel(c, d, ex + 1, ey - 1, dx, dy, dark, clip);
+        body_pixel(c, d, ex, ey - 1, dx, dy, white, clip);
+    } else {
+        body_pixel(c, d, ex, ey, dx, dy, dark, clip);
+    }
+}
+
+/* Cuts not healed yet, a pale pink to be seen on any family's colour. */
+static void paint_scars(Canvas *c, const BodyDraw *d, int count, int dx, int dy,
+                        CanvasClip clip)
+{
+    if (count <= 0) {
+        return;
+    }
+    int16_t at[64][2];
+    int n = sprite_scar_pixels(&d->pic, count, at, 64);
+    for (int k = 0; k < n; k++) {
+        body_pixel(c, d, at[k][0], at[k][1], dx, dy, to_pixel(SCAR), clip);
+    }
+}
+
+/* The whole body, moved by (dx, dy): picture, eye and scars. */
+static void paint_creature(Canvas *c, const BodyDraw *d, int scars, int dx, int dy,
+                           CanvasClip clip)
+{
+    paint_body(c, d, dx, dy, clip);
+    paint_eye(c, d, dx, dy, clip);
+    paint_scars(c, d, scars, dx, dy, clip);
+}
+
+/* What the body in pool slot `slot` is drawn with this frame, from the body
+ * worked out for it in add_bodies. foot_y is the cell's bottom, as items sort
+ * by; the ground point is ppc * 13 / 16 down the cell (plan's call). */
+static BodyDraw world_body(Scene *sc, const Camera *cam, const Sim *s, int slot,
+                           const SceneItem *it)
+{
+    int ppc = camera_ppc(cam);
+    const SpriteBody *b = &sc->bodies[slot];
+    const AnimPose *p = &sc->poses[slot];
+    BodyDraw d;
+    d.pic = sprite_picture(&sc->sprites, b, p->action, p->frame);
+    d.palette = slot_palette(sc, &s->pool.items[slot], slot, b->species);
+    d.foot_x = it->foot_x;
+    d.foot_y = it->foot_y - ppc + ppc * 13 / 16;
+    d.scale = camera_sprite_scale(cam);
+    d.flip = p->flip;
+    return d;
+}
+
+/* The shadow under one body (v9:458), and its copies across a whole world's
+ * edges. */
+static void body_shadow(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
+                        const SceneItem *it, const WorldArea *area)
+{
+    BodyDraw d = world_body(sc, cam, s, it->index, it);
+    int cx = d.foot_x + d.pic.shadow_dx * (d.flip ? -1 : 1) * d.scale;
+    int dx[9], dy[9];
+    int copies = copy_offsets(area, dx, dy);
+    for (int k = 0; k < copies; k++) {
+        canvas_darken_ellipse(c, cx + dx[k], d.foot_y + dy[k], d.pic.shadow_rx * d.scale,
+                              d.pic.shadow_ry * d.scale, BODY_SHADOW_KEEP, area->clip);
+    }
+}
+
+/* One body over what is behind it, and its copies across a whole world's
+ * edges; at the World zoom a coloured square on its cell, as before. */
+static void draw_body(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
+                      const SceneItem *it, const WorldArea *area)
+{
+    const Creature *cr = &s->pool.items[it->index];
+    int ppc = camera_ppc(cam);
+    if (camera_sprite_size(cam) == 0) {
+        canvas_rect(c, it->foot_x - ppc / 2, it->foot_y - ppc, ppc, ppc,
+                    to_pixel(creature_colour(cr)));
+        return;
+    }
+    BodyDraw d = world_body(sc, cam, s, it->index, it);
+    int scars = recent_hit_count(cr, s->tick);
+    int dx[9], dy[9];
+    int copies = copy_offsets(area, dx, dy);
+    for (int k = 0; k < copies; k++) {
+        paint_creature(c, &d, scars, dx[k], dy[k], area->clip);
+    }
+}
+
 /* The trunk's colours, fixed (v9:565). */
 static const Colour TRUNK_LIGHT = {96, 62, 34};
 static const Colour TRUNK_DARK = {70, 44, 24};
@@ -1565,11 +1721,16 @@ static int add_trees(Scene *sc, const Camera *cam, const Sim *s, const WorldArea
     return n;
 }
 
-/* Every living body that may show, as items, its pose kept in sc->poses. */
+/* Every living body that may show, as items, its pose kept in sc->poses and
+ * its body in sc->bodies. */
 static int add_bodies(Scene *sc, const Camera *cam, const Sim *s, float tick_fraction,
                       uint64_t body_ms, int view_x, int view_y, int n)
 {
     int ppc = camera_ppc(cam);
+    int size = camera_sprite_size(cam);
+    /* How far outside the view a body's foot may be and still reach into it:
+     * the widest picture, either way. A coloured square stays on its cell. */
+    int reach = size == 0 ? ppc : SPRITE_MAX_W * camera_sprite_scale(cam);
     int count = s->pool.capacity < sc->anim.capacity ? s->pool.capacity
                                                      : sc->anim.capacity;
     for (int i = 0; i < count; i++) {
@@ -1581,11 +1742,13 @@ static int add_bodies(Scene *sc, const Camera *cam, const Sim *s, float tick_fra
         anim_pose(&sc->anim, s, i, tick_fraction, body_ms, p);
         int sx, sy;
         camera_to_screen(cam, p->x, p->y, &sx, &sy);
-        /* An ordinary body off the view is skipped before any more work; a
-         * large one may reach in, which is decided picture by picture. */
-        if (drawn_tiles(cr, s, p) == 1 &&
-            (sx <= -ppc || sy <= -ppc || sx >= cam->view_w || sy >= cam->view_h)) {
+        /* A body off the view is skipped before any more work. */
+        if (sx <= -reach || sy <= -reach || sx >= cam->view_w + reach ||
+            sy >= cam->view_h + reach) {
             continue;
+        }
+        if (size != 0) {
+            sc->bodies[i] = creature_body(cr, s, p, zoom_base(cam));
         }
         sc->items[n++] = (SceneItem){.foot_y = view_y + sy + ppc,
                                      .foot_x = view_x + sx + ppc / 2,
@@ -1646,27 +1809,6 @@ static void sort_items(SceneItem *items, SceneItem *spare, int trees, int n)
     memcpy(items, spare, (size_t)n * sizeof(SceneItem));
 }
 
-/* The ellipse under a body: as wide as most of its tiles, two pixels high, its
- * bottom on the cell's bottom row and one below, as the body stands there. */
-static void body_shadow(Canvas *c, const Camera *cam, const Sim *s, const Scene *sc,
-                        int slot, const SceneItem *item, const WorldArea *area)
-{
-    int size = camera_sprite_size(cam);
-    int scale = camera_sprite_scale(cam);
-    const Creature *cr = &s->pool.items[slot];
-    int tiles = drawn_tiles(cr, s, &sc->poses[slot]);
-    int rx = tiles * size * 3 / 8 * scale;
-    int ry = (size / 8) * scale;
-    int cy = item->foot_y - ry;
-    int dx[9], dy[9];
-    int copies = tiles > 1 ? copy_offsets(area, dx, dy) : 1;
-    for (int k = 0; k < copies; k++) {
-        int ox = tiles > 1 ? dx[k] : 0, oy = tiles > 1 ? dy[k] : 0;
-        canvas_darken_ellipse(c, item->foot_x + ox, cy + oy, rx, ry, TREE_SHADOW_KEEP,
-                              area->clip);
-    }
-}
-
 /* Draws the frame's trees and bodies: their shadows first, then each from the
  * back row to the front. */
 static void draw_items(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
@@ -1696,7 +1838,7 @@ static void draw_items(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
         for (int k = 0; k < n; k++) {
             const SceneItem *it = &sc->items[k];
             if (it->kind == SCENE_ITEM_BODY) {
-                body_shadow(c, cam, s, sc, it->index, it, &area);
+                body_shadow(sc, c, cam, s, it, &area);
                 continue;
             }
             TreeDraw d = tree_draw(sc, s, it->index, it->foot_x - (size / 2 - 1) * scale,
@@ -1724,17 +1866,7 @@ static void draw_items(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
             }
             continue;
         }
-        const Creature *cr = &s->pool.items[it->index];
-        const AnimPose *p = &sc->poses[it->index];
-        int tiles = drawn_tiles(cr, s, p);
-        int sx = it->foot_x - ppc / 2, sy = it->foot_y - ppc;
-        if (tiles > 1) {
-            draw_large(sc, c, cam, s, cr, p, tiles, sx, sy, &area);
-        } else if (size == 0) {
-            canvas_rect(c, sx, sy, ppc, ppc, to_pixel(creature_colour(cr)));
-        } else {
-            draw_body(sc, c, cam, s, cr, it->index, p, sx, sy);
-        }
+        draw_body(sc, c, cam, s, it, &area);
     }
 }
 
@@ -1851,7 +1983,35 @@ const Creature *scene_follow(const Scene *sc, Camera *cam, Inspect *in,
     return cr;
 }
 
-void scene_draw_cursor(const Scene *sc, Canvas *c, const Camera *cam,
+/* The view box (right and bottom one past) of the body in this slot as drawn
+ * now, with its cell's corner at view pixel (sx, sy): its picture's ink, or
+ * its cell at the World zoom. */
+static void drawn_box(Scene *sc, const Camera *cam, const Sim *s, int slot,
+                      const AnimPose *p, int sx, int sy, int *left, int *top,
+                      int *right, int *bottom)
+{
+    int ppc = camera_ppc(cam);
+    *left = sx;
+    *top = sy;
+    *right = sx + ppc;
+    *bottom = sy + ppc;
+    if (camera_sprite_size(cam) == 0) {
+        return;
+    }
+    SpriteBody b = creature_body(&s->pool.items[slot], s, p, zoom_base(cam));
+    BodyDraw d;
+    d.pic = sprite_picture(&sc->sprites, &b, p->action, p->frame);
+    d.palette = NULL; /* only the box is wanted */
+    d.foot_x = sx + ppc / 2;
+    d.foot_y = sy + ppc * 13 / 16;
+    d.scale = camera_sprite_scale(cam);
+    d.flip = p->flip;
+    if (d.pic.x1 > d.pic.x0) {
+        body_box(&d, left, top, right, bottom);
+    }
+}
+
+void scene_draw_cursor(Scene *sc, Canvas *c, const Camera *cam,
                        const Sim *s, const Creature *followed,
                        float tick_fraction, int view_x, int view_y)
 {
@@ -1867,17 +2027,13 @@ void scene_draw_cursor(const Scene *sc, Canvas *c, const Camera *cam,
     int sx, sy;
     camera_to_screen(cam, p.x, p.y, &sx, &sy);
     int ppc = camera_ppc(cam);
-    /* Round the whole picture: one cell, or a large body's tiles. */
-    int tiles = drawn_tiles(followed, s, &p);
-    int bx = sx, by = sy;
-    if (tiles > 1) {
-        large_corner(sx, sy, ppc, tiles, &bx, &by);
-    }
-    int extent = tiles * ppc;
-    int left = view_x + bx - 2;
-    int top = view_y + by - 2;
-    int right = view_x + bx + extent + 1; /* the last column of the frame */
-    int bottom = view_y + by + extent + 1;
+    /* Round the whole picture, two pixels out. */
+    int bx0, by0, bx1, by1;
+    drawn_box(sc, cam, s, slot, &p, sx, sy, &bx0, &by0, &bx1, &by1);
+    int left = view_x + bx0 - 2;
+    int top = view_y + by0 - 2;
+    int right = view_x + bx1 + 1; /* the last column of the frame */
+    int bottom = view_y + by1 + 1;
     int len = ppc < 8 ? 2 : ppc / 4;
     uint32_t white = to_pixel(WHITE);
     /* Each corner is two short lines. */
@@ -1892,7 +2048,7 @@ void scene_draw_cursor(const Scene *sc, Canvas *c, const Camera *cam,
 }
 
 /* One name under the body in this slot, or nothing if it would leave the view. */
-static void draw_name(const Scene *sc, Canvas *c, const Camera *cam,
+static void draw_name(Scene *sc, Canvas *c, const Camera *cam,
                       const Sim *s, int slot, float tick_fraction, int view_x,
                       int view_y)
 {
@@ -1904,15 +2060,16 @@ static void draw_name(const Scene *sc, Canvas *c, const Camera *cam,
     anim_pose(&sc->anim, s, slot, tick_fraction, 0, &p);
     int sx, sy;
     camera_to_screen(cam, p.x, p.y, &sx, &sy);
-    int ppc = camera_ppc(cam);
     char name[16];
     name_from_id(cr->id, name, sizeof(name));
     /* strlen counts bytes, which for these ASCII names is also characters.
      * It returns a size_t; the name is under 16, so the int conversion is safe. */
     int w = (int)strlen(name) * FONT_W;
-    /* Centred under its own cell, the cell its feet stand on even when large. */
-    int x = sx + ppc / 2 - w / 2;
-    int y = sy + ppc + 1;
+    /* Centred under the picture, a pixel below its lowest ink. */
+    int left, top, right, bottom;
+    drawn_box(sc, cam, s, slot, &p, sx, sy, &left, &top, &right, &bottom);
+    int x = (left + right) / 2 - w / 2;
+    int y = bottom + 1;
     if (x < 0 || y < 0 || x + w > cam->view_w || y + FONT_H > cam->view_h) {
         return;
     }
@@ -1920,7 +2077,7 @@ static void draw_name(const Scene *sc, Canvas *c, const Camera *cam,
               to_pixel(BACKGROUND));
 }
 
-void scene_draw_names(const Scene *sc, Canvas *c, const Camera *cam,
+void scene_draw_names(Scene *sc, Canvas *c, const Camera *cam,
                       const Sim *s, const Creature *followed,
                       float tick_fraction, int view_x, int view_y)
 {
@@ -1944,8 +2101,25 @@ void scene_draw_names(const Scene *sc, Canvas *c, const Camera *cam,
     }
 }
 
-/* How long a family's average body breathes in and out, in milliseconds. */
-#define SAMPLE_BREATH_MS 600u
+/* A picture standing in the box (x, y, w, h) on the near-black background,
+ * its ink's middle on the box's middle, cut to the box. */
+static void draw_in_box(Canvas *c, BodyDraw *d, int scars, int x, int y, int w, int h)
+{
+    canvas_rect(c, x, y, w, h, to_pixel(BACKGROUND));
+    if (d->pic.x1 <= d->pic.x0) {
+        return;
+    }
+    /* Where the ink falls with the ground point at (0, 0), then moved so its
+     * middle is the box's middle. */
+    d->foot_x = 0;
+    d->foot_y = 0;
+    int left, top, right, bottom;
+    body_box(d, &left, &top, &right, &bottom);
+    d->foot_x = x + w / 2 - (left + right) / 2;
+    d->foot_y = y + h / 2 - (top + bottom) / 2;
+    CanvasClip clip = {x, y, w, h};
+    paint_creature(c, d, scars, 0, 0, clip);
+}
 
 void scene_draw_followed(Scene *sc, Canvas *c, const Sim *s,
                          const Creature *followed, uint64_t now_ms, int x, int y)
@@ -1956,50 +2130,54 @@ void scene_draw_followed(Scene *sc, Canvas *c, const Sim *s,
     }
     AnimPose p;
     anim_pose(&sc->anim, s, slot, 0.0f, now_ms, &p);
-    const SpriteMask *m =
-        sprite_get(&sc->sprites, slot, followed->id, &followed->genome, 16, p.frame);
-    if (m == NULL) {
-        return;
-    }
-    int scale = SCENE_BODY_BIG / 16;
-    canvas_rect(c, x, y, SCENE_BODY_BIG, SCENE_BODY_BIG, to_pixel(BACKGROUND));
-    canvas_mask(c, m->body, 16, x, y, scale, p.flip,
-                to_pixel(creature_colour(followed)));
-    canvas_mask(c, m->white, 16, x, y, scale, p.flip, to_pixel(WHITE));
-    uint64_t rows[16];
-    for (int j = 0; j < 16; j++) {
-        rows[j] = m->body[j];
-    }
-    draw_scars(c, rows, 16, x, y, scale, p.flip,
-               recent_hit_count(followed, s->tick), whole(c));
+    /* The detailed picture, standing, facing the way it faces in the world. */
+    SpriteBody b = sprite_body(followed, &s->set, SPRITE_BASE_DETAIL);
+    BodyDraw d;
+    d.pic = sprite_picture(&sc->sprites, &b, ACTION_REST, 0);
+    d.palette = slot_palette(sc, followed, slot, b.species);
+    d.scale = 1;
+    d.flip = p.flip;
+    draw_in_box(c, &d, recent_hit_count(followed, s->tick), x, y, SCENE_BODY_BIG,
+                SCENE_BODY_BIG);
 }
 
-/* One sample's body in this frame, at a scale, on the near-black background. */
-static void draw_sample_body(Canvas *c, const FamilySample *sample, int frame,
-                             int x, int y, int scale)
+/* The size a family's sample is drawn at until task 14 gives the panel real
+ * sizes: a middling body, the size level of real size 2. */
+#define SAMPLE_REAL_SIZE 2.0f
+
+/* One sample's body, standing at Normal size, in the box (x, y, w, h). Its
+ * species is the family's, from the founder's id, picked at SAMPLE_REAL_SIZE. */
+static void draw_sample_body(Scene *sc, Canvas *c, const FamilySample *sample,
+                             uint32_t lineage, int x, int y, int w, int h)
 {
-    SpriteMask m;
-    sprite_build(&m, &sample->traits, 16, frame);
-    canvas_rect(c, x, y, 16 * scale, 16 * scale, to_pixel(BACKGROUND));
-    canvas_mask(c, m.body, 16, x, y, scale, false,
-                to_pixel(palette_creature(sample->hue, sample->meat_share)));
-    canvas_mask(c, m.white, 16, x, y, scale, false, to_pixel(WHITE));
+    BodyTraits rounded = species_round(&sample->traits);
+    int species = species_pick(lineage, species_role(&rounded), SAMPLE_REAL_SIZE);
+    SpriteBody b = sprite_body_of(&sample->traits, species, SAMPLE_REAL_SIZE,
+                                  SPRITE_BASE_NORMAL);
+    SpritePalette palette;
+    sprite_palette(&palette, species, sample->hue);
+    BodyDraw d;
+    d.pic = sprite_picture(&sc->sprites, &b, ACTION_REST, 0);
+    d.palette = &palette;
+    d.scale = 1;
+    d.flip = false;
+    draw_in_box(c, &d, 0, x, y, w, h);
 }
 
-void scene_draw_sample(Canvas *c, const FamilySample *sample, uint64_t now_ms,
-                       int x, int y)
+void scene_draw_sample(Scene *sc, Canvas *c, const FamilySample *sample,
+                       uint32_t lineage, uint64_t now_ms, int x, int y)
 {
-    int frame = FRAME_REST0 + (int)((now_ms / SAMPLE_BREATH_MS) % 2u);
-    draw_sample_body(c, sample, frame, x, y, SCENE_BODY_BIG / 16);
+    (void)now_ms; /* (void) says "unused on purpose": standing until task 11 */
+    draw_sample_body(sc, c, sample, lineage, x, y, SCENE_BODY_BIG, SCENE_BODY_BIG);
 }
 
-void scene_draw_strip(Canvas *c, const Families *f, uint32_t lineage, int x,
-                      int y, int w)
+void scene_draw_strip(Scene *sc, Canvas *c, const Families *f, uint32_t lineage,
+                      int x, int y, int w)
 {
     FamilySample samples[FAMILY_STRIP];
     int n = family_strip(f, lineage, samples);
     for (int i = 0; i < n && (i + 1) * 16 <= w; i++) {
-        draw_sample_body(c, &samples[i], FRAME_REST0, x + i * 16, y, 1);
+        draw_sample_body(sc, c, &samples[i], lineage, x + i * 16, y, 16, 16);
     }
 }
 

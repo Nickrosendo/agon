@@ -1,7 +1,10 @@
 /*
- * sprite: creature bodies from genes. A pure function: the same traits give
- * the same pixels. Traits are rounded into a few steps first, so a small
- * mutation leaves the picture alone and close relatives look alike.
+ * sprite: the pictures of creatures, and the cache that keeps them. A body
+ * (its species, its rounded traits, its size level and the picture size) and a
+ * pose go through the skeleton into a picture of inks; a palette turns the inks
+ * into the family's colours when it is drawn. Pictures are drawn the first time
+ * they are asked for and kept, so a frame of an unchanged world draws none.
+ * Pure: the same body and pose always give the same picture.
  */
 #ifndef AGON_SPRITE_H
 #define AGON_SPRITE_H
@@ -9,86 +12,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "genome.h"
-#include "species.h" /* BodyTraits */
-
-/* A large body is drawn up to this many tiles wide and tall. */
-#define SPRITE_MAX_TILES 3
-/* The widest picture in pixels: three tiles of 16. A row of it fits in a
- * uint64_t, which has room for 64. */
-#define SPRITE_MAX_COLS (16 * SPRITE_MAX_TILES)
-/* How many large bodies keep their pictures at once. Large bodies are few, so
- * a small table is enough; when it is full the one unused longest is redrawn
- * for the newcomer. */
-#define SPRITE_BIG_ENTRIES 256
-
-enum {
-    FRAME_WALK0, FRAME_WALK1, FRAME_WALK2, FRAME_WALK3,
-    FRAME_REST0, FRAME_REST1,
-    FRAME_BITE,
-    FRAME_MATE,
-    FRAME_COUNT
-};
-
-/*
- * One picture, facing right. A row's column i is bit (size - 1 - i), as
- * canvas_mask reads it. body takes the family colour and white takes white;
- * a pixel is never in both. The eye is in neither: a hole.
- */
-typedef struct {
-    uint16_t body[16];
-    uint16_t white[16];
-} SpriteMask;
-
-/*
- * One picture of a large body, size by size pixels (size up to
- * SPRITE_MAX_COLS), read as SpriteMask's rows are but 64 bits wide. outline
- * is every pixel any part touched, eye included, grown by one pixel all round:
- * drawn first in near-black, it makes the body stand out from the ground and
- * gives the eye its black.
- */
-typedef struct {
-    int size;
-    uint64_t body[SPRITE_MAX_COLS];
-    uint64_t white[SPRITE_MAX_COLS];
-    uint64_t outline[SPRITE_MAX_COLS];
-} WideMask;
-
-/* One large body's pictures at one size, each frame drawn the first time it
- * is asked for. tiles 0 marks an unused entry. */
-typedef struct {
-    uint32_t id;
-    int tiles, base;
-    uint32_t last_used;
-    bool ready[FRAME_COUNT];
-    WideMask frames[FRAME_COUNT];
-} BigEntry;
-
-/*
- * One creature's pictures. The arrays are inside the struct, so one slot is
- * about 2 KB, and an array of them is one block with no pointers to follow.
- */
-typedef struct {
-    uint32_t id;
-    bool ready;
-    SpriteMask large[FRAME_COUNT], small[FRAME_COUNT];
-} SpriteSlot;
-
-/* One slot per slot of the creature pool, and the table for large bodies.
- * clock counts lookups in that table, to tell which entry was used longest
- * ago. */
-typedef struct {
-    SpriteSlot *slots;
-    int capacity;
-    BigEntry *big;
-    uint32_t clock;
-} SpriteCache;
-
-/* Draws one frame into *out. size is 16 or 8. */
-void sprite_build(SpriteMask *out, const BodyTraits *t, int size, int frame);
-/* Where the eye is in that frame: column and row of the hole's middle. */
-void sprite_eye(const BodyTraits *t, int size, int frame, int *column,
-                int *row);
+#include "creature.h"  /* Creature */
+#include "settings.h"  /* Settings */
+#include "skeleton.h"  /* SpritePose, the INK_ and ACTION_ values; includes species.h */
 
 /*
  * How many tiles wide a body of this size is drawn: 1 below SPRITE_TWO_TILES,
@@ -99,32 +25,98 @@ void sprite_eye(const BodyTraits *t, int size, int frame, int *column,
 #define SPRITE_TWO_TILES 3.0f
 #define SPRITE_THREE_TILES 6.0f
 int sprite_tiles_for(float size);
-/* Draws one frame of a picture size pixels across into *out, for a body
- * drawn several tiles wide: size is base * tiles, at most SPRITE_MAX_COLS. */
-void sprite_build_wide(WideMask *out, const BodyTraits *t, int size, int frame);
-/*
- * Scars: up to count short cuts (at most 3) across the body, as rows of a
- * size-pixel picture, only where body has pixels. Placed by the body's own
- * extent, so they land on it whatever its shape. No body, no scars.
- */
-void sprite_scars(uint64_t *out, const uint64_t *body, int size, int count);
 
-/* False when memory runs out; nothing to free then. */
-bool sprite_cache_init(SpriteCache *c, int capacity);
-/* Frees the slots and empties *c; safe to call twice. */
+/* Which picture size: the world at Normal (Close doubles it), the world at Far,
+ * and the detailed pictures of the lab and the panel. K is multiplied by 1, 0.5
+ * and 1.6. Normal and Far use the small grid, detail the large one; Far skips
+ * the marks. */
+enum { SPRITE_BASE_NORMAL, SPRITE_BASE_FAR, SPRITE_BASE_DETAIL, SPRITE_BASES };
+
+/* Everything a picture depends on but the pose. traits are rounded (0, 1/3,
+ * 2/3 or 1), so close relatives share one body and so one set of pictures. */
+typedef struct {
+    BodyTraits traits;
+    uint8_t species, k_level, base;
+} SpriteBody;
+
+/* From plain traits, a chosen species and a real size: the lab (task 9) and the
+ * family strip use it. traits are rounded inside. */
+SpriteBody sprite_body_of(const BodyTraits *traits, int species, float real_size, int base);
+/* A living creature's: species_traits of its genome, the role from the rounded
+ * traits, species_pick(lineage, role, creature_size), then sprite_body_of. */
+SpriteBody sprite_body(const Creature *c, const Settings *s, int base);
+/* Whether two bodies are the same body (field by field: a struct cannot be
+ * compared with ==, and memcmp would also compare its padding bytes). */
+bool sprite_body_equal(const SpriteBody *a, const SpriteBody *b);
+
+/* How many frames each action's cycle is cut into, in ACTION_ order. */
+extern const int SPRITE_FRAMES[ACTION_COUNT];  /* 24, 24, 16, 30, 39, 54, 6 */
+
+/* One picture, facing right, as the cache keeps it. Grid pixel (x, y) is
+ * ink[y * w + x]; (ox, oy) is the ground point under the body, the pixel drawn
+ * at the creature's foot. Only x0..x1 - 1 by y0..y1 - 1 holds ink. */
+typedef struct {
+    const uint8_t *ink;      /* w * h inks, inside the cache */
+    int16_t w, h, ox, oy;    /* its grid and the ground point */
+    int16_t x0, y0, x1, y1, eye_x, eye_y, shadow_dx;  /* eye -1, -1: none (Far) */
+    uint8_t shadow_rx, shadow_ry;
+    bool eye_big, eye_detail;   /* eye_detail: K above 1.6, the mockup's larger eyes */
+} SpritePicture;
+
+/* Every ink's colour, as canvas pixels. ink[INK_NONE] is never drawn. */
+typedef struct { uint32_t ink[INK_COUNT]; } SpritePalette;
+/* A creature's colours: the hue is render_display_hue(hue), the family's hue as
+ * the design says (section 5.2); saturation and lightness from the species' look. */
+void sprite_palette(SpritePalette *out, int species, float hue);
+/* The species' own look colour, hue included: the lab. */
+void sprite_palette_look(SpritePalette *out, int species);
+/* in with every colour flash (0..1) of the way to white: a creature being hit. */
+void sprite_palette_flash(SpritePalette *out, const SpritePalette *in, float flash);
+
+#define SPRITE_ENTRIES 4096        /* small-grid pictures */
+#define SPRITE_DETAIL_ENTRIES 512  /* large-grid pictures */
+
+/* One kept picture: its key, the next entry of the same hash chain (-1: none)
+ * and the clock when it was last asked for. Its inks are in the store's block. */
+typedef struct {
+    uint64_t key;
+    int32_t next;
+    uint64_t last_used;
+    SpritePicture picture;
+} SpriteEntry;
+
+/* Pictures of one grid size. heads[b] is the first entry whose key hashes to
+ * bucket b, or -1. used counts the entries handed out so far: until the store
+ * is full a new picture takes the next one, then the one unused longest. */
+typedef struct {
+    SpriteEntry *entries;
+    uint8_t *inks;         /* entries * grid_w * grid_h bytes */
+    int32_t *heads;
+    int capacity, buckets, used, grid_w, grid_h;
+} SpriteStore;
+
+typedef struct {
+    SpriteStore small, large;
+    SkeletonRaster *raster;  /* the scratch every picture is drawn in: 22 KB */
+    uint64_t clock;          /* counts lookups, to tell which was used longest ago */
+    long builds;  /* pictures drawn so far: the tests and slow_pictures read it */
+} SpriteCache;
+
+/* All the memory, allocated once. False when it runs out; nothing to free then. */
+bool sprite_cache_init(SpriteCache *c, int entries, int detail_entries);
+/* Frees the memory and empties *c; safe to call twice. */
 void sprite_cache_free(SpriteCache *c);
-/* Forgets every picture. Needed after r or a load, when ids start again and
- * a slot could hold a different creature with the same id as before. */
+/* Forgets every picture: after r or a load. builds is kept. */
 void sprite_cache_reset(SpriteCache *c);
-/* The picture for the creature with this id in this pool slot, drawn the
- * first time it is asked for and redrawn when the slot's id changes. NULL
- * for a slot outside the cache. size is 16 or 8. */
-const SpriteMask *sprite_get(SpriteCache *c, int slot, uint32_t id,
-                             const Genome *g, int size, int frame);
-/* The picture of a large body: tiles of 2 or more, base 16 or 8 (the size of
- * one tile in pixels). NULL for any other tiles or base. The pointer stays
- * good until the next call, which may reuse its entry. */
-const WideMask *sprite_get_wide(SpriteCache *c, uint32_t id, const Genome *g,
-                                int tiles, int base, int frame);
+/* Drawn the first time it is asked for; the picture stays good until the next
+ * call, which may reuse its entry. action is an ACTION_ value; frame is cut to
+ * the action's cycle. Until task 11 every action and frame is the standing pose. */
+SpritePicture sprite_picture(SpriteCache *c, const SpriteBody *b, int action, int frame);
+/* Where up to count (at most 3) scars fall on the picture's body, as shares of
+ * its extent: grid pixels written to out, how many returned (at most max). */
+int sprite_scar_pixels(const SpritePicture *p, int count, int16_t out[][2], int max);
+/* The K a body is drawn at: its level's K times the species' scale, capped so
+ * the body fits its grid, times the base's factor. */
+float sprite_k(const SpriteBody *b);
 
 #endif

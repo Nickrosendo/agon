@@ -391,7 +391,7 @@ static void draw_enlarged(App *a, const Creature *followed, uint32_t lineage,
         scene_draw_followed(&a->scene, &a->canvas, &a->sim, followed, a->body_ms,
                             x, y);
     } else if (newest != NULL) {
-        scene_draw_sample(&a->canvas, newest, a->body_ms, x, y);
+        scene_draw_sample(&a->scene, &a->canvas, newest, lineage, a->body_ms, x, y);
     }
 }
 
@@ -408,7 +408,7 @@ static void draw_strip(App *a, uint32_t lineage, int samples)
              (unsigned)lineage);
     render_text(0, 0, lineage != FAMILY_NONE ? caption : "", PANEL_COLS);
     int w = FAMILY_STRIP * 16;
-    scene_draw_strip(&a->canvas, &a->families, lineage,
+    scene_draw_strip(&a->scene, &a->canvas, &a->families, lineage,
                      l->panel_x + (SCENE_PANEL_W - w) / 2, y + FONT_H, w);
 }
 

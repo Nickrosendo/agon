@@ -44,7 +44,13 @@ static void test_drawing_changes_nothing(void)
                          (uint64_t)t * 33u, 0, 0);
         /* The panel's bodies, and asking which creature was clicked on. */
         family_update(&f, &drawn);
-        scene_draw_strip(&c, &f, family_largest(&f, &drawn), 0, 0, VIEW_W);
+        uint32_t largest = family_largest(&f, &drawn);
+        scene_draw_strip(&sc, &c, &f, largest, 0, 0, VIEW_W);
+        FamilySample samples[FAMILY_STRIP];
+        int n = family_strip(&f, largest, samples);
+        if (n > 0) {
+            scene_draw_sample(&sc, &c, &samples[n - 1], largest, (uint64_t)t * 33u, 0, 0);
+        }
         int slot = t % drawn.pool.capacity;
         if (drawn.pool.items[slot].alive) {
             scene_draw_followed(&sc, &c, &drawn, &drawn.pool.items[slot],
@@ -523,7 +529,7 @@ static void test_strip_and_enlarged_bodies(void)
 
     /* Two samples: two bodies, each a tile wide, side by side. */
     canvas_fill(&c, magenta);
-    scene_draw_strip(&c, &f, 5, 0, 0, 16 * FAMILY_STRIP);
+    scene_draw_strip(&sc, &c, &f, 5, 0, 0, 16 * FAMILY_STRIP);
     int first = 0, second = 0, third = 0;
     for (int j = 0; j < 16; j++) {
         for (int i = 0; i < 16; i++) {
@@ -535,15 +541,15 @@ static void test_strip_and_enlarged_bodies(void)
     CHECK(first > 0 && second > 0 && third == 0);
     /* A strip narrower than its bodies shows those that fit. */
     canvas_fill(&c, magenta);
-    scene_draw_strip(&c, &f, 5, 0, 0, 16);
+    scene_draw_strip(&sc, &c, &f, 5, 0, 0, 16);
     CHECK(c.px[8 * VIEW_W + 16 + 8] == magenta);
     /* No record of this family: nothing drawn, no crash. */
     canvas_fill(&c, magenta);
-    scene_draw_strip(&c, &f, 77, 0, 0, VIEW_W);
-    scene_draw_strip(&c, &f, FAMILY_NONE, 0, 0, VIEW_W);
+    scene_draw_strip(&sc, &c, &f, 77, 0, 0, VIEW_W);
+    scene_draw_strip(&sc, &c, &f, FAMILY_NONE, 0, 0, VIEW_W);
     CHECK(c.px[8 * VIEW_W + 8] == magenta);
 
-    /* Enlarged: four times the size of the 16 pixel body. */
+    /* Enlarged: the detailed picture, cut to its box, SCENE_BODY_BIG square. */
     canvas_fill(&c, magenta);
     scene_draw_followed(&sc, &c, &s, &s.pool.items[slot], 0, 10, 10);
     int bx0 = VIEW_W, bx1 = -1;
@@ -561,8 +567,25 @@ static void test_strip_and_enlarged_bodies(void)
     int n = family_strip(&f, 5, out);
     CHECK(n == 2);
     canvas_fill(&c, magenta);
-    scene_draw_sample(&c, &out[n - 1], 0, 0, 0);
+    scene_draw_sample(&sc, &c, &out[n - 1], 5, 0, 0, 0);
     CHECK(c.px[0] != magenta); /* its background */
+    CHECK(c.px[SCENE_BODY_BIG * VIEW_W] == magenta); /* nothing below its box */
+    /* The strip's bodies are this family's species, in its colour: some pixel
+     * of the first body is one of the palette's body colours. */
+    canvas_fill(&c, magenta);
+    scene_draw_strip(&sc, &c, &f, 5, 0, 0, 16 * FAMILY_STRIP);
+    BodyTraits r = species_round(&out[0].traits);
+    SpritePalette pal;
+    sprite_palette(&pal, species_pick(5, species_role(&r), 2.0f), out[0].hue);
+    int coloured = 0;
+    for (int j = 0; j < 16; j++) {
+        for (int i = 0; i < 16; i++) {
+            for (int k = INK_DEEP; k <= INK_BELLY; k++) {
+                coloured += c.px[j * VIEW_W + i] == pal.ink[k];
+            }
+        }
+    }
+    CHECK(coloured > 0);
     canvas_free(&c);
     family_free(&f);
     scene_free(&sc);
@@ -865,12 +888,27 @@ static uint64_t region_picture(Scene *sc, Sim *s, Canvas *c, Camera *cam,
     scene_update(sc, s, 10);
     scene_draw_world(sc, c, cam, s, 0.0f, 0, 0, 0, 0);
     const Creature *cr = &s->pool.items[creature];
+    /* The World zoom's square is today's colour; the other zooms draw the body
+     * in its palette, whose body colours are counted. */
     Colour colour = palette_creature(cr->genome.g[GENE_HUE],
                                      render_meat_share(cr->level));
-    uint32_t body = canvas_rgb(colour.r, colour.g, colour.b);
+    SpritePalette pal;
+    sprite_palette(&pal, sprite_body(cr, &s->set, SPRITE_BASE_NORMAL).species,
+                   cr->genome.g[GENE_HUE]);
+    uint32_t body[INK_BELLY - INK_DEEP + 2];
+    int kinds = 0;
+    body[kinds++] = canvas_rgb(colour.r, colour.g, colour.b);
+    for (int k = INK_DEEP; k <= INK_BELLY; k++) {
+        body[kinds++] = pal.ink[k];
+    }
     *creature_pixels = 0;
     for (int i = 0; i < VIEW_W * VIEW_H; i++) {
-        *creature_pixels += c->px[i] == body;
+        for (int k = 0; k < kinds; k++) {
+            if (c->px[i] == body[k]) {
+                *creature_pixels += 1;
+                break;
+            }
+        }
     }
     return hash_canvas(c);
 }
@@ -991,8 +1029,8 @@ static bool changed_box(Sim *s, int slot, Camera *cam, int border, Box *out)
     return out->right >= 0;
 }
 
-/* An ordinary body stays in its cell; a grown one covers more, three tiles at
- * most, standing on its own cell. */
+/* Any body may reach past its cell, by no more than the widest picture and its
+ * shadow; a grown one covers more than a cell. Its feet stand on its own cell. */
 static void test_large_body_drawn_large(void)
 {
     const float grown[3] = {0.0f, 2.5f, 1000000.0f};
@@ -1011,17 +1049,16 @@ static void test_large_body_drawn_large(void)
         int ppc = camera_ppc(&cam);
         Box box;
         CHECK(changed_box(&s, slot, &cam, 0, &box));
-        int extent = tiles[k] * ppc;
-        /* Wider than a cell when large, never wider than its tiles plus the
-         * outline's pixel each side. */
-        CHECK(box.right - box.left + 1 <= extent + 2);
-        CHECK(box.bottom - box.top + 1 <= extent + 2);
+        CHECK(box.right - box.left + 1 <= SPRITE_MAX_W + 2);
+        CHECK(box.bottom - box.top + 1 <= SPRITE_MAX_H + 2);
         if (tiles[k] > 1) {
             CHECK(box.right - box.left + 1 > ppc + 2);
         }
         /* Its feet are on its own cell: nothing below that cell's bottom but
-         * the outline. */
+         * the edge of its shadow. Its middle is over its own cell. */
         CHECK(box.bottom <= sy + ppc);
+        CHECK(box.bottom >= sy + ppc * 13 / 16);
+        CHECK(box.left < sx + ppc && box.right >= sx);
         sim_free(&s);
     }
 }
@@ -1327,7 +1364,7 @@ static void test_withering_tree_turns_straw(void)
     canvas_free(&c);
 }
 
-/* A big leaf tree at (32, 32) in summer. A body one row below, large enough
+/* A big leaf tree at (32, 32) in summer. A giant one row below, tall enough
  * to reach up over the tree's cell, covers the trunk; a body one row above is
  * covered by the crown. */
 static void test_trees_sort_with_bodies(void)
@@ -1342,8 +1379,16 @@ static void test_trees_sort_with_bodies(void)
     plant_world(&s, &cam, leaf, VEG_MAX, 2000);
     s.world.plant[world_idx(&s.world, 32, 32)].size = s.set.tree_shade_size;
     CHECK(plant_gives_shade(&s.world.plant[world_idx(&s.world, 32, 32)], &s.set));
-    int below = place_body(&s, 32, 33, 2.5f);
-    CHECK(sprite_tiles_for(creature_size(&s.pool.items[below], &s.set)) == 2);
+    int below = place_body(&s, 32, 33, 1000000.0f);
+    CHECK(sprite_tiles_for(creature_size(&s.pool.items[below], &s.set)) == 3);
+    /* Armoured, large and plant-eating: an elephant or a rhino, tall enough. */
+    Genome *g = &s.pool.items[below].genome;
+    g->g[GENE_MEAT] = 0.0f;
+    g->g[GENE_SWIM] = 0.0f;
+    g->g[GENE_ARMOUR] = 1.0f;
+    g->g[GENE_SIZE] = 1.0f;
+    int kind = sprite_body(&s.pool.items[below], &s.set, SPRITE_BASE_NORMAL).species;
+    CHECK(kind == SPECIES_ELEPHANT || kind == SPECIES_RHINO);
     s.tick = 2000; /* summer, and past the body's age */
     s.pool.items[below].alive = false;
     draw_fresh(&s, &c, &cam, 0);
@@ -1645,6 +1690,102 @@ static void test_paused_soil_colour_catches_up(void)
     canvas_free(&b);
 }
 
+/* A frame of an unchanged world builds no picture: everything it needs was
+ * drawn the frame before. At every zoom with bodies. */
+static void test_second_frame_builds_nothing(void)
+{
+    Settings set = settings_default();
+    Sim s;
+    CHECK(sim_init(&s, &set, 3, 64, 32));
+    for (int t = 0; t < 50; t++) {
+        sim_step(&s);
+    }
+    Scene sc;
+    CHECK(scene_init(&sc, &s));
+    scene_update(&sc, &s, 10);
+    Canvas c;
+    CHECK(canvas_init(&c, VIEW_W, VIEW_H));
+    Camera cam;
+    camera_init(&cam, 64, 32, VIEW_W, VIEW_H);
+    for (int level = 0; level < CAMERA_WORLD; level++) {
+        cam.level = level;
+        long before = sc.sprites.builds;
+        scene_draw_world(&sc, &c, &cam, &s, 0.5f, 1000, 1000, 0, 0);
+        long first = sc.sprites.builds;
+        CHECK(first > before);
+        scene_draw_world(&sc, &c, &cam, &s, 0.5f, 1000, 1000, 0, 0);
+        CHECK(sc.sprites.builds == first);
+    }
+    canvas_free(&c);
+    scene_free(&sc);
+    sim_free(&s);
+}
+
+/* The pixels of the canvas that differ from the empty picture. */
+static void diff_from(const Canvas *c, const Canvas *empty, bool *out)
+{
+    for (int i = 0; i < c->w * c->h; i++) {
+        out[i] = c->px[i] != empty->px[i];
+    }
+}
+
+/* Two bodies one row apart, overlapping: the lower one is drawn in front,
+ * though it holds the earlier pool slot. */
+static void test_bodies_sort_by_row(void)
+{
+    Sim s;
+    make_empty_sim(&s, 64, 64);
+    /* Giants: tall enough to reach over the row above. */
+    int lower = place_body(&s, 32, 33, 1000000.0f);
+    int upper = place_body(&s, 32, 32, 1000000.0f);
+    CHECK(lower >= 0 && upper >= 0 && lower < upper);
+    s.pool.items[lower].genome.g[GENE_HUE] = 0.0f;
+    s.pool.items[upper].genome.g[GENE_HUE] = 0.6f;
+    Camera cam;
+    camera_init(&cam, 64, 64, VIEW_W, VIEW_H);
+    camera_centre_on(&cam, 32.5f, 32.5f);
+    Canvas empty, only_upper, only_lower, both;
+    CHECK(canvas_init(&empty, VIEW_W, VIEW_H));
+    CHECK(canvas_init(&only_upper, VIEW_W, VIEW_H));
+    CHECK(canvas_init(&only_lower, VIEW_W, VIEW_H));
+    CHECK(canvas_init(&both, VIEW_W, VIEW_H));
+    s.pool.items[lower].alive = false;
+    s.pool.items[upper].alive = false;
+    draw_fresh(&s, &empty, &cam, 0);
+    s.pool.items[upper].alive = true;
+    draw_fresh(&s, &only_upper, &cam, 0);
+    s.pool.items[upper].alive = false;
+    s.pool.items[lower].alive = true;
+    draw_fresh(&s, &only_lower, &cam, 0);
+    s.pool.items[upper].alive = true;
+    draw_fresh(&s, &both, &cam, 0);
+    SpritePalette pal;
+    sprite_palette(&pal, sprite_body(&s.pool.items[lower], &s.set, SPRITE_BASE_NORMAL).species,
+                   0.0f);
+    /* static: two blocks of the view's size, too large for the stack. */
+    static bool by_upper[VIEW_W * VIEW_H], by_lower[VIEW_W * VIEW_H];
+    diff_from(&only_upper, &empty, by_upper);
+    diff_from(&only_lower, &empty, by_lower);
+    int overlap = 0, wrong = 0;
+    for (int i = 0; i < VIEW_W * VIEW_H; i++) {
+        bool lower_body = false;
+        for (int k = INK_DEEP; k < INK_COUNT; k++) {
+            lower_body = lower_body || only_lower.px[i] == pal.ink[k];
+        }
+        if (by_upper[i] && by_lower[i] && lower_body) {
+            overlap++;
+            wrong += both.px[i] != only_lower.px[i];
+        }
+    }
+    CHECK(overlap > 0);
+    CHECK(wrong == 0);
+    canvas_free(&empty);
+    canvas_free(&only_upper);
+    canvas_free(&only_lower);
+    canvas_free(&both);
+    sim_free(&s);
+}
+
 int main(void)
 {
     /* Tests register this one themselves: the real program never has it. */
@@ -1681,6 +1822,8 @@ int main(void)
     test_bare_in_autumn();
     test_withering_tree_turns_straw();
     test_trees_sort_with_bodies();
+    test_second_frame_builds_nothing();
+    test_bodies_sort_by_row();
     test_paused_ground_still_moves();
     test_more_tufts_on_fertile_soil();
     test_ground_follows_within_a_second();
