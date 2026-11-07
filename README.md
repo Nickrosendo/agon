@@ -68,6 +68,7 @@ their names under them.
 | clicking "top hunter", "oldest" or the largest family's body on the panel | follow the highest on the food chain, the oldest, or that family's biggest |
 | `l` | the life story page of the followed creature, or, following nobody, of the most notable life recorded; `l` or Esc closes it. The world keeps running behind it |
 | `j` | follow the giant last announced; with the life story page open, follow the creature it tells of |
+| `b` | the species lab: every animal in rows by role, each on a strip of ground with its name, from the detailed pictures; `b` or Esc closes it. While it is open `1` to `7` choose the action shown (rest, walk, run, graze, bite, attack, sleep). The world keeps running behind it |
 | Esc, clicking bare ground, moving the view | let go |
 | `r` | a new world from a new seed |
 | `n` | a new world, after game over |

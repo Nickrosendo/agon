@@ -105,6 +105,16 @@ if [ $HAVE_AGON -eq 1 ]; then
     [ $? -eq 2 ] || fail "agon accepted --keys"
 fi
 
+# 8. The species lab is only looking: pressing b leaves the world exactly as a run
+# without keys, and the picture is the right size.
+lab=$("$OUT/agon-window" --seed 3 --size 64x32 --speed 30 --frames 500 \
+    --keys b --screenshot "$TMP/lab.ppm" --checksum) ||
+    fail "the run with the lab open failed"
+[ -n "$lab" ] && [ "$lab" = "$window" ] ||
+    fail "opening the lab changed the world: '$lab' against '$window'"
+[ "$(head -c 16 "$TMP/lab.ppm" | tr '\n' ' ')" = "P6 1280 720 255 " ] ||
+    fail "the screenshot with the lab open has the wrong header"
+
 # 9. --paused only looks: the world stays at tick 0, and the terminal program
 # refuses the option.
 paused=$("$OUT/agon-window" --seed 3 --size 64x32 --frames 50 --paused --checksum) ||

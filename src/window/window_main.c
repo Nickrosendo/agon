@@ -17,6 +17,7 @@
 #include "family.h"
 #include "font.h"
 #include "inspect.h"
+#include "lab.h"
 #include "lifepage.h"
 #include "options.h"
 #include "palette.h"
@@ -57,7 +58,8 @@ static const char WINDOW_USAGE[] =
     "  --screenshot PATH write the last frame there as a PPM image\n"
     "  --paused          start paused, as if space were pressed first\n"
     "  --keys TEXT       with --frames: press these keys, one a frame, in the\n"
-    "                    last frames (\"l\" shows the life story page)\n"
+    "                    last frames (\"l\" shows the life story page, \"b\" the\n"
+    "                    species lab)\n"
     "  -h, --help        this text\n"
     "  --version         the version\n"
     "keys: space pause, +/- speed, r new seed, s save, q quit, arrows move,\n"
@@ -65,6 +67,9 @@ static const char WINDOW_USAGE[] =
     "      l opens the life story of the followed creature (or of the most\n"
     "      notable life) and closes it again, j follows the giant last\n"
     "      announced (or, with the story open, the creature it tells of).\n"
+    "      b opens the species lab, every animal side by side, and closes it\n"
+    "      again; in it 1 to 7 choose the action shown (rest, walk, run,\n"
+    "      graze, bite, attack, sleep).\n"
     "mouse: wheel zooms, dragging moves, clicking a creature follows it,\n"
     "       clicking bare ground lets go. On the panel, clicking \"top hunter\",\n"
     "       \"oldest\" or the largest family's body follows that creature.\n";
@@ -79,6 +84,8 @@ typedef struct {
     Layout layout;
     Inspect inspect;
     LifePage page;     /* the L page, drawn over the world while open */
+    bool lab_open;     /* the species lab (b), drawn over the world while open */
+    int lab_action;    /* the ACTION_ value it shows */
     Announce announce; /* which giants have been announced */
     const Options *opt;
     Rng seed_source;
@@ -270,9 +277,22 @@ static void handle_key(App *a, int key)
     case 'j':
         jump(a);
         break;
+    case 'b':
+    case 'B':
+        a->lab_open = !a->lab_open;
+        break;
+    case '1': case '2': case '3': case '4': case '5': case '6': case '7':
+        /* The action keys only mean something on the lab page. Characters are
+         * numbers in C, so '1' - '1' is 0, ACTION_REST. */
+        if (a->lab_open) {
+            a->lab_action = key - '1';
+        }
+        break;
     case KEY_ESCAPE:
-        /* The page first, so Esc never lets go of a creature behind it. */
-        if (a->page.open) {
+        /* The pages first, so Esc never lets go of a creature behind them. */
+        if (a->lab_open) {
+            a->lab_open = false;
+        } else if (a->page.open) {
             life_page_close(&a->page);
         } else {
             inspect_stop(&a->inspect);
@@ -365,9 +385,9 @@ static void draw_help(App *a)
     const char *help =
         PLATFORM_IS_PAGE
             ? " space pause | +/- speed | [ ] zoom | click follow | Esc let go"
-              " | l life story | j jump | r new world"
+              " | l life story | j jump | b lab | r new world"
             : " space pause | +/- speed | [ ] zoom | click follow | Esc let go"
-              " | l life story | j jump | r new world | s save | q quit";
+              " | l life story | j jump | b lab | r new world | s save | q quit";
     render_text(0, 0, help, a->canvas.w / FONT_W + 1);
 }
 
@@ -521,6 +541,10 @@ static void draw_frame(App *a, float fraction)
                              PLATFORM_IS_PAGE ? "n new world"
                                               : "n new world | q quit",
                              l->view_x, l->view_y, l->view_w, l->view_h);
+    }
+    if (a->lab_open) {
+        lab_draw(&a->scene.sprites, &a->canvas, a->lab_action, a->body_ms, l->view_x,
+                 l->view_y, l->view_w, l->view_h);
     }
     if (a->page.open) {
         draw_page(a);
