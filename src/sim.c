@@ -297,6 +297,12 @@ static void take_turn(Sim *s, int idx)
             a.kind = ACT_REST;
             a.hold = 1;
         }
+        /* A sleep lasts at least min_sleep_ticks. a.hold is a uint16_t and the
+         * setting an int already checked to fit in one, so the cast loses
+         * nothing. A bite still wakes the sleeper early: it clears hold_left. */
+        if (a.kind == ACT_SLEEP && a.hold < s->set.min_sleep_ticks) {
+            a.hold = (uint16_t)s->set.min_sleep_ticks;
+        }
         keep_memory(c, &a);
         c->current = a;
         c->hold_left = a.hold > 0 ? a.hold : 1;

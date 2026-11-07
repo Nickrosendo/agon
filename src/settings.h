@@ -318,6 +318,11 @@ typedef struct {
     /* The share paid on a tick of deep sleep (ACT_SLEEP), of the upkeep, ageing
      * included, and of the summer heat. */
     float sleep_upkeep;
+    /* The fewest ticks a deep sleep lasts: a brain that asks to sleep for less
+     * sleeps this long, unless a bite wakes it. Without it a brain could sleep
+     * every other tick and pay a sleeper's upkeep while still getting about.
+     * 0 turns it off. */
+    int min_sleep_ticks;
     /* Crowding: crowd_upkeep energy per tick for each creature past the first
      * crowd_free within crowd_radius cells, whoever they are. 0 turns it off. */
     /* Territory: each tick an adult with a stranger on one of the four cells

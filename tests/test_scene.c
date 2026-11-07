@@ -452,10 +452,12 @@ static void test_known_world_pixels(void)
          * itself was looked at in the lab, frame by frame. Re-pinned when the
          * seasons' tuned settings were merged (bigger bites of leaves, fruit and
          * meat, slower ageing): creatures stand elsewhere at the two wider
-         * levels; both pictures were saved and looked at. */
+         * levels; both pictures were saved and looked at. Re-pinned for the
+         * minimum sleep (a sleep lasts at least 30 ticks): creatures stand
+         * elsewhere at all but the closest level; looked at again. */
         static const uint64_t EXPECTED[CAMERA_LEVELS] = {
-            0xbe5f57fb7c7bdabdu, 0x5a015897532bfe08u,
-            0xe9b41c570e2b3e0bu, 0xb09f8110c87d3d35u,
+            0xbe5f57fb7c7bdabdu, 0xc0232e691233cb05u,
+            0xa1cf36b85ee5d857u, 0x71890b9c6eb7fca5u,
         };
         if (hashes[level] != EXPECTED[level]) {
             printf("level %d: 0x%llxu\n", level,

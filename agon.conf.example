@@ -383,6 +383,9 @@ rest_upkeep = 0.5
 # share of upkeep and summer heat paid in deep sleep (0 to 1)
 sleep_upkeep = 0.1
 
+# fewest ticks a deep sleep lasts (0: no minimum) (0 to 65535)
+min_sleep_ticks = 30
+
 # chance a full territory gene attacks a stranger beside it (0 to 1)
 territory_drive = 0.3
 

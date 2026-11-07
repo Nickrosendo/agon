@@ -208,6 +208,9 @@ Settings settings_default(void)
         .rest_upkeep = 0.5f,
         /* The seasons design, section 6: a starting guess, against resting's 0.5. */
         .sleep_upkeep = 0.1f,
+        /* Nicolas's pick, 2026-11-07: closes the flicker between sleeping and
+         * waking. 30 ticks is a twentieth of a year, and SLEEP_NOTED's length. */
+        .min_sleep_ticks = 30,
         /* These two together, Nicolas's call to try. Seeds 1 to 15, 20,000 ticks, the
          * best of six tried: 15 alive and the smallest world at 98, deaths from wounds
          * 26.3 % against 2.4 %, still and starving 7 % against 20 %. Alone, territory
@@ -404,6 +407,7 @@ static const SettingInfo TABLE[] = {
     FLOAT_ROW(family_split, 0, 0.5, "colour drift at which a newborn starts a family"),
     FLOAT_ROW(rest_upkeep, 0, 1, "share of upkeep paid while resting"),
     FLOAT_ROW(sleep_upkeep, 0, 1, "share of upkeep and summer heat paid in deep sleep"),
+    INT_ROW(min_sleep_ticks, 0, 65535, "fewest ticks a deep sleep lasts (0: no minimum)"),
     FLOAT_ROW(territory_drive, 0, 1, "chance a full territory gene attacks a stranger beside it"),
     FLOAT_ROW(territory_upkeep, 0, BIG, "upkeep of a full territory gene"),
     FLOAT_ROW(crowd_upkeep, 0, BIG, "energy per tick per neighbour past the free ones"),

@@ -587,10 +587,12 @@ static void test_one_event_per_sleep(void)
     CHECK(count_kind(me, LIFE_SLEPT) == 1); /* once */
     sim_free(&sim);
 
-    /* A nap, or one just short of SLEEP_NOTED, is not noted; SLEEP_NOTED is. */
+    /* A nap, or one just short of SLEEP_NOTED, is not noted; SLEEP_NOTED is.
+     * Naps need the minimum sleep turned off: with it, no sleep is that short. */
     const uint16_t lengths[] = {10, SLEEP_NOTED - 1, SLEEP_NOTED};
     for (int n = 0; n < 3; n++) {
         make_sim(&sim, &set);
+        sim.set.min_sleep_ticks = 0;
         me = &sim.pool.items[sleeper_for(&sim, lengths[n])];
         for (int k = 0; k <= lengths[n]; k++) {
             sim_step(&sim);
@@ -620,6 +622,47 @@ static void test_one_event_per_sleep(void)
             CHECK(life->events[k].kind != LIFE_SLEPT);
         }
     }
+    sim_free(&sim);
+}
+
+/* Sleep has a minimum length: a brain that asks to sleep for one tick sleeps
+ * min_sleep_ticks, so it cannot flick between sleeping and waking to pay a
+ * sleeper's small upkeep while still moving every other tick. */
+static void test_sleep_lasts_the_minimum(void)
+{
+    Sim sim;
+    Settings set;
+    make_sim(&sim, &set);
+    CHECK(sim.set.min_sleep_ticks == 30);
+    Creature *me = &sim.pool.items[sleeper_for(&sim, 1)];
+    for (int k = 0; k < 30; k++) {
+        sim_step(&sim);
+        CHECK(me->current.kind == ACT_SLEEP);
+    }
+    CHECK(me->sleep_ticks == 30);
+    sim_step(&sim); /* the minimum is over, and so is the script: it rests */
+    CHECK(me->current.kind == ACT_REST);
+    sim_free(&sim);
+
+    /* A sleep longer than the minimum is left as the brain chose it. */
+    make_sim(&sim, &set);
+    me = &sim.pool.items[sleeper_for(&sim, 45)];
+    for (int k = 0; k < 45; k++) {
+        sim_step(&sim);
+    }
+    CHECK(me->current.kind == ACT_SLEEP && me->sleep_ticks == 45);
+    sim_step(&sim);
+    CHECK(me->current.kind == ACT_REST);
+    sim_free(&sim);
+
+    /* 0 turns the minimum off: a one-tick sleep is one tick. */
+    make_sim(&sim, &set);
+    sim.set.min_sleep_ticks = 0;
+    me = &sim.pool.items[sleeper_for(&sim, 1)];
+    sim_step(&sim);
+    CHECK(me->current.kind == ACT_SLEEP);
+    sim_step(&sim);
+    CHECK(me->current.kind == ACT_REST);
     sim_free(&sim);
 }
 
@@ -724,6 +767,7 @@ int main(void)
     test_kin_lost_nearby();
     test_moved_once_settled();
     test_one_event_per_sleep();
+    test_sleep_lasts_the_minimum();
     test_largest_oldest_and_giant_once();
     test_ring_keeps_newest();
     test_table_replaces_least_notable();

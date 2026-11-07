@@ -55,9 +55,10 @@
  * then leaf trees grow and shade: Plant gains its size, and creatures out of shade
  * pay the summer heat; then deep sleep: a new action re-rolled every brain;
  * then settings tuned for the seasons: bigger bites of leaves, fruit and meat
- * and slower ageing change what every creature has.
+ * and slower ageing change what every creature has; then a sleep lasts at least
+ * 30 ticks, so brains that chose short sleeps sleep longer.
  */
-#define SEED_7_AFTER_500 0x5e184e578b76aaa1ULL
+#define SEED_7_AFTER_500 0xa82f2bb9e7fb63e9ULL
 
 static void test_same_seed_same_checksum(void)
 {
