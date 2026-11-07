@@ -409,6 +409,25 @@ static void story_living(Sim *s, Creature *c)
     }
 }
 
+/* A creature awake at the end of a tick, with ticks of sleep still counted, woke
+ * in this tick: by its own choice or by a bite. A sleep long enough to matter goes
+ * into its story as one event; then the count starts again from 0. The count is
+ * part of the world (hashed and saved), so it is cleared whether stories are
+ * recorded or not. */
+static void close_sleep(Sim *s, Creature *c)
+{
+    if (c->sleep_ticks == 0 || creature_asleep(c)) {
+        return;
+    }
+    Chronicle *ch = recorder(s);
+    if (ch != NULL && c->sleep_ticks >= SLEEP_NOTED) {
+        chronicle_note(ch, c, (LifeEvent){.tick = story_date(s),
+                                          .kind = LIFE_SLEPT,
+                                          .value = c->sleep_ticks});
+    }
+    c->sleep_ticks = 0;
+}
+
 /* A creature about to die: relatives standing near are told, then its death is
  * noted, while it still holds its slot. */
 static void story_death(Sim *s, Creature *dead, DeathCause cause)
@@ -498,6 +517,7 @@ static void accounting(Sim *s)
         bool lives = creature_upkeep(c, &s->set);
         records_note(&s->records, c, &s->set);
         if (lives) {
+            close_sleep(s, c);
             story_living(s, c);
         } else {
             DeathCause cause = death_cause(hit_to_death, c);
@@ -629,6 +649,7 @@ static uint64_t hash_creature(uint64_t hash, const Creature *c)
     hash = fnv1a(hash, &c->eaten, sizeof(c->eaten));
     hash = fnv1a(hash, &c->gut_seed, sizeof(c->gut_seed));
     hash = fnv1a(hash, &c->gut_ticks, sizeof(c->gut_ticks));
+    hash = fnv1a(hash, &c->sleep_ticks, sizeof(c->sleep_ticks));
     /* sizeof of an array that is a struct field is the whole array,
      * GENOME_LEN * sizeof(float): it has not decayed to a pointer here,
      * as an array passed to a function would. */

@@ -421,6 +421,7 @@ void panel_draw(const Sim *s, int col, int row0, int rows)
 /* What the brain told a creature to do, by ACT_ value. */
 static const char *const ACTION_NAMES[] = {
     "rest", "turn left", "turn right", "move", "bite", "mate", "attack",
+    "hibernate",
 };
 /* sizeof the whole array divided by sizeof one element is its length,
  * which only works on a real array (not on a pointer to one). */
@@ -444,10 +445,21 @@ typedef struct {
 static void add_pair(Lines *l, const char *key, const char *value)
 {
     if (l->n < l->max) {
-        /* %-11s pads the key to 11, %8s right-aligns the value in 8:
-         * 1 + 11 + 8 = 20 = PANEL_COLS. A longer value pushes past it, and
-         * the line is cut at PANEL_COLS below. */
-        snprintf(l->text[l->n], PANEL_LINE_BYTES, " %-11s%8s", key, value);
+        /* The key is padded to 11 and the value right-aligned in 8:
+         * 1 + 11 + 8 = 20 = PANEL_COLS. A value longer than 8 takes its extra
+         * room from the key's padding, so "doing" still fits "hibernate". The
+         * * in %-*s and %*s takes the width from the next int argument. A
+         * line still too long is cut at PANEL_COLS below. */
+        int value_width = (int)strlen(value);
+        if (value_width < 8) {
+            value_width = 8;
+        }
+        int key_width = PANEL_COLS - 1 - value_width;
+        if (key_width < 0) {
+            key_width = 0; /* a negative width would mean something else */
+        }
+        snprintf(l->text[l->n], PANEL_LINE_BYTES, " %-*s%*s", key_width, key,
+                 value_width, value);
         l->text[l->n][PANEL_COLS] = '\0';
         l->n++;
     }
@@ -573,6 +585,9 @@ static void describe_life(Lines *l, const Sim *s, const Creature *c)
     add_pair(l, "age", age);
     add_float(l, "health", c->health, 1);
     add_count(l, "kills", c->tally.kills);
+    if (creature_asleep(c)) {
+        add_text(l, " hibernating");
+    }
     /* The ring holds the newest CREATURE_EVENTS; the newest is at
      * (events_noted - 1) % CREATURE_EVENTS. k is at most kept, which is at most
      * events_noted, so the unsigned events_noted - k never goes below 0: if it

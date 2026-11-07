@@ -142,8 +142,12 @@ typedef struct {
      * next owner starts from zeroes. */
     Plant gut_seed;
     uint16_t gut_ticks;
+    /* Ticks of the deep sleep it is in now, counted by creature_upkeep and
+     * stopping at 65,535; 0 while awake. The Sim sets it back to 0 at the end
+     * of the tick it wakes in, after noting a long enough sleep in its story. */
+    uint16_t sleep_ticks;
     /* Stored inside the creature, not behind a pointer: GENOME_LEN floats
-     * (916 bytes) in every slot, allocated with the pool and never freed
+     * (1,420 bytes) in every slot, allocated with the pool and never freed
      * on its own. */
     Genome genome;
     /* Its life story: counts, and a ring of the newest events, newest at
@@ -235,7 +239,9 @@ int pool_spawn(Pool *p, World *w, int x, int y);
  * free. */
 void pool_kill(Pool *p, World *w, int idx, const Settings *s, DeathCause cause);
 
-/* Fills *out with what creature idx senses: its energy, age, size, meat
+/* Fills *out with what creature idx senses. Asleep, only what is inside it:
+ * everything from the way ahead, the cells around and the rays reads 0. Its
+ * energy, age, size, meat
  * digestion gene, whether it is the mating season and whether the way ahead
  * is blocked; its hunger, its wounds, the relatives and strangers around it, and
  * its memory; and along each of its three rays (ahead, left,
@@ -275,12 +281,18 @@ int creature_attack_target(const World *w, const Pool *p, int idx,
  *
  * In the mating season (p->in_season) every adult tries this first, whatever
  * its action: a birth takes up its tick; otherwise it goes on to act as usual.
- * Out of season only ACT_MATE tries. */
+ * Out of season only ACT_MATE tries.
+ *
+ * ACT_SLEEP: nothing at all, not the season's drive nor the territorial one; a
+ * seed it carries still drops in time, and move points still build up. A sleeper
+ * is no partner for anyone. A hit that lands on a sleeper wakes it: it rests
+ * with hold_left 0, so its brain chooses on its next turn. */
 int creature_act(World *w, Pool *p, int idx, Action a, const Settings *s,
                  Rng *r);
 /* Starts a family: its own id is the name, and its own colour the family's. */
 void creature_start_family(Creature *c);
-/* Charges one tick of upkeep (rest_upkeep's share of it while resting) and ages the creature by one tick. With energy
+/* Charges one tick of upkeep (rest_upkeep's share of it while resting,
+ * sleep_upkeep's in deep sleep, when it also counts sleep_ticks) and ages the creature by one tick. With energy
  * left it heals, paying for it, and then turns the growth gene's share of any
  * surplus into body (growth_surplus, growth_cost); with none, it stays at exactly 0 and loses
  * starve_damage health instead. Returns false when its health is gone or it has
@@ -313,8 +325,11 @@ float creature_region_cost(const World *w, const Creature *c, const Settings *s)
 /* Whether a living leaf tree grown to shading size (plant_gives_shade) stands
  * on the creature's cell or any of the eight around it. */
 bool creature_in_shade(const World *w, const Creature *c, const Settings *s);
+/* Whether the creature is in deep sleep: its current action is ACT_SLEEP. */
+bool creature_asleep(const Creature *c);
 /* Energy the summer sun costs per tick: summer_heat_upkeep in summer out of
- * shade, whatever the size of the body, else 0. season is a SEASON_ value. */
+ * shade, whatever the size of the body, else 0; asleep, sleep_upkeep's share of
+ * that. season is a SEASON_ value. */
 float creature_heat_cost(const World *w, const Creature *c, const Settings *s,
                          int season);
 /* The energy a step onto this cell costs on top of move_cost, by its legs and

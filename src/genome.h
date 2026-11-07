@@ -39,7 +39,7 @@ enum {
  * ACT_COUNT + MEMORY_VALUES (brain.h); brain_net.c checks both when compiled. */
 #define NET_IN 43
 #define NET_HIDDEN 6
-#define NET_OUT 10
+#define NET_OUT 11
 /* The parentheses matter: a macro is pasted as text, and without them
  * "2 * NET_WEIGHTS" would multiply only the first term. */
 #define NET_WEIGHTS ((NET_IN + 1) * NET_HIDDEN + (NET_HIDDEN + 1) * NET_OUT)

@@ -380,6 +380,9 @@ family_split = 0.25
 # share of upkeep paid while resting (0 to 1)
 rest_upkeep = 0.5
 
+# share of upkeep and summer heat paid in deep sleep (0 to 1)
+sleep_upkeep = 0.1
+
 # chance a full territory gene attacks a stranger beside it (0 to 1)
 territory_drive = 0.3
 

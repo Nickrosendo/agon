@@ -243,13 +243,21 @@ bool creature_in_shade(const World *w, const Creature *c, const Settings *s)
     return false;
 }
 
+bool creature_asleep(const Creature *c)
+{
+    return c->current.kind == ACT_SLEEP;
+}
+
 float creature_heat_cost(const World *w, const Creature *c, const Settings *s,
                          int season)
 {
     if (season != SEASON_SUMMER || creature_in_shade(w, c, s)) {
         return 0.0f;
     }
-    return s->summer_heat_upkeep;
+    /* A sleeping body makes little heat of its own, and pays the same small
+     * share of the sun as of its upkeep. */
+    float share = creature_asleep(c) ? s->sleep_upkeep : 1.0f;
+    return s->summer_heat_upkeep * share;
 }
 
 float creature_step_extra(const World *w, const Creature *c, int cell,
@@ -478,17 +486,24 @@ void creature_sense(const World *w, const Pool *p, int idx,
     float angle = 6.28318531f * p->year_phase;
     out->v[SENSE_YEAR_SIN] = 0.5f + 0.5f * sinf(angle);
     out->v[SENSE_YEAR_COS] = 0.5f + 0.5f * cosf(angle);
-    /* The same test act_move makes, so the sense cannot disagree with walking. */
-    int ahead = cell_towards(w, c->x, c->y, c->heading);
-    out->v[SENSE_BLOCKED] = cell_is_free(w, ahead) ? 0.0f : 1.0f;
 
     /* The drives. Hunger is the sense of energy the other way up. */
     out->v[SENSE_HUNGER] = 1.0f - out->v[SENSE_ENERGY];
     out->v[SENSE_PAIN] = clamp01(1.0f - c->health / creature_max_health(c, s));
-    sense_neighbours(w, p, c, s, out);
     for (int m = 0; m < MEMORY_VALUES; m++) {
         out->v[SENSE_MEMORY + m] = c->memory[m];
     }
+
+    /* Asleep, it feels only its own body and the time of year: everything
+     * outside it (the way ahead, who is beside it, the three rays) stays at the
+     * 0 it started from. */
+    if (creature_asleep(c)) {
+        return;
+    }
+    /* The same test act_move makes, so the sense cannot disagree with walking. */
+    int ahead = cell_towards(w, c->x, c->y, c->heading);
+    out->v[SENSE_BLOCKED] = cell_is_free(w, ahead) ? 0.0f : 1.0f;
+    sense_neighbours(w, p, c, s, out);
 
     /* The directions of the three rays, in RAY_ order. */
     const uint8_t ray_heading[RAY_COUNT] = {
@@ -629,6 +644,18 @@ static float hit_damage(const Creature *c, const Creature *target, float a,
     return s->bite_damage * a * raised * (left > 0.0f ? left : 0.0f);
 }
 
+/* A bitten sleeper wakes: it rests with nothing left to hold, so its brain
+ * chooses again on its next turn, this tick or the next. A creature already
+ * awake is left doing what it was doing, so a second hit changes nothing. */
+static void wake(Creature *c)
+{
+    if (creature_asleep(c)) {
+        c->current.kind = ACT_REST;
+        c->current.hold = 1;
+        c->hold_left = 0;
+    }
+}
+
 /* An attack on whatever stands ahead. It costs the same hit, miss or swing at
  * nothing. The target is only hurt: if its health reaches 0 it stops acting, and
  * the end-of-tick accounting kills it and leaves its body as carrion, so the
@@ -652,6 +679,7 @@ static void act_attack(const World *w, Pool *p, int idx, const Settings *s,
         target->health -= hit_damage(c, target, a, s);
         record_hit(p, c, target, before, s); /* reads the ring before the hit */
         note_hit(target, c->id, p->now);
+        wake(target);
     }
 }
 
@@ -923,7 +951,9 @@ static int find_partner(const World *w, const Pool *p, const Creature *c,
         int dir = (start + k) % 8;
         int cell = world_idx(w, c->x + AROUND_X[dir], c->y + AROUND_Y[dir]);
         int other = w->occupant[cell];
+        /* A sleeper is no partner, whatever wish it fell asleep with. */
         if (other >= 0 && p->items[other].mate_wish > 0 &&
+            !creature_asleep(&p->items[other]) &&
             can_mate(&p->items[other], s) &&
             genome_body_likeness(&c->genome, &p->items[other].genome) >=
                 s->mate_barrier) {
@@ -1081,6 +1111,12 @@ int creature_act(World *w, Pool *p, int idx, Action a, const Settings *s,
     if (c->move_points > 1.0f) {
         c->move_points = 1.0f;
     }
+    /* Deep sleep: nothing else happens, not even the season's drive or the
+     * territorial one below. The seed above still travels and drops, and move
+     * points still build up, as they do whatever the action. */
+    if (a.kind == ACT_SLEEP) {
+        return -1;
+    }
     /* The season's drive: no choice needed. ACT_MATE below would only try a
      * second time in one tick, so it is left to the switch. */
     if (p->in_season && a.kind != ACT_MATE) {
@@ -1149,16 +1185,28 @@ static void grow(Creature *c, const Settings *s)
     c->grown += spent / s->growth_cost;
 }
 
+/* The share of its upkeep a creature pays this tick, by what it is doing. The
+ * ageing part is included in the discount: a body at rest costs less, and one
+ * in deep sleep far less. Ageing itself goes on at the same pace. */
+static float upkeep_share(const Creature *c, const Settings *s)
+{
+    if (creature_asleep(c)) {
+        return s->sleep_upkeep;
+    }
+    return c->current.kind == ACT_REST ? s->rest_upkeep : 1.0f;
+}
+
 bool creature_upkeep(Creature *c, const Settings *s)
 {
     if (c->health <= 0.0f) {
         return false;
     }
-    /* The ageing part is included in the discount: a body at rest costs less. */
-    float share = c->current.kind == ACT_REST ? s->rest_upkeep : 1.0f;
-    c->energy -= creature_upkeep_cost(c, s) * share;
+    c->energy -= creature_upkeep_cost(c, s) * upkeep_share(c, s);
     if (c->age < UINT32_MAX) {
         c->age++;
+    }
+    if (creature_asleep(c) && c->sleep_ticks < UINT16_MAX) {
+        c->sleep_ticks++;
     }
     if (c->mate_wish > 0) {
         c->mate_wish--;

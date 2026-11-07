@@ -377,12 +377,14 @@ static uint64_t hash_canvas(const Canvas *c)
  * plants on it differ at every zoom; then plants follow the seasons: spring's
  * plenty changes the plants and creatures at every zoom but the closest; then
  * leaf trees grow and shade: the summer heat costs creatures out of shade energy,
- * so creatures stand elsewhere at the two wider zooms.
+ * so creatures stand elsewhere at the two wider zooms; then deep sleep: a new
+ * action re-rolled every brain, so creatures stand elsewhere at the two wider
+ * zooms (sleepers are drawn as any other creature).
  */
 static void test_known_world_pixels(void)
 {
     static const uint64_t EXPECTED[CAMERA_LEVELS] = {
-        0x10cfb74e4201643du, 0xb5fb2349fed7e16eu, 0x5ed6d230c8f7be87u, 0x41e5da9a6f230d65u,
+        0x10cfb74e4201643du, 0xb5fb2349fed7e16eu, 0xecb5b6aa44251b21u, 0x667a998a53fd3d25u,
     };
     Settings set = settings_default();
     Sim s;

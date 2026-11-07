@@ -189,6 +189,8 @@ Settings settings_default(void)
         .colour_peace = 0.1f,
         .family_split = 0.25f,
         .rest_upkeep = 0.5f,
+        /* The seasons design, section 6: a starting guess, against resting's 0.5. */
+        .sleep_upkeep = 0.1f,
         /* These two together, Nicolas's call to try. Seeds 1 to 15, 20,000 ticks, the
          * best of six tried: 15 alive and the smallest world at 98, deaths from wounds
          * 26.3 % against 2.4 %, still and starving 7 % against 20 %. Alone, territory
@@ -384,6 +386,7 @@ static const SettingInfo TABLE[] = {
     FLOAT_ROW(colour_peace, 0, 0.5, "colour distance within which an attack does not strike"),
     FLOAT_ROW(family_split, 0, 0.5, "colour drift at which a newborn starts a family"),
     FLOAT_ROW(rest_upkeep, 0, 1, "share of upkeep paid while resting"),
+    FLOAT_ROW(sleep_upkeep, 0, 1, "share of upkeep and summer heat paid in deep sleep"),
     FLOAT_ROW(territory_drive, 0, 1, "chance a full territory gene attacks a stranger beside it"),
     FLOAT_ROW(territory_upkeep, 0, BIG, "upkeep of a full territory gene"),
     FLOAT_ROW(crowd_upkeep, 0, BIG, "energy per tick per neighbour past the free ones"),

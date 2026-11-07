@@ -32,6 +32,7 @@ enum {
     LIFE_OLDEST,      /* became the oldest alive */
     LIFE_GIANT,       /* reached giant_size; value: size in tenths */
     LIFE_DIED,        /* value: a DeathCause; other: the killer, for wounds */
+    LIFE_SLEPT,       /* woke from a deep sleep of SLEEP_NOTED ticks or more; value: its ticks */
     LIFE_COUNT
 };
 
@@ -46,6 +47,9 @@ enum {
 /* Ticks a creature must stand in a new region before it counts as moved there,
  * so that walking along a border does not fill the story with crossings. */
 #define REGION_SETTLE 50
+/* The shortest deep sleep the story records, in ticks: a sleep is one event,
+ * noted on waking, and shorter naps would fill the ring with nothing. */
+#define SLEEP_NOTED 30
 
 /* How many lives the table keeps, and how many events each keeps. */
 #define CHRONICLE_NOTABLE 64

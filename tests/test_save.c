@@ -130,6 +130,54 @@ static void test_round_trip_and_continue(void)
     sim_free(&b);
 }
 
+/* A creature saved in the middle of a deep sleep loads still asleep, the same
+ * ticks into it, and the world goes on the same. */
+static void test_sleeper_saved(void)
+{
+    Settings set = settings_default();
+    Sim a, b;
+    char err[256] = "";
+    CHECK(sim_init(&a, &set, 7, 64, 32));
+    for (int i = 0; i < 100; i++) {
+        sim_step(&a);
+    }
+    int slot = -1;
+    for (int i = 0; i < a.pool.capacity && slot < 0; i++) {
+        slot = a.pool.items[i].alive ? i : -1;
+    }
+    CHECK(slot >= 0);
+    if (slot < 0) {
+        sim_free(&a);
+        return;
+    }
+    Creature *c = &a.pool.items[slot];
+    c->current = (Action){.kind = ACT_SLEEP, .hold = 400};
+    c->hold_left = 250;
+    c->sleep_ticks = 150;
+    CHECK(save_write(&a, SAVE_FILE, err, sizeof(err)));
+    CHECK(save_read(&b, SAVE_FILE, err, sizeof(err)));
+    const Creature *loaded = &b.pool.items[slot];
+    CHECK(loaded->current.kind == ACT_SLEEP);
+    CHECK(loaded->hold_left == 250);
+    CHECK(loaded->sleep_ticks == 150);
+    CHECK(sim_checksum(&a) == sim_checksum(&b));
+    /* sleep_ticks is in the fingerprint: change it and the fingerprint changes. */
+    b.pool.items[slot].sleep_ticks = 151;
+    CHECK(sim_checksum(&a) != sim_checksum(&b));
+    b.pool.items[slot].sleep_ticks = 150;
+    sim_step(&a);
+    sim_step(&b);
+    CHECK(sim_checksum(&a) == sim_checksum(&b));
+    for (int i = 0; i < 300; i++) {
+        sim_step(&a);
+        sim_step(&b);
+    }
+    CHECK(sim_checksum(&a) == sim_checksum(&b));
+    sim_free(&a);
+    sim_free(&b);
+    remove(SAVE_FILE);
+}
+
 /* A leaf tree's size travels through a save, and the world goes on the same. */
 static void test_tree_size_saved(void)
 {
@@ -357,6 +405,10 @@ static void test_wrong_magic_and_version(void)
     /* The last version before snow: a layer was added to the world. */
     bytes[8] = 9;
     CHECK(load_fails(bytes, size, "version 9"));
+    /* The last version before deep sleep: every creature gained a field and
+     * every genome grew. */
+    bytes[8] = 10;
+    CHECK(load_fails(bytes, size, "version 10"));
     bytes[8] = kept;
     /* And the same bytes, untouched, are fine: the failures above came
      * from the changes. */
@@ -508,8 +560,9 @@ enum {
     AT_EATEN = 121,
     AT_GUT_SEED = 125, /* seven floats: 28 bytes */
     AT_GUT_TICKS = 153,
-    AT_MEMORY = 155,
-    AT_GENOME = 167,
+    AT_SLEEP_TICKS = 155,
+    AT_MEMORY = 157,
+    AT_GENOME = 169,
     /* The life story: ten u32 counts, max_size, flags, two region bytes and
      * region_ticks (49 bytes); then events_noted and 8 events of 13 bytes each
      * (tick, kind, other_id, value: the struct's 3 padding bytes are not written). */
@@ -841,6 +894,8 @@ static void test_refuses_impossible_creature(void)
     refuses_u32(&t, c + AT_Y, 0xFFFFFFFFu, "creature");
     refuses_byte(&t, c + AT_HEADING, HEADING_COUNT, "creature");
     refuses_byte(&t, c + AT_KIND, ACT_COUNT, "creature");
+    /* Ticks of a sleep for a creature that is awake (this one rests). */
+    refuses_byte(&t, c + AT_SLEEP_TICKS, 1, "creature");
     refuses_u32(&t, c + AT_ENERGY, BITS_NAN, "out of range");
     refuses_u32(&t, c + AT_ENERGY, BITS_HUGE, "out of range");
     refuses_u32(&t, c + AT_HEALTH, BITS_NAN, "out of range");
@@ -989,6 +1044,7 @@ int main(void)
 {
     test_round_trip_and_continue();
     test_tree_size_saved();
+    test_sleeper_saved();
     test_chronicle_saved();
     test_settings_travel_with_the_file();
     test_random_brain_reopens();

@@ -315,6 +315,9 @@ typedef struct {
     float family_split;
     /* The share of upkeep paid on a tick spent resting. */
     float rest_upkeep;
+    /* The share paid on a tick of deep sleep (ACT_SLEEP), of the upkeep, ageing
+     * included, and of the summer heat. */
+    float sleep_upkeep;
     /* Crowding: crowd_upkeep energy per tick for each creature past the first
      * crowd_free within crowd_radius cells, whoever they are. 0 turns it off. */
     /* Territory: each tick an adult with a stranger on one of the four cells

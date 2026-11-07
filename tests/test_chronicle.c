@@ -549,6 +549,80 @@ static void test_no_motive_words(void)
     sim_free(&sim);
 }
 
+/* One creature in a bare world, well fed, that sleeps for the given ticks (the
+ * script's one answer) and then rests, the script having run out. */
+static int sleeper_for(Sim *sim, uint16_t ticks)
+{
+    int c = spawn(&sim->pool, &sim->world, 8, 8);
+    Creature *me = &sim->pool.items[c];
+    me->energy = 1000.0f;
+    me->health = 1000.0f;
+    Action script[] = {{.kind = ACT_SLEEP, .hold = ticks}};
+    brain_script_load(&sim->brain, script, 1);
+    return c;
+}
+
+/* A sleep is one event, noted on waking with its length, and only a sleep long
+ * enough to matter: the 48-event ring must not fill with naps. */
+static void test_one_event_per_sleep(void)
+{
+    Sim sim;
+    Settings set;
+    make_sim(&sim, &set);
+    Creature *me = &sim.pool.items[sleeper_for(&sim, 200)];
+    for (int k = 0; k < 200; k++) {
+        sim_step(&sim);
+        CHECK(me->current.kind == ACT_SLEEP);
+    }
+    CHECK(me->sleep_ticks == 200);
+    CHECK(count_kind(me, LIFE_SLEPT) == 0); /* not yet: it is still asleep */
+    sim_step(&sim); /* the script is over: it rests, awake */
+    CHECK(me->current.kind == ACT_REST);
+    CHECK(me->sleep_ticks == 0);
+    CHECK(count_kind(me, LIFE_SLEPT) == 1);
+    CHECK(newest(me).kind == LIFE_SLEPT && newest(me).value == 200);
+    for (int k = 0; k < 10; k++) {
+        sim_step(&sim);
+    }
+    CHECK(count_kind(me, LIFE_SLEPT) == 1); /* once */
+    sim_free(&sim);
+
+    /* A nap, or one just short of SLEEP_NOTED, is not noted; SLEEP_NOTED is. */
+    const uint16_t lengths[] = {10, SLEEP_NOTED - 1, SLEEP_NOTED};
+    for (int n = 0; n < 3; n++) {
+        make_sim(&sim, &set);
+        me = &sim.pool.items[sleeper_for(&sim, lengths[n])];
+        for (int k = 0; k <= lengths[n]; k++) {
+            sim_step(&sim);
+        }
+        CHECK(me->current.kind == ACT_REST && me->sleep_ticks == 0);
+        CHECK(count_kind(me, LIFE_SLEPT) == (lengths[n] >= SLEEP_NOTED));
+        sim_free(&sim);
+    }
+
+    /* Dying asleep: the death is noted, and no sleep. */
+    make_sim(&sim, &set);
+    me = &sim.pool.items[sleeper_for(&sim, 300)];
+    uint32_t id = me->id;
+    for (int k = 0; k < 100; k++) {
+        sim_step(&sim);
+    }
+    me->energy = 0.0f;
+    me->health = 0.001f; /* hunger ends it on the next tick */
+    sim_step(&sim);
+    CHECK(!me->alive);
+    const NotableLife *life = chronicle_find(&sim.chronicle, id);
+    CHECK(life != NULL);
+    if (life != NULL) {
+        LifeEvent last = life->events[(life->events_noted - 1) % NOTABLE_EVENTS];
+        CHECK(last.kind == LIFE_DIED && last.value == DEATH_HUNGER);
+        for (uint32_t k = 0; k < life->events_noted && k < NOTABLE_EVENTS; k++) {
+            CHECK(life->events[k].kind != LIFE_SLEPT);
+        }
+    }
+    sim_free(&sim);
+}
+
 static void test_lines_read_right(void)
 {
     LifeTally t = {.parents = {4, 5}};
@@ -566,6 +640,17 @@ static void test_lines_read_right(void)
     LifeEvent big = {.tick = 0, .kind = LIFE_GIANT, .value = 63};
     chronicle_line(&big, &t, 100, line, sizeof(line));
     CHECK(strcmp(line, "year 0: grew to giant size, 6.3") == 0);
+    /* A sleep says how long, in years, and the season it ended in. */
+    LifeEvent slept = {.tick = 250, .kind = LIFE_SLEPT, .value = 30};
+    chronicle_line(&slept, &t, 100, line, sizeof(line));
+    CHECK(strcmp(line, "year 2: slept 0.3 y, woke in autumn") == 0);
+    chronicle_short_line(&slept, 100, line, sizeof(line));
+    CHECK(strcmp(line, "y2 slept 0.3 y") == 0);
+    slept.value = 5; /* under a tenth of a year */
+    chronicle_line(&slept, &t, 100, line, sizeof(line));
+    CHECK(strcmp(line, "year 2: slept under 0.1 y, woke in autumn") == 0);
+    chronicle_short_line(&slept, 100, line, sizeof(line));
+    CHECK(strcmp(line, "y2 slept <0.1 y") == 0);
     /* A short buffer is cut, never overrun. */
     char tiny[8];
     chronicle_line(&big, &t, 100, tiny, sizeof(tiny));
@@ -638,6 +723,7 @@ int main(void)
     test_survived_fight_after_quiet();
     test_kin_lost_nearby();
     test_moved_once_settled();
+    test_one_event_per_sleep();
     test_largest_oldest_and_giant_once();
     test_ring_keeps_newest();
     test_table_replaces_least_notable();

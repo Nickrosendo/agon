@@ -281,6 +281,29 @@ static void test_panel_shows_name_title_age_health_kills_log(void)
     sim_free(&sim);
 }
 
+/* A sleeping creature's panel says so, and what it is doing; an awake one's
+ * does not. */
+static void test_panel_shows_hibernating(void)
+{
+    Sim sim;
+    make_empty_sim(&sim);
+    int slot = spawn_living(&sim);
+    Creature *c = &sim.pool.items[slot];
+    Inspect in = {0};
+    inspect_follow(&in, &sim, slot);
+    char lines[PANEL_INSPECT_LINES][PANEL_LINE_BYTES];
+    int n = panel_inspect_text(&sim, &in, lines, PANEL_INSPECT_LINES);
+    CHECK(!lines_have(lines, n, "hibernat"));
+    c->current = (Action){.kind = ACT_SLEEP, .hold = 100};
+    n = panel_inspect_text(&sim, &in, lines, PANEL_INSPECT_LINES);
+    CHECK(lines_have(lines, n, "hibernating"));
+    CHECK(lines_have(lines, n, "hibernate")); /* the "doing" line */
+    for (int k = 0; k < n; k++) {
+        CHECK(strlen(lines[k]) <= PANEL_COLS);
+    }
+    sim_free(&sim);
+}
+
 static void test_l_page_lists_a_whole_life(void)
 {
     Sim sim;
@@ -446,6 +469,7 @@ int main(void)
     test_colour_groups();
     test_band_names();
     test_panel_shows_name_title_age_health_kills_log();
+    test_panel_shows_hibernating();
     test_l_page_lists_a_whole_life();
     test_l_page_when_followed_creature_dies();
     test_l_page_most_notable();

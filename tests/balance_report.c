@@ -125,6 +125,12 @@ typedef struct {
     double pop_at_start[SEASON_COUNT];     /* the population as each began, summed */
     /* Every living creature on every summer tick, and those of them in shade. */
     uint64_t summer_creature_ticks, summer_shaded_ticks;
+    /* Deep sleep: the living and the sleeping summed on the middle tick of each
+     * winter and of each summer. */
+    uint64_t mid_winter_alive, mid_winter_asleep;
+    uint64_t mid_summer_alive, mid_summer_asleep;
+    /* Cells moved, summed over creature-ticks, by the season of the tick. */
+    uint64_t cells_moved[SEASON_COUNT], moved_ticks[SEASON_COUNT];
 } Verdict;
 
 static const char *const SEASON_NAMES[SEASON_COUNT] = {"spring", "summer",
@@ -388,6 +394,26 @@ static void watch_story(const Sim *s, const Creature *c, Shadow *sh, Report *rep
 }
 
 /* Compares every slot with its shadow, then brings the shadow up to date. */
+/* The shorter way between two coordinates on a world that wraps around. */
+static int wrapped_gap(int a, int b, int size)
+{
+    int gap = abs(a - b);
+    return gap < size - gap ? gap : size - gap;
+}
+
+/* After a step: how far a creature seen on the tick before has moved since,
+ * counted under the season of the tick that ran. A step is one cell; the world
+ * wraps, so a step across the edge is one cell too. */
+static void note_movement(const Sim *s, const Creature *c, const Shadow *sh,
+                          Verdict *v)
+{
+    int season = years_season_of(s->tick - 1, s->set.ticks_per_year);
+    int moved = wrapped_gap(c->x, sh->x, s->world.w) +
+                wrapped_gap(c->y, sh->y, s->world.h);
+    v->cells_moved[season] += (uint64_t)moved;
+    v->moved_ticks[season]++;
+}
+
 static void watch_slots(const Sim *s, Shadow *shadow, Report *rep, Verdict *v)
 {
     for (int i = 0; i < s->pool.capacity; i++) {
@@ -409,6 +435,9 @@ static void watch_slots(const Sim *s, Shadow *shadow, Report *rep, Verdict *v)
         if (!c->alive) {
             sh->alive = false;
             continue;
+        }
+        if (same) {
+            note_movement(s, c, sh, v);
         }
         uint32_t still = 0;
         if (same && c->x == sh->x && c->y == sh->y) {
@@ -443,12 +472,6 @@ static void watch_slots(const Sim *s, Shadow *shadow, Report *rep, Verdict *v)
     }
 }
 
-/* The shorter way between two coordinates on a world that wraps around. */
-static int wrapped_gap(int a, int b, int size)
-{
-    int gap = abs(a - b);
-    return gap < size - gap ? gap : size - gap;
-}
 
 /* How far the creatures alive now, of TRAVEL_MIN_AGE ticks or more, stand from
  * where they were born: straight-line cells, the short way round. How far they
@@ -510,7 +533,7 @@ static void sizes(const Sim *s, float *largest, float *mean)
 static void print_header(void)
 {
     printf("seed  final   peak extinct births lastbirth meat  Emean adultA ageX hungr "
-           "woun  old still  rest left right move bite  mate atck  capt full  szmax szmean\n");
+           "woun  old still  rest left right move bite  mate atck slep  capt full  szmax szmean\n");
 }
 
 /* What no pass rule depends on: fights, chasing and who fights alongside whom. */
@@ -933,6 +956,27 @@ static void print_shade(const Sim *s, const Verdict *v)
            100.0 * mean_of((double)v->summer_shaded_ticks, v->summer_creature_ticks));
 }
 
+/* Deep sleep, reported and never judged: the share of creatures asleep in the
+ * middle of winter against the middle of summer, and the mean cells moved per
+ * creature per tick in winter against the other three seasons. */
+static void print_sleep(const Verdict *v)
+{
+    uint64_t other_cells = 0, other_ticks = 0;
+    for (int k = 0; k < SEASON_COUNT; k++) {
+        if (k != SEASON_WINTER) {
+            other_cells += v->cells_moved[k];
+            other_ticks += v->moved_ticks[k];
+        }
+    }
+    printf("     sleep: asleep at mid winter %.1f%%, at mid summer %.1f%% | "
+           "cells moved per tick in winter %.3f, other seasons %.3f\n",
+           100.0 * mean_of((double)v->mid_winter_asleep, v->mid_winter_alive),
+           100.0 * mean_of((double)v->mid_summer_asleep, v->mid_summer_alive),
+           mean_of((double)v->cells_moved[SEASON_WINTER],
+                   v->moved_ticks[SEASON_WINTER]),
+           mean_of((double)other_cells, other_ticks));
+}
+
 /* The verdict's numbers for one world on one line, for tests/seasons_verdict.sh:
  * SUMMARY seed alive mean10y meanall fruit leaf eaters killers adult_life
  * hunger_adult top_adult, then the adult deaths and their split by cause
@@ -970,6 +1014,34 @@ static void note_summer_shade(const Sim *s, Verdict *v)
     }
 }
 
+/* After a step, if the tick that just ran was the middle one of a winter or a
+ * summer: counts the living, and the ones in deep sleep. */
+static void note_mid_season_sleep(const Sim *s, Verdict *v)
+{
+    int tpy = s->set.ticks_per_year;
+    /* Winter is the last quarter of the year, summer the second: their middles
+     * are 7/8 and 3/8 of the way through it. */
+    uint64_t day = (s->tick - 1) % (uint64_t)tpy;
+    bool mid_winter = day == (uint64_t)(tpy * 7 / 8);
+    bool mid_summer = day == (uint64_t)(tpy * 3 / 8);
+    if (!mid_winter && !mid_summer) {
+        return;
+    }
+    for (int i = 0; i < s->pool.capacity; i++) {
+        const Creature *c = &s->pool.items[i];
+        if (!c->alive) {
+            continue;
+        }
+        if (mid_winter) {
+            v->mid_winter_alive++;
+            v->mid_winter_asleep += creature_asleep(c);
+        } else {
+            v->mid_summer_alive++;
+            v->mid_summer_asleep += creature_asleep(c);
+        }
+    }
+}
+
 /* After a step: the population summed, births by season, and the population
  * as a season begins. s->tick is the tick about to run next. */
 static void verdict_tick(const Sim *s, Verdict *v, uint32_t births)
@@ -983,6 +1055,7 @@ static void verdict_tick(const Sim *s, Verdict *v, uint32_t births)
     }
     v->births[years_season_of(s->tick - 1, tpy)] += births;
     note_summer_shade(s, v);
+    note_mid_season_sleep(s, v);
     int season = years_season_of(s->tick, tpy);
     if (years_season_starts(s->tick, tpy, season)) {
         v->starts[season]++;
@@ -1104,6 +1177,7 @@ int main(int argc, char **argv)
     print_row(&sim, shadow, &rep);
     print_seasons(&verdict);
     print_shade(&sim, &verdict);
+    print_sleep(&verdict);
     if (summary) {
         print_summary(&sim, &verdict);
     }

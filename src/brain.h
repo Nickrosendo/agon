@@ -79,6 +79,10 @@ enum {
     ACT_BITE, /* eat the best food around; never hurts anyone (creature.c) */
     ACT_MATE, /* wish to mate, with anyone beside it who wishes too */
     ACT_ATTACK, /* attack whatever creature is on the cell ahead, of any kind */
+    /* Deep sleep: upkeep falls to sleep_upkeep's share, the creature does
+     * nothing and senses only its own body. It wakes by choosing anything else,
+     * or when it is bitten (creature.c). */
+    ACT_SLEEP,
     ACT_COUNT
 };
 

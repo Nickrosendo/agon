@@ -53,9 +53,9 @@
  * tick 150 on changes the plants and so everyone; then plants follow the
  * seasons: more in spring, fruit trees resting from tick 300, bare leaves;
  * then leaf trees grow and shade: Plant gains its size, and creatures out of shade
- * pay the summer heat.
+ * pay the summer heat; then deep sleep: a new action re-rolled every brain.
  */
-#define SEED_7_AFTER_500 0x6ae6435f667cb56fULL
+#define SEED_7_AFTER_500 0x6aac4af9afc314f8ULL
 
 static void test_same_seed_same_checksum(void)
 {

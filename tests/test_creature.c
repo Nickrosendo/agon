@@ -1052,6 +1052,10 @@ static void test_season_leaves_the_action(void)
     adult_pair(&w, &p, &a, &b, &s, &r);
     p.in_season = true;
     p.items[b].energy = 1.0f; /* the neighbour is no partner */
+    /* Nor a stranger to turn on: the territorial drive would take the tick. Its
+     * territory gene is 0.99, and b's random colour used to spare b; a new action
+     * re-rolled every brain, the genome grew, and b's colour came out different. */
+    p.items[a].genome.g[GENE_TERRITORY] = 0.0f;
     p.items[a].heading = HEADING_NORTH;
     p.items[a].move_points = 1.0f;
     CHECK(creature_act(&w, &p, a, (Action){.kind = ACT_MOVE, .hold = 1}, &s, &r) == -1);
@@ -3199,6 +3203,223 @@ static void test_attack_spares_similar_colours(void)
     world_free(&w);
 }
 
+/* ---- deep sleep ---- */
+
+/* A tick asleep costs sleep_upkeep's share of a busy tick's upkeep, ageing
+ * included, and of the summer heat; the creature still ages. */
+static void test_sleep_costs_little(void)
+{
+    Settings s = settings_default();
+    Creature asleep = {.alive = true, .energy = 100.0f, .age = 40};
+    asleep.health = creature_max_health(&asleep, &s);
+    Creature busy = asleep;
+    asleep.current.kind = ACT_SLEEP;
+    busy.current.kind = ACT_TURN_LEFT;
+    float cost = creature_upkeep_cost(&busy, &s);
+    CHECK(creature_upkeep(&asleep, &s));
+    CHECK(creature_upkeep(&busy, &s));
+    CHECK(near(100.0f - busy.energy, cost));
+    CHECK(near(100.0f - asleep.energy, cost * s.sleep_upkeep));
+    CHECK(asleep.age == 41);
+    CHECK(asleep.sleep_ticks == 1); /* counted while asleep */
+    CHECK(busy.sleep_ticks == 0);
+    CHECK(s.sleep_upkeep > 0.0f && s.sleep_upkeep < s.rest_upkeep);
+
+    /* The summer sun: the same share. */
+    World w;
+    make_world(&w, 8, 8);
+    Pool p;
+    CHECK(pool_init(&p, 1));
+    Creature *c = &p.items[spawn(&p, &w, 3, 3)];
+    c->current.kind = ACT_SLEEP;
+    CHECK(near(creature_heat_cost(&w, c, &s, SEASON_SUMMER),
+               s.summer_heat_upkeep * s.sleep_upkeep));
+    CHECK(creature_heat_cost(&w, c, &s, SEASON_WINTER) == 0.0f);
+    pool_free(&p);
+    world_free(&w);
+}
+
+/* Asleep, a creature does nothing outside its own body: in spring beside a
+ * willing adult it neither mates nor starts wishing to, and it does not move,
+ * bite or attack, nor turn on a stranger beside it. It still carries a seed and
+ * gains move points. */
+static void test_sleeper_does_nothing(void)
+{
+    World w;
+    Pool p;
+    int a, b;
+    Settings s = settings_default();
+    Rng r;
+    rng_seed(&r, 12);
+    adult_pair(&w, &p, &a, &b, &s, &r);
+    p.items[b].genome = p.items[a].genome; /* no barrier between them */
+    p.in_season = true;
+    p.items[b].mate_wish = (uint16_t)s.mate_window; /* willing */
+    Creature *c = &p.items[a];
+    c->current = (Action){.kind = ACT_SLEEP, .hold = 50};
+    c->move_points = 0.0f;
+    c->gut_ticks = 5;
+    int ahead = world_idx(&w, 3, 2);
+    w.veg[ahead] = VEG_MAX;
+    w.veg[world_idx(&w, 3, 3)] = VEG_MAX;
+    float energy = c->energy;
+    Action sleep = {.kind = ACT_SLEEP, .hold = 50};
+    CHECK(creature_act(&w, &p, a, sleep, &s, &r) == -1);
+    CHECK(p.count == 2);
+    CHECK(c->mate_wish == 0);
+    CHECK(c->x == 3 && c->y == 3 && c->heading == HEADING_NORTH);
+    CHECK(c->energy == energy); /* no bite, no attack paid for */
+    CHECK(w.veg[ahead] == VEG_MAX && w.veg[world_idx(&w, 3, 3)] == VEG_MAX);
+    CHECK(near(c->move_points, creature_speed(c, &s)));
+    CHECK(c->gut_ticks == 4);
+    /* The willing neighbour finds no partner in it, even one with a wish left
+     * over from before it fell asleep. */
+    c->mate_wish = 3;
+    CHECK(creature_act(&w, &p, b, (Action){.kind = ACT_MATE, .hold = 1}, &s, &r) == -1);
+    CHECK(p.count == 2);
+    pool_free(&p);
+    world_free(&w);
+
+    /* A territorial adult asleep with a stranger beside it leaves it alone. */
+    s = settings_default();
+    int t;
+    territory_scene(&w, &p, &s, &a, &t);
+    p.items[a].current = (Action){.kind = ACT_SLEEP, .hold = 50};
+    float health = p.items[t].health;
+    for (int k = 0; k < 20; k++) {
+        creature_act(&w, &p, a, sleep, &s, &r);
+    }
+    CHECK(p.items[t].health == health);
+    CHECK(p.items[t].hits_taken == 0);
+    pool_free(&p);
+    world_free(&w);
+}
+
+/* A sleeper feels only its own body and the time of year: everything it would
+ * see, smell or have beside it reads 0. */
+static void test_sleeper_senses_only_inside(void)
+{
+    Settings s = settings_default();
+    World w;
+    make_world(&w, 8, 8);
+    Pool p;
+    CHECK(pool_init(&p, 4));
+    p.in_season = true;
+    p.season = SEASON_SPRING;
+    p.year_phase = 0.1f;
+    int c = spawn(&p, &w, 3, 3); /* heading north */
+    Creature *me = &p.items[c];
+    me->genome.g[GENE_SIGHT] = 1.0f;
+    me->energy = s.mate_threshold / 3.0f;
+    me->health = creature_max_health(me, &s) * 0.6f;
+    me->age = 77;
+    me->memory[0] = 0.5f;
+    me->memory[2] = -0.25f;
+    /* A twin ahead, a stranger to the left, plants and carrion around. */
+    int twin = spawn(&p, &w, 3, 2);
+    p.items[twin].genome = me->genome;
+    int stranger = spawn(&p, &w, 2, 3);
+    for (int i = 0; i < GENOME_LEN; i++) {
+        p.items[stranger].genome.g[i] = me->genome.g[i] + 2.0f;
+    }
+    w.veg[world_idx(&w, 4, 3)] = VEG_MAX;
+    w.veg[world_idx(&w, 3, 2)] = VEG_MAX;
+    w.scent[world_idx(&w, 2, 3)] = 5.0f;
+
+    Senses awake, asleep;
+    me->current.kind = ACT_REST;
+    creature_sense(&w, &p, c, &s, &awake);
+    me->current.kind = ACT_SLEEP;
+    creature_sense(&w, &p, c, &s, &asleep);
+
+    /* Awake, the outside is there to sense: the test means something. */
+    CHECK(awake.v[SENSE_BLOCKED] == 1.0f);
+    CHECK(awake.v[SENSE_KIN_NEAR] > 0.0f && awake.v[SENSE_STRANGERS_NEAR] > 0.0f);
+    CHECK(awake.v[SENSE_RAYS + RAY_AHEAD * RAY_VALUES + RAY_NEAR] > 0.0f);
+    CHECK(awake.v[SENSE_RAYS + RAY_RIGHT * RAY_VALUES + RAY_VEG] > 0.0f);
+    CHECK(awake.v[SENSE_RAYS + RAY_LEFT * RAY_VALUES + RAY_CARRION] > 0.0f);
+
+    for (int k = 0; k < RAY_COUNT * RAY_VALUES; k++) {
+        CHECK(asleep.v[SENSE_RAYS + k] == 0.0f);
+    }
+    CHECK(asleep.v[SENSE_BLOCKED] == 0.0f);
+    CHECK(asleep.v[SENSE_KIN_NEAR] == 0.0f);
+    CHECK(asleep.v[SENSE_STRANGERS_NEAR] == 0.0f);
+    const int inside[] = {SENSE_ENERGY, SENSE_AGE, SENSE_SIZE, SENSE_DIET,
+                          SENSE_HUNGER, SENSE_PAIN, SENSE_SEASON,
+                          SENSE_YEAR_SIN, SENSE_YEAR_COS, SENSE_MEMORY,
+                          SENSE_MEMORY + 1, SENSE_MEMORY + 2};
+    for (size_t k = 0; k < sizeof(inside) / sizeof(inside[0]); k++) {
+        CHECK(asleep.v[inside[k]] == awake.v[inside[k]]);
+    }
+    CHECK(asleep.v[SENSE_HUNGER] > 0.0f && asleep.v[SENSE_PAIN] > 0.0f);
+    CHECK(asleep.v[SENSE_SEASON] == 1.0f);
+    pool_free(&p);
+    world_free(&w);
+}
+
+/* A bite on a sleeper lands in full, and then it is awake: resting with no hold
+ * left, so its brain chooses on its next turn. A second hit in the same tick
+ * finds it already awake and changes nothing more, and a hit on a creature that
+ * is awake leaves what it is doing alone. */
+static void test_bitten_sleeper_wakes(void)
+{
+    Settings s = settings_default();
+    s.attack_steepness = 16.0f;
+    Rng r;
+    rng_seed(&r, 3);
+    World w;
+    make_world(&w, 8, 8);
+    Pool p;
+    CHECK(pool_init(&p, 3));
+    /* The sleeper, with an attacker south of it facing north and a second east
+     * of it facing west. */
+    int t = spawn(&p, &w, 3, 2);
+    int a = spawn(&p, &w, 3, 3);
+    int b = spawn(&p, &w, 4, 2);
+    make_stranger(&p.items[t]);
+    p.items[b].heading = HEADING_WEST;
+    for (int k = 0; k < 3; k++) {
+        p.items[k].energy = 100.0f;
+        p.items[k].health = creature_max_health(&p.items[k], &s);
+    }
+    Creature *sleeper = &p.items[t];
+    p.items[b].genome.g[GENE_SIZE] = 1.0f;
+    p.items[a].genome.g[GENE_SIZE] = 1.0f; /* far larger: almost always hits */
+    sleeper->genome.g[GENE_SIZE] = 0.0f;
+    sleeper->current = (Action){.kind = ACT_SLEEP, .hold = 500};
+    sleeper->hold_left = 400;
+    sleeper->sleep_ticks = 100;
+    float health = sleeper->health;
+    Action attack = {.kind = ACT_ATTACK, .hold = 1};
+    for (int k = 0; k < 5 && sleeper->hits_taken == 0; k++) {
+        creature_act(&w, &p, a, attack, &s, &r);
+    }
+    CHECK(sleeper->hits_taken == 1);
+    CHECK(near(sleeper->health, health - s.bite_damage * 1.5f)); /* in full */
+    CHECK(sleeper->current.kind == ACT_REST);
+    CHECK(sleeper->hold_left == 0);
+    /* Ended by the Sim, which notes the sleep once it sees it over. */
+    CHECK(sleeper->sleep_ticks == 100);
+    for (int k = 0; k < 5 && sleeper->hits_taken == 1; k++) {
+        creature_act(&w, &p, b, attack, &s, &r);
+    }
+    CHECK(sleeper->hits_taken == 2);
+    CHECK(sleeper->current.kind == ACT_REST && sleeper->hold_left == 0);
+    CHECK(sleeper->sleep_ticks == 100);
+
+    /* Awake and busy: a hit is only a hit. */
+    sleeper->current = (Action){.kind = ACT_MOVE, .hold = 5};
+    sleeper->hold_left = 3;
+    for (int k = 0; k < 5 && sleeper->hits_taken == 2; k++) {
+        creature_act(&w, &p, a, attack, &s, &r);
+    }
+    CHECK(sleeper->hits_taken == 3);
+    CHECK(sleeper->current.kind == ACT_MOVE && sleeper->hold_left == 3);
+    pool_free(&p);
+    world_free(&w);
+}
+
 int main(void)
 {
     CHECK(brain_register(&BRAIN_SCRIPT));
@@ -3316,5 +3537,9 @@ int main(void)
     test_territory_gene_costs_upkeep();
     test_territory_does_not_stop_a_chosen_mating();
     test_attack_spares_similar_colours();
+    test_sleep_costs_little();
+    test_sleeper_does_nothing();
+    test_sleeper_senses_only_inside();
+    test_bitten_sleeper_wakes();
     TEST_SUMMARY();
 }

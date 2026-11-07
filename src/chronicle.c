@@ -108,7 +108,7 @@ static void tally_event(LifeTally *t, LifeEvent *e)
     case LIFE_GIANT:
         t->flags |= TALLY_GIANT;
         break;
-    default: /* LIFE_ATTACKED and LIFE_DIED change no count */
+    default: /* LIFE_ATTACKED, LIFE_DIED and LIFE_SLEPT change no count */
         break;
     }
 }
@@ -328,9 +328,23 @@ static const char *death_words(int cause)
     }
 }
 
+/* How long a sleep of this many ticks was, in years: "0.3 y", or the text
+ * too_short for one shorter than years_format can show, which would read "0 y". */
+static void sleep_length(char *out, size_t len, int32_t ticks, int ticks_per_year,
+                         const char *too_short)
+{
+    /* The product in 64 bits: an int times 10 could pass what an int holds. */
+    if ((int64_t)ticks * 10 < ticks_per_year) {
+        snprintf(out, len, "%s", too_short);
+        return;
+    }
+    /* The value is a tick count from a uint16_t, so never negative here. */
+    years_format(out, len, (uint64_t)ticks, ticks_per_year);
+}
+
 /* Writes the text of the event without its date. */
-static void event_words(const LifeEvent *e, const LifeTally *t, char *out,
-                        size_t len)
+static void event_words(const LifeEvent *e, const LifeTally *t,
+                        int ticks_per_year, char *out, size_t len)
 {
     /* Names are short: three syllables of at most 2 + 2 letters, a coda of 2. */
     char other[16], second[16];
@@ -381,6 +395,12 @@ static void event_words(const LifeEvent *e, const LifeTally *t, char *out,
         snprintf(out, len, "grew to giant size, %d.%d", (int)e->value / 10,
                  (int)e->value % 10);
         break;
+    case LIFE_SLEPT:
+        sleep_length(second, sizeof(second), e->value, ticks_per_year,
+                     "under 0.1 y");
+        snprintf(out, len, "slept %s, woke in %s", second,
+                 years_season(e->tick, ticks_per_year));
+        break;
     case LIFE_DIED:
         if (e->value == DEATH_WOUNDS) {
             snprintf(out, len, "%s, last struck by %s", death_words(e->value),
@@ -402,7 +422,7 @@ void chronicle_line(const LifeEvent *e, const LifeTally *t, int ticks_per_year,
         return;
     }
     char words[96];
-    event_words(e, t, words, sizeof(words));
+    event_words(e, t, ticks_per_year, words, sizeof(words));
     snprintf(out, len, "year %d: %s", years_whole(e->tick, ticks_per_year),
              words);
 }
@@ -491,6 +511,14 @@ void chronicle_short_line(const LifeEvent *e, int ticks_per_year, char *out,
     case LIFE_DIED:
         snprintf(words, sizeof(words), "died: %s", death_short(e->value));
         break;
+    case LIFE_SLEPT: {
+        /* Braces give the case a block of its own, so it may declare a
+         * variable: a declaration cannot follow a case label directly. */
+        char length[16];
+        sleep_length(length, sizeof(length), e->value, ticks_per_year, "<0.1 y");
+        snprintf(words, sizeof(words), "slept %s", length);
+        break;
+    }
     default:
         snprintf(words, sizeof(words), "?");
         break;
