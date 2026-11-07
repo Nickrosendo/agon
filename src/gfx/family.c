@@ -171,7 +171,7 @@ static void halve(FamilyRecord *r)
 
 static void add_to_sum(FamilySum *sum, const Creature *c)
 {
-    BodyTraits t = sprite_traits(&c->genome);
+    BodyTraits t = species_traits(&c->genome);
     sum->size += t.size;
     sum->speed += t.speed;
     sum->sight += t.sight;

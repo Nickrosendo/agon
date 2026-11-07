@@ -10,14 +10,7 @@
 #include <stdint.h>
 
 #include "genome.h"
-
-/* The inherited traits a body shows, each 0..1. The last four are parts:
- * armour shows as plates, weapon as a tusk and then a horn, legs as long legs
- * and swim as a fin tail and a fin on the back. */
-typedef struct {
-    float size, speed, sight, plant, meat;
-    float armour, weapon, legs, swim;
-} BodyTraits;
+#include "species.h" /* BodyTraits */
 
 /* A large body is drawn up to this many tiles wide and tall. */
 #define SPRITE_MAX_TILES 3
@@ -91,7 +84,6 @@ typedef struct {
     uint32_t clock;
 } SpriteCache;
 
-BodyTraits sprite_traits(const Genome *g);
 /* Draws one frame into *out. size is 16 or 8. */
 void sprite_build(SpriteMask *out, const BodyTraits *t, int size, int frame);
 /* Where the eye is in that frame: column and row of the hole's middle. */

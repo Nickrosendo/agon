@@ -13,10 +13,8 @@
 #define BELLY_LONG_LEGS 0.66f
 /* Sight from here up puts the eye on a stalk. */
 #define STALK_FROM 0.7f
-/* A part gene from here up shows its part; a weapon from WEAPON_HORN up shows
- * a horn as well as the tusk. Steps, like the traits: a small mutation leaves
- * the picture alone. */
-#define PART_FROM 0.5f
+/* A weapon from WEAPON_HORN up shows a horn as well as the tusk (PART_FROM,
+ * in species.h, is where a part starts to show). */
 #define WEAPON_HORN 0.8f
 
 /* Everything the parts need to decide their pixels. Lengths are shares of
@@ -58,18 +56,6 @@ static float round_to_steps(float value, int steps)
     step = step > steps - 1 ? steps - 1 : step;
     step = step < 0 ? 0 : step;
     return (float)step / (float)(steps - 1);
-}
-
-BodyTraits sprite_traits(const Genome *g)
-{
-    /* The body shows whichever plant food it digests better. */
-    float leaf = g->g[GENE_LEAF];
-    float fruit = g->g[GENE_FRUIT];
-    BodyTraits t = {g->g[GENE_SIZE], g->g[GENE_SPEED], g->g[GENE_SIGHT],
-                    leaf > fruit ? leaf : fruit, g->g[GENE_MEAT],
-                    g->g[GENE_ARMOUR], g->g[GENE_WEAPON], g->g[GENE_LEGS],
-                    g->g[GENE_SWIM]};
-    return t;
 }
 
 static int leg_count(float speed, int size)
@@ -570,7 +556,7 @@ const SpriteMask *sprite_get(SpriteCache *c, int slot, uint32_t id,
     }
     SpriteSlot *s = &c->slots[slot];
     if (!s->ready || s->id != id) {
-        BodyTraits t = sprite_traits(g);
+        BodyTraits t = species_traits(g);
         for (int f = 0; f < FRAME_COUNT; f++) {
             sprite_build(&s->large[f], &t, 16, f);
             sprite_build(&s->small[f], &t, 8, f);
@@ -617,7 +603,7 @@ const WideMask *sprite_get_wide(SpriteCache *c, uint32_t id, const Genome *g,
     }
     e->last_used = c->clock;
     if (!e->ready[frame]) {
-        BodyTraits t = sprite_traits(g);
+        BodyTraits t = species_traits(g);
         sprite_build_wide(&e->frames[frame], &t, base * tiles, frame);
         e->ready[frame] = true;
     }
