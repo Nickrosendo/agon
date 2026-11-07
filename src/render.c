@@ -4,9 +4,12 @@
 #include <string.h> /* memset */
 
 #include "cells.h"
+#include "creature.h" /* creature_asleep */
+#include "flora.h" /* plant_is_bare */
 #include "genome.h"
 #include "palette.h"
 #include "term.h"
+#include "years.h" /* years_season_of */
 
 /* The upper half block, U+2580, as its three UTF-8 bytes. The top half of
  * the character cell takes the foreground colour, the bottom half the
@@ -34,8 +37,10 @@ static int same_colour(Colour a, Colour b)
     return a.r == b.r && a.g == b.g && a.b == b.b;
 }
 
-/* Whatever lies on the cell, creatures aside. */
-static Colour ground_colour(const Sim *s, int i)
+/* Whatever lies on the cell, creatures aside, in the given season (a SEASON_
+ * value). Only what the simulation holds is read, never its random number
+ * generator: drawing must not change what happens next. */
+static Colour ground_colour(const Sim *s, int i, int season)
 {
     const World *w = &s->world;
     const Settings *set = &s->set;
@@ -48,7 +53,11 @@ static Colour ground_colour(const Sim *s, int i)
     if (w->terrain[i] == TERRAIN_ROCK) {
         return PALETTE_ROCK;
     }
-    Colour soil = palette_ground(w->fertility[i], w->water[i]);
+    /* Snow lies on the soil, so whatever grows or lies on top still shows
+     * over it, thinner plants less: as in the window, where trees stand in the
+     * snow. Only soil cells ever hold snow (climate.c). */
+    Colour soil = palette_snowed(palette_ground(w->fertility[i], w->water[i]),
+                                 w->snow[i]);
     if (w->carrion[i] > 0.0f) {
         /* Carrion covers whatever grows there: from a faint stain to
          * full colour as it approaches several bites' worth, in a few
@@ -64,7 +73,11 @@ static Colour ground_colour(const Sim *s, int i)
      * of the way from the soil colour to the full green, density VEG_MAX
      * is all green. */
     float t = (float)(w->veg[i] + 1) / (float)(VEG_MAX + 1);
-    Colour plant = palette_mix(soil, palette_plant(&w->plant[i]), t);
+    /* A leaf plant drops its leaves for autumn and winter: bark instead of
+     * green. A fruit plant keeps its colour all year (flora.c). */
+    Colour full = plant_is_bare(&w->plant[i], season) ? PALETTE_BARE
+                                                       : palette_plant(&w->plant[i]);
+    Colour plant = palette_mix(soil, full, t);
     if (w->veg_wither[i] == 0) {
         return plant;
     }
@@ -74,17 +87,23 @@ static Colour ground_colour(const Sim *s, int i)
                        (float)shade / (float)PALETTE_WITHER_SHADES);
 }
 
-static Colour cell_colour(const Sim *s, int i)
+static Colour cell_colour(const Sim *s, int i, int season)
 {
     const World *w = &s->world;
     /* A creature hides whatever is under it. occupant holds its slot in
      * the pool, so its genome is one lookup away. */
     if (w->occupant[i] >= 0) {
         const Creature *c = &s->pool.items[w->occupant[i]];
-        return palette_creature(c->genome.g[GENE_HUE],
-                               render_meat_share(c->level));
+        Colour awake = palette_creature(c->genome.g[GENE_HUE],
+                                        render_meat_share(c->level));
+        if (!creature_asleep(c)) {
+            return awake;
+        }
+        /* A sleeper half fades into the ground under it: still there, but
+         * plainly not doing anything. */
+        return palette_mix(awake, ground_colour(s, i, season), 0.5f);
     }
-    Colour ground = ground_colour(s, i);
+    Colour ground = ground_colour(s, i, season);
     if (w->rain[i] <= 0.0f) {
         return ground;
     }
@@ -92,6 +111,18 @@ static Colour cell_colour(const Sim *s, int i)
      * two steps: rain changes only now and then, and few steps keep neighbouring
      * cells the same colour, as elsewhere here. */
     return palette_mix(ground, PALETTE_RAIN, w->rain[i] < 0.25f ? 0.08f : 0.18f);
+}
+
+/* The season of the simulation's tick, worked out once per drawing rather
+ * than once per cell. */
+static int season_now(const Sim *s)
+{
+    return years_season_of(s->tick, s->set.ticks_per_year);
+}
+
+Colour render_cell_colour(const Sim *s, int i)
+{
+    return cell_colour(s, i, season_now(s));
 }
 
 static uint64_t pack(Colour top, Colour bottom)
@@ -129,6 +160,7 @@ static void put_cell(Colour top, Colour bottom)
 void render_world(const Sim *s, int col0, int row0, int cols, int rows)
 {
     const World *w = &s->world;
+    int season = season_now(s);
     int view_cols = cols < w->w ? cols : w->w;
     int view_rows = rows < w->h / 2 ? rows : w->h / 2;
     for (int row = 0; row < view_rows; row++) {
@@ -137,8 +169,8 @@ void render_world(const Sim *s, int col0, int row0, int cols, int rows)
          * itself. */
         int cursor_in_place = 0;
         for (int x = 0; x < view_cols; x++) {
-            Colour top = cell_colour(s, world_idx(w, x, 2 * row));
-            Colour bottom = cell_colour(s, world_idx(w, x, 2 * row + 1));
+            Colour top = cell_colour(s, world_idx(w, x, 2 * row), season);
+            Colour bottom = cell_colour(s, world_idx(w, x, 2 * row + 1), season);
             uint64_t packed = pack(top, bottom);
             int remembered = row < MEMORY_ROWS && x < MEMORY_COLS;
             if (remembered && last_drawn[row][x] == packed) {
@@ -166,8 +198,9 @@ void render_cursor(const Sim *s, int col0, int row0, int cols, int rows,
         y >= w->h) {
         return;
     }
-    Colour top = cell_colour(s, world_idx(w, x, 2 * row));
-    Colour bottom = cell_colour(s, world_idx(w, x, 2 * row + 1));
+    int season = season_now(s);
+    Colour top = cell_colour(s, world_idx(w, x, 2 * row), season);
+    Colour bottom = cell_colour(s, world_idx(w, x, 2 * row + 1), season);
     /* y % 2 picks the half: 0 the top cell, 1 the bottom one. */
     if (y % 2 == 0) {
         top = PALETTE_CURSOR;
@@ -188,14 +221,15 @@ void render_cursor(const Sim *s, int col0, int row0, int cols, int rows,
 void render_snapshot(const Sim *s)
 {
     const World *w = &s->world;
+    int season = season_now(s);
     term_begin();
     /* (h + 1) / 2 rows, so an odd height still shows its last row; the
      * missing cell below it is drawn in the terminal's own colour. */
     for (int row = 0; row < (w->h + 1) / 2; row++) {
         for (int x = 0; x < w->w; x++) {
-            Colour top = cell_colour(s, world_idx(w, x, 2 * row));
+            Colour top = cell_colour(s, world_idx(w, x, 2 * row), season);
             if (2 * row + 1 < w->h) {
-                put_cell(top, cell_colour(s, world_idx(w, x, 2 * row + 1)));
+                put_cell(top, cell_colour(s, world_idx(w, x, 2 * row + 1), season));
             } else {
                 term_reset_colours();
                 term_fg(top.r, top.g, top.b);

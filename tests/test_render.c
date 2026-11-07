@@ -1,6 +1,11 @@
 #include "test.h"
 
+#include "brain.h"    /* ACT_SLEEP */
+#include "creature.h" /* Creature */
 #include "palette.h"
+#include "render.h"
+#include "settings.h"
+#include "sim.h"
 #include "world.h" /* Plant */
 
 static int same(Colour a, Colour b)
@@ -91,8 +96,110 @@ static void test_plant_colour_shows_fruit(void)
     CHECK(a.r != e.r || a.g != e.g || a.b != e.b);
 }
 
+/* The ticks of each season in the default 600-tick year: 150 each, spring
+ * first (years.h). */
+#define TICK_SUMMER 150
+#define TICK_AUTUMN 300
+#define TICK_WINTER 450
+
+/* A soil cell with no creature on it, cleared to bare, dry-of-everything soil:
+ * no plant, carrion, rain or snow. -1 if the world has none (it always has). */
+static int plain_soil_cell(Sim *s)
+{
+    World *w = &s->world;
+    for (int i = 0; i < w->w * w->h; i++) {
+        if (w->terrain[i] == TERRAIN_SOIL && w->occupant[i] < 0) {
+            w->veg[i] = 0;
+            w->veg_wither[i] = 0;
+            w->carrion[i] = 0.0f;
+            w->rain[i] = 0.0f;
+            w->snow[i] = 0.0f;
+            return i;
+        }
+    }
+    return -1;
+}
+
+/* Snow whitens the soil in proportion to how much lies there; water and rock
+ * never hold snow, and even a damaged save that gives them some draws them
+ * as they are. */
+static void test_snow_whitens_ground(void)
+{
+    Settings set = settings_default();
+    Sim s;
+    CHECK(sim_init(&s, &set, 7, 64, 32));
+    s.tick = TICK_WINTER;
+    int i = plain_soil_cell(&s);
+    CHECK(i >= 0);
+    Colour bare = render_cell_colour(&s, i);
+    s.world.snow[i] = 1.0f;
+    CHECK(same(render_cell_colour(&s, i), PALETTE_SNOW));
+    s.world.snow[i] = 0.5f;
+    CHECK(same(render_cell_colour(&s, i), palette_mix(bare, PALETTE_SNOW, 0.5f)));
+    s.world.snow[i] = 0.0f;
+    CHECK(same(render_cell_colour(&s, i), bare));
+    s.world.snow[i] = 1.0f;
+    s.world.terrain[i] = TERRAIN_WATER;
+    CHECK(same(render_cell_colour(&s, i), PALETTE_WATER));
+    s.world.terrain[i] = TERRAIN_ROCK;
+    CHECK(same(render_cell_colour(&s, i), PALETTE_ROCK));
+    sim_free(&s);
+}
+
+/* A leaf plant stands bare from autumn to the end of winter; a fruit plant
+ * keeps its colour, fruit and all, all year. */
+static void test_bare_in_autumn(void)
+{
+    Settings set = settings_default();
+    Sim s;
+    CHECK(sim_init(&s, &set, 7, 64, 32));
+    int i = plain_soil_cell(&s);
+    CHECK(i >= 0);
+    Plant leaf = {.water_need = 0.5f};
+    s.world.plant[i] = leaf;
+    s.world.veg[i] = VEG_MAX; /* full density: the cell is the plant's colour */
+    s.tick = TICK_AUTUMN;
+    CHECK(same(render_cell_colour(&s, i), PALETTE_BARE));
+    s.tick = TICK_WINTER;
+    CHECK(same(render_cell_colour(&s, i), PALETTE_BARE));
+    s.tick = TICK_SUMMER;
+    CHECK(same(render_cell_colour(&s, i), palette_plant(&leaf)));
+    Plant fruit = {.water_need = 0.5f, .fruit_share = 1.0f, .fruit = 2.0f};
+    s.world.plant[i] = fruit;
+    s.tick = TICK_WINTER;
+    CHECK(same(render_cell_colour(&s, i), palette_plant(&fruit)));
+    sim_free(&s);
+}
+
+/* A creature in deep sleep is drawn half way between its awake colour and the
+ * ground under it. */
+static void test_sleeper_drawn_dim(void)
+{
+    Settings set = settings_default();
+    Sim s;
+    CHECK(sim_init(&s, &set, 7, 64, 32));
+    CHECK(s.pool.count > 0);
+    Creature *c = &s.pool.items[0];
+    World *w = &s.world;
+    int i = world_idx(w, c->x, c->y);
+    CHECK(w->occupant[i] == 0);
+    w->rain[i] = 0.0f;
+    c->current.kind = ACT_REST; /* anything but sleep */
+    Colour awake = render_cell_colour(&s, i);
+    /* The ground under it, seen by lifting the creature off for a moment. */
+    w->occupant[i] = -1;
+    Colour ground = render_cell_colour(&s, i);
+    w->occupant[i] = 0;
+    c->current.kind = ACT_SLEEP;
+    CHECK(same(render_cell_colour(&s, i), palette_mix(awake, ground, 0.5f)));
+    sim_free(&s);
+}
+
 int main(void)
 {
+    test_snow_whitens_ground();
+    test_bare_in_autumn();
+    test_sleeper_drawn_dim();
     test_ground_follows_its_water();
     test_plant_hues_stay_in_the_greens();
     test_plant_colour_shows_fruit();

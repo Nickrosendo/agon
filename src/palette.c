@@ -29,6 +29,7 @@ const Colour PALETTE_BLACK = {0, 0, 0};
 const Colour PALETTE_WITHERED = {196, 168, 84};
 const Colour PALETTE_CARRION = {110, 30, 34};
 const Colour PALETTE_SNOW = {236, 240, 246};
+const Colour PALETTE_BARE = {104, 78, 56};
 const Colour PALETTE_TEXT = {150, 155, 165};
 const Colour PALETTE_CURSOR = {255, 255, 255};
 const Colour PALETTE_TEXT_BACKGROUND = {14, 17, 23};

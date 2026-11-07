@@ -5,6 +5,7 @@
 #ifndef AGON_RENDER_H
 #define AGON_RENDER_H
 
+#include "palette.h" /* Colour */
 #include "sim.h"
 
 /* Draws the top left corner of the simulation's world into the screen
@@ -26,6 +27,12 @@ void render_cursor(const Sim *s, int col0, int row0, int cols, int rows,
  * screen switching: suitable for a pipe or a file. Call
  * term_detect_colour first. */
 void render_snapshot(const Sim *s);
+
+/* The colour render_world gives world cell i, which must be inside the world:
+ * the creature on it (dimmed half way to the ground when it is in deep sleep),
+ * else the ground with its plant, carrion, snow and rain, in the season of the
+ * simulation's tick. Public so the tests can check it. */
+Colour render_cell_colour(const Sim *s, int i);
 
 /* Forget what render_world drew last, so the next call redraws every
  * cell. Call after the screen was cleared or resized. */
