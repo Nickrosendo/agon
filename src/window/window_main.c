@@ -55,6 +55,7 @@ static const char WINDOW_USAGE[] =
     "  --checksum        print a fingerprint of the world on leaving\n"
     "  --frames N        stop after N frames, without waiting between them\n"
     "  --screenshot PATH write the last frame there as a PPM image\n"
+    "  --paused          start paused, as if space were pressed first\n"
     "  --keys TEXT       with --frames: press these keys, one a frame, in the\n"
     "                    last frames (\"l\" shows the life story page)\n"
     "  -h, --help        this text\n"
@@ -733,6 +734,7 @@ int main(int argc, char **argv)
      * stack, and starts as all zeros. */
     static App app;
     app.opt = &opt;
+    app.paused = opt.paused;
     uint64_t seed = opt.seed_given ? opt.seed : seed_from_clock();
     int world_w = opt.size_given ? opt.width : DEFAULT_WORLD_W;
     int world_h = opt.size_given ? opt.height : DEFAULT_WORLD_H;

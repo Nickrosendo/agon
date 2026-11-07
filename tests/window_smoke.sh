@@ -105,5 +105,19 @@ if [ $HAVE_AGON -eq 1 ]; then
     [ $? -eq 2 ] || fail "agon accepted --keys"
 fi
 
+# 9. --paused only looks: the world stays at tick 0, and the terminal program
+# refuses the option.
+paused=$("$OUT/agon-window" --seed 3 --size 64x32 --frames 50 --paused --checksum) ||
+    fail "the run with --paused failed"
+if [ $HAVE_AGON -eq 1 ]; then
+    zero=$("$OUT/agon" --once --seed 3 --size 64x32 --ticks 0 --checksum | grep '^checksum')
+    "$OUT/agon" --paused >/dev/null 2>&1
+    [ $? -eq 2 ] || fail "agon accepted --paused"
+else
+    zero=$("$OUT/agon-window" --seed 3 --size 64x32 --frames 1 --paused --checksum)
+fi
+[ -n "$paused" ] && [ "$paused" = "$zero" ] ||
+    fail "--paused did not stay at tick 0: '$paused' against '$zero'"
+
 [ $failed -eq 0 ] && echo "window_smoke: all passed"
 exit $failed

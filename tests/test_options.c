@@ -190,6 +190,18 @@ static void test_window_options(void)
     CHECK(fails_with(no_path, "--screenshot"));
 }
 
+static void test_paused_option(void)
+{
+    Options o;
+    char err[128];
+    char *none[] = {"agon", NULL};
+    CHECK(parse(none, &o, err, sizeof(err)) && !o.paused);
+    char *given[] = {"agon", "--paused", NULL};
+    CHECK(parse(given, &o, err, sizeof(err)) && o.paused);
+    /* The parser accepts it; the terminal program's main refuses it, like
+     * --frames (window_smoke.sh checks the exit code). */
+}
+
 static void test_parse_twice(void)
 {
     /* getopt_long keeps its place in global variables. A second parse
@@ -212,6 +224,7 @@ int main(void)
     test_mistakes();
     test_file_options();
     test_window_options();
+    test_paused_option();
     test_parse_twice();
     TEST_SUMMARY();
 }
