@@ -3,6 +3,7 @@
 #include <stdlib.h> /* calloc, free */
 #include <string.h> /* memset */
 
+#include "pose.h"     /* pose_frame */
 #include "skeleton.h" /* the ACTION_ values */
 
 /* How long one breath of a resting creature lasts, in milliseconds. */
@@ -139,7 +140,12 @@ void anim_pose(const Anim *a, const Sim *s, int slot, float tick_fraction,
     }
 
     out->bite = BITE_NOTHING;
-    if (c->current.kind == ACT_ATTACK) {
+    if (c->current.kind == ACT_SLEEP) {
+        /* Deep sleep: lying down, eyes shut, breathing slowly. now_ms stops
+         * while paused, so a paused sleeper holds its breath. */
+        out->action = ACTION_SLEEP;
+        out->frame = pose_frame(now_ms, c->id, ACTION_SLEEP);
+    } else if (c->current.kind == ACT_ATTACK) {
         int target = creature_attack_target(w, &s->pool, slot, &s->set);
         if (target >= 0) {
             out->bite = POSE_ATTACK;
@@ -163,6 +169,8 @@ void anim_pose(const Anim *a, const Sim *s, int slot, float tick_fraction,
         bool open = (now_ms / CHOMP_MS + c->id) % 2u == 0;
         out->action = open ? ACTION_BITE : ACTION_REST;
         out->frame = 0;
+    } else if (c->current.kind == ACT_SLEEP) {
+        /* action and frame were chosen above */
     } else if (c->current.kind == ACT_MATE) {
         out->action = ACTION_REST; /* no picture of its own until task 11 */
         out->frame = 0;

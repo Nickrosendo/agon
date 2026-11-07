@@ -285,6 +285,32 @@ static void test_mating_creature_rests(void)
     sim_free(&s);
 }
 
+/* A creature in deep sleep is drawn asleep, with no bite, its frames moving on
+ * with the body clock; two sleepers side by side breathe out of step. */
+static void test_sleeper_is_drawn_asleep(void)
+{
+    Sim s;
+    empty_sim(&s, 64, 32);
+    int one = pool_spawn(&s.pool, &s.world, 10, 10);
+    int two = pool_spawn(&s.pool, &s.world, 20, 10);
+    s.pool.items[one].current.kind = ACT_SLEEP;
+    s.pool.items[two].current.kind = ACT_SLEEP;
+    Anim a;
+    CHECK(anim_init(&a, s.pool.capacity));
+    anim_update(&a, &s, 10);
+    AnimPose p, later, other;
+    anim_pose(&a, &s, one, 0.0f, 0, &p);
+    CHECK(p.action == ACTION_SLEEP);
+    CHECK(p.bite == BITE_NOTHING);
+    CHECK(p.frame >= 0 && p.frame < SPRITE_FRAMES[ACTION_SLEEP]);
+    anim_pose(&a, &s, one, 0.0f, 500, &later);
+    CHECK(later.frame != p.frame);
+    anim_pose(&a, &s, two, 0.0f, 0, &other);
+    CHECK(other.frame != p.frame);
+    anim_free(&a);
+    sim_free(&s);
+}
+
 /* A plant-eater, biting, with a plant on the cell at (dx, dy) from it. */
 static int biter_beside_plant(Sim *s, int dx, int dy)
 {
@@ -433,6 +459,7 @@ int main(void)
     test_facing_north_keeps_last();
     test_rest_breathing_offset();
     test_mating_creature_rests();
+    test_sleeper_is_drawn_asleep();
     test_bite_at_nothing_shows_no_bite();
     test_eating_a_plant_chomps_and_faces_it();
     test_bite_straight_up_keeps_facing();

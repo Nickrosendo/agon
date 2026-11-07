@@ -7,6 +7,7 @@
 #include "canvas.h"   /* canvas_rgb */
 #include "gfx_hash.h" /* gfx_mix */
 #include "palette.h"  /* render_display_hue, palette_mix */
+#include "pose.h"     /* pose_at */
 #include "ramp.h"
 
 /* ---- Bodies ---- */
@@ -353,13 +354,14 @@ static uint8_t radius_byte(float v)
     return (uint8_t)(v >= 255.0f ? 255.0f : v + 0.5f);
 }
 
-/* Draws the picture of b into entry e of st. */
-static void build(SpriteCache *c, SpriteStore *st, int e, const SpriteBody *b)
+/* Draws the picture of b, in that frame of that action, into entry e of st. */
+static void build(SpriteCache *c, SpriteStore *st, int e, const SpriteBody *b, int action,
+                  int frame)
 {
     Anatomy a;
     species_anatomy(&a, b->species, &b->traits, sprite_k(b));
     SpritePose pose;
-    skeleton_pose_standing(&pose); /* every action and frame until task 11 */
+    pose_at(&pose, b, action, frame);
     SkeletonRaster *r = c->raster;
     skeleton_raster(r, &a, &pose, b->base != SPRITE_BASE_FAR, b->base == SPRITE_BASE_DETAIL);
     size_t cells = (size_t)st->grid_w * (size_t)st->grid_h;
@@ -400,7 +402,7 @@ SpritePicture sprite_picture(SpriteCache *c, const SpriteBody *b, int action, in
     int e = store_find(st, key, bucket);
     if (e < 0) {
         e = store_take(st);
-        build(c, st, e, b);
+        build(c, st, e, b, action, frame);
         st->entries[e].key = key;
         st->entries[e].next = st->heads[bucket];
         st->heads[bucket] = e;
