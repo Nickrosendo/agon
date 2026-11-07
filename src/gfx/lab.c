@@ -16,7 +16,7 @@
 #define GROUND_DARK canvas_rgb(44, 70, 41)
 #define GROUND_LIGHT canvas_rgb(54, 90, 49)
 #define GROUND_LINE canvas_rgb(65, 105, 58)
-#define GROUND_ROWS 7  /* the line and the six rows of ground under it */
+#define GROUND_ROWS LAB_GROUND_ROWS
 
 #define MARGIN FONT_W         /* left, right and between the cells */
 #define NAME_COLUMN (12 * FONT_W)  /* the role names on the left */
@@ -235,36 +235,44 @@ static void draw_title(Canvas *c, const LabLayout *l, int action, uint32_t bg)
     }
 }
 
-/* A strip of the mockup's lab ground: sky above, a line, then ground of two
- * greens by hash, in art pixels of `scale` screen pixels. salt keeps strips
- * from repeating one another. */
-static void draw_strip_ground(Canvas *c, const LabLayout *l, int role, int sx, int sy,
-                              int salt)
+uint32_t lab_sky(void)
 {
-    int s = l->scale;
-    int strip_h = l->strip_h[role];
-    int line_y = sy + strip_h - GROUND_ROWS * s;
-    canvas_rect_clip(c, sx, sy, l->cell_w, line_y - sy, SKY, l->area);
-    canvas_rect_clip(c, sx, line_y, l->cell_w, s, GROUND_LINE, l->area);
-    for (int y = line_y + s; y < sy + strip_h; y += s) {
-        int run_start = sx;
+    return SKY;
+}
+
+int lab_draw_ground(Canvas *c, int x, int y, int w, int h, int scale, int salt,
+                    CanvasClip clip)
+{
+    int s = scale;
+    int line_y = y + h - LAB_GROUND_ROWS * s;
+    canvas_rect_clip(c, x, y, w, line_y - y, SKY, clip);
+    canvas_rect_clip(c, x, line_y, w, s, GROUND_LINE, clip);
+    for (int row = line_y + s; row < y + h; row += s) {
+        int run_start = x;
         uint32_t run_colour = 0;
-        for (int x = sx; x < sx + l->cell_w; x += s) {
+        for (int col = x; col < x + w; col += s) {
             /* Pairs of columns share a hash (the mockup's x >> 1). */
-            int art_x = (x - sx) / s, art_y = (y - line_y) / s;
+            int art_x = (col - x) / s, art_y = (row - line_y) / s;
             uint32_t colour = gfx_hash(art_x >> 1, art_y, 3 + salt) > 0.5f ? GROUND_DARK
                                                                           : GROUND_LIGHT;
-            if (x == sx) {
+            if (col == x) {
                 run_colour = colour;
             } else if (colour != run_colour) {
-                canvas_rect_clip(c, run_start, y, x - run_start, s, run_colour, l->area);
-                run_start = x;
+                canvas_rect_clip(c, run_start, row, col - run_start, s, run_colour, clip);
+                run_start = col;
                 run_colour = colour;
             }
         }
-        canvas_rect_clip(c, run_start, y, sx + l->cell_w - run_start, s, run_colour,
-                         l->area);
+        canvas_rect_clip(c, run_start, row, x + w - run_start, s, run_colour, clip);
     }
+    return line_y;
+}
+
+/* One cell's strip of ground, cut by the page's area. */
+static void draw_strip_ground(Canvas *c, const LabLayout *l, int role, int sx, int sy,
+                              int salt)
+{
+    lab_draw_ground(c, sx, sy, l->cell_w, l->strip_h[role], l->scale, salt, l->area);
 }
 
 /* The eye, as the world draws it (v9:483-492): one pixel, or a larger one

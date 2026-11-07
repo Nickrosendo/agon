@@ -10,6 +10,8 @@
 #include "climate.h" /* climate_region, climate_region_hue */
 #include "flora.h"   /* plant_gives_shade, plant_is_bare */
 #include "gfx_hash.h"
+#include "lab.h"     /* lab_draw_ground, LAB_GROUND_ROWS */
+#include "pose.h"    /* pose_frame, pose_cycle_seconds, pose_eyes */
 #include "palette.h"
 #include "years.h"   /* years_season_of */
 
@@ -2236,23 +2238,54 @@ void scene_draw_names(Scene *sc, Canvas *c, const Camera *cam,
     }
 }
 
-/* A picture standing in the box (x, y, w, h) on the near-black background,
- * its ink's middle on the box's middle, cut to the box. */
-static void draw_in_box(Canvas *c, BodyDraw *d, int scars, int x, int y, int w, int h)
+/* ---- The panel's bodies: the enlarged view and the family strip ----
+ *
+ * Both stand their animals on a strip of the lab's ground, so a body looks the
+ * same in the panel as on the species lab page. */
+
+/* The largest scale, up to max_scale, at which the resting picture fits the
+ * box with a pixel of air each side and the ground under it; else 1. Worked
+ * out from the resting picture, not the frame drawn, so the scale does not
+ * jump between frames of one cycle. */
+static int scale_to_fit(const SpritePicture *rest, int w, int h, int max_scale)
 {
-    canvas_rect(c, x, y, w, h, to_pixel(BACKGROUND));
-    if (d->pic.x1 <= d->pic.x0) {
-        return;
+    int ink_w = rest->x1 - rest->x0, ink_h = rest->y1 - rest->y0;
+    for (int scale = max_scale; scale > 1; scale--) {
+        if ((ink_w + 2) * scale <= w && (ink_h + LAB_GROUND_ROWS + 1) * scale <= h) {
+            return scale;
+        }
     }
-    /* Where the ink falls with the ground point at (0, 0), then moved so its
-     * middle is the box's middle. */
-    d->foot_x = 0;
-    d->foot_y = 0;
-    int left, top, right, bottom;
-    body_box(d, &left, &top, &right, &bottom);
-    d->foot_x = x + w / 2 - (left + right) / 2;
-    d->foot_y = y + h / 2 - (top + bottom) / 2;
+    return 1;
+}
+
+/*
+ * One body on a strip of ground in the box (x, y, w, h): ground, shadow, then
+ * body, eye and scars, all cut to the box. d holds the picture to draw, its
+ * palette, flip, eyes and scale; this sets its foot. rest gives where the body
+ * stands: its ground point one art pixel below the ground line, and its inked
+ * box centred across the box, so the animal stays put while its frames change.
+ */
+static void draw_on_ground(Canvas *c, BodyDraw *d, const SpritePicture *rest, int scars,
+                           int salt, int x, int y, int w, int h)
+{
     CanvasClip clip = {x, y, w, h};
+    int line_y = lab_draw_ground(c, x, y, w, h, d->scale, salt, clip);
+    if (rest->x1 <= rest->x0 || d->pic.x1 <= d->pic.x0) {
+        return; /* an empty picture */
+    }
+    /* Where the resting ink falls with the ground point at column 0: a copy
+     * of d with the resting picture, since body_box reads the picture. */
+    BodyDraw standing = *d;
+    standing.pic = *rest;
+    standing.foot_x = 0;
+    standing.foot_y = 0;
+    int left, top, right, bottom;
+    body_box(&standing, &left, &top, &right, &bottom);
+    d->foot_x = x + w / 2 - (left + right) / 2;
+    d->foot_y = line_y + d->scale;
+    int shadow_x = d->foot_x + d->pic.shadow_dx * (d->flip ? -1 : 1) * d->scale;
+    canvas_darken_ellipse(c, shadow_x, d->foot_y, d->pic.shadow_rx * d->scale,
+                          d->pic.shadow_ry * d->scale, BODY_SHADOW_KEEP, clip);
     paint_creature(c, d, scars, 0, 0, clip);
 }
 
@@ -2263,49 +2296,58 @@ void scene_draw_followed(Scene *sc, Canvas *c, const Sim *s,
     if (slot >= sc->anim.capacity || !sc->anim.slots[slot].seen) {
         return;
     }
+    /* What it is doing in the world this moment: the same action, frame,
+     * blink, facing and flash, from the detailed pictures. */
     AnimPose p;
     anim_pose(&sc->anim, s, slot, 0.0f, now_ms, &p);
-    /* The detailed picture, standing, facing the way it faces in the world. */
     SpriteBody b = sprite_body(followed, &s->set, SPRITE_BASE_DETAIL);
+    /* rest is a copy of the picture's description. Its ink pointer may be
+     * reused by the next sprite_picture call, but only its numbers (its box
+     * and ground point) are read after that. */
+    SpritePicture rest = sprite_picture(&sc->sprites, &b, ACTION_REST, 0);
     BodyDraw d;
-    d.pic = sprite_picture(&sc->sprites, &b, ACTION_REST, 0);
+    d.pic = sprite_picture(&sc->sprites, &b, p.action, p.frame);
     d.palette = slot_palette(sc, followed, slot, b.species);
-    d.scale = 1;
+    d.scale = scale_to_fit(&rest, SCENE_ENLARGED_W, SCENE_ENLARGED_H, 2);
     d.flip = p.flip;
-    d.eyes = 1.0f;
-    draw_in_box(c, &d, recent_hit_count(followed, s->tick), x, y, SCENE_BODY_BIG,
-                SCENE_BODY_BIG);
+    d.eyes = p.eyes;
+    SpritePalette flashed;
+    if (p.flash > 0.0f) {
+        sprite_palette_flash(&flashed, d.palette, p.flash);
+        d.palette = &flashed;
+    }
+    draw_on_ground(c, &d, &rest, recent_hit_count(followed, s->tick), b.species, x, y,
+                   SCENE_ENLARGED_W, SCENE_ENLARGED_H);
 }
 
-/* The size a family's sample is drawn at until task 14 gives the panel real
- * sizes: a middling body, the size level of real size 2. */
-#define SAMPLE_REAL_SIZE 2.0f
-
-/* One sample's body, standing at Normal size, in the box (x, y, w, h). Its
- * species is the family's, from the founder's id, picked at SAMPLE_REAL_SIZE. */
-static void draw_sample_body(Scene *sc, Canvas *c, const FamilySample *sample,
-                             uint32_t lineage, int x, int y, int w, int h)
+/* A family's sample as a body: its species from the founder's id (lineage),
+ * the role of its rounded traits and its mean real size, the choice
+ * sprite_body makes for a living creature. */
+static SpriteBody sample_body(const FamilySample *sample, uint32_t lineage, int base)
 {
     BodyTraits rounded = species_round(&sample->traits);
-    int species = species_pick(lineage, species_role(&rounded), SAMPLE_REAL_SIZE);
-    SpriteBody b = sprite_body_of(&sample->traits, species, SAMPLE_REAL_SIZE,
-                                  SPRITE_BASE_NORMAL);
-    SpritePalette palette;
-    sprite_palette(&palette, species, sample->hue);
-    BodyDraw d;
-    d.pic = sprite_picture(&sc->sprites, &b, ACTION_REST, 0);
-    d.palette = &palette;
-    d.scale = 1;
-    d.flip = false;
-    d.eyes = 1.0f;
-    draw_in_box(c, &d, 0, x, y, w, h);
+    int species = species_pick(lineage, species_role(&rounded), sample->body_size);
+    return sprite_body_of(&sample->traits, species, sample->body_size, base);
 }
 
 void scene_draw_sample(Scene *sc, Canvas *c, const FamilySample *sample,
                        uint32_t lineage, uint64_t now_ms, int x, int y)
 {
-    (void)now_ms; /* (void) says "unused on purpose": standing until task 11 */
-    draw_sample_body(sc, c, sample, lineage, x, y, SCENE_BODY_BIG, SCENE_BODY_BIG);
+    SpriteBody b = sample_body(sample, lineage, SPRITE_BASE_DETAIL);
+    SpritePalette palette;
+    sprite_palette(&palette, b.species, sample->hue);
+    SpritePicture rest = sprite_picture(&sc->sprites, &b, ACTION_REST, 0);
+    /* Resting and breathing, its pace and blinks from the founder's id as a
+     * creature's come from its own. */
+    int frame = pose_frame(now_ms, lineage, ACTION_REST,
+                           pose_cycle_seconds(&b, ACTION_REST));
+    BodyDraw d;
+    d.pic = sprite_picture(&sc->sprites, &b, ACTION_REST, frame);
+    d.palette = &palette;
+    d.scale = scale_to_fit(&rest, SCENE_ENLARGED_W, SCENE_ENLARGED_H, 2);
+    d.flip = false;
+    d.eyes = pose_eyes(now_ms, lineage);
+    draw_on_ground(c, &d, &rest, 0, b.species, x, y, SCENE_ENLARGED_W, SCENE_ENLARGED_H);
 }
 
 void scene_draw_strip(Scene *sc, Canvas *c, const Families *f, uint32_t lineage,
@@ -2313,8 +2355,28 @@ void scene_draw_strip(Scene *sc, Canvas *c, const Families *f, uint32_t lineage,
 {
     FamilySample samples[FAMILY_STRIP];
     int n = family_strip(f, lineage, samples);
-    for (int i = 0; i < n && (i + 1) * 16 <= w; i++) {
-        draw_sample_body(sc, c, &samples[i], lineage, x + i * 16, y, 16, 16);
+    int columns = w / SCENE_STRIP_CELL_W;
+    if (columns > SCENE_STRIP_COLUMNS) {
+        columns = SCENE_STRIP_COLUMNS;
+    }
+    /* Row by row, oldest first, never more rows than the strip has. */
+    int shown = columns * SCENE_STRIP_LINES;
+    for (int i = 0; i < n && i < shown; i++) {
+        SpriteBody b = sample_body(&samples[i], lineage, SPRITE_BASE_NORMAL);
+        SpritePalette palette;
+        sprite_palette(&palette, b.species, samples[i].hue);
+        BodyDraw d;
+        d.pic = sprite_picture(&sc->sprites, &b, ACTION_REST, 0);
+        d.palette = &palette;
+        d.scale = 1;
+        d.flip = false;
+        d.eyes = 1.0f;
+        /* draw_on_ground reads rest after d.pic: both are the same picture,
+         * so a copy of the description serves. */
+        SpritePicture rest = d.pic;
+        draw_on_ground(c, &d, &rest, 0, i, x + (i % columns) * SCENE_STRIP_CELL_W,
+                       y + (i / columns) * SCENE_STRIP_CELL_H, SCENE_STRIP_CELL_W,
+                       SCENE_STRIP_CELL_H);
     }
 }
 

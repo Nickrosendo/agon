@@ -405,7 +405,7 @@ static void draw_enlarged(App *a, const Creature *followed, uint32_t lineage,
     cells_canvas_set(&a->canvas, l->panel_x, l->family_y);
     render_text(0, 0, caption, PANEL_COLS);
     /* In the middle of the panel's width, below the caption. */
-    int x = l->panel_x + (SCENE_PANEL_W - SCENE_BODY_BIG) / 2;
+    int x = l->panel_x + (SCENE_PANEL_W - SCENE_ENLARGED_W) / 2;
     int y = l->family_y + FONT_H;
     if (followed != NULL) {
         scene_draw_followed(&a->scene, &a->canvas, &a->sim, followed, a->body_ms,
@@ -427,9 +427,8 @@ static void draw_strip(App *a, uint32_t lineage, int samples)
     snprintf(caption, sizeof(caption), samples == 0 ? " #%u: no record" : " family #%u",
              (unsigned)lineage);
     render_text(0, 0, lineage != FAMILY_NONE ? caption : "", PANEL_COLS);
-    int w = FAMILY_STRIP * 16;
-    scene_draw_strip(&a->scene, &a->canvas, &a->families, lineage,
-                     l->panel_x + (SCENE_PANEL_W - w) / 2, y + FONT_H, w);
+    scene_draw_strip(&a->scene, &a->canvas, &a->families, lineage, l->panel_x,
+                     y + FONT_H, SCENE_PANEL_W);
 }
 
 /* The bottom of the panel: the followed creature and its family, or else the

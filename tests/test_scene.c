@@ -10,6 +10,7 @@
 #include "flora.h"
 #include "family.h"
 #include "inspect.h"
+#include "lab.h"
 #include "palette.h"
 #include "scene.h"
 #include "settings.h"
@@ -571,79 +572,90 @@ static void test_water_only_redraw_matches_whole(void)
     sim_free(&s);
 }
 
+/* Counts pixels in the box (x, y, w, h) that are not `colour`. */
+static int count_not(const Canvas *c, int x, int y, int w, int h, uint32_t colour)
+{
+    int n = 0;
+    for (int j = y; j < y + h; j++) {
+        for (int i = x; i < x + w; i++) {
+            n += c->px[j * c->w + i] != colour;
+        }
+    }
+    return n;
+}
+
+/* A sim with one recorded family, lineage 5, of one creature, sampled twice. */
+static int make_one_family(Sim *s, Families *f, float size_gene, float grown)
+{
+    make_empty_sim(s, 32, 32);
+    int slot = pool_spawn(&s->pool, &s->world, 5, 5);
+    s->pool.items[slot].genome.g[GENE_SIZE] = size_gene;
+    s->pool.items[slot].genome.g[GENE_HUE] = 0.3f;
+    s->pool.items[slot].grown = grown;
+    s->pool.items[slot].lineage = 5;
+    CHECK(family_init(f, s->pool.capacity));
+    family_update(f, s);
+    s->tick = f->next_tick;
+    family_update(f, s);
+    return slot;
+}
+
 static void test_strip_and_enlarged_bodies(void)
 {
     Sim s;
-    make_empty_sim(&s, 32, 32);
-    int slot = pool_spawn(&s.pool, &s.world, 5, 5);
-    s.pool.items[slot].genome.g[GENE_SIZE] = 1.0f;
-    s.pool.items[slot].genome.g[GENE_HUE] = 0.3f;
-    s.pool.items[slot].lineage = 5;
+    Families f;
+    int slot = make_one_family(&s, &f, 1.0f, 0.0f);
     Scene sc;
     CHECK(scene_init(&sc, &s));
     scene_update(&sc, &s, 10, 0);
-    Families f;
-    CHECK(family_init(&f, s.pool.capacity));
-    family_update(&f, &s);
-    s.tick = f.next_tick;
-    family_update(&f, &s);
     Canvas c;
     CHECK(canvas_init(&c, VIEW_W, VIEW_H));
     uint32_t magenta = canvas_rgb(255, 0, 255);
+    const int cw = SCENE_STRIP_CELL_W, ch = SCENE_STRIP_CELL_H;
 
-    /* Two samples: two bodies, each a tile wide, side by side. */
+    /* Two samples: two cells side by side, each a body on its ground. */
     canvas_fill(&c, magenta);
-    scene_draw_strip(&sc, &c, &f, 5, 0, 0, 16 * FAMILY_STRIP);
-    int first = 0, second = 0, third = 0;
-    for (int j = 0; j < 16; j++) {
-        for (int i = 0; i < 16; i++) {
-            first += c.px[j * VIEW_W + i] != magenta;
-            second += c.px[j * VIEW_W + 16 + i] != magenta;
-            third += c.px[j * VIEW_W + 32 + i] != magenta;
-        }
-    }
-    CHECK(first > 0 && second > 0 && third == 0);
-    /* A strip narrower than its bodies shows those that fit. */
+    scene_draw_strip(&sc, &c, &f, 5, 0, 0, SCENE_PANEL_W);
+    CHECK(count_not(&c, 0, 0, cw, ch, magenta) == cw * ch);
+    CHECK(count_not(&c, cw, 0, cw, ch, magenta) == cw * ch);
+    CHECK(count_not(&c, 2 * cw, 0, cw, ch, magenta) == 0);
+    CHECK(count_not(&c, 0, ch, cw, ch, magenta) == 0);
+    /* A strip one cell wide puts the second body on the next row. */
     canvas_fill(&c, magenta);
-    scene_draw_strip(&sc, &c, &f, 5, 0, 0, 16);
-    CHECK(c.px[8 * VIEW_W + 16 + 8] == magenta);
+    scene_draw_strip(&sc, &c, &f, 5, 0, 0, cw);
+    CHECK(count_not(&c, cw, 0, cw, ch, magenta) == 0);
+    CHECK(count_not(&c, 0, ch, cw, ch, magenta) == cw * ch);
     /* No record of this family: nothing drawn, no crash. */
     canvas_fill(&c, magenta);
     scene_draw_strip(&sc, &c, &f, 77, 0, 0, VIEW_W);
     scene_draw_strip(&sc, &c, &f, FAMILY_NONE, 0, 0, VIEW_W);
-    CHECK(c.px[8 * VIEW_W + 8] == magenta);
+    CHECK(count_not(&c, 0, 0, VIEW_W, VIEW_H, magenta) == 0);
 
-    /* Enlarged: the detailed picture, cut to its box, SCENE_BODY_BIG square. */
+    /* Enlarged: the followed creature on its ground, filling exactly its box. */
     canvas_fill(&c, magenta);
     scene_draw_followed(&sc, &c, &s, &s.pool.items[slot], 0, 10, 10);
-    int bx0 = VIEW_W, bx1 = -1;
-    for (int j = 0; j < VIEW_H; j++) {
-        for (int i = 0; i < VIEW_W; i++) {
-            if (c.px[j * VIEW_W + i] != magenta) {
-                bx0 = i < bx0 ? i : bx0;
-                bx1 = i > bx1 ? i : bx1;
-            }
-        }
-    }
-    CHECK(bx0 == 10 && bx1 == 10 + SCENE_BODY_BIG - 1);
-    /* Enlarged, from a family's newest sample. */
+    CHECK(count_not(&c, 10, 10, SCENE_ENLARGED_W, SCENE_ENLARGED_H, magenta) ==
+          SCENE_ENLARGED_W * SCENE_ENLARGED_H);
+    CHECK(count_not(&c, 0, 0, VIEW_W, VIEW_H, magenta) ==
+          SCENE_ENLARGED_W * SCENE_ENLARGED_H);
+    /* Enlarged, from a family's newest sample: the same box. */
     FamilySample out[FAMILY_STRIP];
     int n = family_strip(&f, 5, out);
     CHECK(n == 2);
     canvas_fill(&c, magenta);
     scene_draw_sample(&sc, &c, &out[n - 1], 5, 0, 0, 0);
-    CHECK(c.px[0] != magenta); /* its background */
-    CHECK(c.px[SCENE_BODY_BIG * VIEW_W] == magenta); /* nothing below its box */
+    CHECK(count_not(&c, 0, 0, VIEW_W, VIEW_H, magenta) ==
+          SCENE_ENLARGED_W * SCENE_ENLARGED_H);
     /* The strip's bodies are this family's species, in its colour: some pixel
      * of the first body is one of the palette's body colours. */
     canvas_fill(&c, magenta);
-    scene_draw_strip(&sc, &c, &f, 5, 0, 0, 16 * FAMILY_STRIP);
+    scene_draw_strip(&sc, &c, &f, 5, 0, 0, SCENE_PANEL_W);
     BodyTraits r = species_round(&out[0].traits);
     SpritePalette pal;
-    sprite_palette(&pal, species_pick(5, species_role(&r), 2.0f), out[0].hue);
+    sprite_palette(&pal, species_pick(5, species_role(&r), out[0].body_size), out[0].hue);
     int coloured = 0;
-    for (int j = 0; j < 16; j++) {
-        for (int i = 0; i < 16; i++) {
+    for (int j = 0; j < ch; j++) {
+        for (int i = 0; i < cw; i++) {
             for (int k = INK_DEEP; k <= INK_BELLY; k++) {
                 coloured += c.px[j * VIEW_W + i] == pal.ink[k];
             }
@@ -652,6 +664,125 @@ static void test_strip_and_enlarged_bodies(void)
     CHECK(coloured > 0);
     canvas_free(&c);
     family_free(&f);
+    scene_free(&sc);
+    sim_free(&s);
+}
+
+/* How many pixels of the box (x, y, w, h) have one of the species' body colours
+ * at this hue. */
+static int species_pixels(const Canvas *c, int species, float hue, int x, int y, int w,
+                          int h)
+{
+    SpritePalette pal;
+    sprite_palette(&pal, species, hue);
+    int n = 0;
+    for (int j = y; j < y + h; j++) {
+        for (int i = x; i < x + w; i++) {
+            for (int k = INK_DEEP; k <= INK_BELLY; k++) {
+                n += c->px[j * c->w + i] == pal.ink[k];
+            }
+        }
+    }
+    return n;
+}
+
+/* An armoured family grown large shows elephants or rhinos in the world; its
+ * strip must too, not the armadillo a middling size would pick. One rule for
+ * both: sprite_body's. */
+static void test_strip_shows_the_family_species(void)
+{
+    Sim s;
+    make_empty_sim(&s, 32, 32);
+    int slot = pool_spawn(&s.pool, &s.world, 5, 5);
+    Creature *cr = &s.pool.items[slot];
+    cr->genome.g[GENE_ARMOUR] = 1.0f;
+    cr->genome.g[GENE_MEAT] = 0.0f;
+    cr->genome.g[GENE_SWIM] = 0.0f;
+    cr->genome.g[GENE_HUE] = 0.3f;
+    cr->grown = 6.0f;
+    cr->lineage = 5;
+    int living = sprite_body(cr, &s.set, SPRITE_BASE_NORMAL).species;
+    CHECK(SPECIES[living].role == ROLE_ARMOURED);
+    CHECK(living != SPECIES_ARMADILLO); /* too large for one */
+    Families f;
+    CHECK(family_init(&f, s.pool.capacity));
+    family_update(&f, &s);
+    FamilySample out[FAMILY_STRIP];
+    CHECK(family_strip(&f, 5, out) == 1);
+    Scene sc;
+    CHECK(scene_init(&sc, &s));
+    Canvas c;
+    CHECK(canvas_init(&c, VIEW_W, VIEW_H));
+    scene_draw_strip(&sc, &c, &f, 5, 0, 0, SCENE_PANEL_W);
+    int cw = SCENE_STRIP_CELL_W, ch = SCENE_STRIP_CELL_H;
+    CHECK(species_pixels(&c, living, out[0].hue, 0, 0, cw, ch) > 0);
+    CHECK(species_pixels(&c, SPECIES_ARMADILLO, out[0].hue, 0, 0, cw, ch) == 0);
+    canvas_free(&c);
+    scene_free(&sc);
+    family_free(&f);
+    sim_free(&s);
+}
+
+/* The enlarged view is alive: the same body at two moments breathes and
+ * blinks, so its pixels differ. Followed or a family's sample, both. */
+static void test_enlarged_body_moves(void)
+{
+    Sim s;
+    Families f;
+    int slot = make_one_family(&s, &f, 0.5f, 0.0f);
+    Scene sc;
+    CHECK(scene_init(&sc, &s));
+    scene_update(&sc, &s, 10, 0);
+    Canvas a, b;
+    CHECK(canvas_init(&a, SCENE_ENLARGED_W, SCENE_ENLARGED_H));
+    CHECK(canvas_init(&b, SCENE_ENLARGED_W, SCENE_ENLARGED_H));
+    bool followed_moved = false, sample_moved = false;
+    FamilySample out[FAMILY_STRIP];
+    int n = family_strip(&f, 5, out);
+    CHECK(n > 0);
+    for (uint64_t t = 100; t < 3000; t += 100) {
+        scene_draw_followed(&sc, &a, &s, &s.pool.items[slot], 0, 0, 0);
+        scene_draw_followed(&sc, &b, &s, &s.pool.items[slot], t, 0, 0);
+        followed_moved = followed_moved || hash_canvas(&a) != hash_canvas(&b);
+        scene_draw_sample(&sc, &a, &out[n - 1], 5, 0, 0, 0);
+        scene_draw_sample(&sc, &b, &out[n - 1], 5, t, 0, 0);
+        sample_moved = sample_moved || hash_canvas(&a) != hash_canvas(&b);
+    }
+    CHECK(followed_moved);
+    CHECK(sample_moved);
+    canvas_free(&a);
+    canvas_free(&b);
+    scene_free(&sc);
+    family_free(&f);
+    sim_free(&s);
+}
+
+/* The largest body fits the enlarged box whole: it drops to scale 1 rather
+ * than being cut, so the sky round its edges and above it stays sky. */
+static void test_big_body_fits_the_enlarged_box(void)
+{
+    Sim s;
+    make_empty_sim(&s, 32, 32);
+    int slot = pool_spawn(&s.pool, &s.world, 5, 5);
+    Creature *cr = &s.pool.items[slot];
+    cr->genome.g[GENE_ARMOUR] = 1.0f;
+    cr->genome.g[GENE_SIZE] = 1.0f;
+    cr->grown = 20.0f;
+    Scene sc;
+    CHECK(scene_init(&sc, &s));
+    scene_update(&sc, &s, 10, 0);
+    Canvas c;
+    CHECK(canvas_init(&c, SCENE_ENLARGED_W, SCENE_ENLARGED_H));
+    scene_draw_followed(&sc, &c, &s, cr, 0, 0, 0);
+    uint32_t sky = lab_sky();
+    CHECK(count_not(&c, 0, 0, SCENE_ENLARGED_W, 1, sky) == 0);  /* the top row */
+    /* Above the ground and a shadow's height over it, at scale 2 or 1. */
+    int above_ground = SCENE_ENLARGED_H - LAB_GROUND_ROWS * 2 - 8;
+    CHECK(count_not(&c, 0, 0, 1, above_ground, sky) == 0);     /* the left column */
+    CHECK(count_not(&c, SCENE_ENLARGED_W - 1, 0, 1, above_ground, sky) == 0);
+    /* And it is there at all. */
+    CHECK(count_not(&c, 0, 0, SCENE_ENLARGED_W, above_ground, sky) > 100);
+    canvas_free(&c);
     scene_free(&sc);
     sim_free(&s);
 }
@@ -2035,6 +2166,9 @@ int main(void)
     test_follow_across_the_edge_takes_the_short_way();
     test_layout_gives_the_panel_way_first();
     test_strip_and_enlarged_bodies();
+    test_strip_shows_the_family_species();
+    test_enlarged_body_moves();
+    test_big_body_fits_the_enlarged_box();
     test_known_world_pixels();
     test_ground_layer_refreshes_when_it_should();
     test_water_only_redraw_matches_whole();

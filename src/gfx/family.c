@@ -10,7 +10,7 @@
 
 /* One family's total, while one pass adds its members up. */
 typedef struct {
-    float size, speed, sight, plant, meat, meat_share;
+    float size, speed, sight, plant, meat, meat_share, body_size;
     float armour, weapon, legs, swim;
     /* Hue is an angle round a wheel, so it is summed as an arrow: see below. */
     float hue_x, hue_y;
@@ -169,9 +169,10 @@ static void halve(FamilyRecord *r)
     r->every *= 2;
 }
 
-static void add_to_sum(FamilySum *sum, const Creature *c)
+static void add_to_sum(FamilySum *sum, const Creature *c, const Settings *set)
 {
     BodyTraits t = species_traits(&c->genome);
+    sum->body_size += creature_size(c, set);
     sum->size += t.size;
     sum->speed += t.speed;
     sum->sight += t.sight;
@@ -213,6 +214,7 @@ static FamilySample sample_from(const FamilySum *sum)
                               sum->weapon / n, sum->legs / n,   sum->swim / n};
     out.hue = average_hue(sum);
     out.meat_share = sum->meat_share / n;
+    out.body_size = sum->body_size / n;
     return out;
 }
 
@@ -228,7 +230,7 @@ static void take_samples(Families *f, const Sim *s)
         FamilyRecord *r = record_of(f, c->lineage);
         if (r != NULL) {
             /* The record's distance from the start of the array is its index. */
-            add_to_sum(&sums[r - f->records], c);
+            add_to_sum(&sums[r - f->records], c, &s->set);
         }
     }
     for (int i = 0; i < f->used; i++) {

@@ -16,6 +16,9 @@
 #define LAB_COLUMNS 3
 /* The number keys 1 to LAB_KEYS choose what the animals do. */
 #define LAB_KEYS 6
+/* A ground strip's bottom: the line and the six rows of ground under it, in
+ * art pixels. */
+#define LAB_GROUND_ROWS 7
 
 /* The ACTION_ value number key `number` (1 to LAB_KEYS: walk, run, rest,
  * graze, bite, sleep) chooses; -1 for any other number. */
@@ -34,6 +37,16 @@ int lab_species_at(int role, int column);
  * the area (x, y, w, h); an area too small for the page is just filled. */
 void lab_draw(SpriteCache *sprites, Canvas *c, int action, uint64_t body_ms,
               int x, int y, int w, int h);
+
+/* The sky's colour above a ground strip, as a canvas pixel. */
+uint32_t lab_sky(void);
+/* A strip of the mockup's lab ground in the box (x, y, w, h): sky, then a
+ * line and ground of two greens by hash in its bottom LAB_GROUND_ROWS art
+ * pixels of `scale` screen pixels each. salt keeps strips from repeating one
+ * another. Drawn only inside clip. Returns the line's canvas row: a picture's
+ * ground point goes one art pixel below it. The panel uses it too. */
+int lab_draw_ground(Canvas *c, int x, int y, int w, int h, int scale, int salt,
+                    CanvasClip clip);
 
 /* Where one cell's strip is for an area of w by h at the origin: its box in
  * (bx, by, bw, bh), and the scale the page is drawn at (0, with the box

@@ -142,15 +142,22 @@ typedef struct {
 #define SCENE_MIN_H (SCENE_MIN_ROWS * FONT_H)
 /* A hit shows as a scar for this many ticks, a year at the default calendar. */
 #define SCENE_SCAR_TICKS 100u
-/* The panel's enlarged body: the detailed picture, cut to a box this size. */
-#define SCENE_BODY_BIG 64
 /* A panel keeps at least this many text rows before the bodies get any: enough
  * for all of its lines but the family colours. */
 #define SCENE_PANEL_MIN_ROWS 19
-/* Rows for: one of caption, four of enlarged body. And for the strip: one of
- * bodies and one of caption above them. */
-#define SCENE_ENLARGED_ROWS 5
-#define SCENE_STRIP_ROWS 2
+/* Rows for the enlarged view: a caption, then six of body (96 pixels). And for
+ * the strip: a caption, then two lines of bodies, 48 pixels each. */
+#define SCENE_ENLARGED_ROWS 7
+#define SCENE_STRIP_ROWS 7
+/* The enlarged view's box: the panel's width less a text column each side. */
+#define SCENE_ENLARGED_W (SCENE_PANEL_W - 2 * FONT_W)
+#define SCENE_ENLARGED_H ((SCENE_ENLARGED_ROWS - 1) * FONT_H)
+/* The strip: SCENE_STRIP_COLUMNS bodies a line, SCENE_STRIP_LINES lines, each
+ * body in a cell of its own. The panel is 160 pixels wide: four cells of 40. */
+#define SCENE_STRIP_COLUMNS 4
+#define SCENE_STRIP_LINES 2
+#define SCENE_STRIP_CELL_W (SCENE_PANEL_W / SCENE_STRIP_COLUMNS)
+#define SCENE_STRIP_CELL_H ((SCENE_STRIP_ROWS - 1) * FONT_H / SCENE_STRIP_LINES)
 
 /* The title line on top, the help line below, the world between them and the
  * panel on the right. When the window is narrow the panel goes first. */
@@ -189,17 +196,22 @@ void scene_draw_world(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
                       float tick_fraction, uint64_t water_ms, uint64_t body_ms,
                       int view_x, int view_y);
 
-/* The followed creature's detailed picture, standing, cut to a SCENE_BODY_BIG
- * box with its top left corner at (x, y). */
+/* The followed creature, doing what it does in the world this moment (its
+ * action, frame, blinks, facing and flash), from the detailed pictures at
+ * scale 2, or 1 when its resting picture would not fit, standing on a strip of
+ * the lab's ground with its shadow. A SCENE_ENLARGED_W by SCENE_ENLARGED_H box,
+ * top left corner at (x, y). */
 void scene_draw_followed(Scene *sc, Canvas *c, const Sim *s,
                          const Creature *followed, uint64_t now_ms, int x, int y);
-/* A family's average body, as the family's species (picked from its founder's
- * id, lineage), standing at Normal size in the same box. Task 14 gives it its
- * real size. */
+/* A family's average body in the same box, the same way, resting: its species
+ * from its founder's id (lineage), its role and its mean real size, as a living
+ * member's is picked. now_ms is the body clock: it breathes and blinks. */
 void scene_draw_sample(Scene *sc, Canvas *c, const FamilySample *sample,
                        uint32_t lineage, uint64_t now_ms, int x, int y);
-/* A family's bodies over time, oldest on the left, one in each 16 pixels, as
- * many as fit in w pixels. Nothing when the family has no record. */
+/* A family's bodies over time, resting at Normal size on the lab's ground,
+ * oldest first, in cells of SCENE_STRIP_CELL_W by SCENE_STRIP_CELL_H: as many
+ * columns as fit in w (at most SCENE_STRIP_COLUMNS), then the next line, for
+ * at most SCENE_STRIP_LINES lines. Nothing when the family has no record. */
 void scene_draw_strip(Scene *sc, Canvas *c, const Families *f, uint32_t lineage,
                       int x, int y, int w);
 /* What a click on the panel asks for. */

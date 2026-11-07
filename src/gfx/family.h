@@ -21,10 +21,12 @@
 /* family_largest's answer when there is no family. */
 #define FAMILY_NONE UINT32_MAX
 
-/* One family's average at one moment. */
+/* One family's average at one moment. body_size is the members' mean real
+ * size (creature_size: gene and growth), which picks the species and the
+ * picture's size level as it does for a living creature. */
 typedef struct {
     BodyTraits traits;
-    float hue, meat_share;
+    float hue, meat_share, body_size;
 } FamilySample;
 
 /*

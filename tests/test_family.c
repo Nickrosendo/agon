@@ -93,6 +93,30 @@ static void test_hue_average_across_wrap(void)
     sim_free(&s);
 }
 
+/* The real size, gene and growth together, as creature_size gives it: the
+ * panel picks a family's species and picture size from it. */
+static void test_body_size_averaged(void)
+{
+    Sim s;
+    make_empty_sim(&s);
+    Families f;
+    CHECK(family_init(&f, s.pool.capacity));
+    Creature *a = add(&s, 5);
+    Creature *b = add(&s, 5);
+    a->genome.g[GENE_SIZE] = 0.0f;
+    b->genome.g[GENE_SIZE] = 1.0f;
+    b->grown = 3.0f;
+    float expected = (creature_size(a, &s.set) + creature_size(b, &s.set)) / 2.0f;
+    pass(&f, &s);
+    const FamilyRecord *r = find(&f, 5);
+    CHECK(r != NULL);
+    CHECK(fabsf(r->samples[0].body_size - expected) < 0.001f);
+    /* Growth counts: the average is above what the genes alone give. */
+    CHECK(r->samples[0].body_size > s.set.size_min + 1.5f);
+    family_free(&f);
+    sim_free(&s);
+}
+
 static void test_halves_when_full(void)
 {
     Sim s;
@@ -274,6 +298,7 @@ int main(void)
     CHECK(brain_register(&BRAIN_SCRIPT));
     test_average_on_known_creatures();
     test_hue_average_across_wrap();
+    test_body_size_averaged();
     test_halves_when_full();
     test_strip_even_spacing();
     test_more_than_32_families();
