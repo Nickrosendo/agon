@@ -10,6 +10,7 @@
 #include "settings.h"
 #include "sim.h"
 #include "world.h"
+#include "years.h"
 
 /* A world of all soil, fertility 1, no vegetation. */
 static void make_world(World *w, int width, int height)
@@ -1099,6 +1100,21 @@ static void test_senses_season(void)
     p.in_season = true;
     creature_sense(&w, &p, a, &s, &in);
     CHECK(in.v[SENSE_SEASON] == 1.0f);
+    /* The time of year, as a point going round a circle: the middle of winter
+     * is 7/8 of the way round, where sin is -0.707 and cos 0.707, each moved
+     * from -1..1 into 0..1. */
+    p.in_season = false;
+    p.season = SEASON_WINTER;
+    p.year_phase = 0.875f;
+    creature_sense(&w, &p, a, &s, &in);
+    CHECK(in.v[SENSE_SEASON] == 0.0f);
+    CHECK(fabsf(in.v[SENSE_YEAR_SIN] - 0.1464f) < 0.001f);
+    CHECK(fabsf(in.v[SENSE_YEAR_COS] - 0.8536f) < 0.001f);
+    /* The start of spring: sin 0, cos 1. */
+    p.year_phase = 0.0f;
+    creature_sense(&w, &p, a, &s, &in);
+    CHECK(fabsf(in.v[SENSE_YEAR_SIN] - 0.5f) < 0.001f);
+    CHECK(fabsf(in.v[SENSE_YEAR_COS] - 1.0f) < 0.001f);
     pool_free(&p);
     world_free(&w);
 }

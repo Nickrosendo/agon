@@ -448,6 +448,12 @@ void creature_sense(const World *w, const Pool *p, int idx,
     out->v[SENSE_SIZE] = size / (size + 1.0f);
     out->v[SENSE_DIET] = c->genome.g[GENE_MEAT]; /* how much a hunter */
     out->v[SENSE_SEASON] = p->in_season ? 1.0f : 0.0f;
+    /* 2 pi as a float constant: math.h's M_PI is not part of standard C. sinf
+     * and cosf are the float versions; plain sin would work in doubles and
+     * need a conversion back. */
+    float angle = 6.28318531f * p->year_phase;
+    out->v[SENSE_YEAR_SIN] = 0.5f + 0.5f * sinf(angle);
+    out->v[SENSE_YEAR_COS] = 0.5f + 0.5f * cosf(angle);
     /* The same test act_move makes, so the sense cannot disagree with walking. */
     int ahead = cell_towards(w, c->x, c->y, c->heading);
     out->v[SENSE_BLOCKED] = cell_is_free(w, ahead) ? 0.0f : 1.0f;

@@ -191,10 +191,13 @@ typedef struct {
     /* Deaths so far, by cause. An array with an enum as its index: the enum's
      * values are plain numbers from 0, and DEATH_COUNT is how many there are. */
     uint32_t deaths[DEATH_COUNT];
-    /* Whether this tick is in the mating season. Worked out from the tick by
-     * the Sim before anyone acts, so it is neither saved nor hashed: the tick
-     * is both. */
+    /* Whether this tick is in the mating season (spring), which season it is
+     * (a SEASON_ value, years.h) and how far through its year (0 up to 1).
+     * Worked out from the tick by the Sim before anyone acts, so they are
+     * neither saved nor hashed: the tick is both. */
     bool in_season;
+    uint8_t season;
+    float year_phase;
     /* The low 32 bits of the current tick, set the same way and for the same
      * reason: the rules for hits need the date, and creature_act has no Sim. */
     uint32_t now;

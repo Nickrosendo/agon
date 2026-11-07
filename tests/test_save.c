@@ -286,6 +286,10 @@ static void test_wrong_magic_and_version(void)
     unsigned char kept = bytes[8];
     bytes[8] = 1;
     CHECK(load_fails(bytes, size, "version 1"));
+    /* The last version before the year became a rule: two settings went and
+     * every genome grew, so it cannot be read. */
+    bytes[8] = 8;
+    CHECK(load_fails(bytes, size, "version 8"));
     bytes[8] = kept;
     /* And the same bytes, untouched, are fine: the failures above came
      * from the changes. */

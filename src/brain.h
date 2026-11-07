@@ -42,14 +42,21 @@ enum {
  * the rays: ray k's value j is at SENSE_RAYS + k * RAY_VALUES + j. After the
  * rays come the drives, then the memory values, the last ones between -1 and 1.
  * The neural network has one input per sense, so its NET_IN must equal
- * SENSE_COUNT (41). An enum value may be set from earlier ones, and the next
+ * SENSE_COUNT (43). An enum value may be set from earlier ones, and the next
  * goes on counting from there. */
 enum {
     SENSE_ENERGY,
     SENSE_AGE,
     SENSE_SIZE,
     SENSE_DIET, /* the meat digestion gene */
-    SENSE_SEASON, /* 1 during the mating season, 0 outside it */
+    SENSE_SEASON, /* 1 in spring, the mating season, 0 outside it */
+    /* The time of year as a point going round a circle once a year, each
+     * coordinate moved from -1..1 into 0..1: 0.5 + 0.5 * sin and cos of
+     * 2 pi * phase. Two numbers, because one alone reads the same at two times
+     * of the year; together they tell every day apart, and the end of winter
+     * runs smoothly into spring. */
+    SENSE_YEAR_SIN,
+    SENSE_YEAR_COS,
     SENSE_BLOCKED, /* 1 when a step ahead cannot succeed: water, rock or a creature */
     SENSE_RAYS,
     SENSE_HUNGER = SENSE_RAYS + RAY_COUNT * RAY_VALUES, /* 1 with no energy */

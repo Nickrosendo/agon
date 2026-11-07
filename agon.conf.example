@@ -32,7 +32,7 @@ rain_threshold = 0.6
 # ticks for one rain pattern to fade into the next (1 to 2147483647)
 rain_period = 1000
 
-# ticks from one wet time to the next (1 to 2.14748e+09)
+# ticks from one wet time to the next (1 to 2147483647)
 rain_cycle = 2000
 
 # how far the threshold moves either way between wet and dry (0 to 1)
@@ -202,12 +202,6 @@ mate_window = 5
 
 # ticks before a creature can mate (0 to 2147483647)
 mate_age = 50
-
-# ticks from one mating season to the next (1 to 2147483647)
-season_every = 100
-
-# ticks a mating season lasts (0: none) (0 to 2147483647)
-season_ticks = 25
 
 # the age sensed as 0.5 (1 to 1e+06)
 sense_age_half = 200
@@ -401,8 +395,8 @@ scent_decay = 0.02
 # ticks between statistics samples (0: never) (0 to 1000000)
 stats_every = 25
 
-# ticks shown as one year (changes only the display) (1 to 1000000)
-ticks_per_year = 100
+# ticks in a year of four seasons, spring first; spring is the mating season (4 to 1000000)
+ticks_per_year = 600
 
 # 1: record life stories, 0: record none (changes no world) (0 to 1)
 chronicle = 1

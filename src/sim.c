@@ -8,6 +8,7 @@
 #include "climate.h"
 #include "flora.h"
 #include "terrain.h"
+#include "years.h"
 
 /* How many random cells to try when placing one creature before giving
  * up (the world may have little free soil left). */
@@ -176,6 +177,18 @@ bool sim_init(Sim *s, const Settings *set, uint64_t seed, int w, int h)
     return true;
 }
 
+/* Tells the Pool the time of year, from the tick alone: creature_act and
+ * creature_sense have no Sim to ask. Done before anyone acts, and again after a
+ * load, since none of it is saved. */
+static void tell_the_season(Sim *s)
+{
+    int per_year = s->set.ticks_per_year;
+    s->pool.in_season = sim_in_season(s->tick, &s->set);
+    /* A SEASON_ value is 0 to 3, so it fits a uint8_t; the cast says so. */
+    s->pool.season = (uint8_t)years_season_of(s->tick, per_year);
+    s->pool.year_phase = years_phase(s->tick, per_year);
+}
+
 bool sim_resume(Sim *s)
 {
     if (!brain_open(&s->brain, s->set.brain_name, &s->set,
@@ -188,6 +201,7 @@ bool sim_resume(Sim *s)
             s->brain.on_birth(&s->brain, c->id, &c->genome);
         }
     }
+    tell_the_season(s);
     stats_measure(&s->stats, &s->world, &s->pool, s->tick, s->scratch);
     return true;
 }
@@ -297,9 +311,7 @@ static void take_turn(Sim *s, int idx)
 
 bool sim_in_season(uint64_t tick, const Settings *set)
 {
-    /* Both settings are at least 0 and 1 by the table's check, so the casts
-     * cannot turn a negative into a huge number, and % never divides by 0. */
-    return tick % (uint64_t)set->season_every < (uint64_t)set->season_ticks;
+    return years_season_of(tick, set->ticks_per_year) == SEASON_SPRING;
 }
 
 /* Every creature alive at the start of the tick acts once, in an order
@@ -315,7 +327,7 @@ static void creatures_act(Sim *s)
     }
     shuffle(s->turns, n, &s->rng);
     pool_count_plant_eaters(&s->pool, &s->set);
-    s->pool.in_season = sim_in_season(s->tick, &s->set);
+    tell_the_season(s);
     /* The conversion keeps the low 32 bits, which is defined for an unsigned
      * target, and all that comparing two recent ticks needs. */
     s->pool.now = (uint32_t)s->tick;

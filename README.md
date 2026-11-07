@@ -196,9 +196,9 @@ for the build that wrote them; a build with a different format refuses them.
 7. Two grown creatures side by side that both choose to mate have a child, and
    each pays for it with energy. Each part of its genome comes from one parent
    or the other, with small changes. No fitness function exists: what lives
-   long enough to have children spreads. During the mating season, a quarter of
-   each year, every fed adult is willing without choosing to be; outside it, both
-   must choose, which is rarer.
+   long enough to have children spreads. In spring, the mating season, every fed
+   adult is willing without choosing to be; outside it, both must choose, which
+   is rarer.
 8. Any creature can attack whatever stands right ahead of it, and biting only
    eats. Bigger attackers hit more often, and the odds rise for each other
    creature that has just hit the same target. A hit takes health, not energy.
@@ -230,10 +230,10 @@ for the build that wrote them; a build with a different format refuses them.
 15. Territory is an inherited instinct. An adult with the gene sometimes turns on a
     stranger right beside it, whatever its brain chose, unless it chose to mate.
     Close relatives are safe.
-16. Time is shown in years. A year is 100 ticks by default (`ticks_per_year`),
-    which is only a way of showing time and changes nothing in a world. The title
-    also names the season, a quarter of the year each, spring first. It is only a
-    name too: winter is no colder, though by default spring is the mating season.
+16. Time passes in years of four seasons, spring first. A year is 600 ticks by
+    default (`ticks_per_year`), a minute at normal speed, and it is a rule: spring
+    is the mating season, and creatures sense the time of year. The title names
+    the season.
 17. Every creature's life is written down as it happens, and only what happened:
     its birth and parents, children, fights it came through, heavy wounds, kills,
     relatives dying near it, settling in another region, becoming the largest or

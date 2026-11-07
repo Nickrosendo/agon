@@ -37,7 +37,7 @@ enum {
  * values, which plus a constant 1 feed NET_OUT outputs, one per action and
  * one per memory value. NET_IN must equal SENSE_COUNT and NET_OUT
  * ACT_COUNT + MEMORY_VALUES (brain.h); brain_net.c checks both when compiled. */
-#define NET_IN 41
+#define NET_IN 43
 #define NET_HIDDEN 6
 #define NET_OUT 10
 /* The parentheses matter: a macro is pasted as text, and without them

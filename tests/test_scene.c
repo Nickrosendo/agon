@@ -370,12 +370,14 @@ static uint64_t hash_canvas(const Canvas *c)
  * zoom but the closest, which in this world shows only deep water and so no region;
  * then scars, at the far zoom only: the creature at (20, 24) was hit in the last
  * year, and the two closer zooms show no creature here (no body in this world is
- * large enough to be drawn over several tiles).
+ * large enough to be drawn over several tiles); then the year became 600 ticks with
+ * spring as the mating season, and two year senses re-rolled every brain, so
+ * creatures stand elsewhere at every zoom but the closest.
  */
 static void test_known_world_pixels(void)
 {
     static const uint64_t EXPECTED[CAMERA_LEVELS] = {
-        0x97c7dc7faf140a9du, 0x2d6dcf0b3080b532u, 0x35275a26dd56e9feu, 0x4e5052cf991bc4d5u,
+        0x97c7dc7faf140a9du, 0x50dfbcd3f84cdebau, 0x33633a90d3f0b95fu, 0xa5c51039580e30a5u,
     };
     Settings set = settings_default();
     Sim s;
@@ -564,6 +566,9 @@ static void make_dead_world(Sim *s)
     make_empty_sim(s, 64, 64);
     s->seed = 0x2a;
     s->tick = 12345;
+    /* The year these dates were written for, so the text does not move with
+     * the default year. */
+    s->set.ticks_per_year = 100;
     s->records = (WorldRecords){
         .peak_population = 1234,
         .oldest_id = 77,

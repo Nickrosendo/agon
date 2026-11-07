@@ -6,6 +6,7 @@
 #include <string.h> /* strcmp, strlen, strchr, strerror, memchr */
 
 #include "options.h" /* parse_long */
+#include "years.h"   /* YEARS_MIN_LENGTH */
 
 /* Returns the struct by value: the caller gets its own copy, as if every
  * field were assigned one by one. Fine for a small struct read once. */
@@ -108,8 +109,6 @@ Settings settings_default(void)
         .mate_barrier = 0.55f,
         .mate_window = 5,
         .mate_age = 50,
-        .season_every = 100,
-        .season_ticks = 25,
         .sense_age_half = 200.0f,
         .ageing_upkeep = 0.3f,
         .ageing_span = 1500.0f,
@@ -200,7 +199,7 @@ Settings settings_default(void)
          * many creatures' whole lives, so a rise and fall of hunters fits
          * on screen. */
         .stats_every = 25,
-        .ticks_per_year = 100,
+        .ticks_per_year = 600,
         .chronicle = 1,
         .giant_size = 6.0f,
     };
@@ -308,8 +307,6 @@ static const SettingInfo TABLE[] = {
     FLOAT_ROW(mate_barrier, 0, 1, "bodies less alike than this have no child (0 is off)"),
     INT_ROW(mate_window, 1, 65535, "ticks a wish to mate lasts"),
     INT_ROW(mate_age, 0, INT_MAX, "ticks before a creature can mate"),
-    INT_ROW(season_every, 1, INT_MAX, "ticks from one mating season to the next"),
-    INT_ROW(season_ticks, 0, INT_MAX, "ticks a mating season lasts (0: none)"),
     FLOAT_ROW(sense_age_half, 1, BIG, "the age sensed as 0.5"),
     FLOAT_ROW(ageing_upkeep, 0, BIG, "what age costs at the span below"),
     FLOAT_ROW(ageing_span, 1, BIG, "ticks for quick genes to reach that cost"),
@@ -379,8 +376,9 @@ static const SettingInfo TABLE[] = {
     FLOAT_ROW(scent_decay, 0, 1, "share of scent lost per tick"),
     INT_ROW(stats_every, 0, 1000000, "ticks between statistics samples "
                                      "(0: never)"),
-    INT_ROW(ticks_per_year, 1, 1000000, "ticks shown as one year (changes only "
-                                        "the display)"),
+    INT_ROW(ticks_per_year, YEARS_MIN_LENGTH, 1000000,
+            "ticks in a year of four seasons, spring first; spring is the "
+            "mating season"),
     INT_ROW(chronicle, 0, 1, "1: record life stories, 0: record none "
                              "(changes no world)"),
     FLOAT_ROW(giant_size, 0, BIG, "body size from which a life story counts a "

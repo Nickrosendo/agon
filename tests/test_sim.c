@@ -2,6 +2,7 @@
 
 #include "settings.h"
 #include "sim.h"
+#include "years.h"
 
 /*
  * The checksum of seed 7 at 64 by 32 after 500 steps with the default
@@ -46,9 +47,11 @@
  * edges: two more genes, and shallows, colour, size and legs matter; then wet and
  * dry times: rain follows a yearly-like cycle, with a shorter pattern; then soil
  * that dries twice as fast; then the balance against starving and lost leaf
- * plants: roots kept, cheaper fruit, leaner leaves, dearer crowding, more founders.
+ * plants: roots kept, cheaper fruit, leaner leaves, dearer crowding, more founders;
+ * then the year became 600 ticks with spring as the mating season, and two year
+ * senses re-rolled every brain.
  */
-#define SEED_7_AFTER_500 0xb22660e267faa0e6ULL
+#define SEED_7_AFTER_500 0x5258cbc87dc34fd6ULL
 
 static void test_same_seed_same_checksum(void)
 {
@@ -275,22 +278,20 @@ static void test_plants_alone_survive(void)
     }
 }
 
+/* The mating season is spring: the first quarter of every year. */
 static void test_season_calendar(void)
 {
     Settings set = settings_default();
-    set.season_every = 100;
-    set.season_ticks = 25;
+    CHECK(set.ticks_per_year == 600);
     CHECK(sim_in_season(0, &set));
-    CHECK(sim_in_season(24, &set));
-    CHECK(!sim_in_season(25, &set));
-    CHECK(!sim_in_season(99, &set));
-    CHECK(sim_in_season(100, &set));
-    CHECK(sim_in_season(100000000000ULL, &set));
-    set.season_ticks = 0; /* no season at all */
-    CHECK(!sim_in_season(0, &set));
-    set.season_every = 10; /* longer than a cycle: always */
-    set.season_ticks = 10;
-    CHECK(sim_in_season(7, &set));
+    CHECK(sim_in_season(149, &set));
+    CHECK(!sim_in_season(150, &set));
+    CHECK(!sim_in_season(599, &set));
+    CHECK(sim_in_season(600, &set));
+    CHECK(sim_in_season(600ULL * 1000000000ULL, &set));
+    set.ticks_per_year = 8;
+    CHECK(sim_in_season(1, &set));
+    CHECK(!sim_in_season(2, &set));
 }
 
 /* The Sim keeps the pool's flag to the calendar, and a saved world's future
@@ -298,14 +299,15 @@ static void test_season_calendar(void)
 static void test_sim_follows_the_season(void)
 {
     Settings set = settings_default();
-    set.season_every = 10;
-    set.season_ticks = 3;
+    set.ticks_per_year = 12;
     Sim s;
     CHECK(sim_init(&s, &set, 4, 64, 32));
     for (int t = 0; t < 40; t++) {
         bool expected = sim_in_season(s.tick, &s.set);
+        int season = years_season_of(s.tick, set.ticks_per_year);
         sim_step(&s);
         CHECK(s.pool.in_season == expected);
+        CHECK(s.pool.season == season);
     }
     sim_free(&s);
 }

@@ -94,6 +94,10 @@ static void test_later_line_wins(void)
 static void test_removed_settings_are_errors(void)
 {
     CHECK(fails_with("pack_defence = 1\n", "line 1", "pack_defence"));
+    /* The mating season follows the calendar now: its own two settings went. */
+    CHECK(fails_with("season_every = 100\n", "line 1", "season_every"));
+    CHECK(fails_with("# old\nseason_ticks = 25\n", "line 2", "season_ticks"));
+    CHECK(fails_with("ticks_per_year = 3\n", "line 1", "ticks_per_year"));
     CHECK(fails_with("# old\nsplit_threshold = 3\n", "line 2",
                      "split_threshold"));
     CHECK(fails_with("split_share = 0.5\n", "line 1", "split_share"));

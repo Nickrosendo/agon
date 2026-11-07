@@ -161,13 +161,6 @@ typedef struct {
     float mate_barrier;
     int mate_window;         /* ticks a wish to mate lasts */
     int mate_age;            /* ticks before a creature can mate */
-    /* The mating season: for the first season_ticks of every season_every
-     * ticks, every fed adult is willing with no choice made. Outside it, a
-     * child still needs both parents' brains to choose ACT_MATE. Random brains
-     * almost never do, so a world with no season stops breeding: see the
-     * tables in the plan. season_ticks 0: no season. */
-    int season_every;
-    int season_ticks;
     float sense_age_half;    /* the age sensed as 0.5 */
     /* Ageing, a cost in place of an age limit. Upkeep gains ageing_upkeep * e *
      * e + slow_ageing_upkeep * (1 - gene), where e = age * rate / ageing_span
@@ -336,9 +329,12 @@ typedef struct {
      * stats.h), so they span HISTORY * stats_every ticks. */
     int stats_every;
 
-    /* How many ticks people read as a year. Display code alone reads this, so it
-     * cannot change how a world evolves. At the default speed of 10 ticks a
-     * second, the default makes a year 10 seconds. */
+    /* How many ticks make a year, in four seasons, spring first (years.h). A
+     * rule: spring is the mating season, when every fed adult is willing with
+     * no choice made, and later the weather and plants follow the seasons too.
+     * Outside spring a child still needs both parents' brains to choose
+     * ACT_MATE, which random brains almost never do. At the default speed of 10
+     * ticks a second, the default makes a year a minute, 15 seconds a season. */
     int ticks_per_year;
 
     /* Life stories (chronicle.h): 1 records them, 0 records nothing. No rule

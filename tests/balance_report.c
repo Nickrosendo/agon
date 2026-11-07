@@ -23,6 +23,7 @@
 #include "rng.h"
 #include "settings.h"
 #include "sim.h"
+#include "years.h"
 
 /* A creature that had not changed cell for this many ticks counts as still. */
 #define STILL_TICKS 200
@@ -102,7 +103,6 @@ typedef struct {
 /* The seasons' verdict (the seasons design, section 8) is judged on the whole
  * run, the founders' die-off included, so it keeps its own counts beside the
  * Report's, which start at COUNT_DEATHS_FROM. */
-#define SEASONS 4
 /* Ticks 0 to 5,999: the first ten years of 600 ticks. */
 #define FIRST_YEARS_TICKS 6000u
 /* A death whose cause could not be read: its slot was already reused. The
@@ -117,22 +117,14 @@ typedef struct {
     uint64_t adult_deaths;
     uint64_t adult_by_cause[DEATH_COUNT + 1];
     double adult_age; /* summed over adult deaths */
-    uint64_t giants_starved[SEASONS]; /* by the season they died in */
-    uint64_t births[SEASONS];         /* by the season they were born in */
-    uint64_t starts[SEASONS];         /* how many times each season began */
-    double pop_at_start[SEASONS];     /* the population as each began, summed */
+    uint64_t giants_starved[SEASON_COUNT]; /* by the season they died in */
+    uint64_t births[SEASON_COUNT];         /* by the season they were born in */
+    uint64_t starts[SEASON_COUNT];         /* how many times each season began */
+    double pop_at_start[SEASON_COUNT];     /* the population as each began, summed */
 } Verdict;
 
-static const char *const SEASON_NAMES[SEASONS] = {"spring", "summer", "autumn",
-                                                  "winter"};
-
-/* Which quarter of the year a tick falls in, 0 for spring: the same arithmetic
- * as years_season in src/years.c, giving the index rather than the name. */
-static int season_of(uint64_t tick, int ticks_per_year)
-{
-    uint64_t length = ticks_per_year >= 1 ? (uint64_t)ticks_per_year : 1u;
-    return (int)(tick % length * SEASONS / length);
-}
+static const char *const SEASON_NAMES[SEASON_COUNT] = {"spring", "summer",
+                                                       "autumn", "winter"};
 
 /* Why the creature that held this slot died, read from the last event of its
  * story: the accounting notes LIFE_DIED while it still holds the slot, and no
@@ -164,7 +156,7 @@ static void verdict_death(Verdict *v, const Creature *slot, const Shadow *sh,
     }
     bool giant = cause != CAUSE_UNKNOWN && (slot->tally.flags & TALLY_GIANT);
     if (giant && cause == DEATH_HUNGER) {
-        v->giants_starved[season_of(tick, set->ticks_per_year)]++;
+        v->giants_starved[years_season_of(tick, set->ticks_per_year)]++;
     }
 }
 
@@ -907,16 +899,16 @@ static void print_seasons(const Verdict *v)
         printf(" %s %llu", CAUSE_NAMES[c], (unsigned long long)v->adult_by_cause[c]);
     }
     printf("\n     giants starved:");
-    for (int k = 0; k < SEASONS; k++) {
+    for (int k = 0; k < SEASON_COUNT; k++) {
         printf(" %s %llu", SEASON_NAMES[k], (unsigned long long)v->giants_starved[k]);
     }
     printf("\n     births per season:");
-    for (int k = 0; k < SEASONS; k++) {
+    for (int k = 0; k < SEASON_COUNT; k++) {
         printf(" %s %.1f", SEASON_NAMES[k],
                mean_of((double)v->births[k], v->starts[k]));
     }
     printf("\n     population as a season begins:");
-    for (int k = 0; k < SEASONS; k++) {
+    for (int k = 0; k < SEASON_COUNT; k++) {
         printf(" %s %.0f", SEASON_NAMES[k], mean_of(v->pop_at_start[k], v->starts[k]));
     }
     printf("\n");
@@ -954,9 +946,9 @@ static void verdict_tick(const Sim *s, Verdict *v, uint32_t births)
         v->pop_first += s->pool.count;
         v->ticks_first++;
     }
-    v->births[season_of(s->tick - 1, tpy)] += births;
-    int season = season_of(s->tick, tpy);
-    if (season != season_of(s->tick - 1, tpy)) {
+    v->births[years_season_of(s->tick - 1, tpy)] += births;
+    int season = years_season_of(s->tick, tpy);
+    if (years_season_starts(s->tick, tpy, season)) {
         v->starts[season]++;
         v->pop_at_start[season] += s->pool.count;
     }
