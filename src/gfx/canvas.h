@@ -55,6 +55,16 @@ void canvas_rect_clip(Canvas *c, int x, int y, int w, int h, uint32_t colour,
  * bits are drawn as runs, one rectangle per run of neighbouring pixels. */
 void canvas_mask_wide(Canvas *c, const uint64_t *rows, int size, int x, int y,
                       int scale, bool flip, uint32_t colour, CanvasClip clip);
+/* Draws a w by h block of ink indices, row after row, stride apart; index 0 is
+ * not drawn, any other is colours[index]. flip mirrors it left to right. */
+void canvas_picture(Canvas *c, const uint8_t *ink, int stride, int w, int h,
+                    int x, int y, int scale, bool flip, const uint32_t *colours,
+                    CanvasClip clip);
+/* Multiplies every pixel inside the ellipse by keep / 256: a soft shadow. */
+void canvas_darken_ellipse(Canvas *c, int cx, int cy, int rx, int ry, int keep,
+                           CanvasClip clip);
+void canvas_pixel(Canvas *c, int x, int y, int scale, uint32_t colour,
+                  CanvasClip clip);
 /* Copies all of from onto c with from's corner at (x, y), clipped. */
 void canvas_copy(Canvas *c, const Canvas *from, int x, int y);
 /* Writes the canvas as a PPM image, the simplest picture format there is:

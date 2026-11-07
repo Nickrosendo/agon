@@ -32,6 +32,7 @@ extern const Colour PALETTE_PLANT; /* the legend's plant colour */
 extern const Colour PALETTE_BLACK;
 extern const Colour PALETTE_WITHERED; /* dry straw */
 extern const Colour PALETTE_CARRION;  /* dried blood */
+extern const Colour PALETTE_SNOW;
 extern const Colour PALETTE_TEXT;
 extern const Colour PALETTE_CURSOR;
 extern const Colour PALETTE_TEXT_BACKGROUND;
@@ -42,6 +43,9 @@ extern const Colour PALETTE_TEXT_BACKGROUND;
 
 /* A colour t of the way from a to b (t in 0..1). */
 Colour palette_mix(Colour a, Colour b, float t);
+
+/* ground covered by snow (0..1, clamped): 0 leaves it as it is, 1 is PALETTE_SNOW. */
+Colour palette_snowed(Colour ground, float snow);
 
 /* A colour from a hue (0..1 round the colour wheel: 0 red, 1/3 green, 2/3
  * blue, back to red at 1), at full brightness and the given saturation. */

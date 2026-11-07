@@ -28,6 +28,7 @@ const Colour PALETTE_PLANT = {58, 150, 62};
 const Colour PALETTE_BLACK = {0, 0, 0};
 const Colour PALETTE_WITHERED = {196, 168, 84};
 const Colour PALETTE_CARRION = {110, 30, 34};
+const Colour PALETTE_SNOW = {236, 240, 246};
 const Colour PALETTE_TEXT = {150, 155, 165};
 const Colour PALETTE_CURSOR = {255, 255, 255};
 const Colour PALETTE_TEXT_BACKGROUND = {14, 17, 23};
@@ -47,6 +48,12 @@ Colour palette_mix(Colour a, Colour b, float t)
     Colour c = {mix_channel(a.r, b.r, t), mix_channel(a.g, b.g, t),
                 mix_channel(a.b, b.b, t)};
     return c;
+}
+
+Colour palette_snowed(Colour ground, float snow)
+{
+    snow = snow < 0.0f ? 0.0f : (snow > 1.0f ? 1.0f : snow);
+    return palette_mix(ground, PALETTE_SNOW, snow);
 }
 
 Colour palette_soil(float fertility)

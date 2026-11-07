@@ -271,6 +271,112 @@ static void test_mask_quick_path_matches_rects(void)
     canvas_free(&b);
 }
 
+static CanvasClip whole(const Canvas *c)
+{
+    CanvasClip clip = {0, 0, c->w, c->h};
+    return clip;
+}
+
+static void test_picture_skips_ink_0_and_flips(void)
+{
+    /* 3 by 2, stride 4 (the 4th column of each row is not part of it). */
+    const uint8_t ink[] = {1, 0, 2, 9, 0, 2, 0, 9};
+    const uint32_t colours[] = {0, 0xFF111111u, 0xFF222222u};
+    Canvas c;
+    CHECK(canvas_init(&c, 5, 4));
+    canvas_picture(&c, ink, 4, 3, 2, 1, 1, 1, false, colours, whole(&c));
+    CHECK(pixel(&c, 1, 1) == 0xFF111111u && pixel(&c, 2, 1) == BLACK);
+    CHECK(pixel(&c, 3, 1) == 0xFF222222u && pixel(&c, 2, 2) == 0xFF222222u);
+    CHECK(pixel(&c, 4, 1) == BLACK); /* the stride's spare column: not drawn */
+    CHECK(count_colour(&c, BLACK) == 20 - 3);
+    canvas_fill(&c, BLACK);
+    canvas_picture(&c, ink, 4, 3, 2, 1, 1, 1, true, colours, whole(&c));
+    CHECK(pixel(&c, 3, 1) == 0xFF111111u && pixel(&c, 1, 1) == 0xFF222222u);
+    CHECK(pixel(&c, 2, 2) == 0xFF222222u && count_colour(&c, BLACK) == 17);
+    canvas_free(&c);
+}
+
+static void test_picture_clips_each_edge(void)
+{
+    const uint8_t ink[] = {1, 1, 1, 1, 1, 1, 1, 1, 1};
+    const uint32_t colours[] = {0, 0xFFFF0000u};
+    Canvas c;
+    CHECK(canvas_init(&c, 8, 8));
+    CanvasClip clip = {2, 2, 4, 4}; /* pixels 2..5 both ways */
+    /* Over each edge in turn, and the corners: only the clip's inside changes. */
+    for (int dy = -3; dy <= 5; dy += 2) {
+        for (int dx = -3; dx <= 5; dx += 2) {
+            canvas_fill(&c, BLACK);
+            canvas_picture(&c, ink, 3, 3, 3, dx, dy, 1, false, colours, clip);
+            for (int y = 0; y < 8; y++) {
+                for (int x = 0; x < 8; x++) {
+                    bool in_clip = x >= 2 && x < 6 && y >= 2 && y < 6;
+                    bool in_picture = x >= dx && x < dx + 3 && y >= dy && y < dy + 3;
+                    CHECK(pixel(&c, x, y) == (in_clip && in_picture ? RED : BLACK));
+                }
+            }
+        }
+    }
+    /* A picture bigger than the canvas, with a clip bigger too. */
+    CanvasClip huge = {-50, -50, 200, 200};
+    canvas_fill(&c, BLACK);
+    canvas_picture(&c, ink, 3, 3, 3, -1, 6, 1, false, colours, huge);
+    CHECK(count_colour(&c, RED) == 2 * 2);
+    canvas_free(&c);
+}
+
+static void test_picture_scale(void)
+{
+    const uint8_t ink[] = {1, 0, 0, 1};
+    const uint32_t colours[] = {0, 0xFFFF0000u};
+    Canvas c;
+    CHECK(canvas_init(&c, 8, 8));
+    canvas_picture(&c, ink, 2, 2, 2, 1, 1, 3, false, colours, whole(&c));
+    CHECK(count_colour(&c, RED) == 2 * 9);
+    CHECK(pixel(&c, 1, 1) == RED && pixel(&c, 3, 3) == RED);
+    CHECK(pixel(&c, 4, 1) == BLACK && pixel(&c, 4, 4) == RED);
+    CHECK(pixel(&c, 7, 7) == BLACK);
+    canvas_free(&c);
+}
+
+static void test_darken_ellipse(void)
+{
+    Canvas c;
+    CHECK(canvas_init(&c, 20, 20));
+    uint32_t grey = 0xFFC8C8C8u; /* 200 in every channel */
+    canvas_fill(&c, grey);
+    canvas_darken_ellipse(&c, 10, 10, 5, 3, 141, whole(&c));
+    CHECK(pixel(&c, 10, 10) == 0xFF6E6E6Eu); /* 200 * 141 / 256 = 110 */
+    CHECK(pixel(&c, 15, 10) == 0xFF6E6E6Eu && pixel(&c, 5, 10) == 0xFF6E6E6Eu);
+    CHECK(pixel(&c, 10, 13) == 0xFF6E6E6Eu);
+    CHECK(pixel(&c, 16, 10) == grey && pixel(&c, 10, 14) == grey);
+    CHECK(pixel(&c, 15, 13) == grey); /* the box's corner is outside */
+    CHECK(pixel(&c, 0, 0) == grey && pixel(&c, 19, 19) == grey);
+    /* Clipped: nothing outside the clip changes, nothing off the canvas is touched. */
+    canvas_fill(&c, grey);
+    CanvasClip clip = {10, 0, 10, 20};
+    canvas_darken_ellipse(&c, 10, 10, 5, 3, 141, clip);
+    CHECK(pixel(&c, 9, 10) == grey && pixel(&c, 10, 10) == 0xFF6E6E6Eu);
+    canvas_fill(&c, grey);
+    canvas_darken_ellipse(&c, -2, 21, 6, 6, 141, whole(&c));
+    CHECK(pixel(&c, 0, 19) == 0xFF6E6E6Eu && pixel(&c, 10, 10) == grey);
+    canvas_free(&c);
+}
+
+static void test_pixel_clips(void)
+{
+    Canvas c;
+    CHECK(canvas_init(&c, 6, 6));
+    CanvasClip clip = {1, 1, 3, 3};
+    canvas_pixel(&c, 0, 0, 1, RED, clip);   /* outside the clip */
+    canvas_pixel(&c, 3, 3, 2, RED, clip);   /* a 2 by 2 pixel, only (3, 3) inside */
+    canvas_pixel(&c, 1, 1, 1, RED, clip);
+    canvas_pixel(&c, -4, -4, 2, RED, clip); /* off the canvas */
+    CHECK(count_colour(&c, RED) == 2);
+    CHECK(pixel(&c, 3, 3) == RED && pixel(&c, 1, 1) == RED);
+    canvas_free(&c);
+}
+
 int main(void)
 {
     test_rgb();
@@ -286,5 +392,10 @@ int main(void)
     test_font_block_heights();
     test_mask_quick_path_matches_rects();
     test_copy_clips();
+    test_picture_skips_ink_0_and_flips();
+    test_picture_clips_each_edge();
+    test_picture_scale();
+    test_darken_ellipse();
+    test_pixel_clips();
     TEST_SUMMARY();
 }

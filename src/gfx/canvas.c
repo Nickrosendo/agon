@@ -167,6 +167,70 @@ void canvas_mask_wide(Canvas *c, const uint64_t *rows, int size, int x, int y,
     }
 }
 
+void canvas_pixel(Canvas *c, int x, int y, int scale, uint32_t colour,
+                  CanvasClip clip)
+{
+    canvas_rect_clip(c, x, y, scale, scale, colour, clip);
+}
+
+void canvas_picture(Canvas *c, const uint8_t *ink, int stride, int w, int h,
+                    int x, int y, int scale, bool flip, const uint32_t *colours,
+                    CanvasClip clip)
+{
+    for (int r = 0; r < h; r++) {
+        const uint8_t *row = ink + r * stride;
+        for (int i = 0; i < w; i++) {
+            uint8_t index = row[i];
+            if (index != 0) {
+                int column = flip ? w - 1 - i : i;
+                canvas_pixel(c, x + column * scale, y + r * scale, scale,
+                             colours[index], clip);
+            }
+        }
+    }
+}
+
+/* One 0xFFRRGGBB pixel with each colour channel times keep / 256, whole bytes. */
+static uint32_t darkened(uint32_t p, int keep)
+{
+    uint32_t k = (uint32_t)keep;
+    uint32_t r = (((p >> 16) & 0xFFu) * k) >> 8;
+    uint32_t g = (((p >> 8) & 0xFFu) * k) >> 8;
+    uint32_t b = ((p & 0xFFu) * k) >> 8;
+    return (p & 0xFF000000u) | (r << 16) | (g << 8) | b;
+}
+
+void canvas_darken_ellipse(Canvas *c, int cx, int cy, int rx, int ry, int keep,
+                           CanvasClip clip)
+{
+    if (rx <= 0 || ry <= 0) {
+        return;
+    }
+    keep = keep < 0 ? 0 : (keep > 256 ? 256 : keep);
+    /* Only the part of the ellipse's box that is on the canvas and in the clip. */
+    int x0 = cx - rx > clip.x ? cx - rx : clip.x;
+    int y0 = cy - ry > clip.y ? cy - ry : clip.y;
+    int x1 = cx + rx + 1 < clip.x + clip.w ? cx + rx + 1 : clip.x + clip.w;
+    int y1 = cy + ry + 1 < clip.y + clip.h ? cy + ry + 1 : clip.y + clip.h;
+    x0 = x0 < 0 ? 0 : x0;
+    y0 = y0 < 0 ? 0 : y0;
+    x1 = x1 > c->w ? c->w : x1;
+    y1 = y1 > c->h ? c->h : y1;
+    /* A pixel is inside when (dx/rx)^2 + (dy/ry)^2 <= 1, multiplied out so it
+     * needs whole numbers only. long long is at least 64 bits: no overflow. */
+    long long rx2 = (long long)rx * rx, ry2 = (long long)ry * ry;
+    for (int py = y0; py < y1; py++) {
+        long long dy = py - cy;
+        for (int px = x0; px < x1; px++) {
+            long long dx = px - cx;
+            if (dx * dx * ry2 + dy * dy * rx2 <= rx2 * ry2) {
+                uint32_t *p = &c->px[py * c->w + px];
+                *p = darkened(*p, keep);
+            }
+        }
+    }
+}
+
 void canvas_copy(Canvas *c, const Canvas *from, int x, int y)
 {
     /* The part of from that lands on c, worked out once for all rows. */
