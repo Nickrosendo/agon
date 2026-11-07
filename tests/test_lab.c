@@ -147,6 +147,42 @@ static void test_lab_tiny_area_is_safe(void)
     canvas_free(&c);
 }
 
+/* FNV-1a, a simple hash: each pixel's bytes are mixed into a running number. */
+static uint64_t hash_canvas(const Canvas *c)
+{
+    uint64_t h = 14695981039346656037u;
+    for (int i = 0; i < c->w * c->h; i++) {
+        for (int shift = 0; shift < 32; shift += 8) {
+            h ^= (c->px[i] >> shift) & 0xFFu;
+            h *= 1099511628211u;
+        }
+    }
+    return h;
+}
+
+/* The lab's picture at a fixed window size, action and body clock. */
+static void test_lab_pixels(void)
+{
+    Canvas c;
+    CHECK(canvas_init(&c, 1112, 688));
+    canvas_fill(&c, canvas_rgb(255, 0, 255));
+    lab_draw(&sprites, &c, ACTION_REST, 1234, 0, 0, 1112, 688);
+    uint64_t h = hash_canvas(&c);
+#ifndef _WIN32
+    /* Pinned after Nicolas approved the look on 2026-11-07; a change must be
+     * looked at by eye. Linux only: the poses use sinf, whose last bits may
+     * differ on another C library. */
+    static const uint64_t EXPECTED = 0x38279c2c37e9b93du;
+    if (h != EXPECTED) {
+        printf("lab: 0x%llxu\n", (unsigned long long)h);
+    }
+    CHECK(h == EXPECTED);
+#else
+    (void)h;
+#endif
+    canvas_free(&c);
+}
+
 int main(void)
 {
     CHECK(sprite_cache_init(&sprites, SPRITE_ENTRIES, SPRITE_DETAIL_ENTRIES));
@@ -155,6 +191,7 @@ int main(void)
     test_lab_cells_not_empty();
     test_lab_scale_at_window_size();
     test_lab_tiny_area_is_safe();
+    test_lab_pixels();
     sprite_cache_free(&sprites);
     TEST_SUMMARY();
 }

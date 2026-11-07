@@ -365,12 +365,12 @@ static uint64_t hash_canvas(const Canvas *c)
 }
 
 /*
- * The look, unpinned until Nicolas approves the look (design section 8). It
- * prints the four hashes, so a change shows, but asserts only what is true of
- * any look: every pixel of the view was drawn (none keeps the magenta fill), and
- * the four zoom levels give four different pictures. When it is pinned again,
- * like SEED_7_AFTER_500 in test_sim.c, a failure means the picture changed: look
- * at it first, and only then update the numbers, saying why in the commit.
+ * The look at the four zoom levels. Pinned after Nicolas approved the look on
+ * 2026-11-07; a change must be looked at by eye. Like SEED_7_AFTER_500 in
+ * test_sim.c, a failure means the picture changed: look at it first, and only
+ * then update the numbers, saying why in the commit. It also checks what is true
+ * of any look: every pixel of the view was drawn (none keeps the magenta fill),
+ * and the four zoom levels give four different pictures.
  */
 static void test_known_world_pixels(void)
 {
@@ -394,7 +394,18 @@ static void test_known_world_pixels(void)
         canvas_fill(&c, magenta);
         scene_draw_world(&sc, &c, &cam, &s, 0.5f, 1000, 1000, 0, 0);
         hashes[level] = hash_canvas(&c);
-        printf("level %d: 0x%llxu\n", level, (unsigned long long)hashes[level]);
+#ifndef _WIN32
+        /* Linux only: the water and grass use sinf (see test_lab.c). */
+        static const uint64_t EXPECTED[CAMERA_LEVELS] = {
+            0xbe5f57fb7c7bdabdu, 0x5a015897532bfe08u,
+            0x1977f80d4840eae9u, 0x8467a0fcd9991445u,
+        };
+        if (hashes[level] != EXPECTED[level]) {
+            printf("level %d: 0x%llxu\n", level,
+                   (unsigned long long)hashes[level]);
+        }
+        CHECK(hashes[level] == EXPECTED[level]);
+#endif
         int left = 0;
         for (int i = 0; i < VIEW_W * VIEW_H; i++) {
             left += c.px[i] == magenta;
