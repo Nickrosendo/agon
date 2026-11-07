@@ -1,7 +1,7 @@
 #include "tiles.h"
 
-#include <math.h>   /* fabsf, floorf */
-#include <stdlib.h> /* calloc, malloc, free */
+#include <math.h>   /* ceilf, fabsf, floorf */
+#include <stdlib.h> /* abs, calloc, malloc, free */
 #include <string.h> /* memset */
 
 #include "gfx_hash.h"
@@ -29,36 +29,6 @@ static void set_pixel(uint16_t rows[16], int size, int i, int j)
 {
     if (i >= 0 && i < size && j >= 0 && j < size) {
         rows[j] = (uint16_t)(rows[j] | (1u << (size - 1 - i)));
-    }
-}
-
-/* A stem and a round crown, both growing with density; density 0 is bare.
- * The variant leans the crown a pixel to one side, so a meadow is not a
- * grid of identical trees. */
-static void build_plant(uint16_t rows[16], int variant, int detail, int size)
-{
-    if (detail <= 0) {
-        return;
-    }
-    float d = (float)detail / 4.0f;
-    float lean = (float)(variant % 3 - 1) / (float)size;
-    float crown_x = 0.5f + lean;
-    float crown_y = 0.72f - 0.34f * d;
-    float crown_r = detail == 1 ? 0.0f : 0.10f + 0.20f * d;
-    float half_stem = 0.5f / (float)size + 0.001f;
-    for (int j = 0; j < size; j++) {
-        for (int i = 0; i < size; i++) {
-            float u = ((float)i + 0.5f) / (float)size;
-            float v = ((float)j + 0.5f) / (float)size;
-            float dx = u - crown_x, dy = v - crown_y;
-            int in_crown = dx * dx + dy * dy < crown_r * crown_r;
-            int in_stem = fabsf(u - 0.5f) < half_stem && v > crown_y && v < 0.92f;
-            int in_base = fabsf(v - 0.88f) < half_stem &&
-                          fabsf(u - 0.5f) < 0.06f + 0.14f * d;
-            if (in_crown || in_stem || in_base) {
-                set_pixel(rows, size, i, j);
-            }
-        }
     }
 }
 
@@ -120,14 +90,12 @@ static void build_rain(uint16_t rows[16], int variant, int size, int frame)
     }
 }
 
-void tiles_build(uint16_t rows[16], int kind, int variant, int detail, int size,
-                 int frame)
+void tiles_build(uint16_t rows[16], int kind, int variant, int size, int frame)
 {
     /* sizeof(rows) would be wrong here: an array parameter is really a
      * pointer, and sizeof would give the pointer's size. Hence 16 * .... */
     memset(rows, 0, 16 * sizeof(rows[0]));
     switch (kind) {
-    case TILE_PLANT: build_plant(rows, variant, detail, size); break;
     case TILE_SLASH: build_slash(rows, size, frame); break;
     case TILE_CRUMBS: build_crumbs(rows, size, frame); break;
     case TILE_RAIN: build_rain(rows, variant, size, frame); break;
@@ -194,6 +162,169 @@ void tiles_build_bones(uint8_t ink[TILE_MAX * TILE_MAX], int variant, int size)
         ink[(size - 1) * size + k] = 0;
         ink[k * size] = 0;
         ink[k * size + size - 1] = 0;
+    }
+}
+
+/* ---- Trees (v9:562) ---- */
+
+/* Scale of the crown by density 1..4, and its trunk's rows (plan's call). */
+static const float CROWN_SCALE[VEG_MAX] = {0.45f, 0.65f, 0.85f, 1.0f};
+static const int TRUNK_ROWS[VEG_MAX] = {2, 3, 4, 4};
+#define BIG_CROWN 1.35f
+#define BIG_TRUNK_ROWS 6
+
+/* Sets one pixel of a tree, if it is inside the picture. x and y are from the
+ * foot. Pixels on the picture's outer ring are left empty, so nothing that
+ * reached the edge is silently cut (the tests check the ring stays clear). */
+static void tree_put(TreePicture *t, int x, int y, int ink)
+{
+    int px = t->foot_x + x, py = t->foot_y + y;
+    if (px >= 1 && px < TREE_W - 1 && py >= 1 && py < TREE_H - 1) {
+        t->ink[py * TREE_W + px] = (uint8_t)ink;
+    }
+}
+
+static bool is_crown_ink(int ink)
+{
+    return ink == TREE_CROWN_LIGHT || ink == TREE_CROWN || ink == TREE_CROWN_DARK ||
+           ink == TREE_CROWN_FLECK || ink == TREE_FRUIT;
+}
+
+/* A straight line of one ink from (x0, y0) to (x1, y1), from the foot. */
+static void tree_line(TreePicture *t, int x0, int y0, int x1, int y1, int ink)
+{
+    int dx = x1 - x0, dy = y1 - y0;
+    int steps = abs(dx) > abs(dy) ? abs(dx) : abs(dy);
+    for (int k = 0; k <= steps; k++) {
+        /* lroundf would do; the + 0.5 and floor keep it to what tiles.c uses. */
+        float f = steps == 0 ? 0.0f : (float)k / (float)steps;
+        int x = (int)floorf((float)x0 + (float)dx * f + 0.5f);
+        int y = (int)floorf((float)y0 + (float)dy * f + 0.5f);
+        tree_put(t, x, y, ink);
+    }
+}
+
+/* The crown: the pixels (x, y) with dx^2 + dy^2 * 1.15 <= 30 + hash * 8, where
+ * (dx, dy) is the pixel from the crown's middle in 16-pixel units at the
+ * crown's scale, and the top half's dx is moved by the sway. Lit from the top
+ * left. Seeds 11 and 12 are v9's, moved along by the variant. */
+static void tree_crown(TreePicture *t, float scale, int centre_y, int sway,
+                       int variant)
+{
+    int reach = (int)ceilf(6.2f * scale) + 1;
+    for (int y = centre_y - reach; y <= centre_y + reach; y++) {
+        for (int x = -reach - 1; x <= reach + 1; x++) {
+            /* Only the rows above the middle lean. */
+            int lean = y < centre_y ? sway : 0;
+            float dx = (float)(x - lean) / scale;
+            float dy = (float)(y - centre_y) / scale;
+            float limit = 30.0f + gfx_hash(x, y, 11 + 16 * variant) * 8.0f;
+            if (dx * dx + dy * dy * 1.15f > limit) {
+                continue;
+            }
+            float light = (-dx * 0.6f - dy * 0.8f) / 5.5f;
+            int ink = light > 0.35f ? TREE_CROWN_LIGHT
+                    : (light < -0.3f ? TREE_CROWN_DARK : TREE_CROWN);
+            if (gfx_hash(x, y, 12 + 16 * variant) > 0.85f) {
+                ink = TREE_CROWN_FLECK;
+            }
+            tree_put(t, x, y, ink);
+        }
+    }
+}
+
+/*
+ * 3 to 5 crown pixels become fruit: those with the highest hash of their place
+ * in the crown before the sway, so a fruit leans with the crown it hangs in.
+ * How many is a hash of the tree, the same at every sway.
+ */
+static void tree_fruit(TreePicture *t, int centre_y, int sway, int density,
+                       bool big, int variant, int size)
+{
+    int want = 3 + (int)(gfx_hash(variant, density + (big ? 8 : 0), 13 + size) * 3.0f);
+    for (int n = 0; n < want; n++) {
+        int best = -1;
+        float best_hash = -1.0f;
+        for (int i = 0; i < TREE_W * TREE_H; i++) {
+            if (!is_crown_ink(t->ink[i]) || t->ink[i] == TREE_FRUIT) {
+                continue;
+            }
+            int x = i % TREE_W - t->foot_x, y = i / TREE_W - t->foot_y;
+            if (y >= 0) {
+                continue; /* the foot row is trunk again at the end */
+            }
+            int lean = y < centre_y ? sway : 0;
+            float h = gfx_hash(x - lean, y, 14 + 16 * variant);
+            if (h > best_hash) {
+                best_hash = h;
+                best = i;
+            }
+        }
+        if (best < 0) {
+            return; /* a crown smaller than its fruit: every pixel is fruit */
+        }
+        t->ink[best] = TREE_FRUIT;
+    }
+}
+
+/* A bare tree's four branches: up and out from the trunk's top to where the
+ * crown would be, each end moved a little by a hash of the variant. */
+static void tree_branches(TreePicture *t, float scale, int trunk_top, int centre_y,
+                          int variant)
+{
+    static const float END_X[4] = {-0.8f, 0.85f, -0.35f, 0.4f};
+    static const float END_Y[4] = {-0.25f, -0.1f, -0.9f, -0.8f};
+    float r = 5.5f * scale;
+    /* The trunk goes on up the middle, as a branch. */
+    tree_line(t, 0, trunk_top, 0, centre_y - (int)(r * 0.5f), TREE_BRANCH);
+    for (int k = 0; k < 4; k++) {
+        float wobble = (gfx_hash(variant, k, 15) - 0.5f) * 0.3f;
+        int ex = (int)floorf((END_X[k] + wobble) * r + 0.5f);
+        int ey = centre_y + (int)floorf((END_Y[k] - wobble) * r + 0.5f);
+        int from = k < 2 ? trunk_top : (trunk_top + centre_y) / 2;
+        tree_line(t, 0, from, ex, ey, TREE_BRANCH);
+    }
+}
+
+void tiles_build_tree(TreePicture *out, int density, bool big, bool bare,
+                      int variant, int sway, int size)
+{
+    memset(out->ink, TREE_NONE, sizeof(out->ink)); /* a real array: its full size */
+    density = density < 1 ? 1 : (density > VEG_MAX ? VEG_MAX : density);
+    /* The 8-pixel tree is the 16-pixel one at half the size. */
+    float half = size >= 16 ? 1.0f : 0.5f;
+    float scale = CROWN_SCALE[density - 1] * (big ? BIG_CROWN : 1.0f) * half;
+    int rows = big ? BIG_TRUNK_ROWS : TRUNK_ROWS[density - 1];
+    rows = size >= 16 ? rows : (rows + 1) / 2;
+    /* The foot near the bottom middle, with room for the shadow's reach and
+     * the crown's lean either side. */
+    out->foot_x = TREE_W / 2 - 1;
+    out->foot_y = TREE_H - 4;
+    out->shadow_rx = (int)floorf(6.0f * (big ? BIG_CROWN : 1.0f) *
+                                 (0.5f + 0.5f * CROWN_SCALE[density - 1]) * half + 0.5f);
+    out->shadow_ry = size >= 16 ? 2 : 1;
+    /* The trunk: two columns, lit on the left; one column at the small size. */
+    for (int y = -(rows - 1); y <= 0; y++) {
+        tree_put(out, 0, y, TREE_TRUNK_LIGHT);
+        if (size >= 16) {
+            tree_put(out, 1, y, TREE_TRUNK_DARK);
+        }
+    }
+    /* The crown's middle sits on the trunk as v9's does: 4 rows of trunk, the
+     * middle 8 above the foot. */
+    int centre_y = -(rows - 1) - (int)floorf(5.0f * scale + 0.5f);
+    int trunk_top = -(rows - 1);
+    if (bare) {
+        tree_branches(out, scale, trunk_top, centre_y, variant);
+    } else {
+        tree_crown(out, scale, centre_y, sway, variant);
+        tree_fruit(out, centre_y, sway, density, big, variant, size);
+    }
+    /* The foot row of the trunk always shows, however low a small crown
+     * hangs: a tree stands on something. */
+    tree_put(out, 0, 0, TREE_TRUNK_LIGHT);
+    if (size >= 16) {
+        tree_put(out, 1, 0, TREE_TRUNK_DARK);
     }
 }
 
@@ -553,9 +684,17 @@ const TileEntry *tiles_cache_get(TileCache *c, uint32_t key, int size)
     tiles_build_auto(t->code, key, size);
     t->has_foam = false;
     t->has_wet = false;
+    t->foams = 0;
     for (int i = 0; i < size * size; i++) {
-        t->has_foam |= (t->code[i] & TILE_FOAM) != 0;
-        t->has_wet |= class_is_wet(tiles_key_class(key, (int)TILE_SOURCE(t->code[i])));
+        uint16_t code = t->code[i];
+        t->has_foam |= (code & TILE_FOAM) != 0;
+        t->has_wet |= class_is_wet(tiles_key_class(key, (int)TILE_SOURCE(code)));
+        /* Under a bank the bank's colour wins (v9:541); in the shadow below
+         * it the foam shows, darkened. */
+        unsigned edge = TILE_EDGE(code);
+        if ((code & TILE_FOAM) != 0 && (edge == EDGE_NONE || edge == EDGE_SHADOW)) {
+            t->foam[t->foams++] = (uint8_t)i;
+        }
     }
     find_looks(t, key);
     c->next[e] = c->head[b];

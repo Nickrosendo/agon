@@ -20,8 +20,8 @@ static void test_same_inputs_same_mask(void)
 {
     for (int kind = 0; kind < TILE_KINDS; kind++) {
         uint16_t a[16], b[16];
-        tiles_build(a, kind, 2, 1, 16, 1);
-        tiles_build(b, kind, 2, 1, 16, 1);
+        tiles_build(a, kind, 2, 16, 1);
+        tiles_build(b, kind, 2, 16, 1);
         CHECK(memcmp(a, b, sizeof(a)) == 0); /* real arrays: sizeof is 32 */
         CHECK(mask_bits(a) > 0);
     }
@@ -46,30 +46,11 @@ static void test_variant_is_stable_and_spread(void)
     }
 }
 
-static void test_plant_grows_with_density(void)
-{
-    for (int size = 8; size <= 16; size += 8) {
-        for (int v = 0; v < TILE_VARIANTS; v++) {
-            int before = -1;
-            for (int d = 0; d <= VEG_MAX; d++) {
-                uint16_t m[16];
-                tiles_build(m, TILE_PLANT, v, d, size, 0);
-                int n = mask_bits(m);
-                CHECK(n > before);
-                if (d == 0) {
-                    CHECK(n == 0);
-                }
-                before = n;
-            }
-        }
-    }
-}
-
 static void test_rain_frames_differ(void)
 {
     uint16_t a[16], b[16];
-    tiles_build(a, TILE_RAIN, 0, 0, 16, 0);
-    tiles_build(b, TILE_RAIN, 0, 0, 16, 1);
+    tiles_build(a, TILE_RAIN, 0, 16, 0);
+    tiles_build(b, TILE_RAIN, 0, 16, 1);
     CHECK(memcmp(a, b, sizeof(a)) != 0);
 }
 
@@ -80,8 +61,8 @@ static void test_marks_change_over_their_frames(void)
         for (int size = 8; size <= 16; size += 8) {
             for (int f = 0; f < TILE_MARK_FRAMES; f++) {
                 uint16_t a[16], b[16];
-                tiles_build(a, kinds[k], 0, 0, size, f);
-                tiles_build(b, kinds[k], 0, 0, size,
+                tiles_build(a, kinds[k], 0, size, f);
+                tiles_build(b, kinds[k], 0, size,
                             (f + 1) % TILE_MARK_FRAMES);
                 CHECK(mask_bits(a) > 0);
                 CHECK(memcmp(a, b, sizeof(a)) != 0);
@@ -94,14 +75,205 @@ static void test_size_8_stays_in_tile(void)
 {
     for (int kind = 0; kind < TILE_KINDS; kind++) {
         for (int v = 0; v < TILE_VARIANTS; v++) {
-            for (int d = 0; d <= VEG_MAX; d++) {
-                for (int f = 0; f < TILE_RAIN_FRAMES; f++) {
-                    uint16_t m[16];
-                    tiles_build(m, kind, v, d, 8, f);
-                    for (int j = 0; j < 16; j++) {
-                        CHECK(m[j] < 256);
-                        if (j >= 8) {
-                            CHECK(m[j] == 0);
+            for (int f = 0; f < TILE_RAIN_FRAMES; f++) {
+                uint16_t m[16];
+                tiles_build(m, kind, v, 8, f);
+                for (int j = 0; j < 16; j++) {
+                    CHECK(m[j] < 256);
+                    if (j >= 8) {
+                        CHECK(m[j] == 0);
+                    }
+                }
+            }
+        }
+    }
+}
+
+/* ---- Trees ---- */
+
+static bool crown_ink(int ink)
+{
+    return ink == TREE_CROWN_LIGHT || ink == TREE_CROWN || ink == TREE_CROWN_DARK ||
+           ink == TREE_CROWN_FLECK || ink == TREE_FRUIT;
+}
+
+/* How many pixels of a tree are crown (fruit included), and of one ink. */
+static int crown_pixels(const TreePicture *t)
+{
+    int n = 0;
+    for (int i = 0; i < TREE_W * TREE_H; i++) {
+        n += crown_ink(t->ink[i]);
+    }
+    return n;
+}
+
+static int ink_pixels(const TreePicture *t, int ink)
+{
+    int n = 0;
+    for (int i = 0; i < TREE_W * TREE_H; i++) {
+        n += t->ink[i] == ink;
+    }
+    return n;
+}
+
+/* The rows a tree's crown takes, top and bottom; false when it has none. */
+static bool crown_rows(const TreePicture *t, int *top, int *bottom)
+{
+    *top = TREE_H;
+    *bottom = -1;
+    for (int i = 0; i < TREE_W * TREE_H; i++) {
+        if (crown_ink(t->ink[i])) {
+            int y = i / TREE_W;
+            *top = y < *top ? y : *top;
+            *bottom = y > *bottom ? y : *bottom;
+        }
+    }
+    return *bottom >= 0;
+}
+
+static void test_tree_grows_with_density(void)
+{
+    for (int size = 8; size <= 16; size += 8) {
+        for (int v = 0; v < TILE_VARIANTS; v++) {
+            int before = 0;
+            for (int d = 1; d <= VEG_MAX; d++) {
+                TreePicture t;
+                tiles_build_tree(&t, d, false, false, v, 0, size);
+                int n = crown_pixels(&t);
+                CHECK(n > before);
+                before = n;
+            }
+        }
+    }
+}
+
+static void test_big_leaf_tree_drawn_larger(void)
+{
+    for (int size = 8; size <= 16; size += 8) {
+        for (int v = 0; v < TILE_VARIANTS; v++) {
+            for (int d = 1; d <= VEG_MAX; d++) {
+                TreePicture small, big;
+                tiles_build_tree(&small, d, false, false, v, 0, size);
+                tiles_build_tree(&big, d, true, false, v, 0, size);
+                CHECK(crown_pixels(&big) > crown_pixels(&small));
+                int trunk_small = ink_pixels(&small, TREE_TRUNK_LIGHT);
+                int trunk_big = ink_pixels(&big, TREE_TRUNK_LIGHT);
+                /* The trunk is partly hidden by the crown; the big one is
+                 * taller all the same. */
+                int top_small, bottom_small, top_big, bottom_big;
+                CHECK(crown_rows(&small, &top_small, &bottom_small));
+                CHECK(crown_rows(&big, &top_big, &bottom_big));
+                CHECK(top_big < top_small);
+                CHECK(trunk_big >= trunk_small);
+                CHECK(big.shadow_rx >= small.shadow_rx);
+            }
+        }
+    }
+}
+
+static void test_every_crown_has_fruit_pixels(void)
+{
+    for (int size = 8; size <= 16; size += 8) {
+        for (int v = 0; v < TILE_VARIANTS; v++) {
+            for (int d = 1; d <= VEG_MAX; d++) {
+                for (int big = 0; big <= 1; big++) {
+                    for (int sway = -1; sway <= 1; sway++) {
+                        TreePicture t;
+                        tiles_build_tree(&t, d, big == 1, false, v, sway, size);
+                        int fruit = ink_pixels(&t, TREE_FRUIT);
+                        CHECK(fruit >= 3 && fruit <= 5);
+                    }
+                }
+            }
+        }
+    }
+}
+
+static void test_bare_tree_has_no_crown(void)
+{
+    for (int size = 8; size <= 16; size += 8) {
+        for (int v = 0; v < TILE_VARIANTS; v++) {
+            for (int d = 1; d <= VEG_MAX; d++) {
+                for (int big = 0; big <= 1; big++) {
+                    TreePicture t;
+                    tiles_build_tree(&t, d, big == 1, true, v, 1, size);
+                    CHECK(crown_pixels(&t) == 0);
+                    CHECK(ink_pixels(&t, TREE_BRANCH) > 0);
+                    CHECK(ink_pixels(&t, TREE_TRUNK_LIGHT) > 0);
+                }
+            }
+        }
+    }
+}
+
+/* Leaning left and right, the crown's lower half and the trunk stay put. */
+static void test_sway_moves_only_the_crown_top(void)
+{
+    for (int size = 8; size <= 16; size += 8) {
+        for (int v = 0; v < TILE_VARIANTS; v++) {
+            for (int d = 1; d <= VEG_MAX; d++) {
+                for (int big = 0; big <= 1; big++) {
+                    TreePicture left, still, right;
+                    tiles_build_tree(&left, d, big == 1, false, v, -1, size);
+                    tiles_build_tree(&still, d, big == 1, false, v, 0, size);
+                    tiles_build_tree(&right, d, big == 1, false, v, 1, size);
+                    int top, bottom;
+                    CHECK(crown_rows(&still, &top, &bottom));
+                    int middle = (top + bottom) / 2;
+                    bool below_same = true, above_differs = false;
+                    for (int i = 0; i < TREE_W * TREE_H; i++) {
+                        /* The fruit picks its pixels anew in each picture, so
+                         * a fruit pixel counts as crown here. */
+                        int a = crown_ink(left.ink[i]) ? TREE_CROWN : left.ink[i];
+                        int b = crown_ink(right.ink[i]) ? TREE_CROWN : right.ink[i];
+                        if (i / TREE_W > middle) {
+                            below_same &= a == b;
+                        } else {
+                            above_differs |= a != b;
+                        }
+                    }
+                    CHECK(below_same);
+                    CHECK(above_differs);
+                }
+            }
+        }
+    }
+}
+
+/* Every pixel a known ink, nothing on the picture's outer ring (so nothing was
+ * cut), the foot on the trunk and a shadow under it. */
+static void test_tree_inside_its_picture(void)
+{
+    for (int size = 8; size <= 16; size += 8) {
+        for (int v = 0; v < TILE_VARIANTS; v++) {
+            for (int d = 1; d <= VEG_MAX; d++) {
+                for (int big = 0; big <= 1; big++) {
+                    for (int bare = 0; bare <= 1; bare++) {
+                        for (int sway = -1; sway <= 1; sway++) {
+                            TreePicture t;
+                            memset(&t, 0xAB, sizeof(t));
+                            tiles_build_tree(&t, d, big == 1, bare == 1, v, sway, size);
+                            bool valid = true, ring_clear = true;
+                            for (int i = 0; i < TREE_W * TREE_H; i++) {
+                                int x = i % TREE_W, y = i / TREE_W;
+                                valid &= t.ink[i] < TREE_INKS;
+                                bool ring = x == 0 || y == 0 || x == TREE_W - 1 ||
+                                            y == TREE_H - 1;
+                                ring_clear &= !ring || t.ink[i] == TREE_NONE;
+                            }
+                            CHECK(valid);
+                            CHECK(ring_clear);
+                            CHECK(t.foot_x > 0 && t.foot_x < TREE_W - 1);
+                            CHECK(t.foot_y > 0 && t.foot_y < TREE_H - 1);
+                            CHECK(t.ink[t.foot_y * TREE_W + t.foot_x] ==
+                                  TREE_TRUNK_LIGHT);
+                            CHECK(t.shadow_rx > 0 && t.shadow_ry > 0);
+                            /* Nothing below the foot: the tree stands on it. */
+                            for (int y = t.foot_y + 1; y < TREE_H; y++) {
+                                for (int x = 0; x < TREE_W; x++) {
+                                    CHECK(t.ink[y * TREE_W + x] == TREE_NONE);
+                                }
+                            }
                         }
                     }
                 }
@@ -537,6 +709,18 @@ static void test_cache_looks_match_codes(void)
                     }
                 }
                 CHECK(ok);
+                /* The foam list: every foam pixel not under a bank, in order. */
+                int foams = 0;
+                bool foam_ok = true;
+                for (int i = 0; i < size * size; i++) {
+                    unsigned edge = TILE_EDGE(t->code[i]);
+                    if ((t->code[i] & TILE_FOAM) != 0 &&
+                        (edge == EDGE_NONE || edge == EDGE_SHADOW)) {
+                        foam_ok &= foams < t->foams && t->foam[foams] == i;
+                        foams++;
+                    }
+                }
+                CHECK(foam_ok && foams == t->foams);
             }
         }
     }
@@ -580,10 +764,15 @@ int main(void)
 {
     test_same_inputs_same_mask();
     test_variant_is_stable_and_spread();
-    test_plant_grows_with_density();
     test_rain_frames_differ();
     test_marks_change_over_their_frames();
     test_size_8_stays_in_tile();
+    test_tree_grows_with_density();
+    test_big_leaf_tree_drawn_larger();
+    test_every_crown_has_fruit_pixels();
+    test_bare_tree_has_no_crown();
+    test_sway_moves_only_the_crown_top();
+    test_tree_inside_its_picture();
     test_same_key_same_tile();
     test_tiles_assemble_like_one_picture();
     test_one_cell_lake_and_island();

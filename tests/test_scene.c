@@ -7,12 +7,14 @@
 #include "app.h"
 #include "brain_script.h"
 #include "climate.h"
+#include "flora.h"
 #include "family.h"
 #include "inspect.h"
 #include "palette.h"
 #include "scene.h"
 #include "settings.h"
 #include "sim.h"
+#include "years.h"
 
 #define VIEW_W 320
 #define VIEW_H 180
@@ -433,7 +435,7 @@ static void test_ground_layer_refreshes_when_it_should(void)
     uint64_t water0 = hash_canvas(&c);
     CHECK(water0 != first);
     /* The next picture of the water. */
-    scene_draw_world(&sc, &c, &cam, &s, 0.0f, 250, 0, 0, 0);
+    scene_draw_world(&sc, &c, &cam, &s, 0.0f, SCENE_DRIFT_MS, 0, 0, 0);
     CHECK(hash_canvas(&c) != water0);
     /* Moving or zooming the camera. */
     scene_draw_world(&sc, &c, &cam, &s, 0.0f, 0, 0, 0, 0);
@@ -488,8 +490,8 @@ static void test_water_only_redraw_matches_whole(void)
         scene_update(&partly, &s, 10);
         scene_update(&whole_scene, &s, 10);
         scene_draw_world(&partly, &a, &cam, &s, 0.5f, 0, 1000, 0, 0);
-        scene_draw_world(&partly, &a, &cam, &s, 0.5f, 250, 1000, 0, 0);
-        scene_draw_world(&whole_scene, &b, &cam, &s, 0.5f, 250, 1000, 0, 0);
+        scene_draw_world(&partly, &a, &cam, &s, 0.5f, SCENE_DRIFT_MS, 1000, 0, 0);
+        scene_draw_world(&whole_scene, &b, &cam, &s, 0.5f, SCENE_DRIFT_MS, 1000, 0, 0);
         CHECK(hash_canvas(&a) == hash_canvas(&b));
         scene_free(&partly);
         scene_free(&whole_scene);
@@ -742,7 +744,10 @@ static uint64_t soil_picture(Scene *sc, Sim *s, Canvas *c, Camera *cam, int leve
         s->world.rain[i] = rain;
     }
     cam->level = level;
-    s->tick++; /* the ground layer is redrawn only on a new tick */
+    s->tick++;
+    /* The soil's colours follow the world within a second of window time; a
+     * reset draws the ground afresh at once. */
+    scene_reset(sc);
     scene_draw_world(sc, c, cam, s, 0.0f, 0, 0, 0, 0);
     return hash_canvas(c);
 }
@@ -786,7 +791,8 @@ static void snow_picture(Scene *sc, Sim *s, Canvas *c, Camera *cam, int terrain,
         s->world.snow[i] = snow;
     }
     cam->level = CAMERA_NORMAL;
-    s->tick++; /* the ground layer is redrawn only on a new tick */
+    s->tick++;
+    scene_reset(sc); /* the soil's colours at once, not within a second */
     scene_draw_world(sc, c, cam, s, 0.0f, 0, 0, 0, 0);
 }
 
@@ -854,7 +860,8 @@ static uint64_t region_picture(Scene *sc, Sim *s, Canvas *c, Camera *cam,
         s->world.temperature[i] = temperature;
     }
     cam->level = level;
-    s->tick++; /* the ground layer is redrawn only on a new tick */
+    s->tick++;
+    scene_reset(sc); /* the soil's colours at once, not within a second */
     scene_update(sc, s, 10);
     scene_draw_world(sc, c, cam, s, 0.0f, 0, 0, 0, 0);
     const Creature *cr = &s->pool.items[creature];
@@ -914,8 +921,8 @@ static void test_region_tint(void)
 static void test_rain_falls_from_frame_to_frame(void)
 {
     uint16_t a[16], b[16];
-    tiles_build(a, TILE_RAIN, 0, 0, 16, 0);
-    tiles_build(b, TILE_RAIN, 0, 0, 16, 1);
+    tiles_build(a, TILE_RAIN, 0, 16, 0);
+    tiles_build(b, TILE_RAIN, 0, 16, 1);
     CHECK(memcmp(a, b, sizeof(a)) != 0);
     int pixels = 0;
     for (int j = 0; j < 16; j++) {
@@ -1193,6 +1200,322 @@ static void test_names_beside_giants(void)
     sim_free(&s);
 }
 
+/* ---- Trees, overlays and drawing back to front ---- */
+
+/* A world of bare soil with one plant of this density at (32, 32), at this
+ * tick, and a camera at Normal zoom centred on it. */
+static void plant_world(Sim *s, Camera *cam, Plant plant, int density,
+                        uint64_t tick)
+{
+    make_empty_sim(s, 64, 64);
+    int i = world_idx(&s->world, 32, 32);
+    s->world.veg[i] = (uint8_t)density;
+    s->world.plant[i] = plant;
+    s->world.veg_wither[i] = 0;
+    s->tick = tick;
+    camera_init(cam, 64, 64, VIEW_W, VIEW_H);
+    camera_centre_on(cam, 32.5f, 32.5f);
+}
+
+/* One frame of the world, drawn by a scene of its own. */
+static void draw_fresh(Sim *s, Canvas *c, const Camera *cam, uint64_t water_ms)
+{
+    Scene sc;
+    CHECK(scene_init(&sc, s));
+    scene_update(&sc, s, 10);
+    scene_draw_world(&sc, c, cam, s, 0.0f, water_ms, 0, 0, 0);
+    scene_free(&sc);
+}
+
+static uint32_t pixel_of(Colour c)
+{
+    return canvas_rgb(c.r, c.g, c.b);
+}
+
+/* How many pixels of the canvas, inside the box (right and bottom excluded),
+ * are one of these n colours. */
+static int count_colours(const Canvas *c, const uint32_t *colours, int n, int left,
+                         int top, int right, int bottom)
+{
+    int count = 0;
+    for (int y = top < 0 ? 0 : top; y < bottom && y < c->h; y++) {
+        for (int x = left < 0 ? 0 : left; x < right && x < c->w; x++) {
+            for (int k = 0; k < n; k++) {
+                if (c->px[y * c->w + x] == colours[k]) {
+                    count++;
+                    break;
+                }
+            }
+        }
+    }
+    return count;
+}
+
+/* The four colours of a healthy crown, as the brief gives them. */
+static void crown_colours(const Plant *p, uint32_t out[4])
+{
+    Colour base = palette_plant(p);
+    out[0] = pixel_of(ramp_shade(base, 0.22f));
+    out[1] = pixel_of(base);
+    out[2] = pixel_of(ramp_shade(base, -0.4f));
+    out[3] = pixel_of(ramp_shade(base, -0.25f));
+}
+
+static void test_bare_in_autumn(void)
+{
+    Settings set = settings_default();
+    int year = set.ticks_per_year;
+    uint64_t summer = (uint64_t)(3 * year + year * 3 / 8);
+    uint64_t autumn = (uint64_t)(3 * year + year * 5 / 8);
+    uint64_t winter = (uint64_t)(3 * year + year * 7 / 8);
+    CHECK(years_season_of(summer, year) == SEASON_SUMMER);
+    CHECK(years_season_of(autumn, year) == SEASON_AUTUMN);
+    CHECK(years_season_of(winter, year) == SEASON_WINTER);
+    Canvas c;
+    CHECK(canvas_init(&c, VIEW_W, VIEW_H));
+    Camera cam;
+    Sim s;
+    Plant leaf = {.energy = 5.0f, .fruit_share = 0.0f, .water_need = 0.5f};
+    uint32_t crown[4];
+    crown_colours(&leaf, crown);
+    plant_world(&s, &cam, leaf, VEG_MAX, summer);
+    draw_fresh(&s, &c, &cam, 0);
+    CHECK(count_colours(&c, crown, 4, 0, 0, VIEW_W, VIEW_H) > 0);
+    sim_free(&s);
+    plant_world(&s, &cam, leaf, VEG_MAX, autumn);
+    draw_fresh(&s, &c, &cam, 0);
+    CHECK(count_colours(&c, crown, 4, 0, 0, VIEW_W, VIEW_H) == 0);
+    sim_free(&s);
+    /* A fruit tree keeps its crown in winter, and shows its fruit. */
+    uint32_t fruit = pixel_of(PALETTE_FRUIT);
+    Plant laden = {.energy = 5.0f, .fruit_share = 1.0f, .fruit = 2.0f,
+                   .water_need = 0.5f};
+    plant_world(&s, &cam, laden, VEG_MAX, winter);
+    draw_fresh(&s, &c, &cam, 0);
+    CHECK(count_colours(&c, &fruit, 1, 0, 0, VIEW_W, VIEW_H) > 0);
+    crown_colours(&laden, crown);
+    CHECK(count_colours(&c, crown, 4, 0, 0, VIEW_W, VIEW_H) > 0);
+    sim_free(&s);
+    Plant picked = laden;
+    picked.fruit = 0.0f;
+    plant_world(&s, &cam, picked, VEG_MAX, winter);
+    draw_fresh(&s, &c, &cam, 0);
+    CHECK(count_colours(&c, &fruit, 1, 0, 0, VIEW_W, VIEW_H) == 0);
+    sim_free(&s);
+    canvas_free(&c);
+}
+
+static void test_withering_tree_turns_straw(void)
+{
+    Canvas c;
+    CHECK(canvas_init(&c, VIEW_W, VIEW_H));
+    Camera cam;
+    Sim s;
+    Plant leaf = {.energy = 5.0f, .fruit_share = 0.0f, .water_need = 0.5f};
+    plant_world(&s, &cam, leaf, VEG_MAX, 200);
+    int wither = s.set.veg_wither_ticks / 2;
+    s.world.veg_wither[world_idx(&s.world, 32, 32)] = (uint8_t)wither;
+    draw_fresh(&s, &c, &cam, 0);
+    uint32_t healthy[4];
+    crown_colours(&leaf, healthy);
+    CHECK(count_colours(&c, healthy, 4, 0, 0, VIEW_W, VIEW_H) == 0);
+    float t = (float)palette_wither_shade(wither, s.set.veg_wither_ticks) /
+              (float)PALETTE_WITHER_SHADES;
+    uint32_t straw = pixel_of(palette_mix(palette_plant(&leaf), PALETTE_WITHERED, t));
+    CHECK(count_colours(&c, &straw, 1, 0, 0, VIEW_W, VIEW_H) > 0);
+    sim_free(&s);
+    canvas_free(&c);
+}
+
+/* A big leaf tree at (32, 32) in summer. A body one row below, large enough
+ * to reach up over the tree's cell, covers the trunk; a body one row above is
+ * covered by the crown. */
+static void test_trees_sort_with_bodies(void)
+{
+    Canvas c;
+    CHECK(canvas_init(&c, VIEW_W, VIEW_H));
+    Camera cam;
+    Sim s;
+    Plant leaf = {.energy = 5.0f, .fruit_share = 0.0f, .water_need = 0.5f};
+    const uint32_t trunk[2] = {canvas_rgb(96, 62, 34), canvas_rgb(70, 44, 24)};
+    /* Below: trunk pixels with and without the body. */
+    plant_world(&s, &cam, leaf, VEG_MAX, 2000);
+    s.world.plant[world_idx(&s.world, 32, 32)].size = s.set.tree_shade_size;
+    CHECK(plant_gives_shade(&s.world.plant[world_idx(&s.world, 32, 32)], &s.set));
+    int below = place_body(&s, 32, 33, 2.5f);
+    CHECK(sprite_tiles_for(creature_size(&s.pool.items[below], &s.set)) == 2);
+    s.tick = 2000; /* summer, and past the body's age */
+    s.pool.items[below].alive = false;
+    draw_fresh(&s, &c, &cam, 0);
+    int bare_trunk = count_colours(&c, trunk, 2, 0, 0, VIEW_W, VIEW_H);
+    s.pool.items[below].alive = true;
+    draw_fresh(&s, &c, &cam, 0);
+    int covered_trunk = count_colours(&c, trunk, 2, 0, 0, VIEW_W, VIEW_H);
+    CHECK(bare_trunk > 0);
+    CHECK(covered_trunk < bare_trunk);
+    sim_free(&s);
+    /* Above: the crown reaches into the body's cell, over it. */
+    plant_world(&s, &cam, leaf, VEG_MAX, 2000);
+    s.world.plant[world_idx(&s.world, 32, 32)].size = s.set.tree_shade_size;
+    int above = place_body(&s, 32, 31, 0.0f);
+    CHECK(above >= 0);
+    s.tick = 2000;
+    draw_fresh(&s, &c, &cam, 0);
+    int sx, sy;
+    camera_to_screen(&cam, 32.0f, 31.0f, &sx, &sy);
+    int ppc = camera_ppc(&cam);
+    uint32_t crown[4];
+    crown_colours(&leaf, crown);
+    CHECK(count_colours(&c, crown, 4, sx, sy, sx + ppc, sy + ppc) > 0);
+    sim_free(&s);
+    canvas_free(&c);
+}
+
+/* Paused: the body clock stops, the ambient clock does not. Two of its steps
+ * apart, the water has moved and the creature has not. */
+static void test_paused_ground_still_moves(void)
+{
+    Sim s;
+    make_empty_sim(&s, 64, 64);
+    for (int y = 0; y < 64; y++) {
+        for (int x = 0; x < 30; x++) {
+            s.world.terrain[y * 64 + x] = TERRAIN_WATER;
+        }
+    }
+    int slot = place_body(&s, 40, 32, 0.0f);
+    CHECK(slot >= 0);
+    Camera cam;
+    camera_init(&cam, 64, 64, VIEW_W, VIEW_H);
+    camera_centre_on(&cam, 32.5f, 32.5f);
+    Scene sc;
+    CHECK(scene_init(&sc, &s));
+    scene_update(&sc, &s, 10);
+    Canvas a, b;
+    CHECK(canvas_init(&a, VIEW_W, VIEW_H));
+    CHECK(canvas_init(&b, VIEW_W, VIEW_H));
+    uint64_t t0 = 1000, t1 = 1000 + 2 * SCENE_AMBIENT_MS;
+    CHECK(scene_ambient_frame(t0) != scene_ambient_frame(t1));
+    scene_draw_world(&sc, &a, &cam, &s, 0.0f, t0, 500, 0, 0);
+    scene_draw_world(&sc, &b, &cam, &s, 0.0f, t1, 500, 0, 0);
+    int sx, sy;
+    camera_to_screen(&cam, 40.0f, 32.0f, &sx, &sy);
+    int wx, wy;
+    camera_to_screen(&cam, 30.0f, 0.0f, &wx, &wy);
+    int ppc = camera_ppc(&cam);
+    int water_moved = 0, body_moved = 0;
+    for (int y = 0; y < VIEW_H; y++) {
+        for (int x = 0; x < VIEW_W; x++) {
+            bool differs = a.px[y * VIEW_W + x] != b.px[y * VIEW_W + x];
+            water_moved += differs && x < wx - ppc;
+            body_moved += differs && x >= sx && x < sx + ppc && y >= sy && y < sy + ppc;
+        }
+    }
+    CHECK(water_moved > 0);
+    CHECK(body_moved == 0);
+    canvas_free(&a);
+    canvas_free(&b);
+    scene_free(&sc);
+    sim_free(&s);
+}
+
+/* How many pixels of a world of soil at this fertility the overlays drew: the
+ * frame against the ground layer under it. Nothing else is in this world. */
+static int tuft_pixels(float fertility)
+{
+    Sim s;
+    make_empty_sim(&s, 64, 64);
+    for (int i = 0; i < 64 * 64; i++) {
+        s.world.fertility[i] = fertility;
+        s.world.rain[i] = 0.0f; /* rain is an overlay too */
+    }
+    Camera cam;
+    camera_init(&cam, 64, 64, VIEW_W, VIEW_H);
+    Scene sc;
+    CHECK(scene_init(&sc, &s));
+    scene_update(&sc, &s, 10);
+    Canvas c;
+    CHECK(canvas_init(&c, VIEW_W, VIEW_H));
+    scene_draw_world(&sc, &c, &cam, &s, 0.0f, 0, 0, 0, 0);
+    int n = 0;
+    CHECK(sc.ground.w == VIEW_W && sc.ground.h == VIEW_H);
+    for (int i = 0; i < VIEW_W * VIEW_H && sc.ground.w == VIEW_W; i++) {
+        n += c.px[i] != sc.ground.px[i];
+    }
+    canvas_free(&c);
+    scene_free(&sc);
+    sim_free(&s);
+    return n;
+}
+
+static void test_more_tufts_on_fertile_soil(void)
+{
+    int none = tuft_pixels(0.0f);
+    int some = tuft_pixels(0.5f);
+    int many = tuft_pixels(1.0f);
+    CHECK(none == 0);
+    CHECK(some > 0);
+    CHECK(many > some);
+}
+
+/* A tick no longer redraws the whole ground: carrion shows at once, the soil's
+ * colours within a second of window time, and what is drawn then is what a
+ * fresh scene draws. */
+static void test_ground_follows_within_a_second(void)
+{
+    Settings set = settings_default();
+    Sim s;
+    CHECK(sim_init(&s, &set, 3, 64, 32));
+    for (int t = 0; t < 50; t++) {
+        sim_step(&s);
+    }
+    Camera cam;
+    camera_init(&cam, 64, 32, VIEW_W, VIEW_H);
+    Canvas a, b;
+    CHECK(canvas_init(&a, VIEW_W, VIEW_H));
+    CHECK(canvas_init(&b, VIEW_W, VIEW_H));
+    for (int level = 0; level < CAMERA_WORLD; level++) {
+        cam.level = level;
+        Scene sc;
+        CHECK(scene_init(&sc, &s));
+        scene_update(&sc, &s, 10);
+        scene_draw_world(&sc, &a, &cam, &s, 0.0f, 0, 0, 0, 0);
+        /* Carrion on some soil cells, a tick later: shown now. */
+        Sim later;
+        CHECK(sim_init(&later, &set, 3, 64, 32));
+        for (int t = 0; t < 50; t++) {
+            sim_step(&later);
+        }
+        for (int i = 0; i < 64 * 32; i += 5) {
+            if (later.world.terrain[i] == TERRAIN_SOIL) {
+                later.world.carrion[i] = 3.0f;
+            }
+        }
+        later.tick++;
+        scene_update(&sc, &later, 10);
+        scene_draw_world(&sc, &a, &cam, &later, 0.0f, 0, 0, 0, 0);
+        draw_fresh(&later, &b, &cam, 0);
+        CHECK(hash_canvas(&a) == hash_canvas(&b));
+        /* The soil's fertility changes: the layer keeps its colours for now. */
+        uint64_t layer = hash_canvas(&sc.ground);
+        for (int i = 0; i < 64 * 32; i++) {
+            later.world.fertility[i] = 1.0f - later.world.fertility[i];
+        }
+        later.tick++;
+        scene_draw_world(&sc, &a, &cam, &later, 0.0f, 0, 0, 0, 0);
+        CHECK(hash_canvas(&sc.ground) == layer);
+        /* A second on, with a tick: everything shows, as a fresh scene draws it. */
+        later.tick++;
+        scene_draw_world(&sc, &a, &cam, &later, 0.0f, SCENE_COLOUR_MS, 0, 0, 0);
+        draw_fresh(&later, &b, &cam, SCENE_COLOUR_MS);
+        CHECK(hash_canvas(&a) == hash_canvas(&b));
+        scene_free(&sc);
+        sim_free(&later);
+    }
+    canvas_free(&a);
+    canvas_free(&b);
+    sim_free(&s);
+}
+
 int main(void)
 {
     /* Tests register this one themselves: the real program never has it. */
@@ -1226,5 +1549,11 @@ int main(void)
     test_scars_follow_recent_hits();
     test_drawing_large_leaves_fingerprint_equal();
     test_names_beside_giants();
+    test_bare_in_autumn();
+    test_withering_tree_turns_straw();
+    test_trees_sort_with_bodies();
+    test_paused_ground_still_moves();
+    test_more_tufts_on_fertile_soil();
+    test_ground_follows_within_a_second();
     TEST_SUMMARY();
 }

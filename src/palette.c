@@ -5,7 +5,7 @@
 /* How many hues of green a plant can be drawn in. */
 #define PLANT_HUE_STEPS 16
 /* What ripe fruit pulls a plant's colour towards. */
-static const Colour FRUIT = {235, 130, 40};
+const Colour PALETTE_FRUIT = {235, 130, 40};
 
 #define SOIL_SHADES 6
 /* How many looks the ground has, from desert to soaked. */
@@ -186,7 +186,7 @@ Colour palette_plant(const Plant *p)
     /* Comparing before converting: the fruit from a save is only known to be
      * finite, and a large float does not fit an int. */
     int ripe = p->fruit >= 3.0f ? 3 : (int)p->fruit;
-    return palette_mix(plant, FRUIT, 0.2f * (float)ripe);
+    return palette_mix(plant, PALETTE_FRUIT, 0.2f * (float)ripe);
 }
 
 Colour palette_creature(float hue, float meat)

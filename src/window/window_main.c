@@ -86,7 +86,7 @@ typedef struct {
     int ticks_due; /* ticks owed, in thirtieths, as in the terminal program */
     bool paused, running, failed;
     bool redraw;    /* while paused: something happened that would show */
-    int last_water; /* the water picture in the last frame drawn */
+    int last_ambient; /* the overlays' clock step in the last frame drawn */
     bool pressed;  /* the left button went down over the world */
     bool dragging; /* and has moved far enough not to be a click */
     int press_x, press_y;
@@ -546,17 +546,18 @@ static void advance_clocks(App *a)
 
 /*
  * Whether this frame looks different from the last. Bodies stop moving while
- * paused and only the water goes on, so a paused window draws about four times
- * a second instead of thirty. Events are still read every frame.
+ * paused and only the water, grass and trees go on, one step of their clock a
+ * tenth of a second, so a paused window draws ten times a second instead of
+ * thirty. Events are still read every frame.
  */
 static bool frame_needs_drawing(App *a)
 {
-    int water = scene_water_frame(a->last_ms);
+    int ambient = scene_ambient_frame(a->last_ms);
     /* A dead world is as still as a paused one, so it costs as little. */
     bool still = a->paused || sim_is_over(&a->sim);
-    bool needed = !still || a->redraw || water != a->last_water;
+    bool needed = !still || a->redraw || ambient != a->last_ambient;
     if (needed) {
-        a->last_water = water;
+        a->last_ambient = ambient;
         a->redraw = false;
     }
     return needed;

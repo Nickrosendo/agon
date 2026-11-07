@@ -21,6 +21,32 @@
 #include "sprite.h"
 #include "tiles.h"
 
+/* The overlays' clock step: glints, foam, sway, rain. While paused they are
+ * what moves, so the window redraws once a step. */
+#define SCENE_AMBIENT_MS 100u
+/* The ground layer's water drift step: the slow ripple is redrawn this often. */
+#define SCENE_DRIFT_MS 500u
+/* How long the soil's colours may lag behind the world, in window time: the
+ * soil changes so slowly that a second is never seen (controller's call). */
+#define SCENE_COLOUR_MS 1000u
+/* The number of tree pictures: 2 sizes, VEG_MAX densities, big or not, bare or
+ * not, TILE_VARIANTS variants and 3 sways. */
+#define SCENE_TREES (2 * VEG_MAX * 2 * 2 * TILE_VARIANTS * 3)
+
+/* What is drawn back to front: a tree or a body, standing at (foot_x, foot_y)
+ * on the canvas. index is the tree's cell or the body's slot. */
+enum { SCENE_ITEM_TREE, SCENE_ITEM_BODY };
+typedef struct {
+    int32_t foot_y, foot_x;
+    int16_t kind;
+    int32_t index;
+} SceneItem;
+
+/* The part of a tree picture its ink fills; right and bottom are the last. */
+typedef struct {
+    int8_t left, top, right, bottom;
+} TreeBox;
+
 /* How many steps the water's sine table has: a power of two, so a step number
  * is wrapped into the table with & (SCENE_SINE_STEPS - 1). */
 #define SCENE_SINE_STEPS 1024
@@ -44,7 +70,6 @@ typedef struct {
 typedef struct {
     SpriteCache sprites;
     Anim anim;
-    uint16_t plant[2][TILE_VARIANTS][VEG_MAX + 1][16];
     uint16_t slash[2][TILE_MARK_FRAMES][16];
     uint16_t crumbs[2][TILE_MARK_FRAMES][16];
     uint16_t rain[2][TILE_VARIANTS][TILE_RAIN_FRAMES][16];
@@ -54,11 +79,25 @@ typedef struct {
     TileCache tiles;
     int tiles_level;
     /* Each visible cell's colours, plus a ring of one cell around the view,
-     * since a tile's ragged edge shows its neighbours' ground. Worked out once
-     * per redraw; the blocks grow only when the view needs more cells. */
+     * since a tile's ragged edge shows its neighbours' ground. Worked out on a
+     * whole redraw, and at most once a SCENE_COLOUR_MS after; the blocks grow
+     * only when the view needs more cells. */
     GroundRamp *cell_ramps;
     GroundPixels *cell_pixels; /* the same cells' colours as pixels */
+    /* For the same cells: what the cell's carrion looked like when drawn (0:
+     * none), and whether it must be drawn again in this redraw. */
+    uint32_t *cell_cover;
+    bool *cell_dirty;
     int cell_ramps_capacity;
+    /* Every tree picture, built at scene_init (see scene.c, tree_at), and
+     * the box each one's ink fills, so drawing skips the empty part. */
+    TreePicture *trees;
+    TreeBox tree_box[SCENE_TREES];
+    /* What is drawn back to front, each frame. Room for every body and every
+     * cell of the view with its ring; grown only on a zoom or a resize. */
+    SceneItem *items;
+    int items_capacity;
+    AnimPose *poses; /* each slot's pose this frame, for bodies drawn as items */
     /* Every cell's tile key, and the terrain they were worked out from: keys
      * change only when the terrain does, so they are not redone each redraw. */
     uint32_t *keys;
@@ -71,9 +110,10 @@ typedef struct {
      * between two ticks and have the same ground, so they only copy it. */
     Canvas ground;
     bool ground_valid;
-    bool ground_tiled; /* drawn as tiles: the water alone can be redrawn */
+    bool ground_tiled; /* drawn as tiles: cells can be redrawn one by one */
     uint64_t ground_tick;
-    uint64_t ground_water_step; /* water_ms / the water's step, not wrapped */
+    uint64_t ground_drift_step; /* water_ms / SCENE_DRIFT_MS, not wrapped */
+    uint64_t ground_colour_ms;  /* water_ms when the cells' colours were worked out */
     int ground_level;
     float ground_cx, ground_cy;
 } Scene;
@@ -118,9 +158,10 @@ bool scene_init(Scene *sc, const Sim *s);
 void scene_free(Scene *sc);
 /* After r: ids start again, so everything remembered is wrong. */
 void scene_reset(Scene *sc);
-/* Which picture the water shows at this time. While paused it is the only thing
- * that moves, so a frame where it has not changed need not be drawn. */
-int scene_water_frame(uint64_t water_ms);
+/* Which step of the overlays' clock this time is in. While paused the water,
+ * the grass and the trees are all that moves, and only once a step, so a frame
+ * where this has not changed need not be drawn. */
+int scene_ambient_frame(uint64_t water_ms);
 /* Once per frame, after the frame's ticks. */
 void scene_update(Scene *sc, const Sim *s, int ticks_per_second);
 /*

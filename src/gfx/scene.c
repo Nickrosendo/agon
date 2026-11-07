@@ -2,17 +2,17 @@
 
 #include <math.h>   /* floorf, sinf */
 #include <stdio.h>  /* snprintf */
-#include <stdlib.h> /* free, realloc */
-#include <string.h> /* strlen */
+#include <stdlib.h> /* free, malloc, qsort, realloc */
+#include <string.h> /* memcmp, memcpy, strlen */
 
 #include "app.h"
 #include "chronicle.h" /* name_from_id */
 #include "climate.h" /* climate_region, climate_region_hue */
+#include "flora.h"   /* plant_gives_shade, plant_is_bare */
 #include "gfx_hash.h"
 #include "palette.h"
+#include "years.h"   /* years_season_of */
 
-/* How long one water frame lasts, in milliseconds: the ground layer's clock. */
-#define WATER_FRAME_MS 250u
 /* How many autotiles the scene keeps. Real maps use a few hundred keys. */
 #define SCENE_TILE_CACHE 2048
 #define TWO_PI 6.2831853f
@@ -61,6 +61,58 @@ static void forget_cell_colours(Scene *sc)
     }
 }
 
+/* Which of the SCENE_TREES pictures a tree uses. size_level 0 is the 16-pixel
+ * size, 1 the 8-pixel one; density 1..VEG_MAX; sway -1..1. */
+static int tree_at(int size_level, int density, bool big, bool bare, int variant,
+                   int sway)
+{
+    int k = size_level * VEG_MAX + (density - 1);
+    k = k * 2 + (big ? 1 : 0);
+    k = k * 2 + (bare ? 1 : 0);
+    k = k * TILE_VARIANTS + variant;
+    return k * 3 + (sway + 1);
+}
+
+/* Every tree picture once, and the box its ink fills. False when memory runs
+ * out. */
+static bool build_trees(Scene *sc)
+{
+    sc->trees = malloc((size_t)SCENE_TREES * sizeof(TreePicture));
+    if (sc->trees == NULL) {
+        return false;
+    }
+    for (int z = 0; z < 2; z++) {
+        for (int d = 1; d <= VEG_MAX; d++) {
+            for (int big = 0; big <= 1; big++) {
+                for (int bare = 0; bare <= 1; bare++) {
+                    for (int v = 0; v < TILE_VARIANTS; v++) {
+                        for (int sway = -1; sway <= 1; sway++) {
+                            int k = tree_at(z, d, big == 1, bare == 1, v, sway);
+                            tiles_build_tree(&sc->trees[k], d, big == 1, bare == 1,
+                                             v, sway, z == 0 ? 16 : 8);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    for (int k = 0; k < SCENE_TREES; k++) {
+        TreeBox b = {TREE_W, TREE_H, -1, -1};
+        for (int i = 0; i < TREE_W * TREE_H; i++) {
+            if (sc->trees[k].ink[i] != TREE_NONE) {
+                int x = i % TREE_W, y = i / TREE_W;
+                /* The casts: int8_t holds -128..127, and 0..TREE_H fits. */
+                b.left = (int8_t)(x < b.left ? x : b.left);
+                b.top = (int8_t)(y < b.top ? y : b.top);
+                b.right = (int8_t)(x > b.right ? x : b.right);
+                b.bottom = (int8_t)(y > b.bottom ? y : b.bottom);
+            }
+        }
+        sc->tree_box[k] = b;
+    }
+    return true;
+}
+
 bool scene_init(Scene *sc, const Sim *s)
 {
     if (!sprite_cache_init(&sc->sprites, s->pool.capacity)) {
@@ -75,9 +127,12 @@ bool scene_init(Scene *sc, const Sim *s)
         anim_free(&sc->anim);
         return false;
     }
+    sc->poses = malloc((size_t)s->pool.capacity * sizeof(AnimPose));
     /* Sized by the first frame. An empty canvas allocates nothing, so this
      * cannot fail today; checked anyway, like every other allocation. */
-    if (!canvas_init(&sc->ground, 0, 0)) {
+    if (sc->poses == NULL || !build_trees(sc) || !canvas_init(&sc->ground, 0, 0)) {
+        free(sc->poses); /* free(NULL) does nothing */
+        free(sc->trees);
         sprite_cache_free(&sc->sprites);
         anim_free(&sc->anim);
         tiles_cache_free(&sc->tiles);
@@ -89,11 +144,15 @@ bool scene_init(Scene *sc, const Sim *s)
     /* Allocated by the first frame that draws tiles. */
     sc->cell_ramps = NULL;
     sc->cell_pixels = NULL;
+    sc->cell_cover = NULL;
+    sc->cell_dirty = NULL;
     sc->cell_ramps_capacity = 0;
     sc->keys = NULL;
     sc->keys_terrain = NULL;
     sc->keys_capacity = 0;
     sc->keys_valid = false;
+    sc->items = NULL;
+    sc->items_capacity = 0;
     for (int i = 0; i < SCENE_SINE_STEPS; i++) {
         sc->sine[i] = sinf((float)i * TWO_PI / (float)SCENE_SINE_STEPS);
     }
@@ -101,15 +160,12 @@ bool scene_init(Scene *sc, const Sim *s)
     for (int z = 0; z < 2; z++) {
         int size = z == 0 ? 16 : 8;
         for (int f = 0; f < TILE_MARK_FRAMES; f++) {
-            tiles_build(sc->slash[z][f], TILE_SLASH, 0, 0, size, f);
-            tiles_build(sc->crumbs[z][f], TILE_CRUMBS, 0, 0, size, f);
+            tiles_build(sc->slash[z][f], TILE_SLASH, 0, size, f);
+            tiles_build(sc->crumbs[z][f], TILE_CRUMBS, 0, size, f);
         }
         for (int v = 0; v < TILE_VARIANTS; v++) {
             for (int f = 0; f < TILE_RAIN_FRAMES; f++) {
-                tiles_build(sc->rain[z][v][f], TILE_RAIN, v, 0, size, f);
-            }
-            for (int d = 0; d <= VEG_MAX; d++) {
-                tiles_build(sc->plant[z][v][d], TILE_PLANT, v, d, size, 0);
+                tiles_build(sc->rain[z][v][f], TILE_RAIN, v, size, f);
             }
             tiles_build_bones(sc->bones[z][v], v, size);
         }
@@ -125,15 +181,26 @@ void scene_free(Scene *sc)
     /* free(NULL) does nothing, so blocks never allocated are fine here. */
     free(sc->cell_ramps);
     free(sc->cell_pixels);
+    free(sc->cell_cover);
+    free(sc->cell_dirty);
     free(sc->keys);
     free(sc->keys_terrain);
+    free(sc->trees);
+    free(sc->items);
+    free(sc->poses);
     sc->cell_ramps = NULL;
     sc->cell_pixels = NULL;
+    sc->cell_cover = NULL;
+    sc->cell_dirty = NULL;
     sc->cell_ramps_capacity = 0;
     sc->keys = NULL;
     sc->keys_terrain = NULL;
     sc->keys_capacity = 0;
     sc->keys_valid = false;
+    sc->trees = NULL;
+    sc->items = NULL;
+    sc->items_capacity = 0;
+    sc->poses = NULL;
     canvas_free(&sc->ground);
 }
 
@@ -152,10 +219,11 @@ void scene_update(Scene *sc, const Sim *s, int ticks_per_second)
     anim_update(&sc->anim, s, ticks_per_second);
 }
 
-int scene_water_frame(uint64_t water_ms)
+int scene_ambient_frame(uint64_t water_ms)
 {
-    /* One clock for all water; each variant was drawn at its own phase. */
-    return (int)((water_ms / WATER_FRAME_MS) % TILE_RAIN_FRAMES);
+    /* Cut to 30 bits so it fits an int; it only has to differ from the last
+     * frame's, and wraps once in about three years of window time. */
+    return (int)((water_ms / SCENE_AMBIENT_MS) & 0x3FFFFFFFu);
 }
 
 /* A plant's colour, turning to straw as it withers. */
@@ -448,16 +516,33 @@ static void draw_ground_tile(Scene *sc, Canvas *c, const GroundCell *g,
     }
 }
 
-/* Bones on a dried stain, the stain the redder the more meat is left. */
-static void draw_bones(Scene *sc, Canvas *c, const Sim *s, const GroundCell *g,
-                       int i, int z, int v)
+/* The colour of a cell's carrion stain, darkened and half sunk into the ground
+ * so the bones stand out on it, the redder the more meat is left. */
+static Colour stain_colour(const Scene *sc, const Sim *s, int i, int ring_at)
 {
+    return palette_mix(sc->cell_ramps[ring_at].c[1],
+                       ramp_shade(carrion_colour(s, i), -0.35f), 0.5f);
+}
+
+/* What a cell's carrion looks like, as one number: 0 for none, else its stain's
+ * pixel (never 0, as a pixel's top byte is 0xFF). When it differs from what
+ * was drawn, the cell is drawn again. */
+static uint32_t cover_of(const Scene *sc, const Sim *s, int i, int ring_at)
+{
+    const World *w = &s->world;
+    if (w->terrain[i] != TERRAIN_SOIL || w->carrion[i] <= 0.0f) {
+        return 0;
+    }
+    return to_pixel(stain_colour(sc, s, i, ring_at));
+}
+
+/* Bones on a dried stain. */
+static void draw_bones(Scene *sc, Canvas *c, const GroundCell *g, uint32_t stain)
+{
+    int z = g->size == 16 ? 0 : 1;
+    int v = tiles_variant(g->x, g->y);
     Colour bone_dark = ramp_shade(BONE, -0.3f);
-    /* Darkened, and half sunk into the ground, so the bones stand out on it. */
-    Colour stain = palette_mix(sc->cell_ramps[g->ring_at].c[1],
-                               ramp_shade(carrion_colour(s, i), -0.35f), 0.5f);
-    const uint32_t colours[4] = {0, to_pixel(BONE), to_pixel(bone_dark),
-                                 to_pixel(stain)};
+    const uint32_t colours[4] = {0, to_pixel(BONE), to_pixel(bone_dark), stain};
     canvas_picture(c, sc->bones[z][v], g->size, g->size, g->size, g->sx, g->sy,
                    g->scale, false, colours, whole(c));
 }
@@ -470,49 +555,64 @@ static bool rain_shows(const World *w, int i, int variant)
     return w->rain[i] * (float)TILE_VARIANTS > (float)variant;
 }
 
-/* What stands on a cell's ground: carrion, else a plant, then rain over both. */
-static void draw_cell_cover(Scene *sc, Canvas *c, const Sim *s, const GroundCell *g,
-                            int water_frame)
+/* The blocks kept per cell of the view and its ring, grown to need cells.
+ * False when memory runs out; what was there is kept, to free later. */
+static bool grow_cell_blocks(Scene *sc, int need)
 {
-    const World *w = &s->world;
-    int i = g->y * w->w + g->x;
-    int v = tiles_variant(g->x, g->y);
-    int z = g->size == 16 ? 0 : 1;
-    if (w->terrain[i] == TERRAIN_SOIL && w->carrion[i] > 0.0f) {
-        draw_bones(sc, c, s, g, i, z, v);
-    } else if (w->terrain[i] == TERRAIN_SOIL && w->veg[i] > 0) {
-        canvas_mask(c, sc->plant[z][v][w->veg[i]], g->size, g->sx, g->sy,
-                    g->scale, false, to_pixel(plant_colour(s, i)));
+    if (need <= sc->cell_ramps_capacity) {
+        return true;
     }
-    if (rain_shows(w, i, v)) {
-        canvas_mask(c, sc->rain[z][v][water_frame], g->size, g->sx, g->sy,
-                    g->scale, false, to_pixel(PALETTE_RAIN));
+    /* Only a zoom or a resize shows more cells, so this runs only then.
+     * realloc keeps the old block if it fails, so it is kept to free. */
+    GroundRamp *ramps = realloc(sc->cell_ramps, (size_t)need * sizeof(GroundRamp));
+    if (ramps == NULL) {
+        return false;
+    }
+    sc->cell_ramps = ramps;
+    GroundPixels *pixels = realloc(sc->cell_pixels, (size_t)need * sizeof(GroundPixels));
+    if (pixels == NULL) {
+        return false; /* capacity unchanged: the next frame tries again */
+    }
+    sc->cell_pixels = pixels;
+    uint32_t *cover = realloc(sc->cell_cover, (size_t)need * sizeof(uint32_t));
+    if (cover == NULL) {
+        return false;
+    }
+    sc->cell_cover = cover;
+    bool *dirty = realloc(sc->cell_dirty, (size_t)need * sizeof(bool));
+    if (dirty == NULL) {
+        return false;
+    }
+    sc->cell_dirty = dirty;
+    sc->cell_ramps_capacity = need;
+    forget_cell_colours(sc);
+    return true;
+}
+
+/* Marks a cell of the ring to be drawn again, and the cells around it: their
+ * tiles' ragged edges show its colours too. */
+static void mark_with_neighbours(Scene *sc, int at, int ring_w, int ring_h)
+{
+    int r = at / ring_w, k = at % ring_w;
+    for (int dr = -1; dr <= 1; dr++) {
+        for (int dk = -1; dk <= 1; dk++) {
+            int rr = r + dr, kk = k + dk;
+            if (rr >= 0 && rr < ring_h && kk >= 0 && kk < ring_w) {
+                sc->cell_dirty[rr * ring_w + kk] = true;
+            }
+        }
     }
 }
 
 /* Each visible cell's colours and the ring around them, into sc->cell_ramps
- * and sc->cell_pixels. False when the blocks could not grow: the caller then
- * draws flat colours. */
+ * and sc->cell_pixels; a cell whose colours changed is marked dirty, with its
+ * neighbours. False when the blocks could not grow: the caller then draws
+ * flat colours. */
 static bool fill_cell_ramps(Scene *sc, const Sim *s, const CameraCells *v)
 {
     int ring_w = v->cols + 2, ring_h = v->rows + 2;
-    int need = ring_w * ring_h;
-    if (need > sc->cell_ramps_capacity) {
-        /* Only a zoom or a resize shows more cells, so this runs only then.
-         * realloc keeps the old block if it fails, so it is kept to free. */
-        GroundRamp *ramps = realloc(sc->cell_ramps, (size_t)need * sizeof(GroundRamp));
-        if (ramps == NULL) {
-            return false;
-        }
-        sc->cell_ramps = ramps;
-        GroundPixels *pixels =
-            realloc(sc->cell_pixels, (size_t)need * sizeof(GroundPixels));
-        if (pixels == NULL) {
-            return false; /* capacity unchanged: the next frame tries again */
-        }
-        sc->cell_pixels = pixels;
-        sc->cell_ramps_capacity = need;
-        forget_cell_colours(sc);
+    if (!grow_cell_blocks(sc, ring_w * ring_h)) {
+        return false;
     }
     const World *w = &s->world;
     for (int r = 0; r < ring_h; r++) {
@@ -529,11 +629,12 @@ static bool fill_cell_ramps(Scene *sc, const Sim *s, const CameraCells *v)
                 gp->water == w->water[i] && gp->snow == w->snow[i]) {
                 continue;
             }
-            sc->cell_ramps[at] = cell_ramp(s, i);
-            for (int step = 0; step < 3; step++) {
-                gp->pixel[EDGE_NONE][step] = to_pixel(sc->cell_ramps[at].c[step]);
-            }
-            gp->done = 1u << EDGE_NONE; /* the other edges when first needed */
+            GroundRamp ramp = cell_ramp(s, i);
+            /* The soil's fertility and water drift a little every tick, which
+             * mostly leaves its colours the same to the byte: then nothing
+             * needs drawing again, and the edges' colours still hold too. */
+            bool same = gp->known && gp->cell == i &&
+                        memcmp(&ramp, &sc->cell_ramps[at], sizeof(ramp)) == 0;
             gp->known = true;
             gp->cell = i;
             gp->terrain = w->terrain[i];
@@ -541,6 +642,15 @@ static bool fill_cell_ramps(Scene *sc, const Sim *s, const CameraCells *v)
             gp->fertility = w->fertility[i];
             gp->water = w->water[i];
             gp->snow = w->snow[i];
+            if (same) {
+                continue;
+            }
+            sc->cell_ramps[at] = ramp;
+            for (int step = 0; step < 3; step++) {
+                gp->pixel[EDGE_NONE][step] = to_pixel(ramp.c[step]);
+            }
+            gp->done = 1u << EDGE_NONE; /* the other edges when first needed */
+            mark_with_neighbours(sc, at, ring_w, ring_h);
         }
     }
     return true;
@@ -597,22 +707,28 @@ static void draw_flat_cells(Canvas *c, const Camera *cam, const Sim *s,
     }
 }
 
+/* How much of the ground layer a redraw draws again. */
+typedef enum {
+    REDRAW_ALL,   /* every cell, its colours worked out where they changed */
+    REDRAW_CELLS  /* only the dirty cells, and those with water if it drifted */
+} Redraw;
+
 /*
- * Every cell the camera sees. water_only: nothing but the water's clock has
- * moved since the layer was last drawn whole (same tick, same view), so only
- * cells showing water or rain are drawn again, and the colours worked out
- * then are still right. True when the cells were drawn as tiles, so a later
- * call may redraw only the water.
+ * Every cell the camera sees. With REDRAW_CELLS the view is the one last drawn
+ * whole, and only the cells marked dirty are drawn again, and also the cells
+ * with water on them when drifted (the water's slow ripple moved on). True
+ * when the cells were drawn as tiles, so a later call may redraw only some.
  */
 static bool draw_terrain(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
-                         uint64_t water_ms, int view_x, int view_y, bool water_only)
+                         uint64_t water_ms, int view_x, int view_y, Redraw redraw,
+                         bool drifted)
 {
     const World *w = &s->world;
     CameraCells v;
     camera_cells(cam, &v);
     int size = camera_sprite_size(cam);
     if (size == 0 || !refresh_keys(sc, w) ||
-        (!water_only && !fill_cell_ramps(sc, s, &v))) {
+        (redraw == REDRAW_ALL && !fill_cell_ramps(sc, s, &v))) {
         draw_flat_cells(c, cam, s, &v, view_x, view_y);
         return false;
     }
@@ -625,11 +741,10 @@ static bool draw_terrain(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
         .size = size,
         .scale = camera_sprite_scale(cam),
         .ring_w = v.cols + 2,
-        /* The time of the water's step, not of the frame: the layer is redrawn
-         * once a step, so a redraw for a new tick shows the same water. */
-        .time = (float)(water_ms / WATER_FRAME_MS * WATER_FRAME_MS) / 1000.0f,
+        /* The time of the water's drift step, not of the frame: the layer is
+         * redrawn once a step, so a redraw for a tick shows the same water. */
+        .time = (float)(water_ms / SCENE_DRIFT_MS * SCENE_DRIFT_MS) / 1000.0f,
     };
-    int water_frame = scene_water_frame(water_ms);
     for (int r = 0; r < v.rows; r++) {
         g.y = (v.first_y + r) % w->h;
         g.sy = view_y + v.screen_y + r * ppc;
@@ -638,16 +753,19 @@ static bool draw_terrain(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
             g.sx = view_x + v.screen_x + k * ppc;
             g.ring_at = (r + 1) * g.ring_w + (k + 1);
             int i = g.y * w->w + g.x;
-            uint32_t key = sc->keys[i];
-            const TileEntry *tile = tiles_cache_get(&sc->tiles, key, size);
-            if (water_only && (tile == NULL || !tile->has_wet) &&
-                !rain_shows(w, i, tiles_variant(g.x, g.y))) {
-                continue; /* dry and no rain: what was drawn is still right */
+            const TileEntry *tile = tiles_cache_get(&sc->tiles, sc->keys[i], size);
+            if (redraw == REDRAW_CELLS && !sc->cell_dirty[g.ring_at] &&
+                !(drifted && tile != NULL && tile->has_wet)) {
+                continue; /* what was drawn is still right */
             }
             if (tile != NULL) {
                 draw_ground_tile(sc, c, &g, tile);
             }
-            draw_cell_cover(sc, c, s, &g, water_frame);
+            uint32_t cover = cover_of(sc, s, i, g.ring_at);
+            if (cover != 0) {
+                draw_bones(sc, c, &g, cover);
+            }
+            sc->cell_cover[g.ring_at] = cover;
         }
     }
     return true;
@@ -826,53 +944,6 @@ static int drawn_tiles(const Creature *cr, const Sim *s, const AnimPose *p)
     return sprite_tiles_for(creature_size(cr, &s->set));
 }
 
-static void draw_creatures(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
-                           float tick_fraction, uint64_t body_ms, int view_x,
-                           int view_y)
-{
-    int ppc = camera_ppc(cam);
-    int size = camera_sprite_size(cam);
-    int n = s->pool.capacity < sc->anim.capacity ? s->pool.capacity
-                                                 : sc->anim.capacity;
-    WorldArea area = world_area(cam, view_x, view_y);
-    /* Smaller bodies first, so a large one stands in front of those it
-     * covers. Each pass skips the bodies of the other sizes. */
-    for (int tier = 1; tier <= SPRITE_MAX_TILES; tier++) {
-        for (int i = 0; i < n; i++) {
-            const Creature *cr = &s->pool.items[i];
-            if (!cr->alive || !sc->anim.slots[i].seen) {
-                continue;
-            }
-            AnimPose p;
-            anim_pose(&sc->anim, s, i, tick_fraction, body_ms, &p);
-            int tiles = drawn_tiles(cr, s, &p);
-            if (tiles != tier) {
-                continue;
-            }
-            int sx, sy;
-            camera_to_screen(cam, p.x, p.y, &sx, &sy);
-            if (tiles > 1) {
-                /* Off the view or not, decided picture by picture inside. */
-                draw_large(sc, c, cam, s, cr, &p, tiles, view_x + sx,
-                           view_y + sy, &area);
-                continue;
-            }
-            /* Off the view: skipped before any work. */
-            if (sx <= -ppc || sy <= -ppc || sx >= cam->view_w ||
-                sy >= cam->view_h) {
-                continue;
-            }
-            sx += view_x;
-            sy += view_y;
-            if (size == 0) {
-                canvas_rect(c, sx, sy, ppc, ppc, to_pixel(creature_colour(cr)));
-            } else {
-                draw_body(sc, c, cam, s, cr, i, &p, sx, sy);
-            }
-        }
-    }
-}
-
 /* The mark over the cell a creature is biting: a red flash for a fight, and
  * crumbs whose colour says what is being eaten. */
 static void draw_mark(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
@@ -930,14 +1001,56 @@ static void draw_marks(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
     }
 }
 
-/* True when the ground layer already shows what this frame needs. */
-static bool ground_is_current(const Scene *sc, const Camera *cam, const Sim *s,
-                              uint64_t water_step)
+/* True when the ground layer was drawn for this view: same size, zoom and
+ * place. What else may have changed is for place_ground to find out. */
+static bool ground_same_view(const Scene *sc, const Camera *cam)
 {
     return sc->ground_valid && sc->ground.w == cam->view_w &&
-           sc->ground.h == cam->view_h && sc->ground_tick == s->tick &&
-           sc->ground_water_step == water_step && sc->ground_level == cam->level &&
+           sc->ground.h == cam->view_h && sc->ground_level == cam->level &&
            sc->ground_cx == cam->cx && sc->ground_cy == cam->cy;
+}
+
+/* Whether the terrain differs from the one the keys were worked out from. */
+static bool terrain_changed(const Scene *sc, const World *w)
+{
+    int n = w->w * w->h;
+    return !sc->keys_valid || n > sc->keys_capacity ||
+           memcmp(sc->keys_terrain, w->terrain, (size_t)n) != 0;
+}
+
+/*
+ * After a tick, which cells of the view must be drawn again: those whose
+ * carrion changed, and when colours is true, those whose ground colours
+ * changed (with their neighbours). Otherwise only clears the marks.
+ */
+static void mark_changed_cells(Scene *sc, const Camera *cam, const Sim *s,
+                               bool ticked, bool colours)
+{
+    CameraCells v;
+    camera_cells(cam, &v);
+    int ring_w = v.cols + 2;
+    int cells = ring_w * (v.rows + 2);
+    for (int at = 0; at < cells; at++) {
+        sc->cell_dirty[at] = false;
+    }
+    if (!ticked) {
+        return;
+    }
+    if (colours) {
+        /* The blocks are already the view's size: this cannot fail here. */
+        fill_cell_ramps(sc, s, &v);
+    }
+    const World *w = &s->world;
+    for (int r = 0; r < v.rows; r++) {
+        int y = (v.first_y + r) % w->h;
+        for (int k = 0; k < v.cols; k++) {
+            int x = (v.first_x + k) % w->w;
+            int at = (r + 1) * ring_w + (k + 1);
+            if (cover_of(sc, s, y * w->w + x, at) != sc->cell_cover[at]) {
+                sc->cell_dirty[at] = true;
+            }
+        }
+    }
 }
 
 /* Draws the view's ground, black around a world smaller than the view, at
@@ -956,25 +1069,43 @@ static bool draw_ground(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
     if (!covered) {
         canvas_rect(c, x, y, cam->view_w, cam->view_h, canvas_rgb(0, 0, 0));
     }
-    return draw_terrain(sc, c, cam, s, water_ms, x, y, false);
+    return draw_terrain(sc, c, cam, s, water_ms, x, y, REDRAW_ALL, false);
 }
 
-/* The ground into the frame, redrawn only when something in it has changed. */
+/*
+ * The ground into the frame, redrawn only where something in it has changed.
+ * A new view draws it all. On the same view: a tick redraws the cells whose
+ * carrion changed, and at most once a SCENE_COLOUR_MS those whose soil colour
+ * changed (a change that slow is never seen); a new terrain draws it all; a
+ * drift step redraws the cells with water. The World zoom's flat colours are
+ * cheap, and redrawn whole on each tick, as before.
+ */
 static void place_ground(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
                          uint64_t water_ms, int view_x, int view_y)
 {
-    uint64_t water_step = water_ms / WATER_FRAME_MS;
-    if (ground_is_current(sc, cam, s, water_step)) {
-        canvas_copy(c, &sc->ground, view_x, view_y);
-        return;
-    }
-    /* Only the water's clock moved (the layer is current for any other
-     * step): redraw just the cells with water or rain on them. */
-    if (sc->ground_tiled && ground_is_current(sc, cam, s, sc->ground_water_step)) {
-        draw_terrain(sc, &sc->ground, cam, s, water_ms, 0, 0, true);
-        sc->ground_water_step = water_step;
-        canvas_copy(c, &sc->ground, view_x, view_y);
-        return;
+    uint64_t drift = water_ms / SCENE_DRIFT_MS;
+    bool ticked = sc->ground_tick != s->tick;
+    bool drifted = sc->ground_drift_step != drift;
+    if (ground_same_view(sc, cam)) {
+        if (!ticked && (!drifted || !sc->ground_tiled)) {
+            canvas_copy(c, &sc->ground, view_x, view_y);
+            return;
+        }
+        if (sc->ground_tiled && !(ticked && terrain_changed(sc, &s->world))) {
+            /* Unsigned: water_ms below the last refresh (a test going back in
+             * time) is a new clock, and refreshes too. */
+            bool colours = ticked && (water_ms < sc->ground_colour_ms ||
+                                      water_ms - sc->ground_colour_ms >= SCENE_COLOUR_MS);
+            mark_changed_cells(sc, cam, s, ticked, colours);
+            if (colours) {
+                sc->ground_colour_ms = water_ms;
+            }
+            draw_terrain(sc, &sc->ground, cam, s, water_ms, 0, 0, REDRAW_CELLS, drifted);
+            sc->ground_tick = s->tick;
+            sc->ground_drift_step = drift;
+            canvas_copy(c, &sc->ground, view_x, view_y);
+            return;
+        }
     }
     /* Out of memory for the layer: draw straight into the frame instead. */
     bool same_size = sc->ground.w == cam->view_w && sc->ground.h == cam->view_h;
@@ -986,11 +1117,567 @@ static void place_ground(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
     sc->ground_tiled = draw_ground(sc, &sc->ground, cam, s, water_ms, 0, 0);
     sc->ground_valid = true;
     sc->ground_tick = s->tick;
-    sc->ground_water_step = water_step;
+    sc->ground_drift_step = drift;
+    sc->ground_colour_ms = water_ms;
     sc->ground_level = cam->level;
     sc->ground_cx = cam->cx;
     sc->ground_cy = cam->cy;
     canvas_copy(c, &sc->ground, view_x, view_y);
+}
+
+/* ---- What moves over the ground every frame: the overlays ---- */
+
+/* The overlays' clock in seconds, at the start of its step. It goes round once
+ * an hour, so the float keeps whole steps exact for the sines: an hour of
+ * steps is 36,000, far inside a float's 24 bits. */
+static float ambient_seconds(uint64_t water_ms)
+{
+    return (float)((water_ms / SCENE_AMBIENT_MS) % 36000u) * 0.1f;
+}
+
+/* sin of an angle in radians, from the table. */
+static float sine_of(const Scene *sc, float radians)
+{
+    return sine_at(sc, radians * SINE_PER_RADIAN);
+}
+
+/* Rounds to the nearest whole number, halves away from zero, as v9's
+ * Math.round does for these small numbers within a pixel. */
+static int round_to_int(float f)
+{
+    return f >= 0.0f ? (int)(f + 0.5f) : -(int)(-f + 0.5f);
+}
+
+/* What the overlays need about the frame. */
+typedef struct {
+    CanvasClip clip; /* where the world shows on the canvas */
+    float t;         /* the overlays' clock, in seconds */
+    int size, scale;
+    int rain_frame;
+    uint32_t glint, glint_shadow, foam, foam_shadow;
+} Overlay;
+
+/* One pixel of an overlay at tile pixel (lx, ly) of the cell drawn at (sx, sy).
+ * Most fall inside the clip at scale 1: those are written straight into the
+ * pixels, as there are thousands a frame; the rest go through the clipped
+ * drawing. o->clip lies inside the canvas, so inside it is inside both. */
+static void overlay_pixel(Canvas *c, const Overlay *o, int sx, int sy, int lx, int ly,
+                          uint32_t colour)
+{
+    int x = sx + lx * o->scale, y = sy + ly * o->scale;
+    if (o->scale == 1 && x >= o->clip.x && y >= o->clip.y &&
+        x < o->clip.x + o->clip.w && y < o->clip.y + o->clip.h) {
+        c->px[y * c->w + x] = colour;
+        return;
+    }
+    canvas_pixel(c, x, y, o->scale, colour, o->clip);
+}
+
+/*
+ * Glints (v9:540): on even rows of open water, runs of 5 pixels drifting 6
+ * pixels a second, a run lit where its hash is above 0.93 and its own slow
+ * wave is up. Coordinates are the world's, in pixels of the tile size.
+ */
+static void draw_glints(const Scene *sc, Canvas *c, const Overlay *o, const TileEntry *tile,
+                        int x, int y, int sx, int sy)
+{
+    int size = o->size;
+    float drift = o->t * 6.0f;
+    int ax0 = x * size;
+    for (int ly = 0; ly < size; ly++) {
+        int ay = y * size + ly;
+        if ((ay & 1) != 0) {
+            continue;
+        }
+        int gy = ay >> 1; /* >> 1 halves, as v9's does */
+        int first = (int)floorf(((float)ax0 + drift) / 5.0f);
+        int last = (int)floorf(((float)(ax0 + size - 1) + drift) / 5.0f);
+        for (int gx = first; gx <= last; gx++) {
+            if (gfx_hash(gx, gy, 5) <= 0.93f ||
+                sine_of(sc, o->t * 2.0f + gfx_hash(gx, gy, 6) * 6.0f) <= 0.2f) {
+                continue;
+            }
+            /* The run's pixels: floor((ax + drift) / 5) == gx. */
+            int from = (int)ceilf((float)(5 * gx) - drift) - ax0;
+            int to = (int)ceilf((float)(5 * gx + 5) - drift) - ax0; /* one past */
+            from = from < 0 ? 0 : from;
+            to = to > size ? size : to;
+            for (int lx = from; lx < to; lx++) {
+                int at = ly * size + lx;
+                if ((tile->ink[at] & TILE_INK_WET) == 0) {
+                    continue;
+                }
+                unsigned edge = TILE_EDGE(tile->code[at]);
+                if (edge == EDGE_NONE || edge == EDGE_SHADOW) {
+                    overlay_pixel(c, o, sx, sy, lx, ly,
+                                  edge == EDGE_NONE ? o->glint : o->glint_shadow);
+                }
+            }
+        }
+    }
+}
+
+/* Foam on water touching land, coming and going in a slow wave (v9:543). */
+static void draw_foam(const Scene *sc, Canvas *c, const Overlay *o, const TileEntry *tile,
+                      int x, int y, int sx, int sy)
+{
+    int size = o->size;
+    for (int k = 0; k < tile->foams; k++) {
+        int at = tile->foam[k];
+        int lx = at % size, ly = at / size;
+        int ax = x * size + lx, ay = y * size + ly;
+        if (sine_of(sc, o->t * 2.5f + (float)(ax + ay) * 0.35f) > 0.1f) {
+            bool shadow = TILE_EDGE(tile->code[at]) == EDGE_SHADOW;
+            overlay_pixel(c, o, sx, sy, lx, ly, shadow ? o->foam_shadow : o->foam);
+        }
+    }
+}
+
+/* Whether a tile's pixel shows soil. */
+static bool pixel_is_soil(const TileEntry *tile, int size, int lx, int ly)
+{
+    return tiles_key_class(tile->key, (int)TILE_SOURCE(tile->code[ly * size + lx])) ==
+           CLASS_SOIL;
+}
+
+/*
+ * Grass tufts (v9:553): round(fertility * 3) per soil cell, placed by hash, each
+ * five pixels of light grass swaying with a slow wave. Only where the tile shows
+ * soil at the tuft and two pixels below it. (plan's call: the tuft stays two
+ * rows inside its own tile, where v9 lets it reach one into the next.)
+ */
+static void draw_tufts(Scene *sc, Canvas *c, const Overlay *o, const Sim *s,
+                       const TileEntry *tile, int x, int y, int sx, int sy, int ring_at)
+{
+    const World *w = &s->world;
+    int i = y * w->w + x;
+    int count = round_to_int(w->fertility[i] * 3.0f);
+    if (count <= 0) {
+        return;
+    }
+    count = count > 3 ? 3 : count;
+    int size = o->size;
+    uint32_t light = edge_pixel(&sc->cell_pixels[ring_at], &sc->cell_ramps[ring_at],
+                                EDGE_GRASS_SPECK, 2);
+    for (int n = 0; n < count; n++) {
+        int lx = 1 + (int)(gfx_hash(x, y, 20 + n) * (float)(size - 2));
+        int ly = 2 + (int)(gfx_hash(x, y, 30 + n) * (float)(size - 4));
+        if (!pixel_is_soil(tile, size, lx, ly) || !pixel_is_soil(tile, size, lx, ly + 2)) {
+            continue;
+        }
+        int ax = x * size + lx;
+        int sway = round_to_int(sine_of(sc, o->t * 1.6f + (float)ax * 0.15f) * 0.8f);
+        overlay_pixel(c, o, sx, sy, lx - 1, ly, light);
+        overlay_pixel(c, o, sx, sy, lx + 1, ly, light);
+        overlay_pixel(c, o, sx, sy, lx + sway, ly - 1, light);
+        overlay_pixel(c, o, sx, sy, lx - 1 + sway, ly - 2, light);
+        overlay_pixel(c, o, sx, sy, lx + 1 + sway, ly - 2, light);
+    }
+}
+
+/* Rain streaks over a cell, kept inside the world's area. */
+static void draw_rain(Scene *sc, Canvas *c, const Overlay *o, int x, int y, int sx,
+                      int sy)
+{
+    int z = o->size == 16 ? 0 : 1;
+    const uint16_t *rows = sc->rain[z][tiles_variant(x, y)][o->rain_frame];
+    uint32_t colour = to_pixel(PALETTE_RAIN);
+    for (int j = 0; j < o->size; j++) {
+        /* A streak is a few bits a row: skip the empty rows at once. */
+        for (unsigned bits = rows[j]; bits != 0; bits &= bits - 1) {
+            /* bits & (bits - 1) clears the lowest set bit; __builtin_ctz
+             * would find it faster, but is not plain C, so count instead. */
+            int bit = 0;
+            while (((bits >> bit) & 1u) == 0) {
+                bit++;
+            }
+            /* Column i of a row is bit (size - 1 - i), as canvas_mask reads it. */
+            overlay_pixel(c, o, sx, sy, o->size - 1 - bit, j, colour);
+        }
+    }
+}
+
+static WorldArea world_area(const Camera *cam, int view_x, int view_y);
+
+/* Everything that moves over the ground layer, cell by visible cell: rain, water
+ * glints, foam and grass tufts. Not at the World zoom, whose flat colours have
+ * no room for them (its rain is a veil in the colour). */
+static void draw_overlays(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
+                          uint64_t water_ms, int view_x, int view_y)
+{
+    int size = camera_sprite_size(cam);
+    /* The colours in cell_pixels belong to the layer as last drawn whole. */
+    if (size == 0 || !sc->ground_valid || !sc->ground_tiled) {
+        return;
+    }
+    Overlay o = {
+        .clip = world_area(cam, view_x, view_y).clip,
+        .t = ambient_seconds(water_ms),
+        .size = size,
+        .scale = camera_sprite_scale(cam),
+        .rain_frame = scene_ambient_frame(water_ms) % TILE_RAIN_FRAMES,
+        .glint = to_pixel(RAMP_GLINT),
+        .glint_shadow = to_pixel(ramp_shade(RAMP_GLINT, -0.35f)),
+        .foam = to_pixel(RAMP_FOAM),
+        .foam_shadow = to_pixel(ramp_shade(RAMP_FOAM, -0.35f)),
+    };
+    const World *w = &s->world;
+    CameraCells v;
+    camera_cells(cam, &v);
+    int ppc = camera_ppc(cam);
+    int ring_w = v.cols + 2;
+    for (int r = 0; r < v.rows; r++) {
+        int y = (v.first_y + r) % w->h;
+        int sy = view_y + v.screen_y + r * ppc;
+        for (int k = 0; k < v.cols; k++) {
+            int x = (v.first_x + k) % w->w;
+            int sx = view_x + v.screen_x + k * ppc;
+            int i = y * w->w + x;
+            const TileEntry *tile = tiles_cache_get(&sc->tiles, sc->keys[i], size);
+            if (tile == NULL) {
+                continue;
+            }
+            if (tile->has_wet) {
+                draw_glints(sc, c, &o, tile, x, y, sx, sy);
+                draw_foam(sc, c, &o, tile, x, y, sx, sy);
+            }
+            if (w->terrain[i] == TERRAIN_SOIL) {
+                draw_tufts(sc, c, &o, s, tile, x, y, sx, sy, (r + 1) * ring_w + (k + 1));
+            }
+            if (rain_shows(w, i, tiles_variant(x, y))) {
+                draw_rain(sc, c, &o, x, y, sx, sy);
+            }
+        }
+    }
+}
+
+/* ---- Trees and bodies, back to front ---- */
+
+/* Where copies of something drawn at one place also show: along an axis where
+ * the whole world fits, one world to either side, as the world wraps. Fills
+ * dx and dy (in screen pixels) and returns how many, the place itself first. */
+static int copy_offsets(const WorldArea *a, int dx[9], int dy[9])
+{
+    int n = 0;
+    dx[n] = 0;
+    dy[n] = 0;
+    n++;
+    for (int oy = -1; oy <= 1; oy++) {
+        for (int ox = -1; ox <= 1; ox++) {
+            if ((ox == 0 && oy == 0) || (ox != 0 && !a->whole_x) ||
+                (oy != 0 && !a->whole_y)) {
+                continue;
+            }
+            dx[n] = ox * a->world_px_w;
+            dy[n] = oy * a->world_px_h;
+            n++;
+        }
+    }
+    return n;
+}
+
+/* The trunk's colours, fixed (v9:565). */
+static const Colour TRUNK_LIGHT = {96, 62, 34};
+static const Colour TRUNK_DARK = {70, 44, 24};
+/* How much light a tree's shadow keeps, out of 256: v9's 0.55. */
+#define TREE_SHADOW_KEEP 141
+
+/* What one tree is drawn with this frame. */
+typedef struct {
+    const TreePicture *picture;
+    TreeBox box;
+    int x, y; /* the picture's top left corner on the canvas */
+    int foot_x, foot_y; /* the foot pixel's corner on the canvas */
+} TreeDraw;
+
+/* The tree of the plant on cell i, whose cell's corner is at (sx, sy). */
+static TreeDraw tree_draw(const Scene *sc, const Sim *s, int i, int sx, int sy,
+                          int size, int scale, int season, float t)
+{
+    const World *w = &s->world;
+    const Plant *p = &w->plant[i];
+    int x = i % w->w, y = i / w->w;
+    int density = w->veg[i] > VEG_MAX ? VEG_MAX : w->veg[i];
+    bool big = plant_gives_shade(p, &s->set);
+    bool bare = plant_is_bare(p, season);
+    /* The sway (v9:566): round(sin(t * 1.3 + x) * 0.9), x the trunk's pixel. */
+    int foot_px = x * size + size / 2 - 1;
+    int sway = round_to_int(sine_of(sc, t * 1.3f + (float)foot_px) * 0.9f);
+    int k = tree_at(size == 16 ? 0 : 1, density, big, bare, tiles_variant(x, y), sway);
+    TreeDraw d;
+    d.picture = &sc->trees[k];
+    d.box = sc->tree_box[k];
+    /* The foot near the bottom middle of the cell, the same in every cell. */
+    d.foot_x = sx + (size / 2 - 1) * scale;
+    d.foot_y = sy + (size - 2) * scale;
+    d.x = d.foot_x - d.picture->foot_x * scale;
+    d.y = d.foot_y - d.picture->foot_y * scale;
+    return d;
+}
+
+/* A plant's tree colours: the crown from its colour lit and shaded, all turning
+ * to straw as it withers; fruit shows only on a plant that offers it and holds
+ * a whole one. */
+static void tree_colours(const Sim *s, int i, uint32_t out[TREE_INKS])
+{
+    const World *w = &s->world;
+    const Plant *p = &w->plant[i];
+    Colour base = palette_plant(p);
+    float straw = 0.0f;
+    if (w->veg_wither[i] != 0) {
+        int shade = palette_wither_shade(w->veg_wither[i], s->set.veg_wither_ticks);
+        straw = (float)shade / (float)PALETTE_WITHER_SHADES;
+    }
+    Colour light = palette_mix(ramp_shade(base, 0.22f), PALETTE_WITHERED, straw);
+    Colour crown = palette_mix(base, PALETTE_WITHERED, straw);
+    Colour dark = palette_mix(ramp_shade(base, -0.4f), PALETTE_WITHERED, straw);
+    Colour fleck = palette_mix(ramp_shade(base, -0.25f), PALETTE_WITHERED, straw);
+    bool fruit = plant_offers_fruit(p) && p->fruit >= 1.0f;
+    out[TREE_NONE] = 0;
+    out[TREE_TRUNK_LIGHT] = to_pixel(TRUNK_LIGHT);
+    out[TREE_TRUNK_DARK] = to_pixel(TRUNK_DARK);
+    out[TREE_CROWN_LIGHT] = to_pixel(light);
+    out[TREE_CROWN] = to_pixel(crown);
+    out[TREE_CROWN_DARK] = to_pixel(dark);
+    out[TREE_CROWN_FLECK] = to_pixel(fleck);
+    out[TREE_FRUIT] = fruit ? to_pixel(PALETTE_FRUIT) : to_pixel(crown);
+    out[TREE_BRANCH] = to_pixel(TRUNK_DARK);
+}
+
+/* One tree picture with its corner at (x, y), inside clip. Written straight
+ * into the pixels when it lies wholly inside, as there are many trees. */
+static void paint_tree(Canvas *c, const TreeDraw *d, int x, int y, int scale,
+                       const uint32_t colours[TREE_INKS], CanvasClip clip)
+{
+    const TreeBox *b = &d->box;
+    if (b->right < 0) {
+        return; /* an empty picture */
+    }
+    int left = x + b->left * scale, top = y + b->top * scale;
+    int right = x + (b->right + 1) * scale, bottom = y + (b->bottom + 1) * scale;
+    if (right <= clip.x || bottom <= clip.y || left >= clip.x + clip.w ||
+        top >= clip.y + clip.h) {
+        return;
+    }
+    bool inside = left >= clip.x && top >= clip.y && right <= clip.x + clip.w &&
+                  bottom <= clip.y + clip.h && left >= 0 && top >= 0 &&
+                  right <= c->w && bottom <= c->h;
+    const uint8_t *ink = d->picture->ink;
+    for (int r = b->top; r <= b->bottom; r++) {
+        for (int col = b->left; col <= b->right; col++) {
+            uint8_t k = ink[r * TREE_W + col];
+            if (k == TREE_NONE) {
+                continue;
+            }
+            int px = x + col * scale, py = y + r * scale;
+            if (!inside) {
+                canvas_pixel(c, px, py, scale, colours[k], clip);
+                continue;
+            }
+            for (int j = 0; j < scale; j++) {
+                for (int i = 0; i < scale; i++) {
+                    c->px[(py + j) * c->w + px + i] = colours[k];
+                }
+            }
+        }
+    }
+}
+
+/* Room for this many items; grown only when the view shows more cells. */
+static bool grow_items(Scene *sc, int need)
+{
+    if (need <= sc->items_capacity) {
+        return true;
+    }
+    SceneItem *items = realloc(sc->items, (size_t)need * sizeof(SceneItem));
+    if (items == NULL) {
+        return false;
+    }
+    sc->items = items;
+    sc->items_capacity = need;
+    return true;
+}
+
+/* The cells whose trees may show, along one axis: the visible ones, and where
+ * the world does not fit, one more each side, as a crown reaches over its cell. */
+static void tree_range(bool whole, int count, int *from, int *to)
+{
+    *from = whole ? 0 : -1;
+    *to = whole ? count : count + 1; /* one past the last */
+}
+
+/* Every tree that may show, as items. */
+static int add_trees(Scene *sc, const Camera *cam, const Sim *s, const WorldArea *area,
+                     int view_x, int view_y, int n)
+{
+    int size = camera_sprite_size(cam);
+    if (size == 0) {
+        return n;
+    }
+    const World *w = &s->world;
+    CameraCells v;
+    camera_cells(cam, &v);
+    int ppc = camera_ppc(cam);
+    int scale = camera_sprite_scale(cam);
+    int r0, r1, k0, k1;
+    tree_range(area->whole_y, v.rows, &r0, &r1);
+    tree_range(area->whole_x, v.cols, &k0, &k1);
+    for (int r = r0; r < r1; r++) {
+        for (int k = k0; k < k1; k++) {
+            int i = world_idx(w, v.first_x + k, v.first_y + r);
+            if (w->terrain[i] != TERRAIN_SOIL || w->veg[i] == 0) {
+                continue;
+            }
+            int sx = view_x + v.screen_x + k * ppc;
+            int sy = view_y + v.screen_y + r * ppc;
+            /* Its foot, for sorting: the cell's bottom, the trunk's column. */
+            sc->items[n++] = (SceneItem){.foot_y = sy + ppc,
+                                         .foot_x = sx + (size / 2 - 1) * scale,
+                                         .kind = SCENE_ITEM_TREE,
+                                         .index = i};
+        }
+    }
+    return n;
+}
+
+/* Every living body that may show, as items, its pose kept in sc->poses. */
+static int add_bodies(Scene *sc, const Camera *cam, const Sim *s, float tick_fraction,
+                      uint64_t body_ms, int view_x, int view_y, int n)
+{
+    int ppc = camera_ppc(cam);
+    int count = s->pool.capacity < sc->anim.capacity ? s->pool.capacity
+                                                     : sc->anim.capacity;
+    for (int i = 0; i < count; i++) {
+        const Creature *cr = &s->pool.items[i];
+        if (!cr->alive || !sc->anim.slots[i].seen) {
+            continue;
+        }
+        AnimPose *p = &sc->poses[i];
+        anim_pose(&sc->anim, s, i, tick_fraction, body_ms, p);
+        int sx, sy;
+        camera_to_screen(cam, p->x, p->y, &sx, &sy);
+        /* An ordinary body off the view is skipped before any more work; a
+         * large one may reach in, which is decided picture by picture. */
+        if (drawn_tiles(cr, s, p) == 1 &&
+            (sx <= -ppc || sy <= -ppc || sx >= cam->view_w || sy >= cam->view_h)) {
+            continue;
+        }
+        sc->items[n++] = (SceneItem){.foot_y = view_y + sy + ppc,
+                                     .foot_x = view_x + sx + ppc / 2,
+                                     .kind = SCENE_ITEM_BODY,
+                                     .index = i};
+    }
+    return n;
+}
+
+/* qsort's order: by foot row, then column, then index, so two items on the
+ * same row always come in the same order and never flicker. qsort passes
+ * pointers to the elements as const void *, to be cast back. */
+static int compare_items(const void *pa, const void *pb)
+{
+    const SceneItem *a = pa, *b = pb;
+    if (a->foot_y != b->foot_y) {
+        return a->foot_y < b->foot_y ? -1 : 1;
+    }
+    if (a->foot_x != b->foot_x) {
+        return a->foot_x < b->foot_x ? -1 : 1;
+    }
+    if (a->index != b->index) {
+        return a->index < b->index ? -1 : 1;
+    }
+    return a->kind < b->kind ? -1 : (a->kind > b->kind ? 1 : 0);
+}
+
+/* The ellipse under a body: as wide as most of its tiles, two pixels high, its
+ * bottom on the cell's bottom row and one below, as the body stands there. */
+static void body_shadow(Canvas *c, const Camera *cam, const Sim *s, const Scene *sc,
+                        int slot, const SceneItem *item, const WorldArea *area)
+{
+    int size = camera_sprite_size(cam);
+    int scale = camera_sprite_scale(cam);
+    const Creature *cr = &s->pool.items[slot];
+    int tiles = drawn_tiles(cr, s, &sc->poses[slot]);
+    int rx = tiles * size * 3 / 8 * scale;
+    int ry = (size / 8) * scale;
+    int cy = item->foot_y - ry;
+    int dx[9], dy[9];
+    int copies = tiles > 1 ? copy_offsets(area, dx, dy) : 1;
+    for (int k = 0; k < copies; k++) {
+        int ox = tiles > 1 ? dx[k] : 0, oy = tiles > 1 ? dy[k] : 0;
+        canvas_darken_ellipse(c, item->foot_x + ox, cy + oy, rx, ry, TREE_SHADOW_KEEP,
+                              area->clip);
+    }
+}
+
+/* Draws the frame's trees and bodies: their shadows first, then each from the
+ * back row to the front. */
+static void draw_items(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
+                       float tick_fraction, uint64_t water_ms, uint64_t body_ms,
+                       int view_x, int view_y)
+{
+    CameraCells v;
+    camera_cells(cam, &v);
+    int count = s->pool.capacity < sc->anim.capacity ? s->pool.capacity
+                                                     : sc->anim.capacity;
+    if (!grow_items(sc, count + (v.cols + 2) * (v.rows + 2))) {
+        return; /* out of memory: no trees or bodies this frame */
+    }
+    WorldArea area = world_area(cam, view_x, view_y);
+    int n = add_trees(sc, cam, s, &area, view_x, view_y, 0);
+    n = add_bodies(sc, cam, s, tick_fraction, body_ms, view_x, view_y, n);
+    qsort(sc->items, (size_t)n, sizeof(SceneItem), compare_items);
+
+    int size = camera_sprite_size(cam);
+    int scale = camera_sprite_scale(cam);
+    int ppc = camera_ppc(cam);
+    int season = years_season_of(s->tick, s->set.ticks_per_year);
+    float t = ambient_seconds(water_ms);
+    int dx[9], dy[9];
+    int copies = copy_offsets(&area, dx, dy);
+    if (size > 0) {
+        for (int k = 0; k < n; k++) {
+            const SceneItem *it = &sc->items[k];
+            if (it->kind == SCENE_ITEM_BODY) {
+                body_shadow(c, cam, s, sc, it->index, it, &area);
+                continue;
+            }
+            TreeDraw d = tree_draw(sc, s, it->index, it->foot_x - (size / 2 - 1) * scale,
+                                   it->foot_y - ppc, size, scale, season, t);
+            /* v9 puts the shadow 2 pixels right and 1 down of the foot. */
+            int cx = d.foot_x + (2 * size / 16) * scale;
+            int cy = d.foot_y + scale;
+            for (int j = 0; j < copies; j++) {
+                canvas_darken_ellipse(c, cx + dx[j], cy + dy[j],
+                                      d.picture->shadow_rx * scale,
+                                      d.picture->shadow_ry * scale, TREE_SHADOW_KEEP,
+                                      area.clip);
+            }
+        }
+    }
+    for (int k = 0; k < n; k++) {
+        const SceneItem *it = &sc->items[k];
+        if (it->kind == SCENE_ITEM_TREE) {
+            TreeDraw d = tree_draw(sc, s, it->index, it->foot_x - (size / 2 - 1) * scale,
+                                   it->foot_y - ppc, size, scale, season, t);
+            uint32_t colours[TREE_INKS];
+            tree_colours(s, it->index, colours);
+            for (int j = 0; j < copies; j++) {
+                paint_tree(c, &d, d.x + dx[j], d.y + dy[j], scale, colours, area.clip);
+            }
+            continue;
+        }
+        const Creature *cr = &s->pool.items[it->index];
+        const AnimPose *p = &sc->poses[it->index];
+        int tiles = drawn_tiles(cr, s, p);
+        int sx = it->foot_x - ppc / 2, sy = it->foot_y - ppc;
+        if (tiles > 1) {
+            draw_large(sc, c, cam, s, cr, p, tiles, sx, sy, &area);
+        } else if (size == 0) {
+            canvas_rect(c, sx, sy, ppc, ppc, to_pixel(creature_colour(cr)));
+        } else {
+            draw_body(sc, c, cam, s, cr, it->index, p, sx, sy);
+        }
+    }
 }
 
 void scene_draw_world(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
@@ -1001,7 +1688,8 @@ void scene_draw_world(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
         return;
     }
     place_ground(sc, c, cam, s, water_ms, view_x, view_y);
-    draw_creatures(sc, c, cam, s, tick_fraction, body_ms, view_x, view_y);
+    draw_overlays(sc, c, cam, s, water_ms, view_x, view_y);
+    draw_items(sc, c, cam, s, tick_fraction, water_ms, body_ms, view_x, view_y);
     draw_marks(sc, c, cam, s, tick_fraction, body_ms, view_x, view_y);
 }
 

@@ -108,7 +108,18 @@ void render_swatch(int col, int row, int swatch)
     /* An 8 by 8 symbol, in the middle of a cell twice as tall as it is wide. */
     uint16_t rows[16] = {0}; /* = {0} sets every element, not just the first */
     if (look->shape == SWATCH_PLANT) {
-        tiles_build(rows, TILE_PLANT, 0, VEG_MAX, 8, 0);
+        /* The small tree at full density, its 8 by 8 around the foot, as it
+         * stands in a cell: the foot 3 across and 6 down. */
+        TreePicture tree;
+        tiles_build_tree(&tree, VEG_MAX, false, false, 0, 0, 8);
+        for (int j = 0; j < 8; j++) {
+            for (int i = 0; i < 8; i++) {
+                int x = tree.foot_x - 3 + i, y = tree.foot_y - 6 + j;
+                if (tree.ink[y * TREE_W + x] != TREE_NONE) {
+                    rows[j] = (uint16_t)(rows[j] | (1u << (7 - i)));
+                }
+            }
+        }
     } else if (look->shape == SWATCH_BONES) {
         uint8_t ink[TILE_MAX * TILE_MAX];
         tiles_build_bones(ink, 0, 8);

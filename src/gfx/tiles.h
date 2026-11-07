@@ -13,25 +13,24 @@
 
 #include "world.h" /* World */
 
-/* The one-colour masks still drawn the old way. TILE_PLANT goes in task 4,
- * TILE_SLASH in task 12, TILE_CRUMBS in task 13. The last two are not ground
- * but marks drawn over a bitten cell: the flash of a fight, and crumbs of food
- * flying off. */
-enum { TILE_PLANT, TILE_SLASH, TILE_CRUMBS, TILE_RAIN, TILE_KINDS };
+/* The one-colour marks still drawn the old way: TILE_SLASH goes in task 12,
+ * TILE_CRUMBS in task 13. They are not ground but marks drawn over a bitten
+ * cell: the flash of a fight, and crumbs of food flying off. Rain streaks are
+ * drawn over the ground each frame. */
+enum { TILE_SLASH, TILE_CRUMBS, TILE_RAIN, TILE_KINDS };
 #define TILE_VARIANTS 4
-/* Rain is redrawn with the ground layer's water clock. */
+/* How many pictures rain cycles through, one per step of the scene's ambient
+ * clock. */
 #define TILE_RAIN_FRAMES 4
 /* How many pictures each of the two marks cycles through. */
 #define TILE_MARK_FRAMES 4
 
 /*
  * Draws one symbol into rows, as canvas_mask reads it. size is 16 or 8;
- * rows beyond size are set to 0. variant picks one of TILE_VARIANTS forms.
- * detail: for TILE_PLANT the density 0..VEG_MAX, otherwise ignored. frame
- * matters for rain and the marks.
+ * rows beyond size are set to 0. variant picks one of TILE_VARIANTS forms
+ * (rain only). frame picks the picture of its cycle.
  */
-void tiles_build(uint16_t rows[16], int kind, int variant, int detail, int size,
-                 int frame);
+void tiles_build(uint16_t rows[16], int kind, int variant, int size, int frame);
 
 /* Which variant a cell uses: a hash of its position, so it never changes,
  * and never touches the simulation's random numbers. */
@@ -108,6 +107,11 @@ typedef struct {
     uint16_t look[TILE_MAX * TILE_MAX];
     int looks;
     uint16_t ink[TILE_MAX * TILE_MAX];
+    /* The pixels where foam can show: water touching land, not under a bank
+     * (the bank's colour wins there). foams of them, each an index into
+     * code[]; a tile has at most 256 pixels, so one byte each is enough. */
+    uint8_t foam[TILE_MAX * TILE_MAX];
+    int foams;
 } TileEntry;
 #define TILE_INK_WET 0x8000u
 #define TILE_INK_SLOT(ink) ((ink) & 0x7FFFu)
@@ -129,6 +133,31 @@ void tiles_cache_reset(TileCache *c);
 /* The tile of this key at this size, built now if it is not kept. NULL only on
  * a cache that failed to initialise. */
 const TileEntry *tiles_cache_get(TileCache *c, uint32_t key, int size);
+
+/* ---- Trees ---- */
+
+/* A tree's picture, large enough for the biggest crown at the 16-pixel size,
+ * with room to lean. */
+#define TREE_W 24
+#define TREE_H 28
+/* What each pixel of a tree is; the scene picks the colours per plant. */
+enum { TREE_NONE, TREE_TRUNK_LIGHT, TREE_TRUNK_DARK, TREE_CROWN_LIGHT, TREE_CROWN,
+       TREE_CROWN_DARK, TREE_CROWN_FLECK, TREE_FRUIT, TREE_BRANCH, TREE_INKS };
+/* ink is TREE_W by TREE_H, row after row. (foot_x, foot_y) is the pixel the
+ * trunk stands on: the scene puts it at the same place in every cell. The
+ * shadow is an ellipse of these radii, drawn by the scene under the tree. */
+typedef struct {
+    uint8_t ink[TREE_W * TREE_H];
+    int foot_x, foot_y, shadow_rx, shadow_ry;
+} TreePicture;
+/* density 1..VEG_MAX; big: a leaf tree that gives shade; bare: branches only;
+ * sway -1, 0 or 1: how far the crown's top half leans. size 16 or 8. variant
+ * is 0..TILE_VARIANTS - 1. */
+void tiles_build_tree(TreePicture *out, int density, bool big, bool bare,
+                      int variant, int sway, int size);
+/* Every crown carries TREE_FRUIT pixels (3 to 5, by hash); the scene colours
+ * them as fruit when the plant offers fruit and holds a whole one, else as
+ * crown. So fruit needs no picture of its own. */
 
 /*
  * Carrion: bones on a dried stain. Fills ink[0 .. size * size - 1], row after

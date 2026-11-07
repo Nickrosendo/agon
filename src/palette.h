@@ -31,6 +31,7 @@ extern const Colour PALETTE_SOIL_RICH;
 extern const Colour PALETTE_PLANT; /* the legend's plant colour */
 extern const Colour PALETTE_BLACK;
 extern const Colour PALETTE_WITHERED; /* dry straw */
+extern const Colour PALETTE_FRUIT;    /* ripe fruit, towards which a laden plant turns */
 extern const Colour PALETTE_CARRION;  /* dried blood */
 extern const Colour PALETTE_SNOW;
 extern const Colour PALETTE_TEXT;
