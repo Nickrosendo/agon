@@ -315,6 +315,7 @@ static void test_plant_withers_then_disappears(void)
     make_world(&w, 7, 7);
     Settings s = rules();
     s.veg_mature_age = 2;
+    s.tree_mature_age = 2; /* the plant is a leaf plant: its age is this one */
     s.veg_wither_chance = 1.0f;
     s.veg_wither_ticks = 3;
     plants_everywhere(&w);
@@ -774,6 +775,115 @@ static void test_winter_stops_all_plants(void)
     world_free(&w);
 }
 
+/* A well leaf plant (it suits the soil, so its fit is 1) grows by tree_growth
+ * on each spring and summer tick and not at all in autumn or winter, and stops
+ * at tree_size_max. A fruit tree, or a leaf plant that does not fit, stays 0. */
+static void test_leaf_trees_grow_slowly(void)
+{
+    Settings s = rules();
+    s.veg_sprout_rate = 0.0f;
+    s.veg_grow_chance = 0.0f;
+    s.tree_growth = 0.01f;
+    s.tree_size_max = 0.03f;
+    World w;
+    int at = lone_plant(&w, 0.0f, 5.0f);
+    Rng r;
+    rng_seed(&r, 31);
+    flora_step(&w, &r, &s, SEASON_SPRING);
+    CHECK(fabsf(w.plant[at].size - 0.01f) < 1e-6f);
+    flora_step(&w, &r, &s, SEASON_SUMMER);
+    CHECK(fabsf(w.plant[at].size - 0.02f) < 1e-6f);
+    flora_step(&w, &r, &s, SEASON_AUTUMN);
+    flora_step(&w, &r, &s, SEASON_WINTER);
+    CHECK(fabsf(w.plant[at].size - 0.02f) < 1e-6f);
+    /* Never past the top, and it gets exactly there. */
+    for (int i = 0; i < 5; i++) {
+        flora_step(&w, &r, &s, SEASON_SUMMER);
+    }
+    CHECK(w.plant[at].size == 0.03f);
+    world_free(&w);
+
+    at = lone_plant(&w, 1.0f, 5.0f); /* a fruit tree */
+    flora_step(&w, &r, &s, SEASON_SUMMER);
+    CHECK(w.plant[at].size == 0.0f);
+    world_free(&w);
+
+    at = lone_plant(&w, 0.0f, 5.0f);
+    w.water[at] = 0.0f; /* nothing to drink: fit 0 */
+    flora_step(&w, &r, &s, SEASON_SUMMER);
+    CHECK(w.plant[at].size == 0.0f);
+    world_free(&w);
+}
+
+/* Two plants, both certain to wither once mature: a fruit tree is mature at
+ * veg_mature_age, a leaf tree only at tree_mature_age. */
+static void test_leaf_trees_outlive_fruit_trees(void)
+{
+    Settings s = rules();
+    s.veg_sprout_rate = 0.0f;
+    s.veg_wither_chance = 1.0f;
+    s.veg_mature_age = 2;
+    s.tree_mature_age = 5;
+    World fruit, leaf;
+    int f = lone_plant(&fruit, 1.0f, 5.0f);
+    int l = lone_plant(&leaf, 0.0f, 5.0f);
+    Rng r;
+    rng_seed(&r, 32);
+    for (int tick = 1; tick <= 5; tick++) {
+        flora_step(&fruit, &r, &s, SEASON_SUMMER);
+        flora_step(&leaf, &r, &s, SEASON_SUMMER);
+        CHECK((fruit.veg_wither[f] > 0) == (tick >= 2));
+        CHECK((leaf.veg_wither[l] > 0) == (tick >= 5));
+    }
+    world_free(&fruit);
+    world_free(&leaf);
+}
+
+/* The age counts up to the largest uint16_t and stays there. */
+static void test_age_stops_at_the_top(void)
+{
+    Settings s = rules();
+    s.veg_sprout_rate = 0.0f;
+    World w;
+    int at = lone_plant(&w, 0.0f, 5.0f);
+    w.veg_age[at] = UINT16_MAX;
+    Rng r;
+    rng_seed(&r, 33);
+    flora_step(&w, &r, &s, SEASON_SUMMER);
+    CHECK(w.veg_age[at] == UINT16_MAX);
+    world_free(&w);
+}
+
+/* A seed, sown or made, starts at size 0 whatever its parent has grown to. */
+static void test_seeds_start_small(void)
+{
+    Settings s = rules();
+    Plant parent = healthy_plant();
+    parent.size = 2.5f;
+    Plant seed = {0};
+    Rng r;
+    rng_seed(&r, 34);
+    plant_make_seed(&seed, &parent, &r, &s);
+    CHECK(seed.size == 0.0f);
+    seed.size = 1.0f;
+    World w;
+    make_world(&w, 4, 4);
+    CHECK(plant_sow(&w, 5, &seed, 3.0f));
+    CHECK(w.plant[5].size == 0.0f);
+    world_free(&w);
+}
+
+static void test_shade_needs_a_big_leaf_tree(void)
+{
+    Settings s = settings_default();
+    Plant leaf = {.size = s.tree_shade_size};
+    Plant small = {.size = s.tree_shade_size - 0.01f};
+    Plant fruit = {.fruit_share = 1.0f, .size = s.tree_shade_size};
+    CHECK(plant_gives_shade(&leaf, &s));
+    CHECK(!plant_gives_shade(&small, &s));
+    CHECK(!plant_gives_shade(&fruit, &s));
+}
+
 /* The season changes what plants do, never how many numbers flora_step draws.
  * Every cell is planted, so no sprout can add a seed's own draws (those come
  * only when a sprout really happens, in any season), and half the plants are
@@ -998,6 +1108,11 @@ int main(void)
     test_spring_grows_more();
     test_autumn_stops_fruit_trees();
     test_winter_stops_all_plants();
+    test_leaf_trees_grow_slowly();
+    test_leaf_trees_outlive_fruit_trees();
+    test_age_stops_at_the_top();
+    test_seeds_start_small();
+    test_shade_needs_a_big_leaf_tree();
     test_seasons_keep_three_draws();
     test_desert_and_back();
     test_no_sprout_from_nothing();

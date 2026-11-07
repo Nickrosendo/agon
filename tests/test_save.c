@@ -130,6 +130,40 @@ static void test_round_trip_and_continue(void)
     sim_free(&b);
 }
 
+/* A leaf tree's size travels through a save, and the world goes on the same. */
+static void test_tree_size_saved(void)
+{
+    Settings set = settings_default();
+    Sim a, b;
+    char err[256] = "";
+    CHECK(sim_init(&a, &set, 7, 64, 32));
+    for (int i = 0; i < 100; i++) {
+        sim_step(&a);
+    }
+    int planted = -1;
+    for (int i = 0; i < 64 * 32 && planted < 0; i++) {
+        planted = a.world.veg[i] > 0 ? i : -1;
+    }
+    CHECK(planted >= 0);
+    a.world.plant[planted].fruit_share = 0.0f;
+    a.world.plant[planted].size = 1.25f;
+    CHECK(save_write(&a, SAVE_FILE, err, sizeof(err)));
+    CHECK(save_read(&b, SAVE_FILE, err, sizeof(err)));
+    CHECK(b.world.plant[planted].size == 1.25f);
+    CHECK(sim_checksum(&a) == sim_checksum(&b));
+    /* The size is in the fingerprint: change it and the fingerprint changes. */
+    b.world.plant[planted].size = 1.5f;
+    CHECK(sim_checksum(&a) != sim_checksum(&b));
+    b.world.plant[planted].size = 1.25f;
+    for (int i = 0; i < 300; i++) {
+        sim_step(&a);
+        sim_step(&b);
+    }
+    CHECK(sim_checksum(&a) == sim_checksum(&b));
+    sim_free(&a);
+    sim_free(&b);
+}
+
 /* A world saved in winter, snow on the ground, loads with the same snow and
  * goes on through the melt exactly as the one that never stopped. */
 static void test_snow_saved(void)
@@ -472,10 +506,10 @@ enum {
     AT_MATE_WISH = 115,
     AT_LEVEL = 117,
     AT_EATEN = 121,
-    AT_GUT_SEED = 125, /* six floats: 24 bytes */
-    AT_GUT_TICKS = 149,
-    AT_MEMORY = 151,
-    AT_GENOME = 163,
+    AT_GUT_SEED = 125, /* seven floats: 28 bytes */
+    AT_GUT_TICKS = 153,
+    AT_MEMORY = 155,
+    AT_GENOME = 167,
     /* The life story: ten u32 counts, max_size, flags, two region bytes and
      * region_ticks (49 bytes); then events_noted and 8 events of 13 bytes each
      * (tick, kind, other_id, value: the struct's 3 padding bytes are not written). */
@@ -551,7 +585,7 @@ static Tiny tiny_save(void)
      * carrion_level, scent, water, temperature, rain, snow, for 64 cells,
      * and the rain's seed once. */
     t.histories =
-        t.layers + 64 * (1 + 4 + 1 + 2 + 1 + 24 + 4 + 4 + 4 + 4 + 4 + 4 + 4) + 8;
+        t.layers + 64 * (1 + 4 + 1 + 2 + 1 + 28 + 4 + 4 + 4 + 4 + 4 + 4 + 4) + 8;
     t.records = t.histories + 3 * (HISTORY * 4 + 8);
     /* peak, oldest id and age, largest id and size, then the u64 ended_at. */
     t.pool = t.records + 5 * 4 + 8;
@@ -686,7 +720,7 @@ static void test_refuses_impossible_layers(void)
     size_t veg_age = veg + 64;
     size_t veg_wither = veg_age + 64 * 2;
     size_t plant = veg_wither + 64;
-    size_t carrion = plant + 64 * 24;
+    size_t carrion = plant + 64 * 28;
     size_t carrion_level = carrion + 64 * 4;
     size_t scent = carrion_level + 64 * 4;
     refuses_byte(&t, terrain, TERRAIN_SHALLOW + 1, "layer");
@@ -699,6 +733,9 @@ static void test_refuses_impossible_layers(void)
     refuses_u32(&t, plant + 4, BITS_HUGE, "out of range");
     refuses_u32(&t, plant + 8, 0x40000000u /* 2.0 */, "out of range");
     refuses_u32(&t, plant + 20, BITS_NAN, "out of range");
+    /* Then the tree's size, 0..100. */
+    refuses_u32(&t, plant + 24, BITS_NAN, "out of range");
+    refuses_u32(&t, plant + 24, BITS_HUGE, "out of range");
     refuses_u32(&t, carrion, BITS_NAN, "out of range");
     refuses_u32(&t, carrion, BITS_HUGE, "out of range");
     refuses_u32(&t, carrion_level, BITS_NAN, "out of range");
@@ -951,6 +988,7 @@ static void test_damaged_bytes_never_crash(void)
 int main(void)
 {
     test_round_trip_and_continue();
+    test_tree_size_saved();
     test_chronicle_saved();
     test_settings_travel_with_the_file();
     test_random_brain_reopens();

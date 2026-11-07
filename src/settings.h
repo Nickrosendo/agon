@@ -104,6 +104,17 @@ typedef struct {
      * and pays plant_upkeep * plant_rest_upkeep. */
     float spring_plenty;
     float plant_rest_upkeep;
+    /* Leaf trees. A leaf plant that fits (plant_seed_fit) gains tree_growth
+     * of size on each spring and summer tick, up to tree_size_max. From
+     * tree_shade_size on it shades its own cell and the eight around it. A
+     * leaf tree can start withering only from tree_mature_age on, in place of
+     * veg_mature_age, which stays for fruit trees. In summer a creature out of
+     * shade pays summer_heat_upkeep per tick, flat, whatever its size. */
+    float tree_growth;
+    float tree_size_max;
+    float tree_shade_size;
+    int tree_mature_age;
+    float summer_heat_upkeep;
     float plant_energy_max;
     float plant_start_energy; /* a starting plant's energy */
     float plant_thrift;

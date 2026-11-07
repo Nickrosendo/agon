@@ -6,7 +6,8 @@
 
 #include "chronicle.h" /* chronicle_note, LIFE_ kinds */
 #include "climate.h" /* climate_region, climate_region_hue */
-#include "flora.h" /* carrion_add, CARRION_MIN */
+#include "flora.h" /* carrion_add, CARRION_MIN, plant_gives_shade */
+#include "years.h" /* SEASON_SUMMER */
 
 /* One step in each heading, in HEADING_ order: north is up, which is
  * row y - 1. */
@@ -226,6 +227,29 @@ float creature_region_cost(const World *w, const Creature *c, const Settings *s)
         return s->heat_upkeep * creature_size(c, s);
     }
     return 0.0f;
+}
+
+bool creature_in_shade(const World *w, const Creature *c, const Settings *s)
+{
+    for (int dy = -1; dy <= 1; dy++) {
+        for (int dx = -1; dx <= 1; dx++) {
+            /* world_idx wraps both axes, so the edge of the world has no edge. */
+            int cell = world_idx(w, c->x + dx, c->y + dy);
+            if (w->veg[cell] > 0 && plant_gives_shade(&w->plant[cell], s)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+float creature_heat_cost(const World *w, const Creature *c, const Settings *s,
+                         int season)
+{
+    if (season != SEASON_SUMMER || creature_in_shade(w, c, s)) {
+        return 0.0f;
+    }
+    return s->summer_heat_upkeep;
 }
 
 float creature_step_extra(const World *w, const Creature *c, int cell,

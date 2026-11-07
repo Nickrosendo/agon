@@ -310,6 +310,13 @@ float creature_upkeep_cost(const Creature *c, const Settings *s);
 /* Energy the region under it costs per tick, by the size of its body: the cold
  * spares large bodies, heat and dry ground spare small ones. */
 float creature_region_cost(const World *w, const Creature *c, const Settings *s);
+/* Whether a living leaf tree grown to shading size (plant_gives_shade) stands
+ * on the creature's cell or any of the eight around it. */
+bool creature_in_shade(const World *w, const Creature *c, const Settings *s);
+/* Energy the summer sun costs per tick: summer_heat_upkeep in summer out of
+ * shade, whatever the size of the body, else 0. season is a SEASON_ value. */
+float creature_heat_cost(const World *w, const Creature *c, const Settings *s,
+                         int season);
 /* The energy a step onto this cell costs on top of move_cost, by its legs and
  * swimming body. Paid only for a step really taken. */
 float creature_step_extra(const World *w, const Creature *c, int cell,

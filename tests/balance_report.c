@@ -19,6 +19,8 @@
 
 #include "chronicle.h"
 #include "climate.h"
+#include "creature.h"
+#include "flora.h"
 #include "genome.h"
 #include "rng.h"
 #include "settings.h"
@@ -121,6 +123,8 @@ typedef struct {
     uint64_t births[SEASON_COUNT];         /* by the season they were born in */
     uint64_t starts[SEASON_COUNT];         /* how many times each season began */
     double pop_at_start[SEASON_COUNT];     /* the population as each began, summed */
+    /* Every living creature on every summer tick, and those of them in shade. */
+    uint64_t summer_creature_ticks, summer_shaded_ticks;
 } Verdict;
 
 static const char *const SEASON_NAMES[SEASON_COUNT] = {"spring", "summer",
@@ -914,6 +918,21 @@ static void print_seasons(const Verdict *v)
     printf("\n");
 }
 
+/* Leaf trees big enough to shade at the end, and the share of creature-ticks in
+ * summer spent in their shade. Reported, never judged. */
+static void print_shade(const Sim *s, const Verdict *v)
+{
+    int shading = 0;
+    for (int i = 0; i < s->world.w * s->world.h; i++) {
+        shading += s->world.veg[i] > 0 &&
+                   plant_gives_shade(&s->world.plant[i], &s->set);
+    }
+    printf("     shade: leaf trees at shading size at the end %d | "
+           "summer creature-ticks in shade %.1f%%\n",
+           shading,
+           100.0 * mean_of((double)v->summer_shaded_ticks, v->summer_creature_ticks));
+}
+
 /* The verdict's numbers for one world on one line, for tests/seasons_verdict.sh:
  * SUMMARY seed alive mean10y meanall fruit leaf eaters killers adult_life
  * hunger_adult top_adult, then the adult deaths and their split by cause
@@ -935,6 +954,22 @@ static void print_summary(const Sim *s, const Verdict *v)
 }
 
 /* Runs the world. The Sim is changed only by sim_step. */
+/* After a step, if the tick that just ran was a summer one: counts each living
+ * creature, and the ones in the shade of a leaf tree. */
+static void note_summer_shade(const Sim *s, Verdict *v)
+{
+    if (years_season_of(s->tick - 1, s->set.ticks_per_year) != SEASON_SUMMER) {
+        return;
+    }
+    for (int i = 0; i < s->pool.capacity; i++) {
+        const Creature *c = &s->pool.items[i];
+        if (c->alive) {
+            v->summer_creature_ticks++;
+            v->summer_shaded_ticks += creature_in_shade(&s->world, c, &s->set);
+        }
+    }
+}
+
 /* After a step: the population summed, births by season, and the population
  * as a season begins. s->tick is the tick about to run next. */
 static void verdict_tick(const Sim *s, Verdict *v, uint32_t births)
@@ -947,6 +982,7 @@ static void verdict_tick(const Sim *s, Verdict *v, uint32_t births)
         v->ticks_first++;
     }
     v->births[years_season_of(s->tick - 1, tpy)] += births;
+    note_summer_shade(s, v);
     int season = years_season_of(s->tick, tpy);
     if (years_season_starts(s->tick, tpy, season)) {
         v->starts[season]++;
@@ -1067,6 +1103,7 @@ int main(int argc, char **argv)
     run(&sim, ticks, shadow, &rep, &verdict);
     print_row(&sim, shadow, &rep);
     print_seasons(&verdict);
+    print_shade(&sim, &verdict);
     if (summary) {
         print_summary(&sim, &verdict);
     }

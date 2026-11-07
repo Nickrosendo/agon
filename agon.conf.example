@@ -101,6 +101,21 @@ spring_plenty = 1.5
 # share of its upkeep a plant pays while resting (0 to 1)
 plant_rest_upkeep = 1
 
+# size a leaf tree gains per spring or summer tick (0 to 1)
+tree_growth = 0.002
+
+# largest size a leaf tree grows to (0 to 100)
+tree_size_max = 3
+
+# size from which a leaf tree gives shade (0 to 100)
+tree_shade_size = 1
+
+# ticks before a leaf tree can wither (0 to 65535)
+tree_mature_age = 3000
+
+# energy a creature out of shade pays per summer tick (0 to 1e+06)
+summer_heat_upkeep = 0.05
+
 # most energy a plant can store (0 to 1e+06)
 plant_energy_max = 10
 

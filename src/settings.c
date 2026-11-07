@@ -64,6 +64,13 @@ Settings settings_default(void)
          * every winter. */
         .spring_plenty = 1.5f,
         .plant_rest_upkeep = 1.0f,
+        /* From the seasons design: 0.002 a tick over the 300 spring and summer
+         * ticks of a 600-tick year is 0.6 a year, so 1 is about two years. */
+        .tree_growth = 0.002f,
+        .tree_size_max = 3.0f,
+        .tree_shade_size = 1.0f,
+        .tree_mature_age = 3000,
+        .summer_heat_upkeep = 0.05f,
         .plant_energy_max = 10.0f,
         .plant_start_energy = 5.0f,
         .plant_thrift = 0.6f,
@@ -278,6 +285,11 @@ static const SettingInfo TABLE[] = {
     FLOAT_ROW(plant_upkeep, 0, BIG, "energy a plant pays per tick"),
     FLOAT_ROW(spring_plenty, 1, 10, "plant income and fruit in spring, times the usual"),
     FLOAT_ROW(plant_rest_upkeep, 0, 1, "share of its upkeep a plant pays while resting"),
+    FLOAT_ROW(tree_growth, 0, 1, "size a leaf tree gains per spring or summer tick"),
+    FLOAT_ROW(tree_size_max, 0, 100, "largest size a leaf tree grows to"),
+    FLOAT_ROW(tree_shade_size, 0, 100, "size from which a leaf tree gives shade"),
+    INT_ROW(tree_mature_age, 0, 65535, "ticks before a leaf tree can wither"),
+    FLOAT_ROW(summer_heat_upkeep, 0, BIG, "energy a creature out of shade pays per summer tick"),
     FLOAT_ROW(plant_energy_max, 0, BIG, "most energy a plant can store"),
     FLOAT_ROW(plant_start_energy, 0, BIG, "energy of a starting plant"),
     FLOAT_ROW(plant_thrift, 0, 1, "growth of a plant needing no water, against a thirsty one"),

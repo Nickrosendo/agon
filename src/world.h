@@ -20,7 +20,7 @@ enum { TERRAIN_WATER, TERRAIN_SOIL, TERRAIN_ROCK, TERRAIN_SHALLOW };
  * meaningful while the cell's veg is above 0; on bare soil it is whatever the
  * last plant left there, and the next sprout overwrites all of it.
  *
- * Six floats and nothing else, so no padding: sizeof(Plant) is 24 on every
+ * Seven floats and nothing else, so no padding: sizeof(Plant) is 28 on every
  * system this builds for, and hashing its raw bytes is safe. A cell full of
  * zeroes is a plant offering only leaves, which is what a bare test needs.
  */
@@ -32,6 +32,10 @@ typedef struct {
     float water_need;  /* more grows faster, but needs wetter soil */
     float temp_pref;   /* the temperature it grows best in */
     float gut_time;    /* how long a seed stays inside the animal that ate it */
+    /* How far a leaf tree has grown, 0..tree_size_max (a fruit tree stays 0).
+     * It grows a little each spring and summer, and from tree_shade_size on it
+     * shades the cells around it. A seed starts at 0. */
+    float size;
 } Plant;
 
 /* What a plant offers is one thing or the other, as in the design: leaves that

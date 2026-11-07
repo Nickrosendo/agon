@@ -375,12 +375,14 @@ static uint64_t hash_canvas(const Canvas *c)
  * creatures stand elsewhere at every zoom but the closest; then snow and drier
  * summers: 300 ticks end a summer with less rain, so the ground's water and the
  * plants on it differ at every zoom; then plants follow the seasons: spring's
- * plenty changes the plants and creatures at every zoom but the closest.
+ * plenty changes the plants and creatures at every zoom but the closest; then
+ * leaf trees grow and shade: the summer heat costs creatures out of shade energy,
+ * so creatures stand elsewhere at the two wider zooms.
  */
 static void test_known_world_pixels(void)
 {
     static const uint64_t EXPECTED[CAMERA_LEVELS] = {
-        0x10cfb74e4201643du, 0xb5fb2349fed7e16eu, 0xaee3fa9f3a5bb966u, 0xe51cee13c54db365u,
+        0x10cfb74e4201643du, 0xb5fb2349fed7e16eu, 0x5ed6d230c8f7be87u, 0x41e5da9a6f230d65u,
     };
     Settings set = settings_default();
     Sim s;

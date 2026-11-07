@@ -51,9 +51,11 @@
  * then the year became 600 ticks with spring as the mating season, and two year
  * senses re-rolled every brain; then snow and drier summers: less rain from
  * tick 150 on changes the plants and so everyone; then plants follow the
- * seasons: more in spring, fruit trees resting from tick 300, bare leaves.
+ * seasons: more in spring, fruit trees resting from tick 300, bare leaves;
+ * then leaf trees grow and shade: Plant gains its size, and creatures out of shade
+ * pay the summer heat.
  */
-#define SEED_7_AFTER_500 0x8218fee3fbdc8cebULL
+#define SEED_7_AFTER_500 0x6ae6435f667cb56fULL
 
 static void test_same_seed_same_checksum(void)
 {

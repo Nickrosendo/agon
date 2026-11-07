@@ -112,6 +112,7 @@ void plant_make_seed(Plant *seed, const Plant *parent, Rng *r, const Settings *s
     seed->water_need = mutated_gene(parent->water_need, r, s);
     seed->temp_pref = mutated_gene(parent->temp_pref, r, s);
     seed->gut_time = mutated_gene(parent->gut_time, r, s);
+    seed->size = 0.0f; /* a new tree starts small, whatever its parent grew to */
 }
 
 uint16_t plant_gut_ticks(const Plant *seed, const Settings *s)
@@ -133,6 +134,7 @@ bool plant_sow(World *w, int cell, const Plant *seed, float energy)
     w->plant[cell] = *seed;
     w->plant[cell].energy = energy;
     w->plant[cell].fruit = 0.0f;
+    w->plant[cell].size = 0.0f;
     w->veg[cell] = 1;
     w->veg_age[cell] = 0;
     w->veg_wither[cell] = 0;
@@ -151,6 +153,30 @@ bool plant_is_bare(const Plant *p, int season)
 {
     return !plant_offers_fruit(p) &&
            (season == SEASON_AUTUMN || season == SEASON_WINTER);
+}
+
+bool plant_gives_shade(const Plant *p, const Settings *s)
+{
+    return !plant_offers_fruit(p) && p->size >= s->tree_shade_size;
+}
+
+/* The age from which a plant can start withering: a leaf tree lives longer than
+ * a fruit tree. */
+static int plant_mature_age(const Plant *p, const Settings *s)
+{
+    return plant_offers_fruit(p) ? s->veg_mature_age : s->tree_mature_age;
+}
+
+/* A leaf plant that fits grows a little in spring and summer, never past
+ * tree_size_max. Autumn and winter add nothing. */
+static void tree_grow(Plant *p, float fit, const Settings *s, int season)
+{
+    bool growing_season = season == SEASON_SPRING || season == SEASON_SUMMER;
+    if (!growing_season || plant_offers_fruit(p) || fit < s->plant_seed_fit) {
+        return;
+    }
+    float size = p->size + s->tree_growth;
+    p->size = size > s->tree_size_max ? s->tree_size_max : size;
 }
 
 /* One tick of a living plant: what it gains, then what it pays, then any fruit,
@@ -177,6 +203,7 @@ static void plant_live(Plant *p, float fit, const Settings *s, int season)
         energy = energy < 0.0f ? 0.0f : energy;
     }
     p->energy = energy;
+    tree_grow(p, fit, s, season);
 }
 
 /* Whether the plant on this cell can give a seed right now. */
@@ -382,7 +409,7 @@ void flora_step(World *w, Rng *r, const Settings *s, int season)
                 Plant *plant = &w->plant[i];
                 float fit = plant_fit(plant, w->water[i], w->temperature[i], s);
                 plant_live(plant, fit, s, season);
-                bool old_age = w->veg_age[i] >= s->veg_mature_age &&
+                bool old_age = w->veg_age[i] >= plant_mature_age(plant, s) &&
                                draw < s->veg_wither_chance;
                 if (old_age || plant->energy <= 0.0f) {
                     w->veg_wither[i] = 1;

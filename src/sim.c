@@ -32,6 +32,7 @@ static void random_plant(Plant *p, Rng *r, const Settings *s)
     p->water_need = rng_unit(r);
     p->temp_pref = rng_unit(r);
     p->gut_time = rng_unit(r);
+    p->size = 0.0f; /* founders start as seedlings too */
 }
 
 /* Random starting plants, in row order, with the same number of draws for every
@@ -482,6 +483,7 @@ static void accounting(Sim *s)
     if (s->pool.count > s->records.peak_population) {
         s->records.peak_population = s->pool.count;
     }
+    int season = years_season_of(s->tick, s->set.ticks_per_year);
     for (int i = 0; i < s->pool.capacity; i++) {
         Creature *c = &s->pool.items[i];
         if (!c->alive) {
@@ -492,6 +494,7 @@ static void accounting(Sim *s)
          * creature's crowd does not depend on who happened to die first. */
         c->energy -= creature_crowd_cost(&s->world, c, &s->set);
         c->energy -= creature_region_cost(&s->world, c, &s->set);
+        c->energy -= creature_heat_cost(&s->world, c, &s->set, season);
         bool lives = creature_upkeep(c, &s->set);
         records_note(&s->records, c, &s->set);
         if (lives) {
@@ -663,7 +666,7 @@ uint64_t sim_checksum(const Sim *s)
     hash = fnv1a(hash, w->veg, n * sizeof(uint8_t));
     hash = fnv1a(hash, w->veg_age, n * sizeof(uint16_t));
     hash = fnv1a(hash, w->veg_wither, n * sizeof(uint8_t));
-    /* Plant is six floats, so no padding: its raw bytes are safe to hash. */
+    /* Plant is seven floats, so no padding: its raw bytes are safe to hash. */
     hash = fnv1a(hash, w->plant, n * sizeof(Plant));
     hash = fnv1a(hash, w->carrion, n * sizeof(float));
     hash = fnv1a(hash, w->carrion_level, n * sizeof(float));

@@ -23,6 +23,10 @@ bool plant_is_growing(const Plant *p, int season);
  * their hanging fruit stays and can be eaten. */
 bool plant_is_bare(const Plant *p, int season);
 
+/* Whether this plant shades the cells around it: a leaf plant that has grown to
+ * tree_shade_size. A fruit tree never does, and size stays 0 on one anyway. */
+bool plant_gives_shade(const Plant *p, const Settings *s);
+
 /* How well a cell with this water and temperature suits a plant, 0..1. See
  * Settings for the sum. Too dry or too cold for it reads as a low number, never
  * as a fixed yes or no: only plant_seed_fit makes a line of it. */

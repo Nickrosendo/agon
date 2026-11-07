@@ -1616,6 +1616,75 @@ static void make_sim(Sim *sim, Settings *set)
     }
 }
 
+/* A tree on the cell, alive, a leaf tree unless fruit is true. */
+static void plant_tree(World *w, int x, int y, float size, bool fruit)
+{
+    int cell = world_idx(w, x, y);
+    w->veg[cell] = 1;
+    w->plant[cell] = (Plant){.fruit_share = fruit ? 1.0f : 0.0f, .size = size};
+}
+
+static void test_shade_is_near_a_big_leaf_tree(void)
+{
+    World w;
+    make_world(&w, 8, 8);
+    Settings s = settings_default();
+    Pool p;
+    CHECK(pool_init(&p, 2));
+    Creature *c = &p.items[spawn(&p, &w, 3, 3)];
+    CHECK(!creature_in_shade(&w, c, &s)); /* no tree at all */
+
+    plant_tree(&w, 4, 3, s.tree_shade_size, false); /* beside it */
+    CHECK(creature_in_shade(&w, c, &s));
+    w.veg[world_idx(&w, 4, 3)] = 0; /* gone: the Plant left behind casts none */
+    CHECK(!creature_in_shade(&w, c, &s));
+
+    plant_tree(&w, 2, 2, s.tree_shade_size, false); /* the corner counts too */
+    CHECK(creature_in_shade(&w, c, &s));
+    w.veg[world_idx(&w, 2, 2)] = 0;
+
+    plant_tree(&w, 5, 3, s.tree_shade_size, false); /* two cells away */
+    CHECK(!creature_in_shade(&w, c, &s));
+
+    plant_tree(&w, 4, 4, s.tree_shade_size, true); /* a fruit tree */
+    CHECK(!creature_in_shade(&w, c, &s));
+    plant_tree(&w, 4, 4, s.tree_shade_size - 0.1f, false); /* a small one */
+    CHECK(!creature_in_shade(&w, c, &s));
+
+    /* The world wraps: a tree across the edge shades a creature on the edge. */
+    Creature *edge = &p.items[spawn(&p, &w, 0, 0)];
+    plant_tree(&w, 7, 7, s.tree_shade_size, false);
+    CHECK(creature_in_shade(&w, edge, &s));
+    pool_free(&p);
+    world_free(&w);
+}
+
+/* summer_heat_upkeep, once per tick, only in summer and only out of shade, the
+ * same for a small body and a big one. */
+static void test_heat_only_in_summer_sun(void)
+{
+    World w;
+    make_world(&w, 8, 8);
+    Settings s = settings_default();
+    Pool p;
+    CHECK(pool_init(&p, 2));
+    Creature *c = &p.items[spawn(&p, &w, 3, 3)];
+    float sizes[2] = {1.0f, 8.0f};
+    for (int k = 0; k < 2; k++) {
+        set_body_size(c, &s, sizes[k]);
+        w.veg[world_idx(&w, 4, 3)] = 0;
+        CHECK(creature_heat_cost(&w, c, &s, SEASON_SUMMER) == s.summer_heat_upkeep);
+        CHECK(creature_heat_cost(&w, c, &s, SEASON_SPRING) == 0.0f);
+        CHECK(creature_heat_cost(&w, c, &s, SEASON_AUTUMN) == 0.0f);
+        CHECK(creature_heat_cost(&w, c, &s, SEASON_WINTER) == 0.0f);
+        plant_tree(&w, 4, 3, s.tree_shade_size, false);
+        CHECK(creature_heat_cost(&w, c, &s, SEASON_SUMMER) == 0.0f);
+    }
+    CHECK(s.summer_heat_upkeep > 0.0f);
+    pool_free(&p);
+    world_free(&w);
+}
+
 static void test_level(void)
 {
     Creature c = {.level = LEVEL_START};
@@ -3134,6 +3203,8 @@ int main(void)
 {
     CHECK(brain_register(&BRAIN_SCRIPT));
     test_pool_slots_and_ids();
+    test_shade_is_near_a_big_leaf_tree();
+    test_heat_only_in_summer_sun();
     test_spawn_needs_free_soil();
     test_move_wraps();
     test_move_blocked_turns_aside();

@@ -157,6 +157,7 @@ static void put_plant(Writer *w, const Plant *p)
     put_float(w, p->water_need);
     put_float(w, p->temp_pref);
     put_float(w, p->gut_time);
+    put_float(w, p->size);
 }
 
 static void put_world(Writer *w, const World *world)
@@ -535,6 +536,9 @@ static void get_plant(Reader *r, Plant *p)
     p->water_need = get_float(r, 0.0f, 1.0f);
     p->temp_pref = get_float(r, 0.0f, 1.0f);
     p->gut_time = get_float(r, 0.0f, 1.0f);
+    /* The settings may differ from the ones it grew under, so only the widest
+     * range any setting allows (tree_size_max, at most 100). */
+    p->size = get_float(r, 0.0f, 100.0f);
 }
 
 static void get_world(Reader *r, World *w)
