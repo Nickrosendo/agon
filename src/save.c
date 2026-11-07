@@ -36,7 +36,7 @@
  */
 #define SAVE_MAGIC "AGONSAVE"
 #define SAVE_MAGIC_LEN 8
-#define SAVE_VERSION 12u
+#define SAVE_VERSION 13u
 
 /* No value in a healthy world comes near this. Bounding them keeps sums
  * from reaching infinity, and float-to-int conversions defined. */
@@ -285,6 +285,7 @@ static void put_creature(Writer *w, const Creature *c)
     put_plant(w, &c->gut_seed);
     put_u16(w, c->gut_ticks);
     put_u16(w, c->sleep_ticks);
+    put_bytes(w, &c->hibernating, 1);
     put_floats(w, c->memory, MEMORY_VALUES);
     put_floats(w, c->genome.g, GENOME_LEN);
     put_tally(w, &c->tally);
@@ -700,9 +701,13 @@ static void get_creature(Reader *r, Creature *c, const Settings *set,
     get_plant(r, &c->gut_seed);
     c->gut_ticks = get_u16(r);
     c->sleep_ticks = get_u16(r);
+    c->hibernating = get_byte(r);
     /* Ticks of a sleep belong only to a sleeper: the tick a creature wakes in
-     * sets them back to 0, and a file is written between ticks. */
-    bool stray_sleep = c->sleep_ticks > 0 && c->current.kind != ACT_SLEEP;
+     * sets them back to 0, and a file is written between ticks. A hibernation
+     * is a sleep, and the flag is 0 or 1. */
+    bool stray_sleep = (c->sleep_ticks > 0 || c->hibernating != 0) &&
+                       c->current.kind != ACT_SLEEP;
+    stray_sleep = stray_sleep || c->hibernating > 1;
     if (c->x < 0 || c->x >= w->w || c->y < 0 || c->y >= w->h ||
         c->heading >= HEADING_COUNT || c->current.kind >= ACT_COUNT ||
         stray_sleep) {

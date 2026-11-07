@@ -1,5 +1,6 @@
 #include "test.h"
 
+#include <math.h>   /* fabsf */
 #include <stdio.h>  /* snprintf */
 #include <string.h> /* strstr, strlen */
 
@@ -592,7 +593,7 @@ static void test_one_event_per_sleep(void)
     const uint16_t lengths[] = {10, SLEEP_NOTED - 1, SLEEP_NOTED};
     for (int n = 0; n < 3; n++) {
         make_sim(&sim, &set);
-        sim.set.min_sleep_ticks = 0;
+        sim.set.nap_min_ticks = 0;
         me = &sim.pool.items[sleeper_for(&sim, lengths[n])];
         for (int k = 0; k <= lengths[n]; k++) {
             sim_step(&sim);
@@ -625,42 +626,65 @@ static void test_one_event_per_sleep(void)
     sim_free(&sim);
 }
 
-/* Sleep has a minimum length: a brain that asks to sleep for one tick sleeps
- * min_sleep_ticks, so it cannot flick between sleeping and waking to pay a
- * sleeper's small upkeep while still moving every other tick. */
-static void test_sleep_lasts_the_minimum(void)
+/* What a sleep becomes. Outside winter, a nap: it lasts at least nap_min_ticks
+ * and pays what resting pays. In winter, with stores of hibernate_energy times
+ * what mating needs, a hibernation: it lasts until the first tick of spring,
+ * whatever the brain asked, and pays sleep_upkeep's small share. In winter
+ * without the stores, only a nap. */
+static void test_naps_and_hibernation(void)
 {
     Sim sim;
     Settings set;
     make_sim(&sim, &set);
-    CHECK(sim.set.min_sleep_ticks == 30);
-    Creature *me = &sim.pool.items[sleeper_for(&sim, 1)];
-    for (int k = 0; k < 30; k++) {
+    CHECK(sim.set.nap_min_ticks == 10);
+    Creature *me = &sim.pool.items[sleeper_for(&sim, 1)]; /* tick 0: spring */
+    for (int k = 0; k < 10; k++) {
         sim_step(&sim);
-        CHECK(me->current.kind == ACT_SLEEP);
+        CHECK(me->current.kind == ACT_SLEEP && me->hibernating == 0);
     }
-    CHECK(me->sleep_ticks == 30);
-    sim_step(&sim); /* the minimum is over, and so is the script: it rests */
+    sim_step(&sim); /* the nap is over, and so is the script: it rests */
     CHECK(me->current.kind == ACT_REST);
     sim_free(&sim);
 
-    /* A sleep longer than the minimum is left as the brain chose it. */
+    /* A nap pays rest's share of upkeep: the same as resting, nothing saved. */
     make_sim(&sim, &set);
-    me = &sim.pool.items[sleeper_for(&sim, 45)];
-    for (int k = 0; k < 45; k++) {
-        sim_step(&sim);
-    }
-    CHECK(me->current.kind == ACT_SLEEP && me->sleep_ticks == 45);
-    sim_step(&sim);
-    CHECK(me->current.kind == ACT_REST);
-    sim_free(&sim);
-
-    /* 0 turns the minimum off: a one-tick sleep is one tick. */
-    make_sim(&sim, &set);
-    sim.set.min_sleep_ticks = 0;
     me = &sim.pool.items[sleeper_for(&sim, 1)];
+    float before = me->energy;
     sim_step(&sim);
-    CHECK(me->current.kind == ACT_SLEEP);
+    float want = creature_upkeep_cost(me, &sim.set) * sim.set.rest_upkeep;
+    CHECK(fabsf((before - me->energy) - want) < 1e-3f);
+    sim_free(&sim);
+
+    /* Winter, well fed: asleep from the first tick of winter to the last. */
+    int year = set.ticks_per_year;
+    make_sim(&sim, &set);
+    sim.tick = (uint64_t)(year * 3 / 4); /* the first tick of winter */
+    me = &sim.pool.items[sleeper_for(&sim, 1)];
+    CHECK(creature_can_hibernate(me, &sim.set));
+    for (int k = 0; k < year / 4; k++) {
+        float e = me->energy;
+        sim_step(&sim);
+        CHECK(me->current.kind == ACT_SLEEP && me->hibernating == 1);
+        if (k == 0) {
+            float cheap = creature_upkeep_cost(me, &sim.set) * sim.set.sleep_upkeep;
+            CHECK(fabsf((e - me->energy) - cheap) < 1e-3f);
+        }
+    }
+    CHECK(sim.tick == (uint64_t)year); /* spring has come */
+    sim_step(&sim); /* spring's first turn: awake */
+    CHECK(me->current.kind == ACT_REST && me->hibernating == 0);
+    sim_free(&sim);
+
+    /* Winter, with too little stored: only a nap. */
+    make_sim(&sim, &set);
+    sim.tick = (uint64_t)(year * 3 / 4);
+    me = &sim.pool.items[sleeper_for(&sim, 1)];
+    me->energy = 1.0f;
+    CHECK(!creature_can_hibernate(me, &sim.set));
+    for (int k = 0; k < 10; k++) {
+        sim_step(&sim);
+        CHECK(me->current.kind == ACT_SLEEP && me->hibernating == 0);
+    }
     sim_step(&sim);
     CHECK(me->current.kind == ACT_REST);
     sim_free(&sim);
@@ -767,7 +791,7 @@ int main(void)
     test_kin_lost_nearby();
     test_moved_once_settled();
     test_one_event_per_sleep();
-    test_sleep_lasts_the_minimum();
+    test_naps_and_hibernation();
     test_largest_oldest_and_giant_once();
     test_ring_keeps_newest();
     test_table_replaces_least_notable();

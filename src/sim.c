@@ -276,6 +276,35 @@ static void keep_memory(Creature *c, const Action *a)
     }
 }
 
+/* What a sleep the brain asks for becomes. Begun in winter with stores enough
+ * (creature_can_hibernate), it is a hibernation held until the first tick of
+ * spring; any other is a nap held at least nap_min_ticks. Either way a bite
+ * still wakes the sleeper early: it clears hold_left. Any other action ends
+ * whatever hibernation there was. */
+static void start_sleep(const Sim *s, Creature *c, Action *a)
+{
+    c->hibernating = 0;
+    if (a->kind != ACT_SLEEP) {
+        return;
+    }
+    int year = s->set.ticks_per_year;
+    if (years_season_of(s->tick, year) == SEASON_WINTER &&
+        creature_can_hibernate(c, &s->set)) {
+        /* Turns at tick t run t, t + 1, ...; spring starts at the next whole
+         * year, so this many turns sleep through the last tick of winter. The
+         * table keeps year at 1 or more, so the % is safe. */
+        uint64_t left = (uint64_t)year - s->tick % (uint64_t)year;
+        a->hold = left < UINT16_MAX ? (uint16_t)left : UINT16_MAX;
+        c->hibernating = 1;
+        return;
+    }
+    /* The setting is an int already checked to fit a uint16_t, so the cast
+     * loses nothing. */
+    if (a->hold < s->set.nap_min_ticks) {
+        a->hold = (uint16_t)s->set.nap_min_ticks;
+    }
+}
+
 /* One creature's turn: ask the brain if the last answer has run out,
  * then do one tick of the current action. */
 static void take_turn(Sim *s, int idx)
@@ -297,12 +326,7 @@ static void take_turn(Sim *s, int idx)
             a.kind = ACT_REST;
             a.hold = 1;
         }
-        /* A sleep lasts at least min_sleep_ticks. a.hold is a uint16_t and the
-         * setting an int already checked to fit in one, so the cast loses
-         * nothing. A bite still wakes the sleeper early: it clears hold_left. */
-        if (a.kind == ACT_SLEEP && a.hold < s->set.min_sleep_ticks) {
-            a.hold = (uint16_t)s->set.min_sleep_ticks;
-        }
+        start_sleep(s, c, &a);
         keep_memory(c, &a);
         c->current = a;
         c->hold_left = a.hold > 0 ? a.hold : 1;
@@ -656,6 +680,7 @@ static uint64_t hash_creature(uint64_t hash, const Creature *c)
     hash = fnv1a(hash, &c->gut_seed, sizeof(c->gut_seed));
     hash = fnv1a(hash, &c->gut_ticks, sizeof(c->gut_ticks));
     hash = fnv1a(hash, &c->sleep_ticks, sizeof(c->sleep_ticks));
+    hash = fnv1a(hash, &c->hibernating, sizeof(c->hibernating));
     /* sizeof of an array that is a struct field is the whole array,
      * GENOME_LEN * sizeof(float): it has not decayed to a pointer here,
      * as an array passed to a function would. */

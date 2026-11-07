@@ -3251,6 +3251,7 @@ static void test_sleep_costs_little(void)
     asleep.health = creature_max_health(&asleep, &s);
     Creature busy = asleep;
     asleep.current.kind = ACT_SLEEP;
+    asleep.hibernating = 1; /* the cheap rate is hibernation's; a nap pays rest's */
     busy.current.kind = ACT_TURN_LEFT;
     float cost = creature_upkeep_cost(&busy, &s);
     CHECK(creature_upkeep(&asleep, &s));
@@ -3269,8 +3270,12 @@ static void test_sleep_costs_little(void)
     CHECK(pool_init(&p, 1));
     Creature *c = &p.items[spawn(&p, &w, 3, 3)];
     c->current.kind = ACT_SLEEP;
+    c->hibernating = 1;
     CHECK(near(creature_heat_cost(&w, c, &s, SEASON_SUMMER),
                s.summer_heat_upkeep * s.sleep_upkeep));
+    c->hibernating = 0; /* a nap pays the sun in full, as resting does */
+    CHECK(near(creature_heat_cost(&w, c, &s, SEASON_SUMMER), s.summer_heat_upkeep));
+    c->hibernating = 1;
     CHECK(creature_heat_cost(&w, c, &s, SEASON_WINTER) == 0.0f);
     pool_free(&p);
     world_free(&w);
@@ -3427,6 +3432,7 @@ static void test_bitten_sleeper_wakes(void)
     sleeper->current = (Action){.kind = ACT_SLEEP, .hold = 500};
     sleeper->hold_left = 400;
     sleeper->sleep_ticks = 100;
+    sleeper->hibernating = 1; /* a hibernation ends on a bite like a nap */
     float health = sleeper->health;
     Action attack = {.kind = ACT_ATTACK, .hold = 1};
     for (int k = 0; k < 5 && sleeper->hits_taken == 0; k++) {
@@ -3436,6 +3442,7 @@ static void test_bitten_sleeper_wakes(void)
     CHECK(near(sleeper->health, health - s.bite_damage * 1.5f)); /* in full */
     CHECK(sleeper->current.kind == ACT_REST);
     CHECK(sleeper->hold_left == 0);
+    CHECK(sleeper->hibernating == 0);
     /* Ended by the Sim, which notes the sleep once it sees it over. */
     CHECK(sleeper->sleep_ticks == 100);
     for (int k = 0; k < 5 && sleeper->hits_taken == 1; k++) {

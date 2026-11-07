@@ -208,9 +208,13 @@ Settings settings_default(void)
         .rest_upkeep = 0.5f,
         /* The seasons design, section 6: a starting guess, against resting's 0.5. */
         .sleep_upkeep = 0.1f,
-        /* Nicolas's pick, 2026-11-07: closes the flicker between sleeping and
-         * waking. 30 ticks is a twentieth of a year, and SLEEP_NOTED's length. */
-        .min_sleep_ticks = 30,
+        /* Nicolas's design, 2026-11-07: hibernation only in winter, prepared for
+         * by eating, and slept through to spring; a nap costs what rest does and
+         * lasts at least 10 ticks. 30 ticks for every sleep cost 5 of 15 worlds
+         * over 100 years (small ones). 3x what mating needs: an adult's median
+         * store at the start of winter was 4 to 6x. */
+        .hibernate_energy = 3.0f,
+        .nap_min_ticks = 10,
         /* These two together, Nicolas's call to try. Seeds 1 to 15, 20,000 ticks, the
          * best of six tried: 15 alive and the smallest world at 98, deaths from wounds
          * 26.3 % against 2.4 %, still and starving 7 % against 20 %. Alone, territory
@@ -406,8 +410,9 @@ static const SettingInfo TABLE[] = {
     FLOAT_ROW(colour_peace, 0, 0.5, "colour distance within which an attack does not strike"),
     FLOAT_ROW(family_split, 0, 0.5, "colour drift at which a newborn starts a family"),
     FLOAT_ROW(rest_upkeep, 0, 1, "share of upkeep paid while resting"),
-    FLOAT_ROW(sleep_upkeep, 0, 1, "share of upkeep and summer heat paid in deep sleep"),
-    INT_ROW(min_sleep_ticks, 0, 65535, "fewest ticks a deep sleep lasts (0: no minimum)"),
+    FLOAT_ROW(sleep_upkeep, 0, 1, "share of upkeep and summer heat paid in hibernation"),
+    FLOAT_ROW(hibernate_energy, 0, BIG, "stores, in matings' worth, needed to hibernate in winter"),
+    INT_ROW(nap_min_ticks, 0, 65535, "fewest ticks a nap lasts (0: no minimum)"),
     FLOAT_ROW(territory_drive, 0, 1, "chance a full territory gene attacks a stranger beside it"),
     FLOAT_ROW(territory_upkeep, 0, BIG, "upkeep of a full territory gene"),
     FLOAT_ROW(crowd_upkeep, 0, BIG, "energy per tick per neighbour past the free ones"),

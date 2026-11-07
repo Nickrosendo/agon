@@ -154,13 +154,19 @@ static void test_sleeper_saved(void)
     c->current = (Action){.kind = ACT_SLEEP, .hold = 400};
     c->hold_left = 250;
     c->sleep_ticks = 150;
+    c->hibernating = 1;
     CHECK(save_write(&a, SAVE_FILE, err, sizeof(err)));
     CHECK(save_read(&b, SAVE_FILE, err, sizeof(err)));
     const Creature *loaded = &b.pool.items[slot];
     CHECK(loaded->current.kind == ACT_SLEEP);
     CHECK(loaded->hold_left == 250);
     CHECK(loaded->sleep_ticks == 150);
+    CHECK(loaded->hibernating == 1);
     CHECK(sim_checksum(&a) == sim_checksum(&b));
+    /* So is hibernating. */
+    b.pool.items[slot].hibernating = 0;
+    CHECK(sim_checksum(&a) != sim_checksum(&b));
+    b.pool.items[slot].hibernating = 1;
     /* sleep_ticks is in the fingerprint: change it and the fingerprint changes. */
     b.pool.items[slot].sleep_ticks = 151;
     CHECK(sim_checksum(&a) != sim_checksum(&b));
@@ -561,8 +567,9 @@ enum {
     AT_GUT_SEED = 125, /* seven floats: 28 bytes */
     AT_GUT_TICKS = 153,
     AT_SLEEP_TICKS = 155,
-    AT_MEMORY = 157,
-    AT_GENOME = 169,
+    AT_HIBERNATING = 157,
+    AT_MEMORY = 158,
+    AT_GENOME = 170,
     /* The life story: ten u32 counts, max_size, flags, two region bytes and
      * region_ticks (49 bytes); then events_noted and 8 events of 13 bytes each
      * (tick, kind, other_id, value: the struct's 3 padding bytes are not written). */
@@ -896,6 +903,9 @@ static void test_refuses_impossible_creature(void)
     refuses_byte(&t, c + AT_KIND, ACT_COUNT, "creature");
     /* Ticks of a sleep for a creature that is awake (this one rests). */
     refuses_byte(&t, c + AT_SLEEP_TICKS, 1, "creature");
+    /* A hibernation for a creature that is awake, and a flag that is not 0 or 1. */
+    refuses_byte(&t, c + AT_HIBERNATING, 1, "creature");
+    refuses_byte(&t, c + AT_HIBERNATING, 2, "creature");
     refuses_u32(&t, c + AT_ENERGY, BITS_NAN, "out of range");
     refuses_u32(&t, c + AT_ENERGY, BITS_HUGE, "out of range");
     refuses_u32(&t, c + AT_HEALTH, BITS_NAN, "out of range");

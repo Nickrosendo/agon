@@ -56,9 +56,11 @@
  * pay the summer heat; then deep sleep: a new action re-rolled every brain;
  * then settings tuned for the seasons: bigger bites of leaves, fruit and meat
  * and slower ageing change what every creature has; then a sleep lasts at least
- * 30 ticks, so brains that chose short sleeps sleep longer.
+ * 30 ticks, so brains that chose short sleeps sleep longer; then naps and
+ * hibernation: a nap lasts 10 ticks at rest's cost, and only a well-fed winter
+ * sleep is cheap and lasts until spring.
  */
-#define SEED_7_AFTER_500 0xa82f2bb9e7fb63e9ULL
+#define SEED_7_AFTER_500 0x9d37b9ec1e751699ULL
 
 static void test_same_seed_same_checksum(void)
 {

@@ -315,14 +315,16 @@ typedef struct {
     float family_split;
     /* The share of upkeep paid on a tick spent resting. */
     float rest_upkeep;
-    /* The share paid on a tick of deep sleep (ACT_SLEEP), of the upkeep, ageing
-     * included, and of the summer heat. */
+    /* The share paid on a tick of hibernation, of the upkeep, ageing included,
+     * and of the summer heat. A nap pays rest_upkeep's share instead. */
     float sleep_upkeep;
-    /* The fewest ticks a deep sleep lasts: a brain that asks to sleep for less
-     * sleeps this long, unless a bite wakes it. Without it a brain could sleep
-     * every other tick and pay a sleeper's upkeep while still getting about.
-     * 0 turns it off. */
-    int min_sleep_ticks;
+    /* A sleep begun in winter by a creature with energy of at least
+     * hibernate_energy times what mating needs is a hibernation: it lasts until
+     * spring unless a bite wakes it. Any other sleep is a nap. */
+    float hibernate_energy;
+    /* The fewest ticks a nap lasts: a brain that asks to nap for less naps
+     * this long, unless a bite wakes it. 0 turns it off. */
+    int nap_min_ticks;
     /* Crowding: crowd_upkeep energy per tick for each creature past the first
      * crowd_free within crowd_radius cells, whoever they are. 0 turns it off. */
     /* Territory: each tick an adult with a stranger on one of the four cells

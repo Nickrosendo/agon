@@ -254,9 +254,9 @@ float creature_heat_cost(const World *w, const Creature *c, const Settings *s,
     if (season != SEASON_SUMMER || creature_in_shade(w, c, s)) {
         return 0.0f;
     }
-    /* A sleeping body makes little heat of its own, and pays the same small
-     * share of the sun as of its upkeep. */
-    float share = creature_asleep(c) ? s->sleep_upkeep : 1.0f;
+    /* A hibernating body makes little heat of its own, and pays the same small
+     * share of the sun as of its upkeep. A nap saves nothing here. */
+    float share = creature_asleep(c) && c->hibernating ? s->sleep_upkeep : 1.0f;
     return s->summer_heat_upkeep * share;
 }
 
@@ -325,6 +325,11 @@ float creature_crowd_cost(const World *w, const Creature *c, const Settings *s)
 static float mate_needs(const Creature *c, const Settings *s)
 {
     return s->mate_threshold * creature_size(c, s);
+}
+
+bool creature_can_hibernate(const Creature *c, const Settings *s)
+{
+    return c->energy >= s->hibernate_energy * mate_needs(c, s);
 }
 
 float attack_chance(float a, float t, float k)
@@ -653,6 +658,7 @@ static void wake(Creature *c)
         c->current.kind = ACT_REST;
         c->current.hold = 1;
         c->hold_left = 0;
+        c->hibernating = 0;
     }
 }
 
@@ -1186,14 +1192,15 @@ static void grow(Creature *c, const Settings *s)
 }
 
 /* The share of its upkeep a creature pays this tick, by what it is doing. The
- * ageing part is included in the discount: a body at rest costs less, and one
- * in deep sleep far less. Ageing itself goes on at the same pace. */
+ * ageing part is included in the discount: a body at rest or napping costs
+ * less, and a hibernating one far less. Ageing itself goes on at the same pace. */
 static float upkeep_share(const Creature *c, const Settings *s)
 {
-    if (creature_asleep(c)) {
+    if (creature_asleep(c) && c->hibernating) {
         return s->sleep_upkeep;
     }
-    return c->current.kind == ACT_REST ? s->rest_upkeep : 1.0f;
+    return c->current.kind == ACT_REST || creature_asleep(c) ? s->rest_upkeep
+                                                             : 1.0f;
 }
 
 bool creature_upkeep(Creature *c, const Settings *s)

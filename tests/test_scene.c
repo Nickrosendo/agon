@@ -454,10 +454,13 @@ static void test_known_world_pixels(void)
          * meat, slower ageing): creatures stand elsewhere at the two wider
          * levels; both pictures were saved and looked at. Re-pinned for the
          * minimum sleep (a sleep lasts at least 30 ticks): creatures stand
-         * elsewhere at all but the closest level; looked at again. */
+         * elsewhere at all but the closest level; looked at again. Re-pinned
+         * for naps and hibernation (a nap lasts 10 ticks): Normal is back to
+         * its picture from before the minimum sleep; the two wider levels
+         * were looked at. */
         static const uint64_t EXPECTED[CAMERA_LEVELS] = {
-            0xbe5f57fb7c7bdabdu, 0xc0232e691233cb05u,
-            0xa1cf36b85ee5d857u, 0x71890b9c6eb7fca5u,
+            0xbe5f57fb7c7bdabdu, 0x5a015897532bfe08u,
+            0x85d3a056a12b30acu, 0x8183ed4a345c4dc5u,
         };
         if (hashes[level] != EXPECTED[level]) {
             printf("level %d: 0x%llxu\n", level,

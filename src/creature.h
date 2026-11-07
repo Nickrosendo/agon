@@ -146,6 +146,11 @@ typedef struct {
      * stopping at 65,535; 0 while awake. The Sim sets it back to 0 at the end
      * of the tick it wakes in, after noting a long enough sleep in its story. */
     uint16_t sleep_ticks;
+    /* 1 while the sleep it is in is a hibernation (begun in winter with stores
+     * of hibernate_energy, lasting until spring), 0 for a nap or awake. A
+     * uint8_t, not a bool, so the save file and the fingerprint hold one byte
+     * whose size does not depend on the compiler. */
+    uint8_t hibernating;
     /* Stored inside the creature, not behind a pointer: GENOME_LEN floats
      * (1,420 bytes) in every slot, allocated with the pool and never freed
      * on its own. */
@@ -325,11 +330,15 @@ float creature_region_cost(const World *w, const Creature *c, const Settings *s)
 /* Whether a living leaf tree grown to shading size (plant_gives_shade) stands
  * on the creature's cell or any of the eight around it. */
 bool creature_in_shade(const World *w, const Creature *c, const Settings *s);
-/* Whether the creature is in deep sleep: its current action is ACT_SLEEP. */
+/* Whether the creature is asleep, napping or hibernating: its current action
+ * is ACT_SLEEP. */
 bool creature_asleep(const Creature *c);
+/* Whether it has stored enough to begin a hibernation: energy of at least
+ * hibernate_energy times what mating needs. */
+bool creature_can_hibernate(const Creature *c, const Settings *s);
 /* Energy the summer sun costs per tick: summer_heat_upkeep in summer out of
- * shade, whatever the size of the body, else 0; asleep, sleep_upkeep's share of
- * that. season is a SEASON_ value. */
+ * shade, whatever the size of the body, else 0; hibernating, sleep_upkeep's
+ * share of that. season is a SEASON_ value. */
 float creature_heat_cost(const World *w, const Creature *c, const Settings *s,
                          int season);
 /* The energy a step onto this cell costs on top of move_cost, by its legs and
