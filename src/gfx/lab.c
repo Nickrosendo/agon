@@ -6,6 +6,7 @@
 #include "font.h"
 #include "gfx_hash.h"
 #include "palette.h"
+#include "pose.h"     /* pose_frame, pose_cycle_seconds, pose_eyes */
 #include "species.h"
 
 /* The mockup lab's ground (v9:673-676), in art pixels of the strip. */
@@ -18,7 +19,6 @@
 #define MARGIN FONT_W         /* left, right and between the cells */
 #define NAME_COLUMN (12 * FONT_W)  /* the role names on the left */
 #define ROW_GAP 6             /* under a cell's name, before the next row */
-#define LAB_FRAMES_PER_SECOND 30   /* animation is sampled at the window's rate */
 
 static const char *const ROLE_TITLES[ROLE_COUNT] = {
     [ROLE_HUNTER] = "hunters",   [ROLE_SWIMMER] = "swimmers",
@@ -26,10 +26,20 @@ static const char *const ROLE_TITLES[ROLE_COUNT] = {
     [ROLE_WATCHER] = "watchers", [ROLE_GRAZER] = "plant-eaters",
 };
 
-/* In ACTION_ order, as the selector shows them. */
-static const char *const ACTION_NAMES[ACTION_COUNT] = {
-    "rest", "walk", "run", "graze", "bite", "attack", "sleep",
+/* The actions the number keys choose, key 1 first, and their names. The keys
+ * are not ACTION_ values: this table maps them. Hunters attack on key 5 once
+ * the attack has its own cycle; until then every animal bites. */
+static const int KEY_ACTIONS[LAB_KEYS] = {
+    ACTION_WALK, ACTION_RUN, ACTION_REST, ACTION_GRAZE, ACTION_BITE, ACTION_SLEEP,
 };
+static const char *const KEY_NAMES[LAB_KEYS] = {
+    "walk", "run", "rest", "graze", "bite", "sleep",
+};
+
+int lab_action_of_key(int number)
+{
+    return number >= 1 && number <= LAB_KEYS ? KEY_ACTIONS[number - 1] : -1;
+}
 
 int lab_species_at(int role, int column)
 {
@@ -211,14 +221,14 @@ static void draw_title(Canvas *c, const LabLayout *l, int action, uint32_t bg)
     int x = l->area.x + MARGIN;
     text_in(c, l, x, l->area.y, "species lab   b closes", bright, bg);
     x += (int)strlen("species lab   b closes") * FONT_W + 3 * FONT_W;
-    for (int a = 0; a < ACTION_COUNT; a++) {
+    for (int k = 0; k < LAB_KEYS; k++) {
         char item[24];
-        snprintf(item, sizeof(item), "%d %s", a + 1, ACTION_NAMES[a]);
+        snprintf(item, sizeof(item), "%d %s", k + 1, KEY_NAMES[k]);
         int width = (int)strlen(item) * FONT_W;
         if (x + width > l->area.x + l->area.w) {
             return;
         }
-        text_in(c, l, x, l->area.y, item, a == action ? bright : dim, bg);
+        text_in(c, l, x, l->area.y, item, KEY_ACTIONS[k] == action ? bright : dim, bg);
         x += width + 2 * FONT_W;
     }
 }
@@ -258,34 +268,32 @@ static void draw_strip_ground(Canvas *c, const LabLayout *l, int role, int sx, i
 /* The open eye, as the world draws it (v9:483-492): one pixel, or a larger one
  * with a glint in a big-eyed species or a big body. Facing right. */
 static void draw_eye(Canvas *c, const SpritePicture *p, const SpritePalette *pal,
-                     int left, int top, int scale, CanvasClip clip)
+                     float eyes, int left, int top, int scale, CanvasClip clip)
 {
-    if (p->eye_x < 0 || p->eye_y < 0) {
-        return;
-    }
-    uint32_t dark = pal->ink[INK_EYE], white = pal->ink[INK_EYE_WHITE];
-    int ex = left + (p->eye_x - p->x0) * scale, ey = top + (p->eye_y - p->y0) * scale;
-    if (p->eye_big && p->eye_detail) {
-        canvas_rect_clip(c, ex - scale, ey - scale, 3 * scale, 3 * scale, dark, clip);
-        canvas_pixel(c, ex, ey - scale, scale, white, clip);
-    } else if (p->eye_big || p->eye_detail) {
-        canvas_rect_clip(c, ex, ey, 2 * scale, scale, dark, clip);
-        canvas_pixel(c, ex + scale, ey - scale, scale, dark, clip);
-        canvas_pixel(c, ex, ey - scale, scale, white, clip);
-    } else {
-        canvas_pixel(c, ex, ey, scale, dark, clip);
+    SpriteEyePixel eye[SPRITE_EYE_PIXELS_MAX];
+    int n = sprite_eye_pixels(p, eyes, eye);
+    for (int k = 0; k < n; k++) {
+        int ex = left + (p->eye_x + eye[k].dx - p->x0) * scale;
+        int ey = top + (p->eye_y + eye[k].dy - p->y0) * scale;
+        canvas_pixel(c, ex, ey, scale, pal->ink[eye[k].ink], clip);
     }
 }
 
 /* One species standing on its strip: shadow, then the picture cut to its inked
  * bounds and centred, its feet on the first row of ground. */
 static void draw_animal(SpriteCache *sprites, Canvas *c, const LabLayout *l, int species,
-                        int action, int frame, int sx, int sy)
+                        int action, uint64_t body_ms, int sx, int sy)
 {
     int s = l->scale;
     int strip_h = l->strip_h[SPECIES[species].role];
     SpriteBody body = lab_body(species);
+    /* Each animal at its own pace, the species number in place of an id so
+     * the page is not in step. */
+    uint32_t id = (uint32_t)species;
+    int frame = pose_frame(body_ms, id, action, pose_cycle_seconds(&body, action));
     SpritePicture p = sprite_picture(sprites, &body, action, frame);
+    bool blinks = action == ACTION_REST || action == ACTION_WALK || action == ACTION_RUN;
+    float eyes = action == ACTION_SLEEP ? 0.0f : blinks ? pose_eyes(body_ms, id) : 1.0f;
     SpritePalette pal;
     sprite_palette_look(&pal, species);
     int w = p.x1 - p.x0, h = p.y1 - p.y0;
@@ -309,7 +317,7 @@ static void draw_animal(SpriteCache *sprites, Canvas *c, const LabLayout *l, int
     canvas_darken_ellipse(c, foot_x, foot_y, p.shadow_rx * s, p.shadow_ry * s, 141, strip);
     canvas_picture(c, p.ink + p.y0 * p.w + p.x0, p.w, w, h, left, top, s, false, pal.ink,
                    strip);
-    draw_eye(c, &p, &pal, left, top, s, strip);
+    draw_eye(c, &p, &pal, eyes, left, top, s, strip);
 }
 
 void lab_draw(SpriteCache *sprites, Canvas *c, int action, uint64_t body_ms, int x, int y,
@@ -322,8 +330,9 @@ void lab_draw(SpriteCache *sprites, Canvas *c, int action, uint64_t body_ms, int
     if (action < 0 || action >= ACTION_COUNT) {
         action = ACTION_REST;
     }
-    int frame = (int)(body_ms * LAB_FRAMES_PER_SECOND / 1000u);
-    LabLayout l = make_layout(sprites, action, frame, x, y, w, h);
+    /* The rows are sized by the action's first frame, so the page does not
+     * jump about as the animals move. */
+    LabLayout l = make_layout(sprites, action, 0, x, y, w, h);
     canvas_rect_clip(c, x, y, w, h, bg, l.area);
     if (!l.full) {
         return;
@@ -340,7 +349,7 @@ void lab_draw(SpriteCache *sprites, Canvas *c, int action, uint64_t body_ms, int
             }
             int sx = l.cells_x + col * (l.cell_w + MARGIN);
             draw_strip_ground(c, &l, role, sx, row_y, species);
-            draw_animal(sprites, c, &l, species, action, frame, sx, row_y);
+            draw_animal(sprites, c, &l, species, action, body_ms, sx, row_y);
             const char *name = SPECIES[species].name;
             int name_x = sx + (l.cell_w - (int)strlen(name) * FONT_W) / 2;
             text_in(c, &l, name_x > sx ? name_x : sx, row_y + l.strip_h[role] + 2, name,

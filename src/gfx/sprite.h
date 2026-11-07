@@ -110,11 +110,20 @@ void sprite_cache_free(SpriteCache *c);
 void sprite_cache_reset(SpriteCache *c);
 /* Drawn the first time it is asked for; the picture stays good until the next
  * call, which may reuse its entry. action is an ACTION_ value; frame is cut to
- * the action's cycle. Until task 11 every action and frame is the standing pose. */
+ * the action's cycle; pose_at (pose.h) gives its pose. */
 SpritePicture sprite_picture(SpriteCache *c, const SpriteBody *b, int action, int frame);
 /* Where up to count (at most 3) scars fall on the picture's body, as shares of
  * its extent: grid pixels written to out, how many returned (at most max). */
 int sprite_scar_pixels(const SpritePicture *p, int count, int16_t out[][2], int max);
+/* One pixel of an eye over a picture: its offset from (eye_x, eye_y) in grid
+ * pixels, and its ink. */
+typedef struct { int8_t dx, dy; uint8_t ink; } SpriteEyePixel;
+#define SPRITE_EYE_PIXELS_MAX 10
+/* The eye of picture p, open (eyes 1), half shut (0.4) or shut (0), as the
+ * mockup draws it (v9:483-492): in order, a later pixel over an earlier one.
+ * How many were written to out; 0 when the picture has no eye (Far). */
+int sprite_eye_pixels(const SpritePicture *p, float eyes,
+                      SpriteEyePixel out[SPRITE_EYE_PIXELS_MAX]);
 /* The K a body is drawn at: its level's K times the species' scale, capped so
  * the body fits its grid, times the base's factor. */
 float sprite_k(const SpriteBody *b);

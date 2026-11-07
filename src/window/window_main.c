@@ -281,11 +281,11 @@ static void handle_key(App *a, int key)
     case 'B':
         a->lab_open = !a->lab_open;
         break;
-    case '1': case '2': case '3': case '4': case '5': case '6': case '7':
+    case '1': case '2': case '3': case '4': case '5': case '6':
         /* The action keys only mean something on the lab page. Characters are
-         * numbers in C, so '1' - '1' is 0, ACTION_REST. */
+         * numbers in C, so key - '0' is the key's number: '3' - '0' is 3. */
         if (a->lab_open) {
-            a->lab_action = key - '1';
+            a->lab_action = lab_action_of_key(key - '0');
         }
         break;
     case KEY_ESCAPE:

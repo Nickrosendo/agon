@@ -15,6 +15,8 @@
 #define ANIM_POP_TICKS 8
 /* Above this many ticks per second, creatures jump instead of gliding. */
 #define ANIM_GLIDE_MAX_SPEED 15
+/* A move that takes at most this many ticks is shown as a run. */
+#define ANIM_RUN_TICKS 1.5f
 
 /* One pool slot's memory. */
 /* Fighting looks like biting, with a slash for a mark. The rules have no such
@@ -38,6 +40,7 @@ typedef struct {
     uint64_t last_tick;
     bool started;         /* false until the first anim_update */
     bool jump;            /* no gliding this frame: see ANIM_GLIDE_MAX_SPEED */
+    int ticks_per_second; /* as last given to anim_update: how fast a glide goes */
 } Anim;
 
 /* How to draw one creature right now. */
@@ -45,6 +48,7 @@ typedef struct {
     float x, y;  /* in cells, possibly between two */
     int action;  /* an ACTION_ value (skeleton.h): which cycle */
     int frame;   /* the frame of that cycle */
+    float eyes;  /* 1 open, 0.4 half shut, 0 shut: blinks are drawn, not pictured */
     bool flip;   /* true when facing left */
     float pop;   /* 0..1; 1 is full size */
     int bite;    /* a BITE_ value (creature.h), or POSE_ATTACK: what its mouth is doing */
@@ -60,8 +64,12 @@ void anim_reset(Anim *a);
 /* Looks at every creature. Once per frame, after the frame's ticks. */
 void anim_update(Anim *a, const Sim *s, int ticks_per_second);
 /* The pose of the living creature in pool slot `slot`. tick_fraction (0..1)
- * is how far the frame is towards the next tick; now_ms is a clock for the
- * resting breath. */
+ * is how far the frame is towards the next tick; now_ms is the body clock,
+ * which stops while paused, and picks the frame of every cycle and the blinks.
+ *
+ * The action: asleep, sleep; gliding to a cell, run when the move takes at
+ * most ANIM_RUN_TICKS ticks, else walk; biting leaves, graze; biting fruit or
+ * carrion, or fighting, bite; anything else, rest. */
 void anim_pose(const Anim *a, const Sim *s, int slot, float tick_fraction,
                uint64_t now_ms, AnimPose *out);
 

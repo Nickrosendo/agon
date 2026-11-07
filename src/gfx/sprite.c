@@ -455,3 +455,49 @@ int sprite_scar_pixels(const SpritePicture *p, int count, int16_t out[][2], int 
     }
     return n;
 }
+
+/* Adds one eye pixel to out at n, and returns the new count. */
+static int eye_pixel(SpriteEyePixel *out, int n, int dx, int dy, uint8_t ink)
+{
+    out[n] = (SpriteEyePixel){(int8_t)dx, (int8_t)dy, ink};
+    return n + 1;
+}
+
+int sprite_eye_pixels(const SpritePicture *p, float eyes,
+                      SpriteEyePixel out[SPRITE_EYE_PIXELS_MAX])
+{
+    if (p->eye_x < 0 || p->eye_y < 0) {
+        return 0;
+    }
+    int n = 0;
+    if (eyes <= 0.0f) {
+        /* Shut: a line of the darkest shade, longer on a detailed body. */
+        n = eye_pixel(out, n, 0, 0, INK_DEEP);
+        n = eye_pixel(out, n, 1, 0, INK_DEEP);
+        if (p->eye_detail) {
+            n = eye_pixel(out, n, -1, 0, INK_DEEP);
+        }
+    } else if (p->eye_big && p->eye_detail) {
+        /* Three rows open with a glint; one row half shut. */
+        bool open = eyes >= 1.0f;
+        int rows = open ? 3 : 1;
+        for (int a = -1; a <= 1; a++) {
+            for (int b = 0; b < rows; b++) {
+                n = eye_pixel(out, n, a, b - (open ? 1 : 0), INK_EYE);
+            }
+        }
+        if (open) {
+            n = eye_pixel(out, n, 0, -1, INK_EYE_WHITE);
+        }
+    } else if (p->eye_big || p->eye_detail) {
+        n = eye_pixel(out, n, 0, 0, INK_EYE);
+        n = eye_pixel(out, n, 1, 0, INK_EYE);
+        if (eyes >= 1.0f) {
+            n = eye_pixel(out, n, 1, -1, INK_EYE);
+            n = eye_pixel(out, n, 0, -1, INK_EYE_WHITE);
+        }
+    } else {
+        n = eye_pixel(out, n, 0, 0, INK_EYE); /* one pixel: a blink cannot show */
+    }
+    return n;
+}

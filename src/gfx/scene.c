@@ -1367,6 +1367,7 @@ typedef struct {
     int foot_x, foot_y;
     int scale;
     bool flip;
+    float eyes;  /* 1 open, 0.4 half shut, 0 shut */
 } BodyDraw;
 
 /* The canvas column of picture column gx: flipped about the ground point when
@@ -1448,29 +1449,16 @@ static void paint_body(Canvas *c, const BodyDraw *d, int dx, int dy, CanvasClip 
     }
 }
 
-/* The open eye over the picture (v9:483-492): larger in a big-eyed species or
- * a body above K 1.6, with a white glint. Far's silhouettes have none. */
+/* The eye over the picture, open, half shut or shut (v9:483-492): larger in a
+ * big-eyed species or a body above K 1.6, with a white glint when open. Far's
+ * silhouettes have none. */
 static void paint_eye(Canvas *c, const BodyDraw *d, int dx, int dy, CanvasClip clip)
 {
-    int ex = d->pic.eye_x, ey = d->pic.eye_y;
-    if (ex < 0 || ey < 0) {
-        return;
-    }
-    uint32_t dark = d->palette->ink[INK_EYE], white = d->palette->ink[INK_EYE_WHITE];
-    if (d->pic.eye_big && d->pic.eye_detail) {
-        for (int a = -1; a <= 1; a++) {
-            for (int b = 0; b < 3; b++) {
-                body_pixel(c, d, ex + a, ey + b - 1, dx, dy, dark, clip);
-            }
-        }
-        body_pixel(c, d, ex, ey - 1, dx, dy, white, clip);
-    } else if (d->pic.eye_big || d->pic.eye_detail) {
-        body_pixel(c, d, ex, ey, dx, dy, dark, clip);
-        body_pixel(c, d, ex + 1, ey, dx, dy, dark, clip);
-        body_pixel(c, d, ex + 1, ey - 1, dx, dy, dark, clip);
-        body_pixel(c, d, ex, ey - 1, dx, dy, white, clip);
-    } else {
-        body_pixel(c, d, ex, ey, dx, dy, dark, clip);
+    SpriteEyePixel eye[SPRITE_EYE_PIXELS_MAX];
+    int n = sprite_eye_pixels(&d->pic, d->eyes, eye);
+    for (int k = 0; k < n; k++) {
+        body_pixel(c, d, d->pic.eye_x + eye[k].dx, d->pic.eye_y + eye[k].dy, dx, dy,
+                   d->palette->ink[eye[k].ink], clip);
     }
 }
 
@@ -1513,6 +1501,7 @@ static BodyDraw world_body(Scene *sc, const Camera *cam, const Sim *s, int slot,
     d.foot_y = it->foot_y - ppc + ppc * 13 / 16;
     d.scale = camera_sprite_scale(cam);
     d.flip = p->flip;
+    d.eyes = p->eyes;
     return d;
 }
 
@@ -2006,6 +1995,7 @@ static void drawn_box(Scene *sc, const Camera *cam, const Sim *s, int slot,
     d.foot_y = sy + ppc * 13 / 16;
     d.scale = camera_sprite_scale(cam);
     d.flip = p->flip;
+    d.eyes = p->eyes;
     if (d.pic.x1 > d.pic.x0) {
         body_box(&d, left, top, right, bottom);
     }
@@ -2137,6 +2127,7 @@ void scene_draw_followed(Scene *sc, Canvas *c, const Sim *s,
     d.palette = slot_palette(sc, followed, slot, b.species);
     d.scale = 1;
     d.flip = p.flip;
+    d.eyes = 1.0f;
     draw_in_box(c, &d, recent_hit_count(followed, s->tick), x, y, SCENE_BODY_BIG,
                 SCENE_BODY_BIG);
 }
@@ -2161,6 +2152,7 @@ static void draw_sample_body(Scene *sc, Canvas *c, const FamilySample *sample,
     d.palette = &palette;
     d.scale = 1;
     d.flip = false;
+    d.eyes = 1.0f;
     draw_in_box(c, &d, 0, x, y, w, h);
 }
 

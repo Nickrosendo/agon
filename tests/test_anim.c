@@ -66,7 +66,7 @@ static void test_glide_halfway(void)
     anim_pose(&a, &s, slot, 0.0f, 0, &p);
     CHECK(NEAR(p.x, 10.5f));
     CHECK(NEAR(p.y, 10.0f));
-    CHECK(p.action == ACTION_WALK && p.frame >= 0 && p.frame <= 3);
+    CHECK(p.action == ACTION_WALK && p.frame >= 0 && p.frame < SPRITE_FRAMES[ACTION_WALK]);
     /* The fraction of a tick counts too: smooth between ticks. */
     anim_pose(&a, &s, slot, 0.5f, 0, &p);
     CHECK(NEAR(p.x, 10.625f));
@@ -75,7 +75,7 @@ static void test_glide_halfway(void)
     anim_update(&a, &s, 10);
     anim_pose(&a, &s, slot, 0.0f, 0, &p);
     CHECK(NEAR(p.x, 11.0f));
-    CHECK(p.action == ACTION_REST && (p.frame == 0 || p.frame == 1));
+    CHECK(p.action == ACTION_REST && p.frame >= 0 && p.frame < SPRITE_FRAMES[ACTION_REST]);
     anim_free(&a);
     sim_free(&s);
 }
@@ -116,7 +116,8 @@ static void test_jump_above_15_ticks(void)
     AnimPose p;
     anim_pose(&a, &s, slot, 0.5f, 0, &p);
     CHECK(NEAR(p.x, 11.0f));
-    CHECK(p.action == ACTION_WALK && p.frame >= 0 && p.frame <= 3); /* legs still */
+    /* Jumping, but still walking for the tick after the move. */
+    CHECK(p.action == ACTION_WALK && p.frame >= 0 && p.frame < SPRITE_FRAMES[ACTION_WALK]);
     anim_free(&a);
     sim_free(&s);
 }
@@ -155,7 +156,7 @@ static void test_first_sight_does_not_glide(void)
     anim_pose(&a, &s, slot, 0.0f, 0, &p);
     CHECK(NEAR(p.x, 40.0f));
     CHECK(NEAR(p.y, 20.0f));
-    CHECK(p.action == ACTION_REST && (p.frame == 0 || p.frame == 1));
+    CHECK(p.action == ACTION_REST);
     CHECK(NEAR(p.pop, 1.0f)); /* old: no birth to show */
     anim_free(&a);
     sim_free(&s);
@@ -243,14 +244,14 @@ static void test_facing_north_keeps_last(void)
     sim_free(&s);
 }
 
+/* Two resting creatures side by side breathe out of step, and each moves on
+ * to its next frame a frame's length later: 6 s over 24 frames, 250 ms. */
 static void test_rest_breathing_offset(void)
 {
     Sim s;
     empty_sim(&s, 64, 32);
     int one = pool_spawn(&s.pool, &s.world, 10, 10);
     int two = pool_spawn(&s.pool, &s.world, 20, 10);
-    /* Consecutive ids, so their remainders by 2 differ. */
-    CHECK(s.pool.items[two].id == s.pool.items[one].id + 1);
     Anim a;
     CHECK(anim_init(&a, s.pool.capacity));
     anim_update(&a, &s, 10);
@@ -259,15 +260,14 @@ static void test_rest_breathing_offset(void)
     anim_pose(&a, &s, two, 0.0f, 0, &p2);
     CHECK(p1.action == ACTION_REST && p2.action == ACTION_REST);
     CHECK(p1.frame != p2.frame);
-    /* A breath later, each has changed. */
     AnimPose later;
-    anim_pose(&a, &s, one, 0.0f, 625, &later);
-    CHECK(later.frame != p1.frame);
+    anim_pose(&a, &s, one, 0.0f, 250, &later);
+    CHECK(later.frame == (p1.frame + 1) % SPRITE_FRAMES[ACTION_REST]);
     anim_free(&a);
     sim_free(&s);
 }
 
-/* Mating has no picture of its own until task 11: the creature rests. */
+/* Mating has no picture of its own: the creature rests. */
 static void test_mating_creature_rests(void)
 {
     Sim s;
@@ -338,12 +338,14 @@ static void test_bite_at_nothing_shows_no_bite(void)
     AnimPose p;
     anim_pose(&a, &s, slot, 0.0f, 0, &p);
     CHECK(p.bite == BITE_NOTHING);
-    CHECK(p.action == ACTION_REST && (p.frame == 0 || p.frame == 1));
+    CHECK(p.action == ACTION_REST);
     anim_free(&a);
     sim_free(&s);
 }
 
-static void test_eating_a_plant_chomps_and_faces_it(void)
+/* Eating leaves is grazing: head down, facing the plant, the cycle moving on
+ * with the body clock. */
+static void test_eating_leaves_grazes_and_faces_it(void)
 {
     Sim s;
     int slot = biter_beside_plant(&s, -1, 0);
@@ -352,14 +354,13 @@ static void test_eating_a_plant_chomps_and_faces_it(void)
     anim_update(&a, &s, 10);
     AnimPose p0, p1;
     anim_pose(&a, &s, slot, 0.0f, 0, &p0);
-    anim_pose(&a, &s, slot, 0.0f, 150, &p1);
+    anim_pose(&a, &s, slot, 0.0f, 500, &p1);
     CHECK(p0.bite == BITE_PLANT);
     CHECK(p0.target_x == 9 && p0.target_y == 10);
     CHECK(p0.flip); /* the plant is on its left, and it was facing right */
-    /* Mouth open, then shut. */
-    CHECK(p0.action != p1.action);
-    CHECK(p0.action == ACTION_BITE || p1.action == ACTION_BITE);
-    CHECK(p0.action == ACTION_REST || p1.action == ACTION_REST);
+    CHECK(p0.action == ACTION_GRAZE && p1.action == ACTION_GRAZE);
+    CHECK(p0.frame != p1.frame);
+    CHECK(p0.eyes == 1.0f); /* no blinking while it eats */
     anim_free(&a);
     sim_free(&s);
 }
@@ -447,6 +448,111 @@ static void test_biter_beside_creature_and_carrion_eats(void)
     sim_free(&s);
 }
 
+
+/* What the simulation says a creature does picks its cycle: moving walks, a
+ * one-tick mover runs, eating fruit or carrion bites, standing rests, asleep
+ * sleeps (leaves graze: test_eating_leaves_grazes_and_faces_it). */
+static void test_action_follows_the_sim(void)
+{
+    Sim s;
+    empty_sim(&s, 64, 32);
+    int walker = pool_spawn(&s.pool, &s.world, 10, 10);
+    int runner = pool_spawn(&s.pool, &s.world, 20, 10);
+    int fruit_eater = pool_spawn(&s.pool, &s.world, 30, 10);
+    int scavenger = pool_spawn(&s.pool, &s.world, 40, 10);
+    int rester = pool_spawn(&s.pool, &s.world, 50, 10);
+    int sleeper = pool_spawn(&s.pool, &s.world, 10, 20);
+    set_move_ticks(&s, walker, 4.0f);
+    set_move_ticks(&s, runner, 1.0f);
+    /* Fruit, and a mouth for fruit only, so fruit beats the leaves. */
+    Creature *f = &s.pool.items[fruit_eater];
+    f->current.kind = ACT_BITE;
+    f->genome.g[GENE_FRUIT] = 1.0f;
+    f->genome.g[GENE_LEAF] = 0.0f;
+    int tree = world_idx(&s.world, 31, 10);
+    s.world.veg[tree] = 2;
+    s.world.plant[tree].fruit = 3.0f;
+    Creature *m = &s.pool.items[scavenger];
+    m->current.kind = ACT_BITE;
+    m->genome.g[GENE_MEAT] = 1.0f;
+    s.world.carrion[world_idx(&s.world, 41, 10)] = 5.0f;
+    s.pool.items[sleeper].current.kind = ACT_SLEEP;
+
+    Anim a;
+    CHECK(anim_init(&a, s.pool.capacity));
+    anim_update(&a, &s, 10);
+    s.tick++;
+    move_to(&s, walker, 11, 10);
+    move_to(&s, runner, 21, 10);
+    anim_update(&a, &s, 10);
+    AnimPose p;
+    anim_pose(&a, &s, walker, 0.2f, 0, &p);
+    CHECK(p.action == ACTION_WALK);
+    anim_pose(&a, &s, runner, 0.2f, 0, &p);
+    CHECK(p.action == ACTION_RUN);
+    anim_pose(&a, &s, fruit_eater, 0.2f, 0, &p);
+    CHECK(p.bite == BITE_PLANT && p.action == ACTION_BITE);
+    anim_pose(&a, &s, scavenger, 0.2f, 0, &p);
+    CHECK(p.bite == BITE_CARRION && p.action == ACTION_BITE);
+    anim_pose(&a, &s, rester, 0.2f, 0, &p);
+    CHECK(p.action == ACTION_REST);
+    anim_pose(&a, &s, sleeper, 0.2f, 0, &p);
+    CHECK(p.action == ACTION_SLEEP && p.eyes == 0.0f);
+    anim_free(&a);
+    sim_free(&s);
+}
+
+/* Two walkers of the same body at the same moment are in different frames. */
+static void test_herd_out_of_step(void)
+{
+    Sim s;
+    empty_sim(&s, 64, 32);
+    int one = pool_spawn(&s.pool, &s.world, 10, 10);
+    int two = pool_spawn(&s.pool, &s.world, 10, 12);
+    set_move_ticks(&s, one, 4.0f);
+    set_move_ticks(&s, two, 4.0f);
+    Anim a;
+    CHECK(anim_init(&a, s.pool.capacity));
+    anim_update(&a, &s, 10);
+    s.tick++;
+    move_to(&s, one, 11, 10);
+    move_to(&s, two, 11, 12);
+    anim_update(&a, &s, 10);
+    AnimPose p1, p2;
+    anim_pose(&a, &s, one, 0.3f, 777, &p1);
+    anim_pose(&a, &s, two, 0.3f, 777, &p2);
+    CHECK(p1.action == ACTION_WALK && p2.action == ACTION_WALK);
+    CHECK(p1.frame != p2.frame);
+    anim_free(&a);
+    sim_free(&s);
+}
+
+/* While paused the body clock stands still: whatever the tick fraction, the
+ * frame and the eyes hold. */
+static void test_paused_clock_holds_the_frame(void)
+{
+    Sim s;
+    empty_sim(&s, 64, 32);
+    int walker = pool_spawn(&s.pool, &s.world, 10, 10);
+    int rester = pool_spawn(&s.pool, &s.world, 20, 10);
+    set_move_ticks(&s, walker, 4.0f);
+    Anim a;
+    CHECK(anim_init(&a, s.pool.capacity));
+    anim_update(&a, &s, 10);
+    s.tick++;
+    move_to(&s, walker, 11, 10);
+    anim_update(&a, &s, 10);
+    AnimPose w0, w1, r0, r1;
+    anim_pose(&a, &s, walker, 0.1f, 4321, &w0);
+    anim_pose(&a, &s, walker, 0.6f, 4321, &w1);
+    anim_pose(&a, &s, rester, 0.1f, 4321, &r0);
+    anim_pose(&a, &s, rester, 0.6f, 4321, &r1);
+    CHECK(w0.action == w1.action && w0.frame == w1.frame);
+    CHECK(r0.frame == r1.frame && r0.eyes == r1.eyes);
+    anim_free(&a);
+    sim_free(&s);
+}
+
 int main(void)
 {
     test_glide_halfway();
@@ -461,10 +567,13 @@ int main(void)
     test_mating_creature_rests();
     test_sleeper_is_drawn_asleep();
     test_bite_at_nothing_shows_no_bite();
-    test_eating_a_plant_chomps_and_faces_it();
+    test_eating_leaves_grazes_and_faces_it();
     test_bite_straight_up_keeps_facing();
     test_bite_target_across_wrap();
     test_attacker_faces_what_it_attacks();
     test_biter_beside_creature_and_carrion_eats();
+    test_action_follows_the_sim();
+    test_herd_out_of_step();
+    test_paused_clock_holds_the_frame();
     TEST_SUMMARY();
 }

@@ -397,10 +397,13 @@ static void test_known_world_pixels(void)
 #ifndef _WIN32
         /* Linux only: the water and grass use sinf (see test_lab.c). Re-pinned
          * on 2026-11-07: Far changed because a creature in deep sleep is now
-         * drawn lying down; looked at by eye in the window and the lab. */
+         * drawn lying down; looked at by eye in the window and the lab.
+         * Re-pinned again the same day: Far changed because creatures now
+         * walk, run, breathe, graze and bite in cycles (the animation stage's
+         * poses); Close and Normal kept their hashes. Looked at by eye. */
         static const uint64_t EXPECTED[CAMERA_LEVELS] = {
             0xbe5f57fb7c7bdabdu, 0x5a015897532bfe08u,
-            0xb927aa769c517ed9u, 0x8467a0fcd9991445u,
+            0xc850f4b96baf7977u, 0x8467a0fcd9991445u,
         };
         if (hashes[level] != EXPECTED[level]) {
             printf("level %d: 0x%llxu\n", level,

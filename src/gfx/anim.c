@@ -3,13 +3,8 @@
 #include <stdlib.h> /* calloc, free */
 #include <string.h> /* memset */
 
-#include "pose.h"     /* pose_frame */
-#include "skeleton.h" /* the ACTION_ values */
-
-/* How long one breath of a resting creature lasts, in milliseconds. */
-#define BREATH_MS 625u
-/* How long each half of a chomp lasts, in milliseconds. */
-#define CHOMP_MS 150u
+#include "pose.h"     /* pose_frame, pose_cycle_seconds, pose_cadence, pose_eyes */
+#include "sprite.h"   /* sprite_body; the ACTION_ values */
 
 bool anim_init(Anim *a, int capacity)
 {
@@ -92,6 +87,7 @@ void anim_update(Anim *a, const Sim *s, int ticks_per_second)
 {
     bool many_ticks = a->started && s->tick - a->last_tick > 1;
     a->jump = ticks_per_second > ANIM_GLIDE_MAX_SPEED || many_ticks;
+    a->ticks_per_second = ticks_per_second;
     a->last_tick = s->tick;
     a->started = true;
     int n = s->pool.capacity < a->capacity ? s->pool.capacity : a->capacity;
@@ -100,25 +96,25 @@ void anim_update(Anim *a, const Sim *s, int ticks_per_second)
     }
 }
 
-/* The action and frame for a creature not doing anything with a picture of
- * its own: walking (frames 0..3 of the walk) or resting (the breath, frames 0
- * and 1). The id offsets the breath, so a crowd does not pulse together.
- * Today's rules, reported as actions; task 11 replaces them. */
-static void idle_or_walk(const Anim *a, const AnimSlot *m, const Sim *s, float t,
-                         bool moved, uint64_t now_ms, AnimPose *out)
+/* A creature on the move walks, or runs when its move is quick. Its feet
+ * take a step cycle of its own species, sped up when the glide outruns it, and
+ * the frame follows the body clock, so the legs stop while paused. */
+static void moving(const Anim *a, const AnimSlot *m, const Creature *c, const Sim *s,
+                   uint64_t now_ms, AnimPose *out)
 {
-    if (moved && a->jump && s->tick - m->moved_tick <= 1) {
-        out->action = ACTION_WALK;
-        out->frame = (int)(s->tick % 4u);
-        return;
-    }
-    if (moved && !a->jump && t < 1.0f) {
-        out->action = ACTION_WALK;
-        out->frame = (int)(t * 4.0f);
-        return;
-    }
-    out->action = ACTION_REST;
-    out->frame = (int)((now_ms / BREATH_MS + m->id) % 2u);
+    out->action = m->move_ticks <= ANIM_RUN_TICKS ? ACTION_RUN : ACTION_WALK;
+    SpriteBody b = sprite_body(c, &s->set, SPRITE_BASE_NORMAL);
+    float cells_per_second = (float)a->ticks_per_second / m->move_ticks;
+    float seconds = pose_cycle_seconds(&b, out->action) /
+                    pose_cadence(&b, out->action, cells_per_second);
+    out->frame = pose_frame(now_ms, c->id, out->action, seconds);
+}
+
+/* An action with a cycle of fixed length: its frame by the body clock. */
+static void cycling(int action, const Creature *c, uint64_t now_ms, AnimPose *out)
+{
+    out->action = action;
+    out->frame = pose_frame(now_ms, c->id, action, pose_cycle_seconds(NULL, action));
 }
 
 void anim_pose(const Anim *a, const Sim *s, int slot, float tick_fraction,
@@ -139,13 +135,10 @@ void anim_pose(const Anim *a, const Sim *s, int slot, float tick_fraction,
         out->y = (float)m->from_y + dy * t;
     }
 
+    /* What its mouth is doing, for the marks and its facing. */
     out->bite = BITE_NOTHING;
-    if (c->current.kind == ACT_SLEEP) {
-        /* Deep sleep: lying down, eyes shut, breathing slowly. now_ms stops
-         * while paused, so a paused sleeper holds its breath. */
-        out->action = ACTION_SLEEP;
-        out->frame = pose_frame(now_ms, c->id, ACTION_SLEEP);
-    } else if (c->current.kind == ACT_ATTACK) {
+    bool fruit = false;
+    if (c->current.kind == ACT_ATTACK) {
         int target = creature_attack_target(w, &s->pool, slot, &s->set);
         if (target >= 0) {
             out->bite = POSE_ATTACK;
@@ -158,25 +151,36 @@ void anim_pose(const Anim *a, const Sim *s, int slot, float tick_fraction,
          * from the one just taken, which nobody could see at this speed. */
         BiteChoice choice = creature_bite_choice(w, &s->pool, slot, &s->set);
         out->bite = choice.kind;
+        fruit = choice.fruit;
         if (choice.kind != BITE_NOTHING) {
             out->target_x = choice.cell % w->w;
             out->target_y = choice.cell / w->w;
         }
     }
 
-    if (out->bite != BITE_NOTHING) {
-        /* Mouth open, mouth shut. The id keeps a crowd out of step. */
-        bool open = (now_ms / CHOMP_MS + c->id) % 2u == 0;
-        out->action = open ? ACTION_BITE : ACTION_REST;
-        out->frame = 0;
-    } else if (c->current.kind == ACT_SLEEP) {
-        /* action and frame were chosen above */
-    } else if (c->current.kind == ACT_MATE) {
-        out->action = ACTION_REST; /* no picture of its own until task 11 */
-        out->frame = 0;
+    /* Moving shows while the glide lasts, or in jump mode for the tick after
+     * the move. */
+    bool on_the_move = moved && (a->jump ? s->tick - m->moved_tick <= 1 : t < 1.0f);
+    if (c->current.kind == ACT_SLEEP) {
+        /* now_ms stops while paused, so a paused sleeper holds its breath. */
+        cycling(ACTION_SLEEP, c, now_ms, out);
+    } else if (on_the_move) {
+        moving(a, m, c, s, now_ms, out);
+    } else if (out->bite == BITE_PLANT && !fruit) {
+        cycling(ACTION_GRAZE, c, now_ms, out);
+    } else if (out->bite != BITE_NOTHING) {
+        /* Fruit, carrion and, until the attack has its own cycle, a fight. */
+        cycling(ACTION_BITE, c, now_ms, out);
     } else {
-        idle_or_walk(a, m, s, t, moved, now_ms, out);
+        cycling(ACTION_REST, c, now_ms, out); /* mating included */
     }
+    /* Blinks are drawn over the picture: resting and moving. Asleep the eyes
+     * are shut; biting, grazing and fighting they stay open. */
+    bool blinks = out->action == ACTION_REST || out->action == ACTION_WALK ||
+                  out->action == ACTION_RUN;
+    out->eyes = out->action == ACTION_SLEEP ? 0.0f
+              : blinks                      ? pose_eyes(now_ms, c->id)
+                                            : 1.0f;
     out->flip = m->face < 0;
     /* A biter faces what it bites, whatever its heading says; straight above
      * or below keeps the facing it had. */

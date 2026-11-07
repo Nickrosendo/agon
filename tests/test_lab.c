@@ -70,18 +70,18 @@ static bool is_scenery(uint32_t p)
            p == canvas_rgb(54, 90, 49) || p == canvas_rgb(65, 105, 58);
 }
 
-static void check_cells_not_empty(int w, int h)
+static void check_cells_not_empty(int w, int h, int action, uint64_t body_ms)
 {
     Canvas c;
     CHECK(canvas_init(&c, w, h));
-    lab_draw(&sprites, &c, ACTION_REST, 0, 0, 0, w, h);
+    lab_draw(&sprites, &c, action, body_ms, 0, 0, w, h);
     for (int role = 0; role < ROLE_COUNT; role++) {
         for (int col = 0; col < LAB_COLUMNS; col++) {
             if (lab_species_at(role, col) < 0) {
                 continue;
             }
             int bx, by, bw, bh;
-            CHECK(lab_cell_box(&sprites, ACTION_REST, w, h, role, col, &bx, &by, &bw, &bh) > 0);
+            CHECK(lab_cell_box(&sprites, action, w, h, role, col, &bx, &by, &bw, &bh) > 0);
             int animal = 0;
             for (int y = by; y < by + bh; y++) {
                 for (int x = bx; x < bx + bw; x++) {
@@ -98,8 +98,28 @@ static void check_cells_not_empty(int w, int h)
 
 static void test_lab_cells_not_empty(void)
 {
-    check_cells_not_empty(1112, 688);  /* the window's world area */
-    check_cells_not_empty(1400, 1000); /* scale 2 */
+    check_cells_not_empty(1112, 688, ACTION_REST, 0);  /* the window's world area */
+    check_cells_not_empty(1400, 1000, ACTION_REST, 0); /* scale 2 */
+}
+
+/* The number keys choose six different actions, and every one of them draws
+ * an animal in every cell, at several moments of its cycle. */
+static void test_every_action_draws(void)
+{
+    bool seen[ACTION_COUNT] = {false};
+    for (int key = 1; key <= LAB_KEYS; key++) {
+        int action = lab_action_of_key(key);
+        CHECK(action >= 0 && action < ACTION_COUNT);
+        if (action < 0 || action >= ACTION_COUNT) {
+            continue;
+        }
+        CHECK(!seen[action]);
+        seen[action] = true;
+        for (uint64_t ms = 0; ms < 2000; ms += 700) {
+            check_cells_not_empty(1112, 688, action, ms);
+        }
+    }
+    CHECK(lab_action_of_key(0) == -1 && lab_action_of_key(LAB_KEYS + 1) == -1);
 }
 
 /* The window's world area at 1280x720 (the panel beside it) is big enough for
@@ -171,8 +191,10 @@ static void test_lab_pixels(void)
 #ifndef _WIN32
     /* Pinned after Nicolas approved the look on 2026-11-07; a change must be
      * looked at by eye. Linux only: the poses use sinf, whose last bits may
-     * differ on another C library. */
-    static const uint64_t EXPECTED = 0x38279c2c37e9b93du;
+     * differ on another C library. Re-pinned the same day: resting animals
+     * now breathe, swish and look about, each at its own point of a 6 s
+     * cycle, and their eyes blink; looked at by eye. */
+    static const uint64_t EXPECTED = 0x5f34a02be4787b63u;
     if (h != EXPECTED) {
         printf("lab: 0x%llxu\n", (unsigned long long)h);
     }
@@ -189,6 +211,7 @@ int main(void)
     test_lab_shows_every_species_once();
     test_lab_stays_in_its_area();
     test_lab_cells_not_empty();
+    test_every_action_draws();
     test_lab_scale_at_window_size();
     test_lab_tiny_area_is_safe();
     test_lab_pixels();
