@@ -34,11 +34,21 @@ sudo make uninstall
 
 The display uses 24-bit colour and two square pixels per character cell, so
 it wants a terminal with true colour and a font with the half-block character.
+The colours follow the seasons: from autumn to the end of winter leaf plants
+stand bare, in bark brown, while fruit plants keep their colour; snow whitens
+the soil as it piles up; a creature in deep sleep is drawn half faded into the
+ground under it.
 
 ## In a window
 
-`agon-window` shows the same simulation drawn in tiles, in the classic Dwarf
-Fortress style, with bodies generated from each creature's genes. It needs SDL 2;
+`agon-window` shows the same simulation as a living pixel map: banks and shores
+with height, swaying grass and trees that drop their leaves in autumn, snow,
+rippling water, and every creature drawn as an animal of a species picked from
+its family (wolves, lions and tigers hunt; elephants, rhinos and armadillos wear
+armour; and so on), sized and coloured by its genes. Animals walk, run, hop,
+graze, sleep and breathe, and meat-eaters crouch, pounce and bite their prey,
+which bleeds. Drawing never changes the world: the same seed gives the same
+world in both programs. It needs SDL 2;
 nothing else in agon does, and `make` and `make test` work without it.
 
 ```sh
@@ -68,7 +78,7 @@ their names under them.
 | clicking "top hunter", "oldest" or the largest family's body on the panel | follow the highest on the food chain, the oldest, or that family's biggest |
 | `l` | the life story page of the followed creature, or, following nobody, of the most notable life recorded; `l` or Esc closes it. The world keeps running behind it |
 | `j` | follow the giant last announced; with the life story page open, follow the creature it tells of |
-| `b` | the species lab: every animal in rows by role, each on a strip of ground with its name, from the detailed pictures; `b` or Esc closes it. While it is open `1` to `7` choose the action shown (rest, walk, run, graze, bite, attack, sleep). The world keeps running behind it |
+| `b` | the species lab: every animal in rows by role, each on a strip of ground with its name, from the detailed pictures; `b` or Esc closes it. While it is open `1` to `6` choose the action shown: walk, run, rest, graze, bite (on which the hunters attack a deer instead), sleep. The world keeps running behind it |
 | Esc, clicking bare ground, moving the view | let go |
 | `r` | a new world from a new seed |
 | `n` | a new world, after game over |
