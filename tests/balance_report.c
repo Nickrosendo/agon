@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "chronicle.h"
 #include "climate.h"
 #include "genome.h"
 #include "rng.h"
@@ -97,6 +98,75 @@ typedef struct {
      * move within AFTER_LOSS_TICKS, all moves, and creature-ticks lived. */
     uint64_t kin_losses, moved_after_loss, moves, creature_ticks;
 } Report;
+
+/* The seasons' verdict (the seasons design, section 8) is judged on the whole
+ * run, the founders' die-off included, so it keeps its own counts beside the
+ * Report's, which start at COUNT_DEATHS_FROM. */
+#define SEASONS 4
+/* Ticks 0 to 5,999: the first ten years of 600 ticks. */
+#define FIRST_YEARS_TICKS 6000u
+/* A death whose cause could not be read: its slot was already reused. The
+ * index after the last DEATH_ value. */
+#define CAUSE_UNKNOWN DEATH_COUNT
+
+typedef struct {
+    /* The population summed after every tick, and how many ticks were summed. */
+    double pop_first, pop_all;
+    uint64_t ticks_first, ticks_all;
+    uint64_t deaths[DEATH_COUNT + 1]; /* by cause, CAUSE_UNKNOWN last */
+    uint64_t adult_deaths;
+    uint64_t adult_by_cause[DEATH_COUNT + 1];
+    double adult_age; /* summed over adult deaths */
+    uint64_t giants_starved[SEASONS]; /* by the season they died in */
+    uint64_t births[SEASONS];         /* by the season they were born in */
+    uint64_t starts[SEASONS];         /* how many times each season began */
+    double pop_at_start[SEASONS];     /* the population as each began, summed */
+} Verdict;
+
+static const char *const SEASON_NAMES[SEASONS] = {"spring", "summer", "autumn",
+                                                  "winter"};
+
+/* Which quarter of the year a tick falls in, 0 for spring: the same arithmetic
+ * as years_season in src/years.c, giving the index rather than the name. */
+static int season_of(uint64_t tick, int ticks_per_year)
+{
+    uint64_t length = ticks_per_year >= 1 ? (uint64_t)ticks_per_year : 1u;
+    return (int)(tick % length * SEASONS / length);
+}
+
+/* Why the creature that held this slot died, read from the last event of its
+ * story: the accounting notes LIFE_DIED while it still holds the slot, and no
+ * one is born into a slot freed there until the next tick's turns. Unknown
+ * when the slot was taken all the same (a floor from a settings file refills
+ * slots at once) or no stories are recorded. */
+static int cause_of_death(const Creature *slot, uint32_t id)
+{
+    if (slot->alive || slot->id != id || slot->events_noted == 0) {
+        return CAUSE_UNKNOWN;
+    }
+    const LifeEvent *last = &slot->events[(slot->events_noted - 1) % CREATURE_EVENTS];
+    if (last->kind != LIFE_DIED || last->value < 0 || last->value >= DEATH_COUNT) {
+        return CAUSE_UNKNOWN;
+    }
+    return (int)last->value;
+}
+
+/* One death for the verdict. tick is the tick the step ran, the one it died in. */
+static void verdict_death(Verdict *v, const Creature *slot, const Shadow *sh,
+                          const Settings *set, uint64_t tick)
+{
+    int cause = cause_of_death(slot, sh->id);
+    v->deaths[cause]++;
+    if (sh->age >= (uint32_t)set->mate_age) {
+        v->adult_deaths++;
+        v->adult_by_cause[cause]++;
+        v->adult_age += (double)sh->age;
+    }
+    bool giant = cause != CAUSE_UNKNOWN && (slot->tally.flags & TALLY_GIANT);
+    if (giant && cause == DEATH_HUNGER) {
+        v->giants_starved[season_of(tick, set->ticks_per_year)]++;
+    }
+}
 
 /* One death, seen after the fact from the slot's shadow. */
 static void record_death(Report *rep, const Shadow *sh, const Settings *set)
@@ -291,7 +361,6 @@ static void watch_chase(const Sim *s, const Creature *c, const Shadow *before,
     }
 }
 
-/* Compares every slot with its shadow, then brings the shadow up to date. */
 /* The events a creature's story gained since the last tick: kin lost near it,
  * and settling in another region. Only the newest CREATURE_EVENTS are still in
  * its ring; in one tick a creature gains far fewer. */
@@ -322,13 +391,19 @@ static void watch_story(const Sim *s, const Creature *c, Shadow *sh, Report *rep
     rep->creature_ticks++;
 }
 
-static void watch_slots(const Sim *s, Shadow *shadow, Report *rep)
+/* Compares every slot with its shadow, then brings the shadow up to date. */
+static void watch_slots(const Sim *s, Shadow *shadow, Report *rep, Verdict *v)
 {
     for (int i = 0; i < s->pool.capacity; i++) {
         const Creature *c = &s->pool.items[i];
         Shadow *sh = &shadow[i];
         bool same = sh->alive && c->alive && c->id == sh->id;
         bool counting = s->tick > COUNT_DEATHS_FROM;
+        /* s->tick is already the next one; the death happened in the one before.
+         * At tick 0 no shadow is alive yet, so the - 1 never wraps below 0. */
+        if (sh->alive && !same) {
+            verdict_death(v, c, sh, &s->set, s->tick - 1);
+        }
         if (sh->alive && !same && counting) {
             record_death(rep, sh, &s->set);
             if (sh->in_fight) {
@@ -763,12 +838,138 @@ static void print_row(const Sim *s, const Shadow *shadow, const Report *rep)
     print_giants_and_losses(s, rep);
 }
 
+/* In DeathCause order, CAUSE_UNKNOWN last. */
+static const char *const CAUSE_NAMES[DEATH_COUNT + 1] = {"wounds", "hunger", "age",
+                                                         "unknown"};
+
+/* A sum divided by a count, 0 when the count is 0. */
+static double mean_of(double sum, uint64_t n)
+{
+    return n == 0 ? 0.0 : sum / (double)n;
+}
+
+/* The commonest known cause among adult deaths; "none" with no adult deaths. A
+ * tie goes to the earlier cause. */
+static const char *top_adult_cause(const Verdict *v)
+{
+    int top = -1;
+    for (int c = 0; c < DEATH_COUNT; c++) {
+        if (v->adult_by_cause[c] > 0 &&
+            (top < 0 || v->adult_by_cause[c] > v->adult_by_cause[top])) {
+            top = c;
+        }
+    }
+    return top < 0 ? "none" : CAUSE_NAMES[top];
+}
+
+/* What is judged at the end: plants by what they offer, creatures that eat
+ * below meat level, and creatures that have killed. */
+typedef struct {
+    int fruit, leaf, eaters, killers;
+} EndCounts;
+
+static EndCounts end_counts(const Sim *s)
+{
+    EndCounts n = {0};
+    const World *w = &s->world;
+    for (int i = 0; i < w->w * w->h; i++) {
+        if (w->veg[i] == 0) {
+            continue;
+        }
+        if (plant_offers_fruit(&w->plant[i])) {
+            n.fruit++;
+        } else {
+            n.leaf++;
+        }
+    }
+    for (int i = 0; i < s->pool.capacity; i++) {
+        const Creature *c = &s->pool.items[i];
+        if (!c->alive) {
+            continue;
+        }
+        n.eaters += c->level < LEVEL_MEAT;
+        n.killers += c->tally.kills > 0;
+    }
+    return n;
+}
+
+/* The lines reported beside the verdict and never judged: deaths by cause over
+ * the whole run, giants that starved and when, births by season, and the
+ * population as each season begins, averaged over the years. */
+static void print_seasons(const Verdict *v)
+{
+    printf("     deaths (whole run):");
+    for (int c = 0; c <= DEATH_COUNT; c++) {
+        printf(" %s %llu", CAUSE_NAMES[c], (unsigned long long)v->deaths[c]);
+    }
+    printf(" | adults:");
+    for (int c = 0; c <= DEATH_COUNT; c++) {
+        printf(" %s %llu", CAUSE_NAMES[c], (unsigned long long)v->adult_by_cause[c]);
+    }
+    printf("\n     giants starved:");
+    for (int k = 0; k < SEASONS; k++) {
+        printf(" %s %llu", SEASON_NAMES[k], (unsigned long long)v->giants_starved[k]);
+    }
+    printf("\n     births per season:");
+    for (int k = 0; k < SEASONS; k++) {
+        printf(" %s %.1f", SEASON_NAMES[k],
+               mean_of((double)v->births[k], v->starts[k]));
+    }
+    printf("\n     population as a season begins:");
+    for (int k = 0; k < SEASONS; k++) {
+        printf(" %s %.0f", SEASON_NAMES[k], mean_of(v->pop_at_start[k], v->starts[k]));
+    }
+    printf("\n");
+}
+
+/* The verdict's numbers for one world on one line, for tests/seasons_verdict.sh:
+ * SUMMARY seed alive mean10y meanall fruit leaf eaters killers adult_life
+ * hunger_adult top_adult, then the adult deaths and their split by cause
+ * (wounds hunger age), which the script needs to weigh worlds against each
+ * other. Adult deaths of unknown cause are in the total but in no split. */
+static void print_summary(const Sim *s, const Verdict *v)
+{
+    EndCounts n = end_counts(s);
+    printf("SUMMARY %llu %d %.1f %.1f %d %d %d %d %.0f %.3f %s %llu %llu %llu %llu\n",
+           (unsigned long long)s->seed, s->pool.count > 0 ? 1 : 0,
+           mean_of(v->pop_first, v->ticks_first), mean_of(v->pop_all, v->ticks_all),
+           n.fruit, n.leaf, n.eaters, n.killers,
+           mean_of(v->adult_age, v->adult_deaths),
+           mean_of((double)v->adult_by_cause[DEATH_HUNGER], v->adult_deaths),
+           top_adult_cause(v), (unsigned long long)v->adult_deaths,
+           (unsigned long long)v->adult_by_cause[DEATH_WOUNDS],
+           (unsigned long long)v->adult_by_cause[DEATH_HUNGER],
+           (unsigned long long)v->adult_by_cause[DEATH_AGE]);
+}
+
 /* Runs the world. The Sim is changed only by sim_step. */
-static void run(Sim *s, long ticks, Shadow *shadow, Report *rep)
+/* After a step: the population summed, births by season, and the population
+ * as a season begins. s->tick is the tick about to run next. */
+static void verdict_tick(const Sim *s, Verdict *v, uint32_t births)
+{
+    int tpy = s->set.ticks_per_year;
+    v->pop_all += s->pool.count;
+    v->ticks_all++;
+    if (s->tick <= FIRST_YEARS_TICKS) {
+        v->pop_first += s->pool.count;
+        v->ticks_first++;
+    }
+    v->births[season_of(s->tick - 1, tpy)] += births;
+    int season = season_of(s->tick, tpy);
+    if (season != season_of(s->tick - 1, tpy)) {
+        v->starts[season]++;
+        v->pop_at_start[season] += s->pool.count;
+    }
+}
+
+static void run(Sim *s, long ticks, Shadow *shadow, Report *rep, Verdict *v)
 {
     uint32_t seen_id = s->pool.next_id;
-    watch_slots(s, shadow, rep);
+    watch_slots(s, shadow, rep, v);
     rep->peak = s->pool.count;
+    /* Tick 0 is the first of a spring. */
+    v->starts[0]++;
+    v->pop_at_start[0] += s->pool.count;
     for (long t = 0; t < ticks; t++) {
         /* Before the step that can first count a death, to match watch_slots. */
         if (!rep->started_counting && s->tick >= COUNT_DEATHS_FROM) {
@@ -776,7 +977,9 @@ static void run(Sim *s, long ticks, Shadow *shadow, Report *rep)
             memcpy(rep->deaths_at_start, s->pool.deaths, sizeof(s->pool.deaths));
         }
         sim_step(s);
-        watch_slots(s, shadow, rep);
+        watch_slots(s, shadow, rep, v);
+        /* Unsigned subtraction: right even if the ids wrapped past 2^32. */
+        verdict_tick(s, v, s->pool.next_id - seen_id);
         if (s->pool.next_id != seen_id) {
             seen_id = s->pool.next_id;
             rep->last_birth = s->tick;
@@ -806,7 +1009,7 @@ static void run(Sim *s, long ticks, Shadow *shadow, Report *rep)
 static int usage(void)
 {
     fprintf(stderr, "usage: balance_report --seed N --ticks N [--size WxH] "
-                    "[--config PATH] [--header]\n");
+                    "[--config PATH] [--header] [--summary]\n");
     return 2;
 }
 
@@ -817,12 +1020,17 @@ int main(int argc, char **argv)
     int width = 256;
     int height = 144;
     const char *config = NULL;
+    bool summary = false;
     for (int i = 1; i < argc; i++) {
         /* Every option here takes a value in the next argument, except
          * --header, which prints the column names and nothing else. */
         if (strcmp(argv[i], "--header") == 0) {
             print_header();
             return 0;
+        }
+        if (strcmp(argv[i], "--summary") == 0) {
+            summary = true;
+            continue;
         }
         if (i + 1 >= argc) {
             return usage();
@@ -863,8 +1071,13 @@ int main(int argc, char **argv)
         return 1;
     }
     Report rep = {.first_born_id = sim.pool.next_id};
-    run(&sim, ticks, shadow, &rep);
+    Verdict verdict = {0};
+    run(&sim, ticks, shadow, &rep, &verdict);
     print_row(&sim, shadow, &rep);
+    print_seasons(&verdict);
+    if (summary) {
+        print_summary(&sim, &verdict);
+    }
     free(shadow);
     sim_free(&sim);
     return 0;
