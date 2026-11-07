@@ -631,7 +631,7 @@ static void app_frame(void *arg)
             a->redraw = true;  /* the frame that shows the screen */
         }
     }
-    scene_update(&a->scene, &a->sim, APP_SPEEDS[a->speed]);
+    scene_update(&a->scene, &a->sim, APP_SPEEDS[a->speed], a->body_ms);
     family_update(&a->families, &a->sim);
     char giant[200];
     if (announce_check(&a->announce, &a->sim, giant, sizeof(giant))) {

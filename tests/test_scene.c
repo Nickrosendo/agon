@@ -35,10 +35,14 @@ static void test_drawing_changes_nothing(void)
     camera_init(&cam, 64, 32, VIEW_W, VIEW_H);
     Families f;
     CHECK(family_init(&f, drawn.pool.capacity));
+    long fights = 0; /* slot-frames with a fight on screen */
     for (int t = 0; t < 2000; t++) {
         sim_step(&plain);
         sim_step(&drawn);
-        scene_update(&sc, &drawn, 10);
+        scene_update(&sc, &drawn, 10, (uint64_t)t * 33u);
+        for (int i = 0; i < sc.anim.capacity; i++) {
+            fights += sc.anim.slots[i].fight != FIGHT_NONE;
+        }
         cam.level = t % CAMERA_LEVELS;
         scene_draw_world(&sc, &c, &cam, &drawn, 0.5f, (uint64_t)t * 33u,
                          (uint64_t)t * 33u, 0, 0);
@@ -58,6 +62,7 @@ static void test_drawing_changes_nothing(void)
         }
     }
     CHECK(sim_checksum(&plain) == sim_checksum(&drawn));
+    CHECK(fights > 0); /* the attack's drawing was in it */
     family_free(&f);
     canvas_free(&c);
     scene_free(&sc);
@@ -76,7 +81,7 @@ static void test_empty_view_draws_nothing(void)
     CHECK(canvas_init(&c, 0, 0));
     Camera cam;
     camera_init(&cam, 16, 16, 0, 0);
-    scene_update(&sc, &s, 10);
+    scene_update(&sc, &s, 10, 0);
     for (int level = 0; level < CAMERA_LEVELS; level++) {
         cam.level = level;
         scene_draw_world(&sc, &c, &cam, &s, 0.0f, 0, 0, 0, 0);
@@ -103,7 +108,7 @@ static void test_tiny_world_on_black(void)
     Camera cam;
     camera_init(&cam, 4, 3, VIEW_W, VIEW_H);
     cam.level = CAMERA_WORLD;
-    scene_update(&sc, &s, 10);
+    scene_update(&sc, &s, 10, 0);
     scene_draw_world(&sc, &c, &cam, &s, 0.0f, 0, 0, 0, 0);
     uint32_t black = canvas_rgb(0, 0, 0);
     CHECK(c.px[0] == black);
@@ -117,9 +122,18 @@ static void test_tiny_world_on_black(void)
     sim_free(&s);
 }
 
-/* Draws a hunter beside its prey at Normal zoom, biting or not, and says how
- * many pixels are the fight's red. */
-static int red_pixels(int action)
+/* Whether a canvas pixel is near white: every channel at least 191, as a
+ * colour pushed 0.75 of the way to white always is. */
+static bool near_white(uint32_t px)
+{
+    return ((px >> 16) & 0xFFu) >= 191u && ((px >> 8) & 0xFFu) >= 191u &&
+           (px & 0xFFu) >= 191u;
+}
+
+/* Draws a hunter beside its prey at Normal zoom, doing `action`, after
+ * `steps` frames of 33 ms, and says how many pixels are near white. With
+ * attacking set, also checks the hunter is drawn attacking. */
+static int near_white_count(int action, int steps)
 {
     Settings set = settings_default();
     Sim s;
@@ -149,23 +163,41 @@ static int red_pixels(int action)
     CHECK(canvas_init(&c, VIEW_W, VIEW_H));
     Camera cam;
     camera_init(&cam, 16, 16, VIEW_W, VIEW_H);
-    scene_update(&sc, &s, 10);
-    scene_draw_world(&sc, &c, &cam, &s, 0.0f, 0, 110, 0, 0);
-    int red = 0;
+    uint64_t ms = 0;
+    scene_update(&sc, &s, 10, ms);
+    for (int i = 0; i < steps; i++) {
+        ms += 33u;
+        scene_update(&sc, &s, 10, ms);
+    }
+    scene_draw_world(&sc, &c, &cam, &s, 0.0f, 0, ms, 0, 0);
+    if (action == ACT_ATTACK) {
+        CHECK(sc.poses[hunter].action == ACTION_ATTACK);
+    }
+    int white = 0;
     for (int i = 0; i < VIEW_W * VIEW_H; i++) {
-        red += c.px[i] == canvas_rgb(255, 70, 50);
+        white += near_white(c.px[i]);
     }
     canvas_free(&c);
     scene_free(&sc);
     sim_free(&s);
-    return red;
+    return white;
 }
 
-static void test_fight_draws_a_mark(void)
+/* A fight is drawn as the attack itself, not a mark: no red slash any more,
+ * and at the bite (28 frames in: c 0.51) the victim flashes white. Biting or
+ * resting beside it, nothing flashes. */
+static void test_fight_draws_an_attack(void)
 {
-    CHECK(red_pixels(ACT_REST) == 0);
-    CHECK(red_pixels(ACT_BITE) == 0); /* a bite is only ever a meal */
-    CHECK(red_pixels(ACT_ATTACK) > 0);
+    int resting = near_white_count(ACT_REST, 28);
+    int stalking = near_white_count(ACT_ATTACK, 5);
+    int biting = near_white_count(ACT_ATTACK, 28);
+    CHECK(near_white_count(ACT_BITE, 28) <= resting + 4); /* a bite is only ever a meal */
+    CHECK(stalking <= resting + 4);
+    CHECK(biting > resting + 20); /* the victim's whole body, near white */
+    if (biting <= resting + 20) {
+        printf("  white pixels: resting %d, stalking %d, biting %d\n", resting,
+               stalking, biting);
+    }
 }
 
 /* A world of bare soil with nobody in it, for placing creatures by hand. */
@@ -224,7 +256,7 @@ static void test_follow_centres_on_the_creature(void)
     int slot = pool_spawn(&s.pool, &s.world, 20, 30);
     Scene sc;
     CHECK(scene_init(&sc, &s));
-    scene_update(&sc, &s, 10);
+    scene_update(&sc, &s, 10, 0);
     Camera cam;
     camera_init(&cam, 64, 64, 64, 64);
     cam.level = CAMERA_CLOSE;
@@ -243,7 +275,7 @@ static void test_followed_creature_dies_camera_stays(void)
     int slot = pool_spawn(&s.pool, &s.world, 20, 30);
     Scene sc;
     CHECK(scene_init(&sc, &s));
-    scene_update(&sc, &s, 10);
+    scene_update(&sc, &s, 10, 0);
     Camera cam;
     camera_init(&cam, 64, 64, 64, 64);
     cam.level = CAMERA_CLOSE;
@@ -257,7 +289,7 @@ static void test_followed_creature_dies_camera_stays(void)
     int newborn = pool_spawn(&s.pool, &s.world, 50, 5);
     CHECK(newborn == slot);
     s.tick++;
-    scene_update(&sc, &s, 10);
+    scene_update(&sc, &s, 10, 0);
     CHECK(scene_follow(&sc, &cam, &in, &s, 0.0f) == NULL);
     CHECK(!in.following);
     CHECK(fabsf(cam.cx - 20.0f) < 0.01f && fabsf(cam.cy - 30.0f) < 0.01f);
@@ -296,7 +328,7 @@ static void test_follow_across_the_edge_takes_the_short_way(void)
     int slot = pool_spawn(&s.pool, &s.world, 63, 10);
     Scene sc;
     CHECK(scene_init(&sc, &s));
-    scene_update(&sc, &s, 10);
+    scene_update(&sc, &s, 10, 0);
     Camera cam;
     camera_init(&cam, 64, 64, 64, 64);
     cam.level = CAMERA_CLOSE;
@@ -308,7 +340,7 @@ static void test_follow_across_the_edge_takes_the_short_way(void)
     s.world.occupant[world_idx(&s.world, 0, 10)] = slot;
     s.pool.items[slot].x = 0;
     s.tick++;
-    scene_update(&sc, &s, 10);
+    scene_update(&sc, &s, 10, 0);
     float before = cam.cx;
     for (int f = 0; f <= 10; f++) {
         CHECK(scene_follow(&sc, &cam, &in, &s, (float)f / 10.0f) != NULL);
@@ -381,7 +413,7 @@ static void test_known_world_pixels(void)
     CHECK(scene_init(&sc, &s));
     for (int t = 0; t < 300; t++) {
         sim_step(&s);
-        scene_update(&sc, &s, 10);
+        scene_update(&sc, &s, 10, 0);
     }
     Canvas c;
     CHECK(canvas_init(&c, VIEW_W, VIEW_H));
@@ -400,10 +432,14 @@ static void test_known_world_pixels(void)
          * drawn lying down; looked at by eye in the window and the lab.
          * Re-pinned again the same day: Far changed because creatures now
          * walk, run, breathe, graze and bite in cycles (the animation stage's
-         * poses); Close and Normal kept their hashes. Looked at by eye. */
+         * poses); Close and Normal kept their hashes. Looked at by eye.
+         * Re-pinned for the attack: Far changed because its fights are now
+         * drawn as the attack's first frame (this test's body clock stands at
+         * 0) instead of a bite with a red slash over the victim; the attack
+         * itself was looked at in the lab, frame by frame. */
         static const uint64_t EXPECTED[CAMERA_LEVELS] = {
             0xbe5f57fb7c7bdabdu, 0x5a015897532bfe08u,
-            0xc850f4b96baf7977u, 0x8467a0fcd9991445u,
+            0x257dfcd68e10d4f5u, 0x8467a0fcd9991445u,
         };
         if (hashes[level] != EXPECTED[level]) {
             printf("level %d: 0x%llxu\n", level,
@@ -435,7 +471,7 @@ static void test_ground_layer_refreshes_when_it_should(void)
     make_empty_sim(&s, 64, 64);
     Scene sc;
     CHECK(scene_init(&sc, &s));
-    scene_update(&sc, &s, 10);
+    scene_update(&sc, &s, 10, 0);
     Canvas c;
     CHECK(canvas_init(&c, VIEW_W, VIEW_H));
     Camera cam;
@@ -477,7 +513,7 @@ static void test_ground_layer_refreshes_when_it_should(void)
         s.world.terrain[i] = TERRAIN_ROCK;
     }
     scene_reset(&sc);
-    scene_update(&sc, &s, 10);
+    scene_update(&sc, &s, 10, 0);
     scene_draw_world(&sc, &c, &cam, &s, 0.0f, 0, 0, 0, 0);
     CHECK(hash_canvas(&c) != water0);
     canvas_free(&c);
@@ -509,8 +545,8 @@ static void test_water_only_redraw_matches_whole(void)
         Scene partly, whole_scene;
         CHECK(scene_init(&partly, &s));
         CHECK(scene_init(&whole_scene, &s));
-        scene_update(&partly, &s, 10);
-        scene_update(&whole_scene, &s, 10);
+        scene_update(&partly, &s, 10, 0);
+        scene_update(&whole_scene, &s, 10, 0);
         scene_draw_world(&partly, &a, &cam, &s, 0.5f, 0, 1000, 0, 0);
         scene_draw_world(&partly, &a, &cam, &s, 0.5f, SCENE_DRIFT_MS, 1000, 0, 0);
         scene_draw_world(&whole_scene, &b, &cam, &s, 0.5f, SCENE_DRIFT_MS, 1000, 0, 0);
@@ -533,7 +569,7 @@ static void test_strip_and_enlarged_bodies(void)
     s.pool.items[slot].lineage = 5;
     Scene sc;
     CHECK(scene_init(&sc, &s));
-    scene_update(&sc, &s, 10);
+    scene_update(&sc, &s, 10, 0);
     Families f;
     CHECK(family_init(&f, s.pool.capacity));
     family_update(&f, &s);
@@ -856,7 +892,7 @@ static void test_snow_whitens_ground(void)
     make_empty_sim(&s, 64, 64);
     Scene sc;
     CHECK(scene_init(&sc, &s));
-    scene_update(&sc, &s, 10);
+    scene_update(&sc, &s, 10, 0);
     Canvas c;
     CHECK(canvas_init(&c, VIEW_W, VIEW_H));
     Camera cam;
@@ -901,7 +937,7 @@ static uint64_t region_picture(Scene *sc, Sim *s, Canvas *c, Camera *cam,
     cam->level = level;
     s->tick++;
     scene_reset(sc); /* the soil's colours at once, not within a second */
-    scene_update(sc, s, 10);
+    scene_update(sc, s, 10, 0);
     scene_draw_world(sc, c, cam, s, 0.0f, 0, 0, 0, 0);
     const Creature *cr = &s->pool.items[creature];
     /* The World zoom's square is today's colour; the other zooms draw the body
@@ -1023,10 +1059,10 @@ static bool changed_box(Sim *s, int slot, Camera *cam, int border, Box *out)
     canvas_fill(&b, magenta);
     /* Without: the body is taken away for the first picture, then put back. */
     s->pool.items[slot].alive = false;
-    scene_update(&sc, s, 10);
+    scene_update(&sc, s, 10, 0);
     scene_draw_world(&sc, &a, cam, s, 0.0f, 0, 0, border, border);
     s->pool.items[slot].alive = true;
-    scene_update(&sc, s, 10);
+    scene_update(&sc, s, 10, 0);
     scene_draw_world(&sc, &b, cam, s, 0.0f, 0, 0, border, border);
     *out = (Box){a.w, a.h, -1, -1};
     for (int y = 0; y < a.h; y++) {
@@ -1144,7 +1180,7 @@ static int scar_pixels(float grown, uint32_t hits, uint32_t ago)
     Camera cam;
     camera_init(&cam, 64, 64, VIEW_W, VIEW_H);
     camera_centre_on(&cam, 32.5f, 32.5f);
-    scene_update(&sc, &s, 10);
+    scene_update(&sc, &s, 10, 0);
     scene_draw_world(&sc, &c, &cam, &s, 0.0f, 0, 0, 0, 0);
     int n = 0;
     for (int i = 0; i < VIEW_W * VIEW_H; i++) {
@@ -1193,7 +1229,7 @@ static void test_drawing_large_leaves_fingerprint_equal(void)
     for (int t = 0; t < 1000; t++) {
         sim_step(&plain);
         sim_step(&drawn);
-        scene_update(&sc, &drawn, 10);
+        scene_update(&sc, &drawn, 10, (uint64_t)t * 33u);
         cam.level = t % CAMERA_LEVELS;
         scene_draw_world(&sc, &c, &cam, &drawn, 0.5f, (uint64_t)t * 33u,
                          (uint64_t)t * 33u, 0, 0);
@@ -1217,7 +1253,7 @@ static int name_pixels(Sim *s, Camera *cam, const Creature *followed)
 {
     Scene sc;
     CHECK(scene_init(&sc, s));
-    scene_update(&sc, s, 10);
+    scene_update(&sc, s, 10, 0);
     Canvas c;
     CHECK(canvas_init(&c, cam->view_w, cam->view_h));
     uint32_t magenta = canvas_rgb(255, 0, 255);
@@ -1275,7 +1311,7 @@ static void draw_fresh(Sim *s, Canvas *c, const Camera *cam, uint64_t water_ms)
 {
     Scene sc;
     CHECK(scene_init(&sc, s));
-    scene_update(&sc, s, 10);
+    scene_update(&sc, s, 10, 0);
     scene_draw_world(&sc, c, cam, s, 0.0f, water_ms, 0, 0, 0);
     scene_free(&sc);
 }
@@ -1450,7 +1486,7 @@ static void test_paused_ground_still_moves(void)
     camera_centre_on(&cam, 32.5f, 32.5f);
     Scene sc;
     CHECK(scene_init(&sc, &s));
-    scene_update(&sc, &s, 10);
+    scene_update(&sc, &s, 10, 0);
     Canvas a, b;
     CHECK(canvas_init(&a, VIEW_W, VIEW_H));
     CHECK(canvas_init(&b, VIEW_W, VIEW_H));
@@ -1493,7 +1529,7 @@ static int tuft_pixels(float fertility)
     camera_init(&cam, 64, 64, VIEW_W, VIEW_H);
     Scene sc;
     CHECK(scene_init(&sc, &s));
-    scene_update(&sc, &s, 10);
+    scene_update(&sc, &s, 10, 0);
     Canvas c;
     CHECK(canvas_init(&c, VIEW_W, VIEW_H));
     scene_draw_world(&sc, &c, &cam, &s, 0.0f, 0, 0, 0, 0);
@@ -1538,7 +1574,7 @@ static void test_ground_follows_within_a_second(void)
         cam.level = level;
         Scene sc;
         CHECK(scene_init(&sc, &s));
-        scene_update(&sc, &s, 10);
+        scene_update(&sc, &s, 10, 0);
         scene_draw_world(&sc, &a, &cam, &s, 0.0f, 0, 0, 0, 0);
         /* Carrion on some soil cells, a tick later: shown now. */
         Sim later;
@@ -1552,7 +1588,7 @@ static void test_ground_follows_within_a_second(void)
             }
         }
         later.tick++;
-        scene_update(&sc, &later, 10);
+        scene_update(&sc, &later, 10, 0);
         scene_draw_world(&sc, &a, &cam, &later, 0.0f, 0, 0, 0, 0);
         draw_fresh(&later, &b, &cam, 0);
         CHECK(hash_canvas(&a) == hash_canvas(&b));
@@ -1632,7 +1668,7 @@ static void test_soil_colour_follows_cell_by_cell(void)
                 cam.level = level;
                 Scene sc;
                 CHECK(scene_init(&sc, &s));
-                scene_update(&sc, &s, 10);
+                scene_update(&sc, &s, 10, 0);
                 scene_draw_world(&sc, &a, &cam, &s, 0.0f, 0, 0, 0, 0);
                 for (int k = 0; k < 6; k++) {
                     int i = cells[k];
@@ -1684,7 +1720,7 @@ static void test_paused_soil_colour_catches_up(void)
         cam.level = level;
         Scene sc;
         CHECK(scene_init(&sc, &s));
-        scene_update(&sc, &s, 10);
+        scene_update(&sc, &s, 10, 0);
         scene_draw_world(&sc, &a, &cam, &s, 0.0f, 0, 0, 0, 0);
         for (int i = 0; i < 64 * 32; i++) {
             s.world.fertility[i] = 1.0f - s.world.fertility[i];
@@ -1718,7 +1754,7 @@ static void test_second_frame_builds_nothing(void)
     }
     Scene sc;
     CHECK(scene_init(&sc, &s));
-    scene_update(&sc, &s, 10);
+    scene_update(&sc, &s, 10, 0);
     Canvas c;
     CHECK(canvas_init(&c, VIEW_W, VIEW_H));
     Camera cam;
@@ -1813,7 +1849,7 @@ int main(void)
     test_region_tint();
     test_empty_view_draws_nothing();
     test_tiny_world_on_black();
-    test_fight_draws_a_mark();
+    test_fight_draws_an_attack();
     test_click_picks_within_two_cells();
     test_click_finds_across_the_wrapped_edge();
     test_follow_centres_on_the_creature();

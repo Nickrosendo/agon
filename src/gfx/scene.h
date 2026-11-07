@@ -79,7 +79,6 @@ typedef struct {
     SpriteBody *bodies;
     int slots;
     Anim anim;
-    uint16_t slash[2][TILE_MARK_FRAMES][16];
     uint16_t crumbs[2][TILE_MARK_FRAMES][16];
     uint16_t rain[2][TILE_VARIANTS][TILE_RAIN_FRAMES][16];
     uint8_t bones[2][TILE_VARIANTS][TILE_MAX * TILE_MAX];
@@ -173,8 +172,9 @@ void scene_reset(Scene *sc);
  * the grass and the trees are all that moves, and only once a step, so a frame
  * where this has not changed need not be drawn. */
 int scene_ambient_frame(uint64_t water_ms);
-/* Once per frame, after the frame's ticks. */
-void scene_update(Scene *sc, const Sim *s, int ticks_per_second);
+/* Once per frame, after the frame's ticks. body_ms is the body clock, which
+ * stops while paused: fights advance by it. */
+void scene_update(Scene *sc, const Sim *s, int ticks_per_second, uint64_t body_ms);
 /*
  * Draws the camera's view with its top left corner at (view_x, view_y).
  * tick_fraction (0..1) is how far the frame is towards the next tick.

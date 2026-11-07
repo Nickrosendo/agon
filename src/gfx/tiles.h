@@ -13,16 +13,16 @@
 
 #include "world.h" /* World */
 
-/* The one-colour marks still drawn the old way: TILE_SLASH goes in task 12,
- * TILE_CRUMBS in task 13. They are not ground but marks drawn over a bitten
- * cell: the flash of a fight, and crumbs of food flying off. Rain streaks are
- * drawn over the ground each frame. */
-enum { TILE_SLASH, TILE_CRUMBS, TILE_RAIN, TILE_KINDS };
+/* The one-colour marks still drawn the old way: TILE_CRUMBS goes in task 13.
+ * Crumbs are not ground but a mark drawn over a bitten cell, food flying off.
+ * Rain streaks are drawn over the ground each frame. (The fight's slash was
+ * here too, until the attack itself was drawn.) */
+enum { TILE_CRUMBS, TILE_RAIN, TILE_KINDS };
 #define TILE_VARIANTS 4
 /* How many pictures rain cycles through, one per step of the scene's ambient
  * clock. */
 #define TILE_RAIN_FRAMES 4
-/* How many pictures each of the two marks cycles through. */
+/* How many pictures the crumbs cycle through. */
 #define TILE_MARK_FRAMES 4
 
 /*

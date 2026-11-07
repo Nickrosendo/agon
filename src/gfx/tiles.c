@@ -32,28 +32,6 @@ static void set_pixel(uint16_t rows[16], int size, int i, int j)
     }
 }
 
-/* A claw mark: a diagonal cross that flares and fades over its frames. */
-static void build_slash(uint16_t rows[16], int size, int frame)
-{
-    /* How far each arm reaches from the middle, as a share of the tile. */
-    static const float REACH[TILE_MARK_FRAMES] = {0.18f, 0.44f, 0.30f, 0.0f};
-    float reach = REACH[frame % TILE_MARK_FRAMES];
-    float line = 0.5f / (float)size + 0.01f;
-    for (int j = 0; j < size; j++) {
-        for (int i = 0; i < size; i++) {
-            float u = ((float)i + 0.5f) / (float)size - 0.5f;
-            float v = ((float)j + 0.5f) / (float)size - 0.5f;
-            if (fabsf(u) <= reach && fabsf(v) <= reach &&
-                (fabsf(u - v) < line || fabsf(u + v) < line)) {
-                set_pixel(rows, size, i, j);
-            }
-        }
-    }
-    /* The fourth frame's reach of 0 still leaves a single spark in the middle,
-     * so the mark never vanishes while the fight goes on. */
-    set_pixel(rows, size, size / 2, size / 2);
-}
-
 /* Three crumbs on arcs up and out from the middle; each frame moves them on. */
 static void build_crumbs(uint16_t rows[16], int size, int frame)
 {
@@ -96,7 +74,6 @@ void tiles_build(uint16_t rows[16], int kind, int variant, int size, int frame)
      * pointer, and sizeof would give the pointer's size. Hence 16 * .... */
     memset(rows, 0, 16 * sizeof(rows[0]));
     switch (kind) {
-    case TILE_SLASH: build_slash(rows, size, frame); break;
     case TILE_CRUMBS: build_crumbs(rows, size, frame); break;
     case TILE_RAIN: build_rain(rows, variant, size, frame); break;
     default: break;

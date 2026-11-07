@@ -106,18 +106,6 @@ static void test_sleep_breath_loops(void)
     CHECK(high - low > 0.2f);
 }
 
-/* Until the attack has its own cycle, it stands. */
-static void test_attack_stands(void)
-{
-    SpriteBody b = middling(SPECIES_WOLF);
-    SpritePose want, p;
-    skeleton_pose_standing(&want);
-    pose_at(&p, &b, ACTION_ATTACK, 3);
-    CHECK(p.fold == 0.0f && p.eyes == want.eyes && p.breath == 0.0f);
-    CHECK(p.stride == want.stride && p.lift == want.lift && p.body_dx == 0.0f);
-    CHECK(pose_cycle_seconds(&b, ACTION_ATTACK) == 0.0f);
-}
-
 /* The frame at a body time: the cycle runs through all its frames in its
  * seconds, and two ids side by side are out of step. */
 static void test_frame_follows_the_clock(void)
@@ -401,12 +389,112 @@ static void test_cadence_keeps_up(void)
     CHECK(pose_cycle_seconds(&b, ACTION_RUN) < pose_cycle_seconds(&b, ACTION_WALK));
 }
 
+/* ---- The attack ---- */
+
+/* The attack's pose at share c of the way through it (0..1). */
+static void attack_at(SpritePose *p, const SpriteBody *b, float c)
+{
+    int n = SPRITE_FRAMES[ACTION_ATTACK];
+    pose_at(p, b, ACTION_ATTACK, (int)(c * (float)n));
+}
+
+/* The attack's five parts come in order: the crouch deepens through the
+ * stalk, the body flies forward in the pounce and is furthest out after it,
+ * the jaws open in the flight and are shut by the end of the impact, and only
+ * the cats swipe with a paw. */
+static void test_attack_parts_in_order(void)
+{
+    for (int sp = 0; sp < SPECIES_COUNT; sp++) {
+        SpriteBody b = middling(sp);
+        SpritePose early, late_stalk, mid_pounce, impact_end, hold, release_end;
+        attack_at(&early, &b, 0.05f);
+        attack_at(&late_stalk, &b, 0.33f);
+        attack_at(&mid_pounce, &b, 0.45f);
+        attack_at(&impact_end, &b, 0.57f);
+        attack_at(&hold, &b, 0.62f);
+        attack_at(&release_end, &b, 0.99f);
+        CHECK(early.action == ACTION_ATTACK);
+        CHECK(late_stalk.crouch > early.crouch);
+        CHECK(late_stalk.crouch > 1.0f);          /* low before the leap */
+        CHECK(mid_pounce.jaw > 0.7f);             /* open in the flight */
+        CHECK(impact_end.jaw < 0.1f);             /* shut on the neck */
+        CHECK(impact_end.body_dx > 4.0f);         /* furthest out */
+        CHECK(impact_end.body_dx > mid_pounce.body_dx);
+        CHECK(release_end.body_dx < 0.5f);        /* back where it started */
+        bool feline = sp == SPECIES_LION || sp == SPECIES_TIGER;
+        CHECK(feline ? hold.swipe > 0.3f : hold.swipe == 0.0f);
+        /* Only the release steps; it alone moves the feet. */
+        CHECK(release_end.stepping && !hold.stepping);
+    }
+    CHECK(pose_cycle_seconds(NULL, ACTION_ATTACK) == POSE_ATTACK_SECONDS);
+}
+
+/* How far an attack's pose value may move between two frames: 2 in the
+ * pounce (the mockup's own pounce moves 1.6 a frame at K 1), 1 elsewhere,
+ * the impact included. */
+static float attack_allowed(float c_next)
+{
+    return c_next > 0.35f && c_next <= 0.5f + 1e-4f ? 2.0f : 1.0f;
+}
+
+/* Frame by frame through the whole attack, and from the end of the hold back
+ * to its start (a long fight repeats the hold): no jump larger than allowed. */
+static void test_attack_is_continuous(void)
+{
+    int n = SPRITE_FRAMES[ACTION_ATTACK];
+    int hold_first = (int)(0.56f * (float)n + 0.999f);
+    int hold_last = (int)(0.8f * (float)n) - 1;
+    for (int sp = 0; sp < SPECIES_COUNT; sp++) {
+        SpriteBody b = middling(sp);
+        for (int f = 0; f + 1 < n; f++) {
+            SpritePose now, next;
+            pose_at(&now, &b, ACTION_ATTACK, f);
+            pose_at(&next, &b, ACTION_ATTACK, f + 1);
+            float c_next = (float)(f + 1) / (float)n;
+            float change = largest_change(&now, &next);
+            CHECK(change <= attack_allowed(c_next) + 1e-4f);
+            if (change > attack_allowed(c_next) + 1e-4f) {
+                printf("  %s attack frame %d: %.3f\n", SPECIES[sp].name, f, (double)change);
+            }
+        }
+        SpritePose end, start;
+        pose_at(&end, &b, ACTION_ATTACK, hold_last);
+        pose_at(&start, &b, ACTION_ATTACK, hold_first);
+        CHECK(largest_change(&end, &start) <= 1.0f + 1e-4f);
+    }
+}
+
+/* The victim's side: a white flash only at the bite (c 0.5 to 0.54), a push
+ * away that starts at the bite and is gone again by the release (c 0.8), and
+ * a tremble only while held. */
+static void test_hit_flash_and_knock(void)
+{
+    float flash, knock, tremble;
+    for (int i = 0; i <= 100; i++) {
+        float c = (float)i / 100.0f;
+        pose_hit(c, &flash, &knock, &tremble);
+        bool in_flash = c >= 0.5f && c < 0.54f;
+        CHECK(in_flash ? flash > 0.5f : flash == 0.0f);
+        if (c < 0.5f || c >= 0.8f) {
+            CHECK(knock == 0.0f);
+        }
+        CHECK(knock >= 0.0f && knock <= 2.5f);
+        CHECK((c >= 0.56f && c < 0.8f) ? tremble > 0.0f : tremble == 0.0f);
+    }
+    pose_hit(0.56f, &flash, &knock, &tremble);
+    CHECK(knock > 1.0f); /* pushed well back just after the bite */
+    pose_hit(0.7999f, &flash, &knock, &tremble);
+    CHECK(knock < 0.05f); /* and back by the release: no jump at 0.8 */
+}
+
 int main(void)
 {
     test_sleep_folds_the_legs();
     test_sleep_shuts_the_eyes();
     test_sleep_breath_loops();
-    test_attack_stands();
+    test_attack_parts_in_order();
+    test_attack_is_continuous();
+    test_hit_flash_and_knock();
     test_frame_follows_the_clock();
     test_sleeping_picture_differs();
     test_poses_are_continuous();

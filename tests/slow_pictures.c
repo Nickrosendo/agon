@@ -65,8 +65,8 @@ static void test_cache_keeps_up(const char *path)
             sim_step(&s);
             ticks_due -= FRAMES_PER_SECOND;
         }
-        scene_update(&sc, &s, TICKS_PER_SECOND);
         clock_ms += BODY_MS_PER_FRAME;
+        scene_update(&sc, &s, TICKS_PER_SECOND, clock_ms);
         float fraction = (float)ticks_due / (float)FRAMES_PER_SECOND;
         long before = sc.sprites.builds;
         double start = now_ms();

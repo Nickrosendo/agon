@@ -122,6 +122,46 @@ static void test_every_action_draws(void)
     CHECK(lab_action_of_key(0) == -1 && lab_action_of_key(LAB_KEYS + 1) == -1);
 }
 
+/* How many pixels of the cell at (role, col) are not scenery. */
+static int animal_pixels(const Canvas *c, int action, int role, int col)
+{
+    int bx, by, bw, bh;
+    CHECK(lab_cell_box(&sprites, action, c->w, c->h, role, col, &bx, &by, &bw, &bh) > 0);
+    int animal = 0;
+    for (int y = by; y < by + bh; y++) {
+        for (int x = bx; x < bx + bw; x++) {
+            animal += !is_scenery(c->px[y * c->w + x]);
+        }
+    }
+    return animal;
+}
+
+/* On key 5 each hunter attacks a deer that faces it: its cell holds two
+ * animals, the others still one. */
+static void test_hunters_attack_a_deer(void)
+{
+    int bite = lab_action_of_key(5);
+    CHECK(bite == ACTION_BITE);
+    Canvas rest, attack;
+    CHECK(canvas_init(&rest, 1112, 688));
+    CHECK(canvas_init(&attack, 1112, 688));
+    lab_draw(&sprites, &rest, ACTION_REST, 0, 0, 0, 1112, 688);
+    lab_draw(&sprites, &attack, bite, 0, 0, 0, 1112, 688);
+    for (int col = 0; col < LAB_COLUMNS; col++) {
+        if (lab_species_at(ROLE_HUNTER, col) < 0) {
+            continue;
+        }
+        int alone = animal_pixels(&rest, ACTION_REST, ROLE_HUNTER, col);
+        int pair = animal_pixels(&attack, bite, ROLE_HUNTER, col);
+        CHECK(pair > alone * 3 / 2);
+        if (pair <= alone * 3 / 2) {
+            printf("  hunter column %d: alone %d, with the deer %d\n", col, alone, pair);
+        }
+    }
+    canvas_free(&rest);
+    canvas_free(&attack);
+}
+
 /* The window's world area at 1280x720 (the panel beside it) is big enough for
  * scale 2; a small area falls back to 1; a very large one may take 3. */
 static void test_lab_scale_at_window_size(void)
@@ -212,6 +252,7 @@ int main(void)
     test_lab_stays_in_its_area();
     test_lab_cells_not_empty();
     test_every_action_draws();
+    test_hunters_attack_a_deer();
     test_lab_scale_at_window_size();
     test_lab_tiny_area_is_safe();
     test_lab_pixels();

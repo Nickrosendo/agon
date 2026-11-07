@@ -29,7 +29,6 @@ static const Colour WHITE = {245, 240, 235};
 /* Bones; and the colour of carrion: a little is pale bone, a lot dark red. */
 static const Colour BONE = {196, 176, 150};
 /* The flash of a fight: brighter than anything else in the world. */
-static const Colour SLASH = {255, 70, 50};
 /* Crumbs of meat. Crumbs of plant are the plant's own colour, lightened, or
  * they would vanish against the tree they come from. */
 static const Colour MEAT_CRUMB = {255, 110, 100};
@@ -205,7 +204,6 @@ bool scene_init(Scene *sc, const Sim *s)
     for (int z = 0; z < 2; z++) {
         int size = z == 0 ? 16 : 8;
         for (int f = 0; f < TILE_MARK_FRAMES; f++) {
-            tiles_build(sc->slash[z][f], TILE_SLASH, 0, size, f);
             tiles_build(sc->crumbs[z][f], TILE_CRUMBS, 0, size, f);
         }
         for (int v = 0; v < TILE_VARIANTS; v++) {
@@ -264,9 +262,9 @@ void scene_reset(Scene *sc)
     sc->ground_valid = false; /* a new world can have the same tick number */
 }
 
-void scene_update(Scene *sc, const Sim *s, int ticks_per_second)
+void scene_update(Scene *sc, const Sim *s, int ticks_per_second, uint64_t body_ms)
 {
-    anim_update(&sc->anim, s, ticks_per_second);
+    anim_update(&sc->anim, s, ticks_per_second, body_ms);
 }
 
 int scene_ambient_frame(uint64_t water_ms)
@@ -873,8 +871,8 @@ static WorldArea world_area(const Camera *cam, int view_x, int view_y)
     return a;
 }
 
-/* The mark over the cell a creature is biting: a red flash for a fight, and
- * crumbs whose colour says what is being eaten. */
+/* The mark over the cell a creature is eating from: crumbs whose colour says
+ * what is being eaten. A fight has no mark: the attack itself is drawn. */
 static void draw_mark(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
                       const Creature *cr, const AnimPose *p, uint64_t body_ms,
                       int view_x, int view_y)
@@ -892,10 +890,7 @@ static void draw_mark(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
     int f = (int)((body_ms / MARK_FRAME_MS + cr->id) % TILE_MARK_FRAMES);
     const uint16_t *rows = sc->crumbs[z][f];
     Colour colour = MEAT_CRUMB;
-    if (p->bite == POSE_ATTACK) {
-        rows = sc->slash[z][f];
-        colour = SLASH;
-    } else if (p->bite == BITE_PLANT) {
+    if (p->bite == BITE_PLANT) {
         const World *w = &s->world;
         Colour plant = palette_plant(&w->plant[p->target_y * w->w + p->target_x]);
         colour = palette_mix(plant, WHITE, 0.6f);
@@ -916,10 +911,9 @@ static void draw_marks(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
                                                  : sc->anim.capacity;
     for (int i = 0; i < n; i++) {
         const Creature *cr = &s->pool.items[i];
-        /* Tested first: most creatures are not biting, and this saves
+        /* Tested first: most creatures are not eating, and this saves
          * working out their pose a second time. */
-        if (!cr->alive || !sc->anim.slots[i].seen ||
-            (cr->current.kind != ACT_BITE && cr->current.kind != ACT_ATTACK)) {
+        if (!cr->alive || !sc->anim.slots[i].seen || cr->current.kind != ACT_BITE) {
             continue;
         }
         AnimPose p;
@@ -1497,7 +1491,9 @@ static BodyDraw world_body(Scene *sc, const Camera *cam, const Sim *s, int slot,
     BodyDraw d;
     d.pic = sprite_picture(&sc->sprites, b, p->action, p->frame);
     d.palette = slot_palette(sc, &s->pool.items[slot], slot, b->species);
-    d.foot_x = it->foot_x;
+    /* A creature being hit is pushed off its foot by the knock-back and the
+     * tremble, both in cells; it still sorts by its own cell (it->foot_y). */
+    d.foot_x = it->foot_x + round_to_int((p->knock_x + p->tremble) * (float)ppc);
     d.foot_y = it->foot_y - ppc + ppc * 13 / 16;
     d.scale = camera_sprite_scale(cam);
     d.flip = p->flip;
@@ -1533,6 +1529,15 @@ static void draw_body(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
         return;
     }
     BodyDraw d = world_body(sc, cam, s, it->index, it);
+    /* Being bitten: every colour part of the way to white. The flashed
+     * palette is a local here, in the function that paints with it: d keeps
+     * only a pointer, and a local of world_body would be gone by now. */
+    SpritePalette flashed;
+    float flash = sc->poses[it->index].flash;
+    if (flash > 0.0f) {
+        sprite_palette_flash(&flashed, d.palette, flash);
+        d.palette = &flashed;
+    }
     int scars = recent_hit_count(cr, s->tick);
     int dx[9], dy[9];
     int copies = copy_offsets(area, dx, dy);

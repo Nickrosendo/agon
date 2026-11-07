@@ -6,7 +6,8 @@
  * 160-235) with every cycle cut into a whole number of frames, so each loops
  * without a jump.
  *
- * The attack stands until its own task; everything else moves.
+ * The attack is not a loop: the window plays it from a share 0..1 that it
+ * moves on itself (anim.c), so a fight can hold, end early or skip parts.
  */
 #ifndef AGON_POSE_H
 #define AGON_POSE_H
@@ -21,6 +22,15 @@
 #define POSE_GRAZE_SECONDS 3.0f
 #define POSE_BITE_SECONDS 1.3f
 #define POSE_SLEEP_SECONDS 3.0f
+/* The whole attack, stalk to release, played straight through (v9:165). */
+#define POSE_ATTACK_SECONDS 1.8f
+/* Where the attack's parts begin, as shares of it (v9:205-230): the stalk at
+ * 0, the pounce, the impact (the bite lands), the hold and shake, and the
+ * release. */
+#define POSE_POUNCE_AT 0.35f
+#define POSE_IMPACT_AT 0.5f
+#define POSE_HOLD_AT 0.56f
+#define POSE_RELEASE_AT 0.8f
 /* A run's steps come this many times as often as a walk's (v9:174). */
 #define POSE_RUN_RATE 1.9f
 /* The walk and run cycle may be sped up this much to keep up with the glide. */
@@ -32,8 +42,9 @@ void pose_at(SpritePose *out, const SpriteBody *b, int action, int frame);
 
 /* How long the action's cycle takes for this body at its own pace, in
  * seconds: a walk is one step cycle at the species' step rate, a run 1.9
- * times faster. 0 for an action that has no cycle yet (the attack). b is read
- * only for walking and running, so it may be NULL for the others. */
+ * times faster; the attack, POSE_ATTACK_SECONDS from end to end. 0 for an
+ * action out of range. b is read only for walking and running, so it may be
+ * NULL for the others. */
 float pose_cycle_seconds(const SpriteBody *b, int action);
 
 /* How many times faster than its own pace a walk or run cycle has to go so
@@ -52,6 +63,13 @@ int pose_frame(uint64_t ms, uint32_t id, int action, float cycle_seconds);
  * half shut for 60 ms, shut for 60 ms, half shut for 60 ms (v9:171); the id
  * shifts when it comes, as the mockup's seed does. */
 float pose_eyes(uint64_t ms, uint32_t id);
+
+/* The victim's side of an attack at share c (v9:681-683): flash, how far its
+ * colours go to white (0.75 for the first instant of the bite, else 0); knock,
+ * how far it is pushed away from the attacker in K units (0 before the bite
+ * and from the release on); tremble, how far it shakes either way while held,
+ * in art pixels. */
+void pose_hit(float c, float *flash, float *knock, float *tremble);
 
 /* The mockup's easing curves (v9:160-163). u, and x between a and b, run 0..1. */
 float pose_ease_in_out(float u);

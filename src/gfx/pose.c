@@ -153,6 +153,89 @@ static void pose_bite(SpritePose *p, float c)
     p->flap = 0.5f;
 }
 
+/* The attack (v9:205-230), at share c of POSE_ATTACK_SECONDS, in five parts:
+ * stalk low with the ears back and the tail lashing; pounce, flying forward
+ * with the jaws opening; the impact, jaws snapping shut on the neck; hold and
+ * shake, the cats also swiping with a paw; let go and step back. Each part's
+ * u runs 0..1 within it. t is the seconds since the attack began, for the
+ * tail's lashing, which the mockup times by the clock. */
+static void pose_attack(SpritePose *p, float c, bool feline)
+{
+    float t = c * POSE_ATTACK_SECONDS;
+    p->action = ACTION_ATTACK;
+    if (c < POSE_POUNCE_AT) {
+        float u = pose_ease_in_out(c / POSE_POUNCE_AT);
+        p->crouch = 1.2f * u;
+        p->neck = -0.4f * u;
+        p->head_dy = 0.5f * u;
+        p->ear = 1.3f * u;
+        p->body_dx = -0.6f * u;
+        p->tail = sinf(t * 9.0f) * 0.35f * u;
+    } else if (c < POSE_IMPACT_AT) {
+        float u = (c - POSE_POUNCE_AT) / (POSE_IMPACT_AT - POSE_POUNCE_AT);
+        float e = pose_ease_out(u);
+        p->crouch = 1.2f * (1.0f - e);
+        p->body_dx = lerp(-0.6f, 4.2f, e);
+        p->bob = -sinf(PI * u) * 2.6f;
+        p->leap = sinf(PI * fminf(1.0f, u * 1.1f));
+        p->stretch = sinf(PI * u);
+        p->neck = lerp(-0.4f, -0.05f, e);
+        p->jaw = lerp(0.1f, 1.0f, pose_ease_out(fminf(1.0f, u * 1.6f)));
+        p->ear = 1.3f;
+        p->tail = -0.35f;
+    } else if (c < POSE_HOLD_AT) {
+        float u = pose_ease_out((c - POSE_IMPACT_AT) / (POSE_HOLD_AT - POSE_IMPACT_AT));
+        p->body_dx = 4.2f;
+        p->head_dx = 0.9f * u;
+        p->jaw = lerp(1.0f, 0.05f, u);
+        p->neck = -0.05f;
+        p->ear = 1.3f;
+        p->crouch = 0.4f * u;
+    } else if (c < POSE_RELEASE_AT) {
+        float u = (c - POSE_HOLD_AT) / (POSE_RELEASE_AT - POSE_HOLD_AT);
+        p->body_dx = lerp(4.2f, 3.6f, pose_ease_in_out(u));
+        p->head_dx = 0.9f;
+        p->jaw = 0.05f;
+        p->crouch = 0.4f;
+        p->ear = 1.3f;
+        p->head_dy = sinf(u * PI * 6.0f) * 0.7f * (1.0f - u * 0.5f);
+        p->neck = -0.05f + sinf(u * PI * 6.0f + 1.0f) * 0.12f;
+        if (feline) {
+            p->swipe = sinf(fminf(1.0f, u * 1.4f) * PI);
+        }
+        p->tail = 0.2f + sinf(t * 12.0f) * 0.15f;
+    } else {
+        float u = (c - POSE_RELEASE_AT) / (1.0f - POSE_RELEASE_AT);
+        float e = pose_ease_in_out(u);
+        p->body_dx = lerp(3.6f, 0.0f, e);
+        p->crouch = 0.4f * (1.0f - e);
+        p->ear = 1.3f * (1.0f - e);
+        p->jaw = 0.05f * (1.0f - e);
+        /* Stepping back: the feet take one and a half steps (v9:229). */
+        p->stepping = true;
+        p->phase = u * TWO_PI * 1.5f;
+        p->stride = 0.6f;
+        p->lift = 0.8f;
+    }
+}
+
+void pose_hit(float c, float *flash, float *knock, float *tremble)
+{
+    *flash = c >= POSE_IMPACT_AT && c < 0.54f ? 0.75f : 0.0f;
+    *knock = 0.0f;
+    *tremble = 0.0f;
+    if (c >= POSE_IMPACT_AT && c < POSE_RELEASE_AT) {
+        float since = c - POSE_IMPACT_AT;
+        /* Pushed back fast as the jaws close, then eased back over 0.3 of the
+         * attack, which ends exactly at the release: no jump there. */
+        *knock = pose_ease_out(fminf(1.0f, since / 0.08f)) *
+                 (1.0f - pose_ease_in_out(since / 0.3f)) * 2.5f;
+    }
+    if (c >= POSE_HOLD_AT && c < POSE_RELEASE_AT) {
+        *tremble = 0.6f;
+    }
+}
+
 /* Asleep (v9:231-233): legs folded under, eyes shut, the neck lowered, the
  * head drawn back, the ears laid down, one slow breath per cycle. */
 static void pose_sleep(SpritePose *p, float u)
@@ -197,11 +280,14 @@ void pose_at(SpritePose *out, const SpriteBody *b, int action, int frame)
     case ACTION_BITE:
         pose_bite(out, u);
         break;
+    case ACTION_ATTACK:
+        pose_attack(out, u, b->species == SPECIES_LION || b->species == SPECIES_TIGER);
+        break;
     case ACTION_SLEEP:
         pose_sleep(out, u);
         break;
     default:
-        break; /* the attack stands until its own task */
+        break;
     }
 }
 
@@ -230,6 +316,8 @@ float pose_cycle_seconds(const SpriteBody *b, int action)
         return POSE_BITE_SECONDS;
     case ACTION_SLEEP:
         return POSE_SLEEP_SECONDS;
+    case ACTION_ATTACK:
+        return POSE_ATTACK_SECONDS;
     default:
         return 0.0f;
     }

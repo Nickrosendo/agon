@@ -1,5 +1,6 @@
 #include "lab.h"
 
+#include <math.h>   /* sinf */
 #include <stdio.h>  /* snprintf */
 #include <string.h> /* strlen */
 
@@ -27,8 +28,8 @@ static const char *const ROLE_TITLES[ROLE_COUNT] = {
 };
 
 /* The actions the number keys choose, key 1 first, and their names. The keys
- * are not ACTION_ values: this table maps them. Hunters attack on key 5 once
- * the attack has its own cycle; until then every animal bites. */
+ * are not ACTION_ values: this table maps them. On key 5 the hunters' row
+ * attacks a deer instead of biting (draw_attack). */
 static const int KEY_ACTIONS[LAB_KEYS] = {
     ACTION_WALK, ACTION_RUN, ACTION_REST, ACTION_GRAZE, ACTION_BITE, ACTION_SLEEP,
 };
@@ -265,18 +266,72 @@ static void draw_strip_ground(Canvas *c, const LabLayout *l, int role, int sx, i
     }
 }
 
-/* The open eye, as the world draws it (v9:483-492): one pixel, or a larger one
- * with a glint in a big-eyed species or a big body. Facing right. */
+/* The eye, as the world draws it (v9:483-492): one pixel, or a larger one
+ * with a glint in a big-eyed species or a big body. Facing right, or
+ * mirrored inside the picture's inked width w when flip is set. */
 static void draw_eye(Canvas *c, const SpritePicture *p, const SpritePalette *pal,
-                     float eyes, int left, int top, int scale, CanvasClip clip)
+                     float eyes, int left, int top, int scale, bool flip, CanvasClip clip)
 {
     SpriteEyePixel eye[SPRITE_EYE_PIXELS_MAX];
     int n = sprite_eye_pixels(p, eyes, eye);
+    int w = p->x1 - p->x0;
     for (int k = 0; k < n; k++) {
-        int ex = left + (p->eye_x + eye[k].dx - p->x0) * scale;
+        int col = p->eye_x + eye[k].dx - p->x0;
+        if (flip) {
+            col = w - 1 - col;
+        }
+        int ex = left + col * scale;
         int ey = top + (p->eye_y + eye[k].dy - p->y0) * scale;
         canvas_pixel(c, ex, ey, scale, pal->ink[eye[k].ink], clip);
     }
+}
+
+/* The strip of one cell, cut by the area too: a clip is a plain rectangle. */
+static CanvasClip strip_clip(const LabLayout *l, int sx, int sy, int strip_h)
+{
+    CanvasClip strip = {sx, sy, l->cell_w, strip_h};
+    int x1 = strip.x + strip.w < l->area.x + l->area.w ? strip.x + strip.w : l->area.x + l->area.w;
+    int y1 = strip.y + strip.h < l->area.y + l->area.h ? strip.y + strip.h : l->area.y + l->area.h;
+    strip.x = strip.x > l->area.x ? strip.x : l->area.x;
+    strip.y = strip.y > l->area.y ? strip.y : l->area.y;
+    strip.w = x1 - strip.x;
+    strip.h = y1 - strip.y;
+    return strip;
+}
+
+/* One picture with its shadow and eye, its inked box's top left corner at
+ * (left, top) on the canvas, mirrored when flip is set. */
+static void paint_animal(Canvas *c, const SpritePicture *p, const SpritePalette *pal,
+                         float eyes, int left, int top, int s, bool flip, CanvasClip strip)
+{
+    int w = p->x1 - p->x0, h = p->y1 - p->y0;
+    /* The ground point (ox, oy) is where the shadow goes; mirrored with the
+     * body. */
+    int col = p->ox - p->x0 + p->shadow_dx;
+    if (flip) {
+        col = w - 1 - col;
+    }
+    int foot_x = left + col * s;
+    int foot_y = top + (p->oy - p->y0) * s;
+    canvas_darken_ellipse(c, foot_x, foot_y, p->shadow_rx * s, p->shadow_ry * s, 141, strip);
+    canvas_picture(c, p->ink + p->y0 * p->w + p->x0, p->w, w, h, left, top, s, flip,
+                   pal->ink, strip);
+    draw_eye(c, p, pal, eyes, left, top, s, flip, strip);
+}
+
+/* Where a picture's inked box goes so its ground point lands on canvas column
+ * foot_x and its feet on the strip's first row of ground (line_y): the box's
+ * left edge, written to *left and *top. */
+static void place_by_foot(const SpritePicture *p, int foot_x, int line_y, int s, bool flip,
+                          int *left, int *top)
+{
+    int w = p->x1 - p->x0;
+    int col = p->ox - p->x0;
+    if (flip) {
+        col = w - 1 - col;
+    }
+    *left = foot_x - col * s;
+    *top = line_y + 2 * s - (p->oy - p->y0 + 1) * s;
 }
 
 /* One species standing on its strip: shadow, then the picture cut to its inked
@@ -303,21 +358,63 @@ static void draw_animal(SpriteCache *sprites, Canvas *c, const LabLayout *l, int
     int line_y = sy + strip_h - GROUND_ROWS * s;
     int left = sx + (l->cell_w - w * s) / 2;
     int top = line_y + 2 * s - h * s;  /* the feet's last row is the ground's first */
-    /* The ground point (ox, oy) is where the shadow goes. */
-    int foot_x = left + (p.ox - p.x0) * s + p.shadow_dx * s;
-    int foot_y = top + (p.oy - p.y0) * s;
-    CanvasClip strip = {sx, sy, l->cell_w, strip_h};
-    /* The strip, cut by the area too: a clip is a plain rectangle. */
-    int x1 = strip.x + strip.w < l->area.x + l->area.w ? strip.x + strip.w : l->area.x + l->area.w;
-    int y1 = strip.y + strip.h < l->area.y + l->area.h ? strip.y + strip.h : l->area.y + l->area.h;
-    strip.x = strip.x > l->area.x ? strip.x : l->area.x;
-    strip.y = strip.y > l->area.y ? strip.y : l->area.y;
-    strip.w = x1 - strip.x;
-    strip.h = y1 - strip.y;
-    canvas_darken_ellipse(c, foot_x, foot_y, p.shadow_rx * s, p.shadow_ry * s, 141, strip);
-    canvas_picture(c, p.ink + p.y0 * p.w + p.x0, p.w, w, h, left, top, s, false, pal.ink,
-                   strip);
-    draw_eye(c, &p, &pal, eyes, left, top, s, strip);
+    paint_animal(c, &p, &pal, eyes, left, top, s, false, strip_clip(l, sx, sy, strip_h));
+}
+
+/* How far apart the hunter's and the deer's ground points stand, in art
+ * pixels (v9:677-692: the hunter at 16, the deer at 47), and how far left of
+ * the strip's middle the hunter stands, so the pair is about centred. */
+#define PREY_GAP 31
+#define ATTACKER_LEFT 18
+
+/*
+ * A hunter attacking a deer that faces it (v9:677-692): the hunter plays the
+ * attack straight through, looping, and the deer stands at rest, flashing and
+ * knocked back when the bite lands. Both are placed by their ground points, not
+ * centred: a centred box would slide about as the pounce stretches it.
+ */
+static void draw_attack(SpriteCache *sprites, Canvas *c, const LabLayout *l, int species,
+                        uint64_t body_ms, int sx, int sy)
+{
+    int s = l->scale;
+    int strip_h = l->strip_h[SPECIES[species].role];
+    int line_y = sy + strip_h - GROUND_ROWS * s;
+    CanvasClip strip = strip_clip(l, sx, sy, strip_h);
+    uint32_t id = (uint32_t)species;
+    int attacker_x = sx + l->cell_w / 2 - ATTACKER_LEFT * s;
+
+    SpriteBody hunter = lab_body(species);
+    int frame = pose_frame(body_ms, id, ACTION_ATTACK, POSE_ATTACK_SECONDS);
+    float share = (float)frame / (float)SPRITE_FRAMES[ACTION_ATTACK];
+    float flash, knock, tremble;
+    pose_hit(share, &flash, &knock, &tremble);
+
+    /* The deer first, so the hunter's leap is drawn over it. */
+    SpriteBody deer = lab_body(SPECIES_DEER);
+    int deer_frame = pose_frame(body_ms, id, ACTION_REST, POSE_REST_SECONDS);
+    SpritePicture prey = sprite_picture(sprites, &deer, ACTION_REST, deer_frame);
+    if (prey.x1 > prey.x0) {
+        SpritePalette look, pal;
+        sprite_palette_look(&look, SPECIES_DEER);
+        sprite_palette_flash(&pal, &look, flash);
+        /* Knock-back in the hunter's K units, tremble in art pixels (v9:682). */
+        float t = (float)(body_ms % 60000u) / 1000.0f;
+        float push = knock * sprite_k(&hunter) + tremble * sinf(t * 40.0f);
+        int foot_x = attacker_x + PREY_GAP * s + (int)(push * (float)s);
+        int left, top;
+        place_by_foot(&prey, foot_x, line_y, s, true, &left, &top);
+        paint_animal(c, &prey, &pal, 1.0f, left, top, s, true, strip);
+    }
+    /* Asked for only after the deer is painted: a picture stays good only
+     * until the next sprite_picture call, which may reuse its cache entry. */
+    SpritePicture p = sprite_picture(sprites, &hunter, ACTION_ATTACK, frame);
+    if (p.x1 > p.x0) {
+        SpritePalette pal;
+        sprite_palette_look(&pal, species);
+        int left, top;
+        place_by_foot(&p, attacker_x, line_y, s, false, &left, &top);
+        paint_animal(c, &p, &pal, 1.0f, left, top, s, false, strip);
+    }
 }
 
 void lab_draw(SpriteCache *sprites, Canvas *c, int action, uint64_t body_ms, int x, int y,
@@ -349,7 +446,11 @@ void lab_draw(SpriteCache *sprites, Canvas *c, int action, uint64_t body_ms, int
             }
             int sx = l.cells_x + col * (l.cell_w + MARGIN);
             draw_strip_ground(c, &l, role, sx, row_y, species);
-            draw_animal(sprites, c, &l, species, action, body_ms, sx, row_y);
+            if (action == ACTION_BITE && role == ROLE_HUNTER) {
+                draw_attack(sprites, c, &l, species, body_ms, sx, row_y);
+            } else {
+                draw_animal(sprites, c, &l, species, action, body_ms, sx, row_y);
+            }
             const char *name = SPECIES[species].name;
             int name_x = sx + (l.cell_w - (int)strlen(name) * FONT_W) / 2;
             text_in(c, &l, name_x > sx ? name_x : sx, row_y + l.strip_h[role] + 2, name,

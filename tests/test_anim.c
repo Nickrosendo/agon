@@ -54,14 +54,14 @@ static void test_glide_halfway(void)
     set_move_ticks(&s, slot, 4.0f);
     Anim a;
     CHECK(anim_init(&a, s.pool.capacity));
-    anim_update(&a, &s, 10);
+    anim_update(&a, &s, 10, 0);
     s.tick++;
     move_to(&s, slot, 11, 10);
-    anim_update(&a, &s, 10);
+    anim_update(&a, &s, 10, 0);
     s.tick += 1;
-    anim_update(&a, &s, 10);
+    anim_update(&a, &s, 10, 0);
     s.tick += 1;
-    anim_update(&a, &s, 10);
+    anim_update(&a, &s, 10, 0);
     AnimPose p;
     anim_pose(&a, &s, slot, 0.0f, 0, &p);
     CHECK(NEAR(p.x, 10.5f));
@@ -72,7 +72,7 @@ static void test_glide_halfway(void)
     CHECK(NEAR(p.x, 10.625f));
     /* When the move is over: on the cell, and resting. */
     s.tick += 2;
-    anim_update(&a, &s, 10);
+    anim_update(&a, &s, 10, 0);
     anim_pose(&a, &s, slot, 0.0f, 0, &p);
     CHECK(NEAR(p.x, 11.0f));
     CHECK(p.action == ACTION_REST && p.frame >= 0 && p.frame < SPRITE_FRAMES[ACTION_REST]);
@@ -88,12 +88,12 @@ static void test_glide_across_wrap(void)
     set_move_ticks(&s, slot, 2.0f);
     Anim a;
     CHECK(anim_init(&a, s.pool.capacity));
-    anim_update(&a, &s, 10);
+    anim_update(&a, &s, 10, 0);
     s.tick++;
     move_to(&s, slot, 0, 5);
-    anim_update(&a, &s, 10);
+    anim_update(&a, &s, 10, 0);
     s.tick++;
-    anim_update(&a, &s, 10);
+    anim_update(&a, &s, 10, 0);
     AnimPose p;
     anim_pose(&a, &s, slot, 0.0f, 0, &p);
     CHECK(NEAR(p.x, 255.5f)); /* never about 127 */
@@ -109,10 +109,10 @@ static void test_jump_above_15_ticks(void)
     set_move_ticks(&s, slot, 4.0f);
     Anim a;
     CHECK(anim_init(&a, s.pool.capacity));
-    anim_update(&a, &s, 30);
+    anim_update(&a, &s, 30, 0);
     s.tick++;
     move_to(&s, slot, 11, 10);
-    anim_update(&a, &s, 30);
+    anim_update(&a, &s, 30, 0);
     AnimPose p;
     anim_pose(&a, &s, slot, 0.5f, 0, &p);
     CHECK(NEAR(p.x, 11.0f));
@@ -130,10 +130,10 @@ static void test_jump_when_several_ticks_passed(void)
     set_move_ticks(&s, slot, 4.0f);
     Anim a;
     CHECK(anim_init(&a, s.pool.capacity));
-    anim_update(&a, &s, 10);
+    anim_update(&a, &s, 10, 0);
     s.tick += 3;
     move_to(&s, slot, 13, 10);
-    anim_update(&a, &s, 10);
+    anim_update(&a, &s, 10, 0);
     AnimPose p;
     anim_pose(&a, &s, slot, 0.0f, 0, &p);
     CHECK(NEAR(p.x, 13.0f));
@@ -151,7 +151,7 @@ static void test_first_sight_does_not_glide(void)
     s.tick = 1000000;
     Anim a;
     CHECK(anim_init(&a, s.pool.capacity));
-    anim_update(&a, &s, 10);
+    anim_update(&a, &s, 10, 0);
     AnimPose p;
     anim_pose(&a, &s, slot, 0.0f, 0, &p);
     CHECK(NEAR(p.x, 40.0f));
@@ -172,7 +172,7 @@ static void test_new_id_in_slot_forgets_old(void)
     s.tick = 1000;
     Anim a;
     CHECK(anim_init(&a, s.pool.capacity));
-    anim_update(&a, &s, 10);
+    anim_update(&a, &s, 10, 0);
     AnimPose p;
     anim_pose(&a, &s, slot, 0.0f, 0, &p);
     CHECK(p.flip);
@@ -182,7 +182,7 @@ static void test_new_id_in_slot_forgets_old(void)
     int again = pool_spawn(&s.pool, &s.world, 50, 25);
     CHECK(again == slot); /* the free list hands the same slot back */
     s.tick++;
-    anim_update(&a, &s, 10);
+    anim_update(&a, &s, 10, 0);
     anim_pose(&a, &s, slot, 0.0f, 0, &p);
     CHECK(NEAR(p.x, 50.0f));
     CHECK(NEAR(p.y, 25.0f));
@@ -201,13 +201,13 @@ static void test_reset_after_ids_restart(void)
     set_move_ticks(&s, slot, 4.0f);
     Anim a;
     CHECK(anim_init(&a, s.pool.capacity));
-    anim_update(&a, &s, 10);
+    anim_update(&a, &s, 10, 0);
     /* The same slot and id, somewhere else: what r can produce. */
     anim_reset(&a);
     move_to(&s, slot, 30, 20);
     CHECK(s.pool.items[slot].id == id);
     s.tick++;
-    anim_update(&a, &s, 10);
+    anim_update(&a, &s, 10, 0);
     AnimPose p;
     anim_pose(&a, &s, slot, 0.0f, 0, &p);
     CHECK(NEAR(p.x, 30.0f));
@@ -225,19 +225,19 @@ static void test_facing_north_keeps_last(void)
     CHECK(anim_init(&a, s.pool.capacity));
     AnimPose p;
     s.pool.items[slot].heading = HEADING_EAST;
-    anim_update(&a, &s, 10);
+    anim_update(&a, &s, 10, 0);
     anim_pose(&a, &s, slot, 0.0f, 0, &p);
     CHECK(!p.flip);
     s.pool.items[slot].heading = HEADING_NORTH;
-    anim_update(&a, &s, 10);
+    anim_update(&a, &s, 10, 0);
     anim_pose(&a, &s, slot, 0.0f, 0, &p);
     CHECK(!p.flip);
     s.pool.items[slot].heading = HEADING_WEST;
-    anim_update(&a, &s, 10);
+    anim_update(&a, &s, 10, 0);
     anim_pose(&a, &s, slot, 0.0f, 0, &p);
     CHECK(p.flip);
     s.pool.items[slot].heading = HEADING_SOUTH;
-    anim_update(&a, &s, 10);
+    anim_update(&a, &s, 10, 0);
     anim_pose(&a, &s, slot, 0.0f, 0, &p);
     CHECK(p.flip);
     anim_free(&a);
@@ -254,7 +254,7 @@ static void test_rest_breathing_offset(void)
     int two = pool_spawn(&s.pool, &s.world, 20, 10);
     Anim a;
     CHECK(anim_init(&a, s.pool.capacity));
-    anim_update(&a, &s, 10);
+    anim_update(&a, &s, 10, 0);
     AnimPose p1, p2;
     anim_pose(&a, &s, one, 0.0f, 0, &p1);
     anim_pose(&a, &s, two, 0.0f, 0, &p2);
@@ -276,7 +276,7 @@ static void test_mating_creature_rests(void)
     s.pool.items[slot].current.kind = ACT_MATE;
     Anim a;
     CHECK(anim_init(&a, s.pool.capacity));
-    anim_update(&a, &s, 10);
+    anim_update(&a, &s, 10, 0);
     AnimPose p;
     anim_pose(&a, &s, slot, 0.0f, 0, &p);
     CHECK(p.action == ACTION_REST);
@@ -297,7 +297,7 @@ static void test_sleeper_is_drawn_asleep(void)
     s.pool.items[two].current.kind = ACT_SLEEP;
     Anim a;
     CHECK(anim_init(&a, s.pool.capacity));
-    anim_update(&a, &s, 10);
+    anim_update(&a, &s, 10, 0);
     AnimPose p, later, other;
     anim_pose(&a, &s, one, 0.0f, 0, &p);
     CHECK(p.action == ACTION_SLEEP);
@@ -334,7 +334,7 @@ static void test_bite_at_nothing_shows_no_bite(void)
     s.pool.items[slot].current.kind = ACT_BITE;
     Anim a;
     CHECK(anim_init(&a, s.pool.capacity));
-    anim_update(&a, &s, 10);
+    anim_update(&a, &s, 10, 0);
     AnimPose p;
     anim_pose(&a, &s, slot, 0.0f, 0, &p);
     CHECK(p.bite == BITE_NOTHING);
@@ -351,7 +351,7 @@ static void test_eating_leaves_grazes_and_faces_it(void)
     int slot = biter_beside_plant(&s, -1, 0);
     Anim a;
     CHECK(anim_init(&a, s.pool.capacity));
-    anim_update(&a, &s, 10);
+    anim_update(&a, &s, 10, 0);
     AnimPose p0, p1;
     anim_pose(&a, &s, slot, 0.0f, 0, &p0);
     anim_pose(&a, &s, slot, 0.0f, 500, &p1);
@@ -371,7 +371,7 @@ static void test_bite_straight_up_keeps_facing(void)
     int slot = biter_beside_plant(&s, 0, -1);
     Anim a;
     CHECK(anim_init(&a, s.pool.capacity));
-    anim_update(&a, &s, 10);
+    anim_update(&a, &s, 10, 0);
     AnimPose p;
     anim_pose(&a, &s, slot, 0.0f, 0, &p);
     CHECK(p.bite == BITE_PLANT);
@@ -391,7 +391,7 @@ static void test_bite_target_across_wrap(void)
     s.world.veg[world_idx(&s.world, 63, 10)] = 2;
     Anim a;
     CHECK(anim_init(&a, s.pool.capacity));
-    anim_update(&a, &s, 10);
+    anim_update(&a, &s, 10, 0);
     AnimPose p;
     anim_pose(&a, &s, slot, 0.0f, 0, &p);
     CHECK(p.target_x == 63 && p.target_y == 10);
@@ -412,16 +412,21 @@ static void test_attacker_faces_what_it_attacks(void)
     s.pool.items[attacker].heading = HEADING_EAST;
     Anim a;
     CHECK(anim_init(&a, s.pool.capacity));
-    anim_update(&a, &s, 10);
+    anim_update(&a, &s, 10, 0);
     AnimPose p;
     anim_pose(&a, &s, attacker, 0.0f, 0, &p);
     CHECK(p.bite == POSE_ATTACK);
     CHECK(p.target_x == 11 && p.target_y == 10);
-    /* Nobody ahead: a swing at nothing does not look like a fight. */
+    anim_free(&a);
+    /* Nobody ahead: a swing at nothing never starts a fight. (A fight already
+     * on plays out to its end: test_attack_stops_when_the_sim_says.) */
     s.pool.items[attacker].heading = HEADING_WEST;
+    CHECK(anim_init(&a, s.pool.capacity));
+    anim_update(&a, &s, 10, 0);
     anim_pose(&a, &s, attacker, 0.0f, 0, &p);
     CHECK(p.bite == BITE_NOTHING);
-    (void)target;
+    CHECK(p.action != ACTION_ATTACK);
+    CHECK(a.slots[target].hit_by == -1);
     anim_free(&a);
     sim_free(&s);
 }
@@ -439,7 +444,7 @@ static void test_biter_beside_creature_and_carrion_eats(void)
     s.world.carrion[world_idx(&s.world, 9, 10)] = 5.0f;
     Anim a;
     CHECK(anim_init(&a, s.pool.capacity));
-    anim_update(&a, &s, 10);
+    anim_update(&a, &s, 10, 0);
     AnimPose p;
     anim_pose(&a, &s, hunter, 0.0f, 0, &p);
     CHECK(p.bite == BITE_CARRION);
@@ -480,11 +485,11 @@ static void test_action_follows_the_sim(void)
 
     Anim a;
     CHECK(anim_init(&a, s.pool.capacity));
-    anim_update(&a, &s, 10);
+    anim_update(&a, &s, 10, 0);
     s.tick++;
     move_to(&s, walker, 11, 10);
     move_to(&s, runner, 21, 10);
-    anim_update(&a, &s, 10);
+    anim_update(&a, &s, 10, 0);
     AnimPose p;
     anim_pose(&a, &s, walker, 0.2f, 0, &p);
     CHECK(p.action == ACTION_WALK);
@@ -513,11 +518,11 @@ static void test_herd_out_of_step(void)
     set_move_ticks(&s, two, 4.0f);
     Anim a;
     CHECK(anim_init(&a, s.pool.capacity));
-    anim_update(&a, &s, 10);
+    anim_update(&a, &s, 10, 0);
     s.tick++;
     move_to(&s, one, 11, 10);
     move_to(&s, two, 11, 12);
-    anim_update(&a, &s, 10);
+    anim_update(&a, &s, 10, 0);
     AnimPose p1, p2;
     anim_pose(&a, &s, one, 0.3f, 777, &p1);
     anim_pose(&a, &s, two, 0.3f, 777, &p2);
@@ -538,10 +543,10 @@ static void test_paused_clock_holds_the_frame(void)
     set_move_ticks(&s, walker, 4.0f);
     Anim a;
     CHECK(anim_init(&a, s.pool.capacity));
-    anim_update(&a, &s, 10);
+    anim_update(&a, &s, 10, 0);
     s.tick++;
     move_to(&s, walker, 11, 10);
-    anim_update(&a, &s, 10);
+    anim_update(&a, &s, 10, 0);
     AnimPose w0, w1, r0, r1;
     anim_pose(&a, &s, walker, 0.1f, 4321, &w0);
     anim_pose(&a, &s, walker, 0.6f, 4321, &w1);
@@ -549,6 +554,192 @@ static void test_paused_clock_holds_the_frame(void)
     anim_pose(&a, &s, rester, 0.6f, 4321, &r1);
     CHECK(w0.action == w1.action && w0.frame == w1.frame);
     CHECK(r0.frame == r1.frame && r0.eyes == r1.eyes);
+    anim_free(&a);
+    sim_free(&s);
+}
+
+/* ---- Fights ---- */
+
+/* Body time between two frames at 30 frames a second. */
+#define FRAME_MS 33u
+
+/* Two unrelated creatures face to face on a small world: the one on the left,
+ * facing east, attacks the one on the right. Returns the attacker's slot and
+ * writes the victim's. */
+static int face_to_face(Sim *s, int *victim)
+{
+    empty_sim(s, 32, 16);
+    int attacker = pool_spawn(&s->pool, &s->world, 10, 10);
+    *victim = pool_spawn(&s->pool, &s->world, 11, 10);
+    s->set.family_peace = 2.0f; /* both all-zero genomes: twins, otherwise spared */
+    s->set.colour_peace = 0.0f;
+    Creature *c = &s->pool.items[attacker];
+    c->current.kind = ACT_ATTACK;
+    c->heading = HEADING_EAST;
+    c->genome.g[GENE_MEAT] = 1.0f;
+    return attacker;
+}
+
+/* Steps n frames of body time from *ms, updating at tps ticks a second. */
+static void frames(Anim *a, const Sim *s, int tps, uint64_t *ms, int n)
+{
+    for (int i = 0; i < n; i++) {
+        *ms += FRAME_MS;
+        anim_update(a, s, tps, *ms);
+    }
+}
+
+/* An attack the simulation shows is found, its victim remembered, and the
+ * attacker drawn attacking it; the victim knows who hits it. */
+static void test_victim_found_for_a_fight(void)
+{
+    Sim s;
+    int victim;
+    int attacker = face_to_face(&s, &victim);
+    Anim a;
+    CHECK(anim_init(&a, s.pool.capacity));
+    uint64_t ms = 1000;
+    anim_update(&a, &s, 10, ms);
+    CHECK(a.slots[attacker].fight == FIGHT_ON);
+    CHECK(a.slots[attacker].victim_slot == victim);
+    CHECK(a.slots[attacker].victim_id == s.pool.items[victim].id);
+    CHECK(a.slots[attacker].fight_c == 0.0f);
+    CHECK(a.slots[victim].hit_by == attacker);
+    CHECK(a.slots[attacker].hit_by == -1);
+    AnimPose p;
+    anim_pose(&a, &s, attacker, 0.0f, ms, &p);
+    CHECK(p.action == ACTION_ATTACK && !p.flip);
+    /* Before the pounce lands, the victim neither flashes nor moves. */
+    anim_pose(&a, &s, victim, 0.0f, ms, &p);
+    CHECK(p.flash == 0.0f && p.knock_x == 0.0f);
+    /* At the impact (c 0.5 to 0.54) it flashes and is pushed east, away. */
+    frames(&a, &s, 10, &ms, 28); /* 28 frames of 33 ms: c 0.51 */
+    CHECK(a.slots[attacker].fight_c >= 0.5f && a.slots[attacker].fight_c < 0.54f);
+    anim_pose(&a, &s, victim, 0.0f, ms, &p);
+    CHECK(p.flash > 0.5f);
+    frames(&a, &s, 10, &ms, 2);
+    anim_pose(&a, &s, victim, 0.0f, ms, &p);
+    CHECK(p.knock_x > 0.0f);
+    anim_free(&a);
+    sim_free(&s);
+}
+
+/* A long fight holds and shakes: once past the impact, fight_c stays between
+ * 0.56 and 0.8 and never starts the stalk again. */
+static void test_hold_repeats_not_restart(void)
+{
+    Sim s;
+    int victim;
+    int attacker = face_to_face(&s, &victim);
+    Anim a;
+    CHECK(anim_init(&a, s.pool.capacity));
+    uint64_t ms = 0;
+    anim_update(&a, &s, 10, ms);
+    frames(&a, &s, 10, &ms, 35); /* past the impact: c about 0.64 */
+    bool stayed = true;
+    for (int i = 0; i < 90; i++) { /* 3 more seconds */
+        frames(&a, &s, 10, &ms, 1);
+        float c = a.slots[attacker].fight_c;
+        stayed = stayed && c >= 0.56f && c < 0.8f && a.slots[attacker].fight == FIGHT_ON;
+    }
+    CHECK(stayed);
+    anim_free(&a);
+    sim_free(&s);
+}
+
+/* The simulation wins: the attacker turns to rest mid-pounce, and within 6
+ * frames its attack is over, having jumped forward to the bite and played the
+ * release. */
+static void test_attack_stops_when_the_sim_says(void)
+{
+    Sim s;
+    int victim;
+    int attacker = face_to_face(&s, &victim);
+    Anim a;
+    CHECK(anim_init(&a, s.pool.capacity));
+    uint64_t ms = 0;
+    anim_update(&a, &s, 10, ms);
+    frames(&a, &s, 10, &ms, 22); /* mid-pounce: c about 0.40 */
+    CHECK(a.slots[attacker].fight_c > 0.35f && a.slots[attacker].fight_c < 0.5f);
+    s.pool.items[attacker].current.kind = ACT_REST;
+    float highest = 0.0f;
+    AnimPose p = {0};
+    int left = -1;
+    for (int i = 1; i <= 6; i++) {
+        frames(&a, &s, 10, &ms, 1);
+        if (a.slots[attacker].fight != FIGHT_NONE) {
+            highest = fmaxf(highest, a.slots[attacker].fight_c);
+        }
+        anim_pose(&a, &s, attacker, 0.0f, ms, &p);
+        if (p.action != ACTION_ATTACK && left < 0) {
+            left = i;
+        }
+    }
+    CHECK(left > 0);              /* over within 6 frames */
+    CHECK(highest >= 0.5f);       /* the bite was shown on the way out */
+    CHECK(a.slots[attacker].fight == FIGHT_NONE);
+    CHECK(p.action == ACTION_REST);
+    anim_free(&a);
+    sim_free(&s);
+}
+
+/* The victim dies and a newborn takes its slot: the newborn is never shown
+ * hit, and the attack ends. */
+static void test_victim_slot_reused(void)
+{
+    Sim s;
+    int victim;
+    int attacker = face_to_face(&s, &victim);
+    Anim a;
+    CHECK(anim_init(&a, s.pool.capacity));
+    uint64_t ms = 0;
+    anim_update(&a, &s, 10, ms);
+    frames(&a, &s, 10, &ms, 10); /* in the stalk */
+    uint32_t old_id = s.pool.items[victim].id;
+    pool_kill(&s.pool, &s.world, victim, &s.set, DEATH_WOUNDS);
+    s.world.carrion[world_idx(&s.world, 11, 10)] = 0.0f;
+    int newborn = pool_spawn(&s.pool, &s.world, 11, 10);
+    CHECK(newborn == victim);                 /* the same slot... */
+    CHECK(s.pool.items[newborn].id != old_id); /* ...for someone else */
+    bool flashed = false;
+    for (int i = 0; i < 6; i++) {
+        frames(&a, &s, 10, &ms, 1);
+        AnimPose p;
+        anim_pose(&a, &s, newborn, 0.0f, ms, &p);
+        flashed = flashed || p.flash > 0.0f || p.knock_x != 0.0f;
+    }
+    CHECK(!flashed);
+    /* The old fight ended; a new one against the newborn may have begun, but
+     * never mid-way through the old one. */
+    CHECK(a.slots[attacker].fight == FIGHT_NONE ||
+          a.slots[attacker].victim_id == s.pool.items[newborn].id);
+    anim_free(&a);
+    sim_free(&s);
+}
+
+/* At 30 ticks a second there is no time for the stalk or a long hold: the
+ * attack starts at the pounce, and fight_c never stays in the hold. */
+static void test_fast_speed_shows_pounce_and_hit(void)
+{
+    Sim s;
+    int victim;
+    int attacker = face_to_face(&s, &victim);
+    Anim a;
+    CHECK(anim_init(&a, s.pool.capacity));
+    uint64_t ms = 0;
+    anim_update(&a, &s, 30, ms);
+    CHECK(a.slots[attacker].fight_c == 0.35f);
+    int in_hold = 0;
+    bool hit = false;
+    for (int i = 0; i < 90; i++) {
+        frames(&a, &s, 30, &ms, 1);
+        float c = a.slots[attacker].fight_c;
+        in_hold += c > 0.56f && c < 0.8f;
+        hit = hit || (c >= 0.5f && c < 0.56f);
+        CHECK(c >= 0.35f); /* never the stalk */
+    }
+    CHECK(hit);
+    CHECK(in_hold <= 1);
     anim_free(&a);
     sim_free(&s);
 }
@@ -575,5 +766,10 @@ int main(void)
     test_action_follows_the_sim();
     test_herd_out_of_step();
     test_paused_clock_holds_the_frame();
+    test_victim_found_for_a_fight();
+    test_hold_repeats_not_restart();
+    test_attack_stops_when_the_sim_says();
+    test_victim_slot_reused();
+    test_fast_speed_shows_pounce_and_hit();
     TEST_SUMMARY();
 }
