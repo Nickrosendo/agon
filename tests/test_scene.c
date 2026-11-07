@@ -357,35 +357,15 @@ static uint64_t hash_canvas(const Canvas *c)
 }
 
 /*
- * The look, pinned, like SEED_7_AFTER_500 in test_sim.c. If this fails, the
- * picture changed: look at it first, and only then update the numbers, saying
- * why in the commit. Symbols are computed with sinf, so another system's maths
- * library may legitimately give other numbers. Last changed for the climate: the
- * ground follows its water, shallows along the shore, and rain falls; then living
- * plants: the green from the water they need, and ripe fruit tinting them orange;
- * then a blocked walk turns aside, so creatures stand elsewhere at the two closest
- * zooms (the wider two show too little to change); then regions' edges, for the
- * same reason; then wet and dry times, which change the rain and the ground's water
- * at every zoom; then soil that dries twice as fast; then the region tint, at every
- * zoom but the closest, which in this world shows only deep water and so no region;
- * then scars, at the far zoom only: the creature at (20, 24) was hit in the last
- * year, and the two closer zooms show no creature here (no body in this world is
- * large enough to be drawn over several tiles); then the year became 600 ticks with
- * spring as the mating season, and two year senses re-rolled every brain, so
- * creatures stand elsewhere at every zoom but the closest; then snow and drier
- * summers: 300 ticks end a summer with less rain, so the ground's water and the
- * plants on it differ at every zoom; then plants follow the seasons: spring's
- * plenty changes the plants and creatures at every zoom but the closest; then
- * leaf trees grow and shade: the summer heat costs creatures out of shade energy,
- * so creatures stand elsewhere at the two wider zooms; then deep sleep: a new
- * action re-rolled every brain, so creatures stand elsewhere at the two wider
- * zooms (sleepers are drawn as any other creature).
+ * The look, unpinned until Nicolas approves the look (design section 8). It
+ * prints the four hashes, so a change shows, but asserts only what is true of
+ * any look: every pixel of the view was drawn (none keeps the magenta fill), and
+ * the four zoom levels give four different pictures. When it is pinned again,
+ * like SEED_7_AFTER_500 in test_sim.c, a failure means the picture changed: look
+ * at it first, and only then update the numbers, saying why in the commit.
  */
 static void test_known_world_pixels(void)
 {
-    static const uint64_t EXPECTED[CAMERA_LEVELS] = {
-        0x10cfb74e4201643du, 0xb5fb2349fed7e16eu, 0xecb5b6aa44251b21u, 0x667a998a53fd3d25u,
-    };
     Settings set = settings_default();
     Sim s;
     CHECK(sim_init(&s, &set, 3, 64, 32));
@@ -399,15 +379,24 @@ static void test_known_world_pixels(void)
     CHECK(canvas_init(&c, VIEW_W, VIEW_H));
     Camera cam;
     camera_init(&cam, 64, 32, VIEW_W, VIEW_H);
+    uint32_t magenta = canvas_rgb(255, 0, 255);
+    uint64_t hashes[CAMERA_LEVELS];
     for (int level = 0; level < CAMERA_LEVELS; level++) {
         cam.level = level;
-        canvas_fill(&c, canvas_rgb(255, 0, 255));
+        canvas_fill(&c, magenta);
         scene_draw_world(&sc, &c, &cam, &s, 0.5f, 1000, 1000, 0, 0);
-        uint64_t h = hash_canvas(&c);
-        if (h != EXPECTED[level]) {
-            printf("level %d: 0x%llxu\n", level, (unsigned long long)h);
+        hashes[level] = hash_canvas(&c);
+        printf("level %d: 0x%llxu\n", level, (unsigned long long)hashes[level]);
+        int left = 0;
+        for (int i = 0; i < VIEW_W * VIEW_H; i++) {
+            left += c.px[i] == magenta;
         }
-        CHECK(h == EXPECTED[level]);
+        CHECK(left == 0);
+    }
+    for (int a = 0; a < CAMERA_LEVELS; a++) {
+        for (int b = a + 1; b < CAMERA_LEVELS; b++) {
+            CHECK(hashes[a] != hashes[b]);
+        }
     }
     canvas_free(&c);
     scene_free(&sc);
@@ -739,6 +728,72 @@ static void test_ground_shows_water_and_rain(void)
         uint64_t rainy = soil_picture(&sc, &s, &c, &cam, level, 1.0f, 1.0f);
         CHECK(dry != wet);
         CHECK(rainy != wet);
+    }
+    canvas_free(&c);
+    scene_free(&sc);
+    sim_free(&s);
+}
+
+/* A world of one terrain, every cell under this much snow, at Normal zoom. */
+static void snow_picture(Scene *sc, Sim *s, Canvas *c, Camera *cam, int terrain,
+                         float snow)
+{
+    for (int i = 0; i < 64 * 64; i++) {
+        s->world.terrain[i] = (uint8_t)terrain;
+        s->world.fertility[i] = 0.5f;
+        s->world.veg[i] = 0;
+        s->world.carrion[i] = 0.0f;
+        s->world.water[i] = 0.5f;
+        s->world.rain[i] = 0.0f;
+        s->world.snow[i] = snow;
+    }
+    cam->level = CAMERA_NORMAL;
+    s->tick++; /* the ground layer is redrawn only on a new tick */
+    scene_draw_world(sc, c, cam, s, 0.0f, 0, 0, 0, 0);
+}
+
+/* How many pixels have every channel at 200 or more, and the mean brightness. */
+static int white_pixels(const Canvas *c, float *mean)
+{
+    int n = 0;
+    double sum = 0.0;
+    for (int i = 0; i < c->w * c->h; i++) {
+        uint32_t p = c->px[i];
+        uint32_t r = (p >> 16) & 0xFFu, g = (p >> 8) & 0xFFu, b = p & 0xFFu;
+        n += r >= 200u && g >= 200u && b >= 200u;
+        sum += (double)(r + g + b) / 3.0;
+    }
+    *mean = (float)(sum / (double)(c->w * c->h));
+    return n;
+}
+
+static void test_snow_whitens_ground(void)
+{
+    Sim s;
+    make_empty_sim(&s, 64, 64);
+    Scene sc;
+    CHECK(scene_init(&sc, &s));
+    scene_update(&sc, &s, 10);
+    Canvas c;
+    CHECK(canvas_init(&c, VIEW_W, VIEW_H));
+    Camera cam;
+    camera_init(&cam, 64, 64, VIEW_W, VIEW_H);
+    float mean_bare, mean_half, mean_full;
+    /* The whole view is cells of the same soil, so the view stands for a cell. */
+    snow_picture(&sc, &s, &c, &cam, TERRAIN_SOIL, 0.0f);
+    CHECK(white_pixels(&c, &mean_bare) == 0);
+    snow_picture(&sc, &s, &c, &cam, TERRAIN_SOIL, 1.0f);
+    CHECK(white_pixels(&c, &mean_full) * 10 >= VIEW_W * VIEW_H * 9);
+    snow_picture(&sc, &s, &c, &cam, TERRAIN_SOIL, 0.5f);
+    white_pixels(&c, &mean_half);
+    CHECK(mean_bare < mean_half && mean_half < mean_full);
+    /* Snow lies on soil only. */
+    const int others[2] = {TERRAIN_WATER, TERRAIN_ROCK};
+    for (int k = 0; k < 2; k++) {
+        snow_picture(&sc, &s, &c, &cam, others[k], 0.0f);
+        uint64_t bare = hash_canvas(&c);
+        snow_picture(&sc, &s, &c, &cam, others[k], 1.0f);
+        CHECK(hash_canvas(&c) == bare);
     }
     canvas_free(&c);
     scene_free(&sc);
@@ -1106,6 +1161,7 @@ int main(void)
     CHECK(brain_register(&BRAIN_SCRIPT));
     test_drawing_changes_nothing();
     test_ground_shows_water_and_rain();
+    test_snow_whitens_ground();
     test_rain_falls_from_frame_to_frame();
     test_region_tint();
     test_empty_view_draws_nothing();

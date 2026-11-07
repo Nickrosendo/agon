@@ -12,21 +12,22 @@
 static Canvas *target;
 static int origin_x, origin_y;
 
-/* What the legend shows for each swatch: the map's own symbol, in the map's
- * own colour, so the legend looks like what it explains. */
+/* What the legend shows for each swatch, in the map's own colour, so the
+ * legend looks like what it explains: a square of ground, a plant, or bones. */
+enum { SWATCH_GROUND, SWATCH_PLANT, SWATCH_BONES };
 typedef struct {
     const Colour *colour;
-    int tile, detail;
+    int shape;
 } SwatchLook;
 
 static const SwatchLook SWATCHES[RENDER_SWATCH_COUNT] = {
-    {&PALETTE_WATER, TILE_WATER, 0},
-    {&PALETTE_ROCK, TILE_ROCK, 0},
-    {&PALETTE_SOIL_DRY, TILE_SOIL, 0},
-    {&PALETTE_SOIL_RICH, TILE_SOIL, TILE_SOIL_DETAILS - 1},
-    {&PALETTE_PLANT, TILE_PLANT, VEG_MAX},
-    {&PALETTE_WITHERED, TILE_PLANT, VEG_MAX},
-    {&PALETTE_CARRION, TILE_CARRION, 0},
+    {&PALETTE_WATER, SWATCH_GROUND},
+    {&PALETTE_ROCK, SWATCH_GROUND},
+    {&PALETTE_SOIL_DRY, SWATCH_GROUND},
+    {&PALETTE_SOIL_RICH, SWATCH_GROUND},
+    {&PALETTE_PLANT, SWATCH_PLANT},
+    {&PALETTE_WITHERED, SWATCH_PLANT},
+    {&PALETTE_CARRION, SWATCH_BONES},
 };
 
 /* The pixel a character cell starts at. */
@@ -105,8 +106,24 @@ void render_swatch(int col, int row, int swatch)
     }
     const SwatchLook *look = &SWATCHES[swatch];
     /* An 8 by 8 symbol, in the middle of a cell twice as tall as it is wide. */
-    uint16_t rows[16];
-    tiles_build(rows, look->tile, 0, look->detail, 8, 0);
+    uint16_t rows[16] = {0}; /* = {0} sets every element, not just the first */
+    if (look->shape == SWATCH_PLANT) {
+        tiles_build(rows, TILE_PLANT, 0, VEG_MAX, 8, 0);
+    } else if (look->shape == SWATCH_BONES) {
+        uint8_t ink[TILE_MAX * TILE_MAX];
+        tiles_build_bones(ink, 0, 8);
+        for (int j = 0; j < 8; j++) {
+            for (int i = 0; i < 8; i++) {
+                if (ink[j * 8 + i] != 0) {
+                    rows[j] = (uint16_t)(rows[j] | (1u << (7 - i)));
+                }
+            }
+        }
+    } else {
+        for (int j = 0; j < 8; j++) {
+            rows[j] = 0xFF; /* all eight pixels of the row */
+        }
+    }
     canvas_rect(target, cell_x(col), cell_y(row), FONT_W, FONT_H,
                 to_pixel(PALETTE_TEXT_BACKGROUND));
     canvas_mask(target, rows, 8, cell_x(col), cell_y(row) + (FONT_H - 8) / 2, 1,

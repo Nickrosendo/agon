@@ -1,9 +1,10 @@
 #include "tiles.h"
 
-#include <math.h>   /* fabsf, sinf */
+#include <math.h>   /* fabsf, floorf */
+#include <stdlib.h> /* calloc, malloc, free */
 #include <string.h> /* memset */
 
-#define TWO_PI 6.2831853f
+#include "gfx_hash.h"
 
 /*
  * Mixes three small numbers into one 32-bit number, so nearby inputs give
@@ -31,58 +32,6 @@ static void set_pixel(uint16_t rows[16], int size, int i, int j)
     }
 }
 
-/* Two wave lines, drifting sideways from frame to frame. */
-static void build_water(uint16_t rows[16], int variant, int size, int frame)
-{
-    float phase = ((float)frame + (float)variant) * TWO_PI /
-                  (float)TILE_WATER_FRAMES;
-    float thickness = size > 8 ? 0.05f : 0.08f;
-    for (int j = 0; j < size; j++) {
-        for (int i = 0; i < size; i++) {
-            float u = ((float)i + 0.5f) / (float)size;
-            float v = ((float)j + 0.5f) / (float)size;
-            float wave = sinf(u * TWO_PI + phase) * 0.07f;
-            if (fabsf(v - 0.3f - wave) < thickness ||
-                fabsf(v - 0.72f - wave) < thickness) {
-                set_pixel(rows, size, i, j);
-            }
-        }
-    }
-}
-
-/* Speckle in blocks of two pixels at the larger size. */
-static void build_rock(uint16_t rows[16], int variant, int size)
-{
-    int shift = size > 8 ? 1 : 0;
-    for (int j = 0; j < size; j++) {
-        for (int i = 0; i < size; i++) {
-            uint32_t h = hash3((uint32_t)(i >> shift), (uint32_t)(j >> shift),
-                               4u + (uint32_t)variant);
-            if ((h >> 24) < 140u) { /* a little over half of 0..255 */
-                set_pixel(rows, size, i, j);
-            }
-        }
-    }
-}
-
-/* A few separate dots, one more for each step of fertility. */
-static void build_soil(uint16_t rows[16], int variant, int detail, int size)
-{
-    int dots = 1 + detail;
-    int inner = size - 2;
-    int placed = 0;
-    /* A taken spot is skipped, so more dots always means more pixels. */
-    for (uint32_t k = 0; placed < dots && k < 64u; k++) {
-        int i = 1 + (int)(hash3((uint32_t)variant, k, 5u) % (uint32_t)inner);
-        int j = 1 + (int)(hash3((uint32_t)variant, k, 6u) % (uint32_t)inner);
-        unsigned bit = 1u << (size - 1 - i);
-        if ((rows[j] & bit) == 0) {
-            set_pixel(rows, size, i, j);
-            placed++;
-        }
-    }
-}
-
 /* A stem and a round crown, both growing with density; density 0 is bare.
  * The variant leans the crown a pixel to one side, so a meadow is not a
  * grid of identical trees. */
@@ -107,31 +56,6 @@ static void build_plant(uint16_t rows[16], int variant, int detail, int size)
             int in_base = fabsf(v - 0.88f) < half_stem &&
                           fabsf(u - 0.5f) < 0.06f + 0.14f * d;
             if (in_crown || in_stem || in_base) {
-                set_pixel(rows, size, i, j);
-            }
-        }
-    }
-}
-
-/* A bone: a line with a knob at each end, tilted by the variant. */
-static void build_carrion(uint16_t rows[16], int variant, int size)
-{
-    float tilt = (float)(variant - 2) * 0.12f + 0.06f;
-    float half = size > 8 ? 0.30f : 0.28f;
-    float knob = size > 8 ? 0.10f : 0.13f;
-    float x0 = 0.5f - half, y0 = 0.5f - tilt;
-    float x1 = 0.5f + half, y1 = 0.5f + tilt;
-    float line = 0.5f / (float)size + 0.01f;
-    for (int j = 0; j < size; j++) {
-        for (int i = 0; i < size; i++) {
-            float u = ((float)i + 0.5f) / (float)size;
-            float v = ((float)j + 0.5f) / (float)size;
-            float along_v = y0 + (y1 - y0) * (u - x0) / (x1 - x0);
-            int in_line = u > x0 && u < x1 && fabsf(v - along_v) < line;
-            float a = u - x0, b = v - y0, c = u - x1, e = v - y1;
-            int in_knob = a * a + b * b < knob * knob ||
-                          c * c + e * e < knob * knob;
-            if (in_line || in_knob) {
                 set_pixel(rows, size, i, j);
             }
         }
@@ -203,14 +127,357 @@ void tiles_build(uint16_t rows[16], int kind, int variant, int detail, int size,
      * pointer, and sizeof would give the pointer's size. Hence 16 * .... */
     memset(rows, 0, 16 * sizeof(rows[0]));
     switch (kind) {
-    case TILE_WATER: build_water(rows, variant, size, frame); break;
-    case TILE_ROCK: build_rock(rows, variant, size); break;
-    case TILE_SOIL: build_soil(rows, variant, detail, size); break;
     case TILE_PLANT: build_plant(rows, variant, detail, size); break;
-    case TILE_CARRION: build_carrion(rows, variant, size); break;
     case TILE_SLASH: build_slash(rows, size, frame); break;
     case TILE_CRUMBS: build_crumbs(rows, size, frame); break;
     case TILE_RAIN: build_rain(rows, variant, size, frame); break;
     default: break;
     }
+}
+
+/* ---- Carrion ---- */
+
+/* Whether the point (u, v), 0..1 across the tile, is on a bone: a line with a
+ * knob at each end, tilted by the variant, and for even variants a short rib
+ * below it. */
+static bool on_bone(float u, float v, int variant, int size)
+{
+    float tilt = (float)(variant - 2) * 0.12f + 0.06f;
+    float half = size > 8 ? 0.30f : 0.28f;
+    float knob = size > 8 ? 0.10f : 0.13f;
+    float line = 0.5f / (float)size + 0.01f;
+    float x0 = 0.5f - half, y0 = 0.5f - tilt;
+    float x1 = 0.5f + half, y1 = 0.5f + tilt;
+    float along_v = y0 + (y1 - y0) * (u - x0) / (x1 - x0);
+    bool in_line = u > x0 && u < x1 && fabsf(v - along_v) < line;
+    float a = u - x0, b = v - y0, c = u - x1, e = v - y1;
+    bool in_knob = a * a + b * b < knob * knob || c * c + e * e < knob * knob;
+    bool in_rib = variant % 2 == 0 && u > 0.38f && u < 0.64f &&
+                  fabsf(v - 0.78f) < line;
+    return in_line || in_knob || in_rib;
+}
+
+void tiles_build_bones(uint8_t ink[TILE_MAX * TILE_MAX], int variant, int size)
+{
+    memset(ink, 0, TILE_MAX * TILE_MAX); /* uint8_t: one byte each */
+    for (int j = 0; j < size; j++) {
+        for (int i = 0; i < size; i++) {
+            float u = ((float)i + 0.5f) / (float)size;
+            float v = ((float)j + 0.5f) / (float)size;
+            /* The stain: an ellipse whose edge is frayed by a hash. */
+            float du = (u - 0.5f) / 0.38f, dv = (v - 0.6f) / 0.26f;
+            float fray = gfx_hash(i, j, 40 + variant) * 0.3f;
+            if (du * du + dv * dv < 1.0f - fray) {
+                ink[j * size + i] = 3;
+            }
+            if (on_bone(u, v, variant, size)) {
+                ink[j * size + i] = 1;
+            }
+        }
+    }
+    /* A bone's underside is its dark side: the lowest pixel of a part at
+     * least two pixels tall. Going up the rows, so a pixel already darkened
+     * below does not count as bone. A thin shaft stays light. */
+    for (int j = size - 1; j >= 1; j--) {
+        for (int i = 0; i < size; i++) {
+            bool bone_below = j + 1 < size && ink[(j + 1) * size + i] != 0 &&
+                              ink[(j + 1) * size + i] != 3;
+            bool bone_above = ink[(j - 1) * size + i] == 1;
+            if (ink[j * size + i] == 1 && bone_above && !bone_below) {
+                ink[j * size + i] = 2;
+            }
+        }
+    }
+    /* The tile's outer ring stays empty, so carrion never touches the next cell. */
+    for (int k = 0; k < size; k++) {
+        ink[k] = 0;
+        ink[(size - 1) * size + k] = 0;
+        ink[k * size] = 0;
+        ink[k * size + size - 1] = 0;
+    }
+}
+
+/* ---- The ground as autotiles ---- */
+
+int tiles_class(int terrain)
+{
+    switch (terrain) {
+    case TERRAIN_WATER: return CLASS_WATER;
+    case TERRAIN_SHALLOW: return CLASS_SHALLOW;
+    case TERRAIN_ROCK: return CLASS_ROCK;
+    default: return CLASS_SOIL;
+    }
+}
+
+int tiles_ground_variant(int x, int y)
+{
+    /* The top bits are the best mixed: >> 29 leaves 0..7. */
+    return (int)(hash3((uint32_t)x, (uint32_t)y, 2u) >> 29);
+}
+
+uint32_t tiles_key(const World *w, int x, int y)
+{
+    uint32_t key = (uint32_t)tiles_ground_variant(x, y);
+    int k = 0;
+    for (int dy = -1; dy <= 1; dy++) {
+        for (int dx = -1; dx <= 1; dx++) {
+            /* world_idx wraps, so a cell on the edge sees the far side. */
+            int cls = tiles_class(w->terrain[world_idx(w, x + dx, y + dy)]);
+            key |= (uint32_t)cls << (3 + 2 * k);
+            k++;
+        }
+    }
+    return key;
+}
+
+/* The class of one of the key's nine cells, dx and dy each -1..1. */
+static int key_class(uint32_t key, int dx, int dy)
+{
+    return tiles_key_class(key, (dy + 1) * 3 + (dx + 1));
+}
+
+int tiles_key_class(uint32_t key, int source)
+{
+    return (int)((key >> (3 + 2 * source)) & 3u);
+}
+
+static bool class_is_wet(int cls)
+{
+    return cls == CLASS_WATER || cls == CLASS_SHALLOW;
+}
+
+/* a / b rounded down. C's / rounds towards zero, so -1 / 16 is 0, not -1. */
+static int floor_div(int a, int b)
+{
+    int q = a / b;
+    return (a % b != 0 && (a < 0) != (b < 0)) ? q - 1 : q;
+}
+
+static int clamp1(int v)
+{
+    return v < -1 ? -1 : (v > 1 ? 1 : v);
+}
+
+void tiles_jitter(int size, int lx, int ly, int *jx, int *jy)
+{
+    /* At 16 pixels: blocks of 4 pixels, each moved up to 3.5 pixels either
+     * way (v9:521). At 8 every distance is halved. */
+    int shift = size >= 16 ? 2 : 1;
+    float reach = 7.0f * (float)size / 16.0f;
+    *jx = (int)floorf((gfx_hash(lx >> shift, ly >> shift, 7) - 0.5f) * reach);
+    *jy = (int)floorf((gfx_hash(lx >> shift, ly >> shift, 9) - 0.5f) * reach);
+}
+
+/*
+ * Which of the nine cells the point (px, py) shows, as dx and dy (each -1..1).
+ * The point is in this tile's own pixels, but may lie a few pixels into a
+ * neighbouring tile: it then uses that tile's jitter, so it resolves exactly
+ * as the neighbour's own picture does there.
+ */
+static void resolve(int size, int px, int py, int *dx, int *dy)
+{
+    int tx = floor_div(px, size), ty = floor_div(py, size);
+    int lx = px - tx * size, ly = py - ty * size;
+    int jx, jy;
+    tiles_jitter(size, lx, ly, &jx, &jy);
+    /* Never further than the key's 3 by 3: a point at most 5 pixels outside
+     * moved at most 4 cannot reach two cells away, so this only guards. */
+    *dx = clamp1(tx + floor_div(lx + jx, size));
+    *dy = clamp1(ty + floor_div(ly + jy, size));
+}
+
+static int class_at(uint32_t key, int size, int px, int py)
+{
+    int dx, dy;
+    resolve(size, px, py, &dx, &dy);
+    return key_class(key, dx, dy);
+}
+
+/* The edge of a water pixel: a bank under land just above, then its shadow.
+ * Indexed by how far up the nearest land is (0: none within reach). */
+static int bank_edge(uint32_t key, int size, int lx, int ly)
+{
+    static const int EDGE16[6] = {EDGE_NONE, EDGE_BANK, EDGE_BANK, EDGE_BANK_DARK,
+                                  EDGE_SHADOW, EDGE_SHADOW};
+    static const int EDGE8[4] = {EDGE_NONE, EDGE_BANK, EDGE_BANK_DARK, EDGE_SHADOW};
+    const int *edge = size >= 16 ? EDGE16 : EDGE8;
+    int reach = size >= 16 ? 5 : 3;
+    for (int d = 1; d <= reach; d++) {
+        if (!class_is_wet(class_at(key, size, lx, ly - d))) {
+            return edge[d];
+        }
+    }
+    return EDGE_NONE;
+}
+
+static bool touches_land(uint32_t key, int size, int lx, int ly)
+{
+    for (int dy = -1; dy <= 1; dy++) {
+        for (int dx = -1; dx <= 1; dx++) {
+            if (!class_is_wet(class_at(key, size, lx + dx, ly + dy))) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+/* The shade of a land pixel: fine noise over coarse noise (v9:536), cut in three. */
+static int land_shade(int size, int lx, int ly, int variant)
+{
+    int fine = size >= 16 ? 1 : 0, coarse = size >= 16 ? 3 : 2;
+    float n = gfx_hash(lx >> fine, ly >> fine, 3 + 16 * variant) * 0.6f +
+              gfx_hash(lx >> coarse, ly >> coarse, 4 + 16 * variant) * 0.4f;
+    return n < 0.33f ? 0 : (n < 0.7f ? 1 : 2);
+}
+
+static int land_edge(uint32_t key, int size, int lx, int ly, int cls, int variant)
+{
+    int edge = EDGE_NONE;
+    if (cls == CLASS_ROCK) {
+        /* Lit where the pixel up and to the left is not rock (v9:546). */
+        if (class_at(key, size, lx - 1, ly - 1) != CLASS_ROCK) {
+            edge = EDGE_ROCK_LIT;
+        }
+        if (gfx_hash(lx, ly, 8 + 16 * variant) > 0.92f) {
+            edge = EDGE_ROCK_SPECK;
+        }
+    } else if (cls == CLASS_SOIL && gfx_hash(lx, ly, 1 + 16 * variant) > 0.97f) {
+        edge = EDGE_GRASS_SPECK;
+    }
+    return edge;
+}
+
+void tiles_build_auto(uint16_t *code, uint32_t key, int size)
+{
+    int variant = (int)(key & 7u);
+    for (int ly = 0; ly < size; ly++) {
+        for (int lx = 0; lx < size; lx++) {
+            int dx, dy;
+            resolve(size, lx, ly, &dx, &dy);
+            int cls = key_class(key, dx, dy);
+            unsigned source = (unsigned)((dy + 1) * 3 + (dx + 1));
+            unsigned shade = 0, edge, foam = 0;
+            if (class_is_wet(cls)) {
+                /* Water's shade moves with time, so scene works it out. */
+                edge = (unsigned)bank_edge(key, size, lx, ly);
+                foam = touches_land(key, size, lx, ly) ? TILE_FOAM : 0u;
+            } else {
+                shade = (unsigned)land_shade(size, lx, ly, variant);
+                edge = (unsigned)land_edge(key, size, lx, ly, cls, variant);
+            }
+            code[ly * size + lx] = (uint16_t)(source | shade << 4 | edge << 6 | foam);
+        }
+    }
+}
+
+/* ---- The cache of built tiles ---- */
+
+bool tiles_cache_init(TileCache *c, int entries)
+{
+    *c = (TileCache){0};
+    size_t n = (size_t)entries;
+    /* calloc: zeroed memory, so every entry starts unused. */
+    c->entries = calloc(n, sizeof(TileEntry));
+    c->head = malloc(n * sizeof(int32_t));
+    c->next = malloc(n * sizeof(int32_t));
+    if (c->entries == NULL || c->head == NULL || c->next == NULL) {
+        tiles_cache_free(c);
+        return false;
+    }
+    c->capacity = entries;
+    tiles_cache_reset(c);
+    return true;
+}
+
+void tiles_cache_free(TileCache *c)
+{
+    /* free(NULL) does nothing, which is what makes a second call safe. */
+    free(c->entries);
+    free(c->head);
+    free(c->next);
+    long builds = c->builds;
+    *c = (TileCache){0};
+    c->builds = builds;
+}
+
+void tiles_cache_reset(TileCache *c)
+{
+    for (int i = 0; i < c->capacity; i++) {
+        c->head[i] = -1;
+        c->next[i] = -1;
+        c->entries[i].used = false;
+    }
+    c->clock = 0;
+}
+
+/* Which bucket a key and size live in: one per entry, so chains stay short. */
+static int bucket_of(const TileCache *c, uint32_t key, int size)
+{
+    return (int)(gfx_mix(key * 2u + (size >= 16 ? 1u : 0u)) % (uint32_t)c->capacity);
+}
+
+/* An unused entry if there is one, else the one unused longest. */
+static int pick_victim(const TileCache *c)
+{
+    int best = 0;
+    for (int i = 0; i < c->capacity; i++) {
+        const TileEntry *e = &c->entries[i];
+        if (!e->used) {
+            return i;
+        }
+        if (e->last_used < c->entries[best].last_used) {
+            best = i;
+        }
+    }
+    return best;
+}
+
+/* Takes entry e out of its bucket's chain. */
+static void unlink_entry(TileCache *c, int e)
+{
+    const TileEntry *t = &c->entries[e];
+    /* A pointer to the link that points at e, so the first entry of a chain
+     * and any later one are unlinked the same way. */
+    int32_t *link = &c->head[bucket_of(c, t->key, t->size)];
+    while (*link != -1 && *link != e) {
+        link = &c->next[*link];
+    }
+    if (*link == e) {
+        *link = c->next[e];
+    }
+    c->next[e] = -1;
+}
+
+const TileEntry *tiles_cache_get(TileCache *c, uint32_t key, int size)
+{
+    if (c->capacity <= 0) {
+        return NULL;
+    }
+    int b = bucket_of(c, key, size);
+    for (int32_t e = c->head[b]; e != -1; e = c->next[e]) {
+        TileEntry *t = &c->entries[e];
+        if (t->key == key && t->size == size) {
+            t->last_used = ++c->clock;
+            return t;
+        }
+    }
+    int e = pick_victim(c);
+    if (c->entries[e].used) {
+        unlink_entry(c, e);
+    }
+    TileEntry *t = &c->entries[e];
+    t->key = key;
+    t->size = size;
+    t->used = true;
+    t->last_used = ++c->clock;
+    tiles_build_auto(t->code, key, size);
+    t->has_foam = false;
+    for (int i = 0; i < size * size; i++) {
+        t->has_foam |= (t->code[i] & TILE_FOAM) != 0;
+    }
+    c->next[e] = c->head[b];
+    c->head[b] = e;
+    c->builds++;
+    return t;
 }

@@ -1,15 +1,22 @@
 #include "scene.h"
 
+#include <math.h>   /* floorf, sinf */
 #include <stdio.h>  /* snprintf */
+#include <stdlib.h> /* free, realloc */
 #include <string.h> /* strlen */
 
 #include "app.h"
 #include "chronicle.h" /* name_from_id */
 #include "climate.h" /* climate_region, climate_region_hue */
+#include "gfx_hash.h"
 #include "palette.h"
 
-/* How long one water frame lasts, in milliseconds. */
+/* How long one water frame lasts, in milliseconds: the ground layer's clock. */
 #define WATER_FRAME_MS 250u
+/* How many autotiles the scene keeps. Real maps use a few hundred keys. */
+#define SCENE_TILE_CACHE 2048
+#define SINE_STEPS 1024
+#define TWO_PI 6.2831853f
 /* How long one frame of a fight's or a meal's mark lasts. */
 #define MARK_FRAME_MS 110u
 
@@ -17,7 +24,7 @@
 static const Colour BACKGROUND = {6, 6, 8};
 /* The second colour of a creature: teeth and spots. */
 static const Colour WHITE = {245, 240, 235};
-/* A little carrion is a pale bone; a lot goes dark red. */
+/* Bones; and the colour of carrion: a little is pale bone, a lot dark red. */
 static const Colour BONE = {196, 176, 150};
 /* The flash of a fight: brighter than anything else in the world. */
 static const Colour SLASH = {255, 70, 50};
@@ -27,8 +34,8 @@ static const Colour MEAT_CRUMB = {255, 110, 100};
 /* A cut not healed yet: a pale pink, to be seen on any family's colour. */
 static const Colour SCAR = {255, 170, 160};
 
-/* How far a region's colour tints the near-black behind a symbol, and the flat
- * colour of a cell at the furthest zoom. Small, so the ground stays ground. */
+/* How far a region's colour tints a cell's ground colours, and the flat colour
+ * of a cell at the furthest zoom. Small, so the ground stays ground. */
 #define REGION_TINT 0.14f
 #define REGION_TINT_FLAT 0.12f
 /* The pale saturation plant-eaters are drawn in, so a body that matches its
@@ -40,6 +47,12 @@ static uint32_t to_pixel(Colour c)
     return canvas_rgb(c.r, c.g, c.b);
 }
 
+/* The whole canvas, for drawing that only the canvas's edges need to stop. */
+static CanvasClip whole(const Canvas *c)
+{
+    return (CanvasClip){0, 0, c->w, c->h};
+}
+
 bool scene_init(Scene *sc, const Sim *s)
 {
     if (!sprite_cache_init(&sc->sprites, s->pool.capacity)) {
@@ -49,14 +62,26 @@ bool scene_init(Scene *sc, const Sim *s)
         sprite_cache_free(&sc->sprites);
         return false;
     }
+    if (!tiles_cache_init(&sc->tiles, SCENE_TILE_CACHE)) {
+        sprite_cache_free(&sc->sprites);
+        anim_free(&sc->anim);
+        return false;
+    }
     /* Sized by the first frame. An empty canvas allocates nothing, so this
      * cannot fail today; checked anyway, like every other allocation. */
     if (!canvas_init(&sc->ground, 0, 0)) {
         sprite_cache_free(&sc->sprites);
         anim_free(&sc->anim);
+        tiles_cache_free(&sc->tiles);
         return false;
     }
     sc->ground_valid = false;
+    sc->tiles_level = -1;
+    sc->cell_ramps = NULL; /* allocated by the first frame that draws tiles */
+    sc->cell_ramps_capacity = 0;
+    for (int i = 0; i < SINE_STEPS; i++) {
+        sc->sine[i] = sinf((float)i * TWO_PI / (float)SINE_STEPS);
+    }
     /* Every symbol once, here, so drawing a frame only copies bits. */
     for (int z = 0; z < 2; z++) {
         int size = z == 0 ? 16 : 8;
@@ -65,18 +90,13 @@ bool scene_init(Scene *sc, const Sim *s)
             tiles_build(sc->crumbs[z][f], TILE_CRUMBS, 0, 0, size, f);
         }
         for (int v = 0; v < TILE_VARIANTS; v++) {
-            for (int f = 0; f < TILE_WATER_FRAMES; f++) {
-                tiles_build(sc->water[z][v][f], TILE_WATER, v, 0, size, f);
+            for (int f = 0; f < TILE_RAIN_FRAMES; f++) {
                 tiles_build(sc->rain[z][v][f], TILE_RAIN, v, 0, size, f);
-            }
-            tiles_build(sc->rock[z][v], TILE_ROCK, v, 0, size, 0);
-            for (int d = 0; d < TILE_SOIL_DETAILS; d++) {
-                tiles_build(sc->soil[z][v][d], TILE_SOIL, v, d, size, 0);
             }
             for (int d = 0; d <= VEG_MAX; d++) {
                 tiles_build(sc->plant[z][v][d], TILE_PLANT, v, d, size, 0);
             }
-            tiles_build(sc->carrion[z][v], TILE_CARRION, v, 0, size, 0);
+            tiles_build_bones(sc->bones[z][v], v, size);
         }
     }
     return true;
@@ -86,6 +106,10 @@ void scene_free(Scene *sc)
 {
     sprite_cache_free(&sc->sprites);
     anim_free(&sc->anim);
+    tiles_cache_free(&sc->tiles);
+    free(sc->cell_ramps); /* free(NULL) does nothing */
+    sc->cell_ramps = NULL;
+    sc->cell_ramps_capacity = 0;
     canvas_free(&sc->ground);
 }
 
@@ -93,6 +117,7 @@ void scene_reset(Scene *sc)
 {
     sprite_cache_reset(&sc->sprites);
     anim_reset(&sc->anim);
+    tiles_cache_reset(&sc->tiles);
     sc->ground_valid = false; /* a new world can have the same tick number */
 }
 
@@ -104,7 +129,7 @@ void scene_update(Scene *sc, const Sim *s, int ticks_per_second)
 int scene_water_frame(uint64_t water_ms)
 {
     /* One clock for all water; each variant was drawn at its own phase. */
-    return (int)((water_ms / WATER_FRAME_MS) % TILE_WATER_FRAMES);
+    return (int)((water_ms / WATER_FRAME_MS) % TILE_RAIN_FRAMES);
 }
 
 /* A plant's colour, turning to straw as it withers. */
@@ -144,28 +169,48 @@ static bool region_colour(const Sim *s, int i, Colour *out)
     return true;
 }
 
-/* A cell as one flat colour, for the furthest zoom. */
+/* A cell's three ground colours, from its kind of ground alone: soil changes
+ * with its fertility, water and snow. */
+static GroundRamp base_ramp(const Sim *s, int i)
+{
+    const World *w = &s->world;
+    switch (w->terrain[i]) {
+    case TERRAIN_WATER: return RAMP_WATER;
+    case TERRAIN_SHALLOW: return RAMP_SHALLOW;
+    case TERRAIN_ROCK: return RAMP_ROCK;
+    default: return ramp_soil(w->fertility[i], w->water[i], w->snow[i]);
+    }
+}
+
+/* The colours a cell's tile is drawn in: its ground's, with a little of its
+ * region's colour. */
+static GroundRamp cell_ramp(const Sim *s, int i)
+{
+    GroundRamp g = base_ramp(s, i);
+    Colour region;
+    if (region_colour(s, i, &region)) {
+        g = ramp_ground_mix(g, region, REGION_TINT);
+    }
+    return g;
+}
+
+/* A cell as one flat colour, for the furthest zoom: its ground's middle colour,
+ * under its carrion or plant. */
 static Colour flat_ground(const Sim *s, int i)
 {
     const World *w = &s->world;
-    if (w->terrain[i] == TERRAIN_WATER) {
-        return PALETTE_WATER;
-    }
-    if (w->terrain[i] == TERRAIN_SHALLOW) {
-        return PALETTE_SHALLOW;
-    }
-    if (w->terrain[i] == TERRAIN_ROCK) {
-        return PALETTE_ROCK;
+    Colour ground = base_ramp(s, i).c[1];
+    if (w->terrain[i] != TERRAIN_SOIL) {
+        return ground;
     }
     if (w->carrion[i] > 0.0f) {
         return carrion_colour(s, i);
     }
     if (w->veg[i] > 0) {
         float t = (float)(w->veg[i] + 1) / (float)(VEG_MAX + 1);
-        return palette_mix(BACKGROUND, plant_colour(s, i), t);
+        return palette_mix(ground, plant_colour(s, i), t);
     }
-    return palette_mix(BACKGROUND, palette_ground(w->fertility[i], w->water[i]),
-                       0.25f);
+    return ground;
 }
 
 /* Too small for streaks: rain is a pale veil over the cell's colour. */
@@ -180,56 +225,212 @@ static Colour flat_colour(const Sim *s, int i)
                                    : ground;
 }
 
-/* The soil's dot density, 0 .. TILE_SOIL_DETAILS - 1, from its fertility. */
-static int soil_detail(float fertility)
+/* sin(a) from the table: a step of a 1024th of a turn is fine enough for a
+ * ripple, and much cheaper than sinf for every pixel of water. */
+static float table_sin(const Scene *sc, float a)
 {
-    int d = (int)(fertility * (float)TILE_SOIL_DETAILS);
-    return d >= TILE_SOIL_DETAILS ? TILE_SOIL_DETAILS - 1 : d;
+    int step = (int)floorf(a * ((float)SINE_STEPS / TWO_PI));
+    /* Converting a negative int to unsigned wraps it round (defined in C), so
+     * & keeps the step inside the table for negative angles too. */
+    return sc->sine[(unsigned)step & (SINE_STEPS - 1u)];
 }
 
-/* One cell as a symbol, on the background already there. */
-static void draw_tile(Scene *sc, Canvas *c, const Sim *s, int x, int y, int sx,
-                      int sy, int z, int size, int scale, int water_frame)
+/*
+ * How light the water is at a point of the world (v9:535), in pixels of a
+ * 16-pixel tile: about 0..1. drift is the part that depends only on the row
+ * and the time, sin(ay * 0.05 + time * 0.4) * 2, worked out once per row.
+ */
+static float water_shade(const Scene *sc, int ax, int ay, float drift)
+{
+    float wave = table_sin(sc, (float)ax * 0.07f + (float)ay * 0.18f + drift);
+    return wave * 0.5f + 0.5f + (gfx_hash(ax, ay, 4) - 0.5f) * 0.18f;
+}
+
+/* A shade of 0..1 cut into the three steps of a ground colour. */
+static int shade_step(float n)
+{
+    return n < 0.33f ? 0 : (n < 0.7f ? 1 : 2);
+}
+
+/* A pixel's colour after its edge: banks are fixed colours, the rest darken or
+ * lighten the ground under them. */
+static Colour edge_colour(Colour c, unsigned edge)
+{
+    switch (edge) {
+    case EDGE_BANK: return RAMP_BANK;
+    case EDGE_BANK_DARK: return RAMP_BANK_DARK;
+    case EDGE_SHADOW: return ramp_shade(c, -0.35f);
+    case EDGE_ROCK_LIT: return ramp_shade(c, 0.25f);
+    case EDGE_ROCK_SPECK: return ramp_shade(c, -0.4f);
+    case EDGE_GRASS_SPECK: return ramp_shade(c, 0.25f);
+    default: return c;
+    }
+}
+
+/* A scale by scale block, cut at the canvas's edges. Written straight into the
+ * pixels: the ground is the most drawn thing there is. */
+static void put_block(Canvas *c, int x, int y, int scale, uint32_t colour)
+{
+    for (int j = y; j < y + scale; j++) {
+        if (j < 0 || j >= c->h) {
+            continue;
+        }
+        for (int i = x; i < x + scale; i++) {
+            if (i >= 0 && i < c->w) {
+                c->px[j * c->w + i] = colour;
+            }
+        }
+    }
+}
+
+/* Where one cell is drawn, and what its tile needs to know. */
+typedef struct {
+    int x, y;    /* the cell, inside the world */
+    int sx, sy;  /* its top left corner on the canvas */
+    int size, scale;
+    const GroundRamp *ramps; /* the cell's own colours; neighbours around it */
+    int ring_w;  /* how far apart two rows of ramps are */
+    float time;  /* the water clock, in seconds */
+} GroundCell;
+
+/* The colours of the nine cells a tile can show, worked out once per tile
+ * rather than once per pixel. */
+typedef struct {
+    Colour colour[9][3];
+    uint32_t pixel[9][3];
+    bool wet[9];
+} TileColours;
+
+static void tile_colours(TileColours *t, const GroundCell *g, uint32_t key)
+{
+    for (int source = 0; source < 9; source++) {
+        int dx = source % 3 - 1, dy = source / 3 - 1;
+        const GroundRamp *ramp = g->ramps + dy * g->ring_w + dx;
+        int cls = tiles_key_class(key, source);
+        t->wet[source] = cls == CLASS_WATER || cls == CLASS_SHALLOW;
+        for (int step = 0; step < 3; step++) {
+            t->colour[source][step] = ramp->c[step];
+            t->pixel[source][step] = to_pixel(ramp->c[step]);
+        }
+    }
+}
+
+/* One cell's ground, from its autotile. */
+static void draw_ground_tile(const Scene *sc, Canvas *c, const GroundCell *g,
+                             const TileEntry *tile, uint32_t key)
+{
+    TileColours t;
+    tile_colours(&t, g, key);
+    int unit = 16 / g->size; /* the water's pattern is laid out in 16ths of a cell */
+    /* The whole tile on the canvas: no pixel needs its own check. */
+    int span = g->size * g->scale;
+    bool inside = g->sx >= 0 && g->sy >= 0 && g->sx + span <= c->w &&
+                  g->sy + span <= c->h;
+    for (int ly = 0; ly < g->size; ly++) {
+        int ay = (g->y * g->size + ly) * unit;
+        float drift = table_sin(sc, (float)ay * 0.05f + g->time * 0.4f) * 2.0f;
+        int py = g->sy + ly * g->scale;
+        for (int lx = 0; lx < g->size; lx++) {
+            uint16_t code = tile->code[ly * g->size + lx];
+            int source = (int)TILE_SOURCE(code);
+            int step = (int)TILE_SHADE(code);
+            if (t.wet[source]) {
+                step = shade_step(water_shade(sc, (g->x * g->size + lx) * unit, ay,
+                                              drift));
+            }
+            unsigned edge = TILE_EDGE(code);
+            uint32_t pixel = edge == EDGE_NONE
+                ? t.pixel[source][step]
+                : to_pixel(edge_colour(t.colour[source][step], edge));
+            int px = g->sx + lx * g->scale;
+            if (inside && g->scale == 1) {
+                c->px[py * c->w + px] = pixel;
+            } else {
+                put_block(c, px, py, g->scale, pixel);
+            }
+        }
+    }
+}
+
+/* Bones on a dried stain, the stain the redder the more meat is left. */
+static void draw_bones(Scene *sc, Canvas *c, const Sim *s, const GroundCell *g,
+                       int i, int z, int v)
+{
+    Colour bone_dark = ramp_shade(BONE, -0.3f);
+    /* Darkened, and half sunk into the ground, so the bones stand out on it. */
+    Colour stain = palette_mix(g->ramps->c[1],
+                               ramp_shade(carrion_colour(s, i), -0.35f), 0.5f);
+    const uint32_t colours[4] = {0, to_pixel(BONE), to_pixel(bone_dark),
+                                 to_pixel(stain)};
+    canvas_picture(c, sc->bones[z][v], g->size, g->size, g->size, g->sx, g->sy,
+                   g->scale, false, colours, whole(c));
+}
+
+/* What stands on a cell's ground: carrion, else a plant, then rain over both. */
+static void draw_cell_cover(Scene *sc, Canvas *c, const Sim *s, const GroundCell *g,
+                            int water_frame)
 {
     const World *w = &s->world;
-    int i = y * w->w + x; /* x and y are already inside the world */
-    int v = tiles_variant(x, y);
-    const uint16_t *rows;
-    Colour colour;
-    if (w->terrain[i] == TERRAIN_WATER) {
-        rows = sc->water[z][v][water_frame];
-        colour = PALETTE_WATER;
-    } else if (w->terrain[i] == TERRAIN_SHALLOW) {
-        rows = sc->water[z][v][water_frame];
-        colour = PALETTE_SHALLOW;
-    } else if (w->terrain[i] == TERRAIN_ROCK) {
-        rows = sc->rock[z][v];
-        colour = PALETTE_ROCK;
-    } else if (w->carrion[i] > 0.0f) {
-        rows = sc->carrion[z][v];
-        colour = carrion_colour(s, i);
-    } else if (w->veg[i] > 0) {
-        rows = sc->plant[z][v][w->veg[i]];
-        colour = plant_colour(s, i);
-    } else {
-        rows = sc->soil[z][v][soil_detail(w->fertility[i])];
-        colour = palette_ground(w->fertility[i], w->water[i]);
+    int i = g->y * w->w + g->x;
+    int v = tiles_variant(g->x, g->y);
+    int z = g->size == 16 ? 0 : 1;
+    if (w->terrain[i] == TERRAIN_SOIL && w->carrion[i] > 0.0f) {
+        draw_bones(sc, c, s, g, i, z, v);
+    } else if (w->terrain[i] == TERRAIN_SOIL && w->veg[i] > 0) {
+        canvas_mask(c, sc->plant[z][v][w->veg[i]], g->size, g->sx, g->sy,
+                    g->scale, false, to_pixel(plant_colour(s, i)));
     }
-    /* The region shows in the gaps between the symbol's pixels. The rest of
-     * the view was filled with BACKGROUND already, so only cells with a region
-     * need this rectangle. */
-    Colour region;
-    if (region_colour(s, i, &region)) {
-        canvas_rect(c, sx, sy, size * scale, size * scale,
-                    to_pixel(palette_mix(BACKGROUND, region, REGION_TINT)));
-    }
-    canvas_mask(c, rows, size, sx, sy, scale, false, to_pixel(colour));
     /* Harder rain falls on more cells: variant 0 shows any rain, variant 3 only
      * the heaviest. The variant is a hash of the place, so this draws no random
      * number from the simulation. */
     if (w->rain[i] * (float)TILE_VARIANTS > (float)v) {
-        canvas_mask(c, sc->rain[z][v][water_frame], size, sx, sy, scale, false,
-                    to_pixel(PALETTE_RAIN));
+        canvas_mask(c, sc->rain[z][v][water_frame], g->size, g->sx, g->sy,
+                    g->scale, false, to_pixel(PALETTE_RAIN));
+    }
+}
+
+/* Each visible cell's colours and the ring around them, into sc->cell_ramps.
+ * False when the block could not grow: the caller then draws flat colours. */
+static bool fill_cell_ramps(Scene *sc, const Sim *s, const CameraCells *v)
+{
+    int ring_w = v->cols + 2, ring_h = v->rows + 2;
+    int need = ring_w * ring_h;
+    if (need > sc->cell_ramps_capacity) {
+        /* Only a zoom or a resize shows more cells, so this runs only then.
+         * realloc keeps the old block if it fails, so it is kept to free. */
+        GroundRamp *grown = realloc(sc->cell_ramps, (size_t)need * sizeof(GroundRamp));
+        if (grown == NULL) {
+            return false;
+        }
+        sc->cell_ramps = grown;
+        sc->cell_ramps_capacity = need;
+    }
+    const World *w = &s->world;
+    for (int r = 0; r < ring_h; r++) {
+        for (int k = 0; k < ring_w; k++) {
+            /* world_idx wraps: the ring's first row and column lie one cell
+             * before the first visible one, which may be the world's far side. */
+            int i = world_idx(w, v->first_x + k - 1, v->first_y + r - 1);
+            sc->cell_ramps[r * ring_w + k] = cell_ramp(s, i);
+        }
+    }
+    return true;
+}
+
+/* Every cell the camera sees, as flat colours: the furthest zoom. */
+static void draw_flat_cells(Canvas *c, const Camera *cam, const Sim *s,
+                            const CameraCells *v, int view_x, int view_y)
+{
+    const World *w = &s->world;
+    int ppc = camera_ppc(cam);
+    for (int r = 0; r < v->rows; r++) {
+        int y = (v->first_y + r) % w->h;
+        for (int k = 0; k < v->cols; k++) {
+            int x = (v->first_x + k) % w->w;
+            canvas_rect(c, view_x + v->screen_x + k * ppc,
+                        view_y + v->screen_y + r * ppc, ppc, ppc,
+                        to_pixel(flat_colour(s, y * w->w + x)));
+        }
     }
 }
 
@@ -240,23 +441,38 @@ static void draw_terrain(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
     const World *w = &s->world;
     CameraCells v;
     camera_cells(cam, &v);
-    int ppc = camera_ppc(cam);
     int size = camera_sprite_size(cam);
-    int scale = camera_sprite_scale(cam);
-    int z = size == 16 ? 0 : 1;
+    if (size == 0 || !fill_cell_ramps(sc, s, &v)) {
+        draw_flat_cells(c, cam, s, &v, view_x, view_y);
+        return;
+    }
+    if (sc->tiles_level != cam->level) {
+        tiles_cache_reset(&sc->tiles);
+        sc->tiles_level = cam->level;
+    }
+    int ppc = camera_ppc(cam);
+    GroundCell g = {
+        .size = size,
+        .scale = camera_sprite_scale(cam),
+        .ring_w = v.cols + 2,
+        /* The time of the water's step, not of the frame: the layer is redrawn
+         * once a step, so a redraw for a new tick shows the same water. */
+        .time = (float)(water_ms / WATER_FRAME_MS * WATER_FRAME_MS) / 1000.0f,
+    };
     int water_frame = scene_water_frame(water_ms);
     for (int r = 0; r < v.rows; r++) {
-        int y = (v.first_y + r) % w->h;
-        int sy = view_y + v.screen_y + r * ppc;
+        g.y = (v.first_y + r) % w->h;
+        g.sy = view_y + v.screen_y + r * ppc;
         for (int k = 0; k < v.cols; k++) {
-            int x = (v.first_x + k) % w->w;
-            int sx = view_x + v.screen_x + k * ppc;
-            if (size == 0) {
-                Colour flat = flat_colour(s, y * w->w + x);
-                canvas_rect(c, sx, sy, ppc, ppc, to_pixel(flat));
-            } else {
-                draw_tile(sc, c, s, x, y, sx, sy, z, size, scale, water_frame);
+            g.x = (v.first_x + k) % w->w;
+            g.sx = view_x + v.screen_x + k * ppc;
+            g.ramps = sc->cell_ramps + (r + 1) * g.ring_w + (k + 1);
+            uint32_t key = tiles_key(w, g.x, g.y);
+            const TileEntry *tile = tiles_cache_get(&sc->tiles, key, size);
+            if (tile != NULL) {
+                draw_ground_tile(sc, c, &g, tile, key);
             }
+            draw_cell_cover(sc, c, s, &g, water_frame);
         }
     }
 }
@@ -294,12 +510,6 @@ static void draw_scars(Canvas *c, const uint64_t *body, int size, int x, int y,
     uint64_t scars[SPRITE_MAX_COLS];
     sprite_scars(scars, body, size, count);
     canvas_mask_wide(c, scars, size, x, y, scale, flip, to_pixel(SCAR), clip);
-}
-
-/* The whole canvas, for drawing that only the canvas's edges need to stop. */
-static CanvasClip whole(const Canvas *c)
-{
-    return (CanvasClip){0, 0, c->w, c->h};
 }
 
 /* One creature as a symbol, its tile cleared first so its eye shows black
@@ -546,11 +756,11 @@ static void draw_marks(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
 
 /* True when the ground layer already shows what this frame needs. */
 static bool ground_is_current(const Scene *sc, const Camera *cam, const Sim *s,
-                              int water)
+                              uint64_t water_step)
 {
     return sc->ground_valid && sc->ground.w == cam->view_w &&
            sc->ground.h == cam->view_h && sc->ground_tick == s->tick &&
-           sc->ground_water == water && sc->ground_level == cam->level &&
+           sc->ground_water_step == water_step && sc->ground_level == cam->level &&
            sc->ground_cx == cam->cx && sc->ground_cy == cam->cy;
 }
 
@@ -573,8 +783,8 @@ static void draw_ground(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
 static void place_ground(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
                          uint64_t water_ms, int view_x, int view_y)
 {
-    int water = scene_water_frame(water_ms);
-    if (ground_is_current(sc, cam, s, water)) {
+    uint64_t water_step = water_ms / WATER_FRAME_MS;
+    if (ground_is_current(sc, cam, s, water_step)) {
         canvas_copy(c, &sc->ground, view_x, view_y);
         return;
     }
@@ -588,7 +798,7 @@ static void place_ground(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
     draw_ground(sc, &sc->ground, cam, s, water_ms, 0, 0);
     sc->ground_valid = true;
     sc->ground_tick = s->tick;
-    sc->ground_water = water;
+    sc->ground_water_step = water_step;
     sc->ground_level = cam->level;
     sc->ground_cx = cam->cx;
     sc->ground_cy = cam->cy;

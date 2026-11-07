@@ -17,29 +17,39 @@
 #include "inspect.h"
 #include "panel.h"
 #include "sim.h"
+#include "ramp.h"
 #include "sprite.h"
 #include "tiles.h"
 
 /* Index 0 of each table's first dimension is the 16-pixel size, 1 the
  * 8-pixel size. These are arrays of arrays, all one block inside the Scene:
- * water[s][v][f] is a row table of 16 numbers, with no pointers to follow. */
+ * rain[s][v][f] is a row table of 16 numbers, with no pointers to follow. */
 typedef struct {
     SpriteCache sprites;
     Anim anim;
-    uint16_t water[2][TILE_VARIANTS][TILE_WATER_FRAMES][16];
-    uint16_t rock[2][TILE_VARIANTS][16];
-    uint16_t soil[2][TILE_VARIANTS][TILE_SOIL_DETAILS][16];
     uint16_t plant[2][TILE_VARIANTS][VEG_MAX + 1][16];
-    uint16_t carrion[2][TILE_VARIANTS][16];
     uint16_t slash[2][TILE_MARK_FRAMES][16];
     uint16_t crumbs[2][TILE_MARK_FRAMES][16];
     uint16_t rain[2][TILE_VARIANTS][TILE_RAIN_FRAMES][16];
+    uint8_t bones[2][TILE_VARIANTS][TILE_MAX * TILE_MAX];
+    /* The ground's autotiles, built as their keys are first seen, and the
+     * zoom level they were built for: a new level starts the cache afresh. */
+    TileCache tiles;
+    int tiles_level;
+    /* Each visible cell's colours, plus a ring of one cell around the view,
+     * since a tile's ragged edge shows its neighbours' ground. Worked out once
+     * per redraw; the block grows only when the view needs more cells. */
+    GroundRamp *cell_ramps;
+    int cell_ramps_capacity;
+    /* sin over one turn in 1024 steps, for the water's slow ripple. */
+    float sine[1024];
     /* The ground as last drawn, and what it was drawn from. Most frames fall
      * between two ticks and have the same ground, so they only copy it. */
     Canvas ground;
     bool ground_valid;
     uint64_t ground_tick;
-    int ground_water, ground_level;
+    uint64_t ground_water_step; /* water_ms / the water's step, not wrapped */
+    int ground_level;
     float ground_cx, ground_cy;
 } Scene;
 
