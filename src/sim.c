@@ -670,6 +670,7 @@ uint64_t sim_checksum(const Sim *s)
     hash = fnv1a(hash, w->water, n * sizeof(float));
     hash = fnv1a(hash, w->temperature, n * sizeof(float));
     hash = fnv1a(hash, w->rain, n * sizeof(float));
+    hash = fnv1a(hash, w->snow, n * sizeof(float));
     hash = fnv1a(hash, &w->rain_seed, sizeof(w->rain_seed));
     hash = fnv1a(hash, w->occupant, n * sizeof(int32_t));
     hash = fnv1a(hash, &s->pool.count, sizeof(s->pool.count));

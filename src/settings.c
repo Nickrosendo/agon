@@ -31,6 +31,9 @@ Settings settings_default(void)
         .climate_every = 25,
         .rain_gain = 0.008f,
         .water_loss = 0.001f,
+        /* A guess, from the seasons design: enough that summer shows, small
+         * beside rain_swing's 0.2 so the wet and dry times still lead. */
+        .summer_rain_rise = 0.1f,
         .region_cold_below = 0.33f,
         .region_hot_above = 0.6f,
         .region_dry_below = 0.25f,
@@ -249,6 +252,7 @@ static const SettingInfo TABLE[] = {
     INT_ROW(climate_every, 1, 65535, "ticks between updates of rain and water"),
     FLOAT_ROW(rain_gain, 0, 1, "water soil takes per tick in full rain"),
     FLOAT_ROW(water_loss, 0, 1, "share of its water soil loses per tick"),
+    FLOAT_ROW(summer_rain_rise, 0, 1, "added to the rain threshold in summer, so less rain"),
     FLOAT_ROW(region_cold_below, 0, 1, "temperature below this is a cold region"),
     FLOAT_ROW(region_hot_above, 0, 1, "temperature above this can be hot and dry"),
     FLOAT_ROW(region_dry_below, 0, 1, "water below this, when hot, is hot and dry"),

@@ -3,6 +3,7 @@
 #include <math.h> /* cosf, sinf */
 
 #include "terrain.h" /* terrain_noise */
+#include "years.h"   /* years_season_of, years_season_starts */
 
 /* Odd and large, so frame numbers land far apart among the 64-bit seeds, and
  * not the constant terrain_noise steps its octaves by: frames must not reuse
@@ -32,14 +33,22 @@ typedef struct {
 
 /* The threshold moves along a cosine: lowest, so wettest, at the start of each
  * cycle, and highest half way through. A threshold of 1 or more is left alone,
- * since it is the settings' way of saying no rain ever. */
+ * since it is the settings' way of saying no rain ever. Summer raises it by
+ * summer_rain_rise on top, whatever the cycle is doing: the two are separate,
+ * so a summer in a dry time is drier than one in a wet time. The result may
+ * pass 1; rain_from_noise reads that as no rain, without dividing by zero. */
 static float threshold_at(const Settings *s, uint64_t tick)
 {
     if (s->rain_threshold >= 1.0f) {
         return s->rain_threshold;
     }
     float phase = (float)(tick % (uint64_t)s->rain_cycle) / (float)s->rain_cycle;
-    return s->rain_threshold - s->rain_swing * cosf(phase * 4.0f * HALF_PI);
+    float threshold =
+        s->rain_threshold - s->rain_swing * cosf(phase * 4.0f * HALF_PI);
+    if (years_season_of(tick, s->ticks_per_year) == SEASON_SUMMER) {
+        threshold += s->summer_rain_rise;
+    }
+    return threshold;
 }
 
 static RainMoment rain_moment(const World *w, const Settings *s, uint64_t tick)
@@ -139,13 +148,33 @@ void climate_generate(World *w, Rng *r, const Settings *s)
     }
 }
 
+/* The first tick of spring: every cell's snow goes into its soil at once,
+ * topping the water up to full at most, and whatever does not fit is lost
+ * (runs off). Non-soil cells never hold snow, so they need no test here. */
+static void melt_snow(World *w)
+{
+    for (int i = 0; i < w->w * w->h; i++) {
+        w->water[i] = clamp_unit(w->water[i] + w->snow[i]);
+        w->snow[i] = 0.0f;
+    }
+}
+
 void climate_step(World *w, const Settings *s, uint64_t tick)
 {
+    /* Before the climate_every test, so the melt happens on spring's first
+     * tick even when the updates fall on other ticks. Tick 0 is a spring
+     * start too, but a new world has no snow; skipping it keeps the first
+     * tick of a world exactly as it was before snow existed. */
+    if (tick > 0 &&
+        years_season_starts(tick, s->ticks_per_year, SEASON_SPRING)) {
+        melt_snow(w);
+    }
     if (tick % (uint64_t)s->climate_every != 0) {
         return;
     }
     RainMoment m = rain_moment(w, s, tick);
     float ticks = (float)s->climate_every;
+    bool winter = years_season_of(tick, s->ticks_per_year) == SEASON_WINTER;
     for (int y = 0; y < w->h; y++) {
         for (int x = 0; x < w->w; x++) {
             int i = world_idx(w, x, y);
@@ -156,10 +185,18 @@ void climate_step(World *w, const Settings *s, uint64_t tick)
             }
             /* Soil takes water more slowly the wetter it is, and loses it
              * faster: so it settles somewhere between, and never leaves 0..1
-             * unless the settings make one update overshoot; hence the clamp. */
+             * unless the settings make one update overshoot; hence the clamp.
+             * In winter the rain lies on top as snow: it piles up at the full
+             * rate, since nothing is soaking in, and the soil only dries. */
             float water = w->water[i];
-            float gained = s->rain_gain * rain * (1.0f - water);
             float lost = s->water_loss * water;
+            if (winter) {
+                float fallen = s->rain_gain * rain * ticks;
+                w->snow[i] = clamp_unit(w->snow[i] + fallen);
+                w->water[i] = clamp_unit(water - lost * ticks);
+                continue;
+            }
+            float gained = s->rain_gain * rain * (1.0f - water);
             w->water[i] = clamp_unit(water + (gained - lost) * ticks);
         }
     }

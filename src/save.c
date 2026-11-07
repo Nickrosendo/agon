@@ -36,7 +36,7 @@
  */
 #define SAVE_MAGIC "AGONSAVE"
 #define SAVE_MAGIC_LEN 8
-#define SAVE_VERSION 9u
+#define SAVE_VERSION 10u
 
 /* No value in a healthy world comes near this. Bounding them keeps sums
  * from reaching infinity, and float-to-int conversions defined. */
@@ -178,6 +178,7 @@ static void put_world(Writer *w, const World *world)
     put_floats(w, world->water, n);
     put_floats(w, world->temperature, n);
     put_floats(w, world->rain, n);
+    put_floats(w, world->snow, n);
     put_u64(w, world->rain_seed);
 }
 
@@ -557,6 +558,7 @@ static void get_world(Reader *r, World *w)
     get_floats(r, w->water, n, 0.0f, 1.0f);
     get_floats(r, w->temperature, n, 0.0f, 1.0f);
     get_floats(r, w->rain, n, 0.0f, 1.0f);
+    get_floats(r, w->snow, n, 0.0f, 1.0f);
     w->rain_seed = get_u64(r);
 }
 

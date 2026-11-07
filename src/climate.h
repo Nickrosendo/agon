@@ -34,7 +34,9 @@ enum {
 void climate_generate(World *w, Rng *r, const Settings *s);
 
 /* One tick. Every climate_every ticks it refreshes w->rain and updates the
- * water in the soil by that many ticks' worth; other ticks do nothing. */
+ * water in the soil by that many ticks' worth; in winter the rain is added to
+ * w->snow instead. On the first tick of each spring after the first (any tick,
+ * not only update ticks) all snow melts into the soil. Other ticks do nothing. */
 void climate_step(World *w, const Settings *s, uint64_t tick);
 
 /* How hard it rains on a cell at a tick: 0 (dry) to 1. Depends only on the

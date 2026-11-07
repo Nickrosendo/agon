@@ -49,9 +49,10 @@
  * that dries twice as fast; then the balance against starving and lost leaf
  * plants: roots kept, cheaper fruit, leaner leaves, dearer crowding, more founders;
  * then the year became 600 ticks with spring as the mating season, and two year
- * senses re-rolled every brain.
+ * senses re-rolled every brain; then snow and drier summers: less rain from
+ * tick 150 on changes the plants and so everyone.
  */
-#define SEED_7_AFTER_500 0x5258cbc87dc34fd6ULL
+#define SEED_7_AFTER_500 0x837682818e8fa774ULL
 
 static void test_same_seed_same_checksum(void)
 {

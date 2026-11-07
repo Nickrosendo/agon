@@ -47,6 +47,9 @@ rain_gain = 0.008
 # share of its water soil loses per tick (0 to 1)
 water_loss = 0.001
 
+# added to the rain threshold in summer, so less rain (0 to 1)
+summer_rain_rise = 0.1
+
 # temperature below this is a cold region (0 to 1)
 region_cold_below = 0.33
 

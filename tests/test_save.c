@@ -130,6 +130,36 @@ static void test_round_trip_and_continue(void)
     sim_free(&b);
 }
 
+/* A world saved in winter, snow on the ground, loads with the same snow and
+ * goes on through the melt exactly as the one that never stopped. */
+static void test_snow_saved(void)
+{
+    Settings set = settings_default();
+    Sim a, b;
+    char err[256] = "";
+    CHECK(sim_init(&a, &set, 3, 64, 32));
+    for (int i = 0; i < 580; i++) { /* deep into the first winter */
+        sim_step(&a);
+    }
+    int snowy = 0;
+    for (int i = 0; i < 64 * 32; i++) {
+        snowy += a.world.snow[i] > 0.0f;
+    }
+    CHECK(snowy > 0);
+    CHECK(save_write(&a, SAVE_FILE, err, sizeof(err)));
+    CHECK(save_read(&b, SAVE_FILE, err, sizeof(err)));
+    CHECK(memcmp(a.world.snow, b.world.snow, 64 * 32 * sizeof(float)) == 0);
+    CHECK(sim_checksum(&a) == sim_checksum(&b));
+    for (int i = 0; i < 40; i++) { /* past tick 600, the melt */
+        sim_step(&a);
+        sim_step(&b);
+    }
+    CHECK(sim_checksum(&a) == sim_checksum(&b));
+    CHECK(a.world.snow[0] == 0.0f);
+    sim_free(&a);
+    sim_free(&b);
+}
+
 /* Life stories travel with the file: every creature's ring and tally and the
  * chronicle's table come back the same, and keep growing the same way. */
 static void test_chronicle_saved(void)
@@ -290,6 +320,9 @@ static void test_wrong_magic_and_version(void)
      * every genome grew, so it cannot be read. */
     bytes[8] = 8;
     CHECK(load_fails(bytes, size, "version 8"));
+    /* The last version before snow: a layer was added to the world. */
+    bytes[8] = 9;
+    CHECK(load_fails(bytes, size, "version 9"));
     bytes[8] = kept;
     /* And the same bytes, untouched, are fine: the failures above came
      * from the changes. */
@@ -515,9 +548,10 @@ static Tiny tiny_save(void)
     }
     t.layers = OFF_SETTINGS + settings_bytes;
     /* terrain, fertility, veg, veg_age, veg_wither, plant, carrion,
-     * carrion_level, scent, water, temperature, rain, for 64 cells, and the
-     * rain's seed once. */
-    t.histories = t.layers + 64 * (1 + 4 + 1 + 2 + 1 + 24 + 4 + 4 + 4 + 4 + 4 + 4) + 8;
+     * carrion_level, scent, water, temperature, rain, snow, for 64 cells,
+     * and the rain's seed once. */
+    t.histories =
+        t.layers + 64 * (1 + 4 + 1 + 2 + 1 + 24 + 4 + 4 + 4 + 4 + 4 + 4 + 4) + 8;
     t.records = t.histories + 3 * (HISTORY * 4 + 8);
     /* peak, oldest id and age, largest id and size, then the u64 ended_at. */
     t.pool = t.records + 5 * 4 + 8;
@@ -921,6 +955,7 @@ int main(void)
     test_settings_travel_with_the_file();
     test_random_brain_reopens();
     test_wrong_magic_and_version();
+    test_snow_saved();
     test_mate_wish_survives_save();
     test_cut_short();
     test_extra_bytes();

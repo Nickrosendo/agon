@@ -40,6 +40,11 @@ typedef struct {
     int climate_every;      /* ticks between updates of rain and water */
     float rain_gain;        /* water soil takes per tick in full rain */
     float water_loss;       /* share of its water soil loses per tick */
+    /* Seasons in the weather. In summer the rain threshold is this much
+     * higher, so less of the map gets rain. In winter the gain goes into a
+     * snow layer instead of the soil, and the first tick of spring melts all
+     * of it into the soil's water. */
+    float summer_rain_rise;
     float region_cold_below; /* temperature below this is cold */
     float region_hot_above;  /* temperature above this can be hot and dry */
     float region_dry_below;  /* water below this, when hot, is hot and dry */

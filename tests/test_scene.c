@@ -372,12 +372,14 @@ static uint64_t hash_canvas(const Canvas *c)
  * year, and the two closer zooms show no creature here (no body in this world is
  * large enough to be drawn over several tiles); then the year became 600 ticks with
  * spring as the mating season, and two year senses re-rolled every brain, so
- * creatures stand elsewhere at every zoom but the closest.
+ * creatures stand elsewhere at every zoom but the closest; then snow and drier
+ * summers: 300 ticks end a summer with less rain, so the ground's water and the
+ * plants on it differ at every zoom.
  */
 static void test_known_world_pixels(void)
 {
     static const uint64_t EXPECTED[CAMERA_LEVELS] = {
-        0x97c7dc7faf140a9du, 0x50dfbcd3f84cdebau, 0x33633a90d3f0b95fu, 0xa5c51039580e30a5u,
+        0x10cfb74e4201643du, 0x4db150e495361634u, 0xe115bd6e21185026u, 0x2ca3d1d9db0d7025u,
     };
     Settings set = settings_default();
     Sim s;

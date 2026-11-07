@@ -57,6 +57,8 @@ typedef struct {
     float *water;            /* in the soil, 0..1; 0 on anything else */
     float *temperature;      /* 0 coldest .. 1 hottest, fixed from the start */
     float *rain;             /* how hard it rains, 0..1, as of the last update */
+    float *snow;             /* winter's rain kept on the ground, 0..1; 0 on
+                                anything but soil; melts into water in spring */
     uint64_t rain_seed;      /* the rain's whole future comes from this */
     int32_t *occupant;       /* creature index, or -1 */
 } World;

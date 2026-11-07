@@ -9,6 +9,7 @@
 #include "sim.h"
 #include "terrain.h"
 #include "world.h"
+#include "years.h"
 
 /* All soil, so every cell's water can change. */
 static void soil_world(World *w, int width, int height)
@@ -126,6 +127,9 @@ static float rain_share(const World *w, const Settings *s, uint64_t tick)
 static void test_rain_has_wet_and_dry_times(void)
 {
     Settings s = settings_default();
+    /* The cycle alone: 8,000 falls in a summer and 9,000 in a spring, and
+     * summer's own rise is tested on its own below. */
+    s.summer_rain_rise = 0.0f;
     World w;
     CHECK(world_init(&w, 128, 64));
     w.rain_seed = 99;
@@ -164,6 +168,141 @@ static void test_rain_has_wet_and_dry_times(void)
     s.rain_swing = 0.3f;
     s.rain_threshold = 1.0f;
     CHECK(rain_share(&w, &s, 4 * cycle) == 0.0f);
+    world_free(&w);
+}
+
+/* Winter of the default 600-tick year: ticks 450 to 599. 475 is an update tick
+ * (climate_every 25 divides it). */
+#define WINTER_UPDATE 475u
+
+static bool close_to(float a, float b)
+{
+    float d = a - b;
+    return d < 1e-6f && d > -1e-6f;
+}
+
+/* In winter the rain piles up as snow at the full rate, the soil gets none of
+ * it, and the soil still dries as on any other day. */
+static void test_winter_rain_becomes_snow(void)
+{
+    Settings s = settings_default();
+    s.rain_threshold = 0.0f; /* rain on every cell */
+    World w;
+    soil_world(&w, 16, 8);
+    w.rain_seed = 5;
+    for (int i = 0; i < 16 * 8; i++) {
+        w.water[i] = 0.5f;
+    }
+    climate_step(&w, &s, WINTER_UPDATE);
+    float ticks = (float)s.climate_every;
+    int snowed = 0;
+    for (int i = 0; i < 16 * 8; i++) {
+        float expected = s.rain_gain * w.rain[i] * ticks;
+        expected = expected > 1.0f ? 1.0f : expected;
+        CHECK(close_to(w.snow[i], expected));
+        CHECK(close_to(w.water[i], 0.5f - s.water_loss * 0.5f * ticks));
+        snowed += w.snow[i] > 0.0f;
+    }
+    CHECK(snowed > 0);
+    /* The same update in spring soaks in and leaves no snow. */
+    World spring;
+    soil_world(&spring, 16, 8);
+    spring.rain_seed = 5;
+    spring.water[0] = 0.5f;
+    climate_step(&spring, &s, 25);
+    CHECK(spring.snow[0] == 0.0f);
+    CHECK(spring.water[0] > 0.5f - s.water_loss * 0.5f * ticks);
+    world_free(&w);
+    world_free(&spring);
+}
+
+/* All the snow melts on the first tick of spring, update tick or not, and the
+ * soil never holds more than full. */
+static void test_spring_melts_all_snow(void)
+{
+    Settings s = settings_default();
+    s.rain_threshold = 1.0f; /* no rain, so only the melt changes the water */
+    s.climate_every = 7;     /* 600 is not a multiple of 7: no update then */
+    World w;
+    soil_world(&w, 4, 4);
+    w.snow[0] = 0.4f;
+    w.water[0] = 0.5f;
+    w.snow[1] = 0.4f;
+    w.water[1] = 0.8f;
+    climate_step(&w, &s, 599); /* the last tick of winter: nothing melts */
+    CHECK(w.snow[0] == 0.4f && w.water[0] == 0.5f);
+    climate_step(&w, &s, 600);
+    CHECK(close_to(w.water[0], 0.9f));
+    CHECK(w.snow[0] == 0.0f);
+    CHECK(w.water[1] == 1.0f);
+    CHECK(w.snow[1] == 0.0f);
+    /* An odd year: spring starts at 601, and 601 melts. */
+    s.ticks_per_year = 601;
+    w.snow[2] = 0.3f;
+    climate_step(&w, &s, 600);
+    CHECK(w.snow[2] == 0.3f);
+    climate_step(&w, &s, 601);
+    CHECK(w.snow[2] == 0.0f && close_to(w.water[2], 0.3f));
+    /* Tick 0 is a spring start too, and melts nothing: a new world. */
+    w.snow[3] = 0.2f;
+    climate_step(&w, &s, 0);
+    CHECK(w.snow[3] == 0.2f);
+    world_free(&w);
+}
+
+/* Summer raises the threshold, so less of the map gets rain than at the same
+ * moment of the wet and dry cycle without the rise; spring is untouched. A
+ * threshold pushed past 1 means no rain, and nothing divides by zero. */
+static void test_summer_rains_on_less_ground(void)
+{
+    Settings s = settings_default();
+    World w;
+    CHECK(world_init(&w, 128, 64));
+    w.rain_seed = 4242;
+    uint64_t summer = 4 * (uint64_t)s.rain_cycle; /* 8,000: 200 into a year */
+    uint64_t spring = summer - 200;               /* 7,800: a year's start */
+    CHECK(years_season_of(summer, s.ticks_per_year) == SEASON_SUMMER);
+    CHECK(years_season_of(spring, s.ticks_per_year) == SEASON_SPRING);
+    float with_rise = rain_share(&w, &s, summer);
+    float spring_with = rain_share(&w, &s, spring);
+    s.summer_rain_rise = 0.0f;
+    float without_rise = rain_share(&w, &s, summer);
+    float spring_without = rain_share(&w, &s, spring);
+    CHECK(with_rise < without_rise);
+    CHECK(with_rise > 0.0f); /* drier, not dry */
+    CHECK(spring_with == spring_without);
+
+    s.rain_swing = 0.0f;
+    s.rain_threshold = 0.95f;
+    s.summer_rain_rise = 0.1f; /* 1.05 in summer */
+    CHECK(rain_share(&w, &s, summer) == 0.0f);
+    CHECK(rain_share(&w, &s, spring) > 0.0f);
+    world_free(&w);
+}
+
+/* Twenty winters of rain everywhere, at the fastest gain allowed: snow never
+ * leaves 0..1, and none lies on water or rock. */
+static void test_snow_stays_in_range(void)
+{
+    Settings s = settings_default();
+    s.rain_threshold = 0.0f;
+    s.rain_gain = 1.0f;
+    World w;
+    soil_world(&w, 8, 8);
+    w.terrain[1] = TERRAIN_WATER;
+    w.terrain[2] = TERRAIN_ROCK;
+    w.rain_seed = 77;
+    float most = 0.0f;
+    for (uint64_t t = 0; t < 20 * 600; t++) {
+        climate_step(&w, &s, t);
+        for (int i = 0; i < 64; i++) {
+            CHECK(w.snow[i] >= 0.0f && w.snow[i] <= 1.0f);
+            CHECK(w.water[i] >= 0.0f && w.water[i] <= 1.0f);
+            most = w.snow[i] > most ? w.snow[i] : most;
+        }
+        CHECK(w.snow[1] == 0.0f && w.snow[2] == 0.0f);
+    }
+    CHECK(most == 1.0f); /* it did reach the cap */
     world_free(&w);
 }
 
@@ -357,6 +496,10 @@ static void test_fingerprint_covers_climate(void)
     sim.world.rain[5] = kept + 0.25f;
     CHECK(sim_checksum(&sim) != start);
     sim.world.rain[5] = kept;
+    kept = sim.world.snow[5];
+    sim.world.snow[5] = kept + 0.25f;
+    CHECK(sim_checksum(&sim) != start);
+    sim.world.snow[5] = kept;
     sim.world.rain_seed++;
     CHECK(sim_checksum(&sim) != start);
     sim.world.rain_seed--;
@@ -369,6 +512,10 @@ int main(void)
     test_rain_is_seeded();
     test_rain_changes_gradually();
     test_rain_area_holds_through_a_fade();
+    test_winter_rain_becomes_snow();
+    test_spring_melts_all_snow();
+    test_summer_rains_on_less_ground();
+    test_snow_stays_in_range();
     test_soil_holds_then_loses_water();
     test_rain_stops_ground_dries();
     test_rain_returns_ground_recovers();
