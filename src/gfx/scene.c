@@ -272,6 +272,11 @@ int scene_ambient_frame(uint64_t water_ms)
     return (int)((water_ms / SCENE_AMBIENT_MS) & 0x3FFFFFFFu);
 }
 
+int scene_paused_frame(uint64_t water_ms)
+{
+    return (int)((water_ms / SCENE_PAUSED_AMBIENT_MS) & 0x3FFFFFFFu);
+}
+
 /* A plant's colour, turning to straw as it withers. */
 static Colour plant_colour(const Sim *s, int i)
 {

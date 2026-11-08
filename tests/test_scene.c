@@ -2157,6 +2157,29 @@ static void test_dust_only_in_view(void)
     sim_free(&s);
 }
 
+/* Paused, the scenery steps half as often as running: the paused step changes
+ * every SCENE_PAUSED_AMBIENT_MS, and only where a running step also changes,
+ * so a paused frame shows a picture a running frame would have shown. */
+static void test_paused_scenery_steps_half_as_often(void)
+{
+    CHECK(SCENE_PAUSED_AMBIENT_MS == 2 * SCENE_AMBIENT_MS);
+    int changes = 0;
+    int last = scene_paused_frame(0);
+    for (uint64_t ms = 1; ms <= 2000; ms++) {
+        int now = scene_paused_frame(ms);
+        if (now != last) {
+            changes++;
+            /* A paused step starts exactly where a running one does. */
+            CHECK(scene_ambient_frame(ms) != scene_ambient_frame(ms - 1));
+            last = now;
+        }
+    }
+    CHECK(changes == 10); /* 2 seconds at one step per 200 ms */
+    /* Within one paused step, running would have stepped once. */
+    CHECK(scene_paused_frame(1000) == scene_paused_frame(1100));
+    CHECK(scene_ambient_frame(1000) != scene_ambient_frame(1100));
+}
+
 int main(void)
 {
     /* Tests register this one themselves: the real program never has it. */
@@ -2206,5 +2229,6 @@ int main(void)
     test_blood_on_a_hit();
     test_zs_over_sleepers();
     test_dust_only_in_view();
+    test_paused_scenery_steps_half_as_often();
     TEST_SUMMARY();
 }

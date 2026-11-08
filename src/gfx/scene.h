@@ -25,6 +25,11 @@
 /* The overlays' clock step: glints, foam, sway, rain. While paused they are
  * what moves, so the window redraws once a step. */
 #define SCENE_AMBIENT_MS 100u
+/* While paused the scenery steps half as often: five pictures a second instead
+ * of ten, which keeps a paused window inside its CPU rule (Nicolas's pick,
+ * 2026-11-08). A whole number of running steps, so a paused picture is one a
+ * running window would also have shown. */
+#define SCENE_PAUSED_AMBIENT_MS (2u * SCENE_AMBIENT_MS)
 /* The ground layer's water drift step: the slow ripple is redrawn this often. */
 #define SCENE_DRIFT_MS 500u
 /* How long the soil's colours may lag behind the world, in window time: the
@@ -183,6 +188,8 @@ void scene_reset(Scene *sc);
  * the grass and the trees are all that moves, and only once a step, so a frame
  * where this has not changed need not be drawn. */
 int scene_ambient_frame(uint64_t water_ms);
+/* The same, for a paused or dead world: one step per SCENE_PAUSED_AMBIENT_MS. */
+int scene_paused_frame(uint64_t water_ms);
 /* Once per frame, after the frame's ticks. body_ms is the body clock, which
  * stops while paused: fights advance by it. */
 void scene_update(Scene *sc, const Sim *s, int ticks_per_second, uint64_t body_ms);
