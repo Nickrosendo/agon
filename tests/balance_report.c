@@ -127,7 +127,7 @@ typedef struct {
     uint64_t summer_creature_ticks, summer_shaded_ticks;
     /* Deep sleep: the living and the sleeping summed on the middle tick of each
      * winter and of each summer. */
-    uint64_t mid_winter_alive, mid_winter_asleep;
+    uint64_t mid_winter_alive, mid_winter_asleep, mid_winter_hibernating;
     uint64_t mid_summer_alive, mid_summer_asleep;
     /* Cells moved, summed over creature-ticks, by the season of the tick. */
     uint64_t cells_moved[SEASON_COUNT], moved_ticks[SEASON_COUNT];
@@ -968,9 +968,11 @@ static void print_sleep(const Verdict *v)
             other_ticks += v->moved_ticks[k];
         }
     }
-    printf("     sleep: asleep at mid winter %.1f%%, at mid summer %.1f%% | "
-           "cells moved per tick in winter %.3f, other seasons %.3f\n",
+    printf("     sleep: asleep at mid winter %.1f%% (hibernating %.1f%%), at mid "
+           "summer %.1f%% | cells moved per tick in winter %.3f, other seasons "
+           "%.3f\n",
            100.0 * mean_of((double)v->mid_winter_asleep, v->mid_winter_alive),
+           100.0 * mean_of((double)v->mid_winter_hibernating, v->mid_winter_alive),
            100.0 * mean_of((double)v->mid_summer_asleep, v->mid_summer_alive),
            mean_of((double)v->cells_moved[SEASON_WINTER],
                    v->moved_ticks[SEASON_WINTER]),
@@ -1035,6 +1037,8 @@ static void note_mid_season_sleep(const Sim *s, Verdict *v)
         if (mid_winter) {
             v->mid_winter_alive++;
             v->mid_winter_asleep += creature_asleep(c);
+            /* hibernating is a byte, 0 or 1: added like a count. */
+            v->mid_winter_hibernating += c->hibernating;
         } else {
             v->mid_summer_alive++;
             v->mid_summer_asleep += creature_asleep(c);

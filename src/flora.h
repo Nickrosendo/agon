@@ -14,6 +14,8 @@
  * same world and generator state always give the same result. season is a
  * SEASON_ value (years.h): the season of the tick being stepped. */
 void flora_step(World *w, Rng *r, const Settings *s, int season);
+/* How many cells hold a plant, withering ones included. */
+int flora_count_planted(const World *w);
 
 /* Whether a plant takes part in this season: gains energy, grows, seeds and
  * makes fruit. Every plant rests in winter, and a fruit tree from autumn on. */

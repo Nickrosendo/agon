@@ -358,6 +358,11 @@ static void creatures_act(Sim *s)
     }
     shuffle(s->turns, n, &s->rng);
     pool_count_plant_eaters(&s->pool, &s->set);
+    /* Counted before anyone acts, so every birth this tick sees the same
+     * land; skipped while the rule is off, as it reads every cell. */
+    s->pool.plants = s->set.birth_per_plant > 0.0f
+                         ? flora_count_planted(&s->world)
+                         : 0;
     tell_the_season(s);
     /* The conversion keeps the low 32 bits, which is defined for an unsigned
      * target, and all that comparing two recent ticks needs. */

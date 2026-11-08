@@ -349,7 +349,7 @@ void scent_step(World *w, const Settings *s)
 }
 
 /* How many cells carry any vegetation. */
-static int count_planted(const World *w)
+int flora_count_planted(const World *w)
 {
     int count = 0;
     for (int i = 0; i < w->w * w->h; i++) {
@@ -375,7 +375,7 @@ void flora_step(World *w, Rng *r, const Settings *s, int season)
     int limit = wither_limit(s);
     /* Counted once, before any cell changes: the cap then treats every
      * cell alike, wherever it sits in the row order. */
-    bool full = s->veg_max_cells > 0 && count_planted(w) >= s->veg_max_cells;
+    bool full = s->veg_max_cells > 0 && flora_count_planted(w) >= s->veg_max_cells;
     for (int y = 0; y < w->h; y++) {
         for (int x = 0; x < w->w; x++) {
             int i = world_idx(w, x, y);
