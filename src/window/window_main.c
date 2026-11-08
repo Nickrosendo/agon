@@ -630,16 +630,22 @@ static void app_frame(void *arg)
             a->redraw = true;  /* the frame that shows the screen */
         }
     }
-    scene_update(&a->scene, &a->sim, APP_SPEEDS[a->speed], a->body_ms);
     family_update(&a->families, &a->sim);
     char giant[200];
     if (announce_check(&a->announce, &a->sim, giant, sizeof(giant))) {
         say(a, giant, GIANT_NOTICE_FRAMES);
         a->redraw = true;
     }
+    /* The bodies' motion is worked out on the body clock as it was before
+     * this frame's step, as it always has been. */
+    uint64_t body_before = a->body_ms;
     advance_clocks(a);
 
     if (frame_needs_drawing(a)) {
+        /* Only for a frame that is drawn: nothing else reads the motion.
+         * Running, every frame is drawn, so this changes nothing there;
+         * paused, it saves two updates in three. */
+        scene_update(&a->scene, &a->sim, APP_SPEEDS[a->speed], body_before);
         float fraction = (float)a->ticks_due / (float)FRAMES_PER_SECOND;
         draw_frame(a, fraction);
         platform_present(&a->canvas);
