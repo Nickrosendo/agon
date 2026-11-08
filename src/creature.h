@@ -193,6 +193,9 @@ typedef struct {
     /* Plant-eaters alive as counted by pool_count_plant_eaters, plus
      * those born since. Deaths are not taken off until the next count. */
     int plant_eaters;
+    /* Cells holding a plant, counted once per tick before anyone acts, and
+     * only while birth_per_plant is on (0 otherwise). Read by births. */
+    int plants;
     /* Births that could not happen because every slot was taken. The pool is
      * a safety limit and not a rule of the world, so this should stay 0: it
      * is counted so that reaching the limit is never quiet. */

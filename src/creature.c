@@ -1034,10 +1034,26 @@ static void record_birth(Pool *p, Creature *child, Creature *a, Creature *b)
     chronicle_note(p->chronicle, b, had); /* passed by value, like a number */
 }
 
-/* Whether crowding lets a's pair have a child now, by the three birth rules in
- * settings.h (birth_room, birth_crowd_price, birth_capacity). Each one that is
- * off costs nothing: the crowd is only counted, and a random number only drawn,
- * when a rule needs it, so a world with all three off is the world without them. */
+/* Whether a land with room for capacity creatures lets one more be born, with
+ * alive already on it: chance 1 - alive / capacity, none at or above it. The
+ * random number is drawn only when the answer is not already no. */
+static bool room_on_the_land(int alive, float capacity, Rng *r)
+{
+    if (!(capacity > 0.0f)) {
+        return false; /* no plants at all: no room (also catches NaN) */
+    }
+    /* alive is an int; the cast makes the division a float one. With plain
+     * ints, alive / capacity would be 0 for every count below the capacity,
+     * and the rule would never slow anything. */
+    float full = (float)alive / capacity;
+    return full < 1.0f && rng_unit(r) >= full;
+}
+
+/* Whether crowding lets a's pair have a child now, by the four birth rules in
+ * settings.h (birth_room, birth_crowd_price, birth_capacity, birth_per_plant).
+ * Each one that is off costs nothing: the crowd is only counted, and a random
+ * number only drawn, when a rule needs it, so a world with all four off is the
+ * world without them. */
 static bool crowd_allows_birth(const World *w, const Pool *p, const Creature *a,
                                const Settings *s, Rng *r)
 {
@@ -1053,14 +1069,13 @@ static bool crowd_allows_birth(const World *w, const Pool *p, const Creature *a,
             return false; /* too dear here */
         }
     }
-    if (s->birth_capacity > 0) {
-        /* Both sides are ints; the casts make the division a float one. With
-         * plain ints, count / capacity would be 0 for every count below the
-         * capacity, and the rule would never slow anything. */
-        float full = (float)p->count / (float)s->birth_capacity;
-        if (full >= 1.0f || rng_unit(r) < full) {
-            return false; /* the land is (nearly) full */
-        }
+    if (s->birth_capacity > 0 &&
+        !room_on_the_land(p->count, (float)s->birth_capacity, r)) {
+        return false;
+    }
+    if (s->birth_per_plant > 0.0f &&
+        !room_on_the_land(p->count, s->birth_per_plant * (float)p->plants, r)) {
+        return false;
     }
     return true;
 }

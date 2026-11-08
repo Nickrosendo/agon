@@ -219,6 +219,9 @@ typedef struct {
     int birth_room;
     float birth_crowd_price;
     int birth_capacity;
+    /* The same as birth_capacity, but the plants set it: the capacity is
+     * birth_per_plant times the cells holding a plant this tick. 0 is off. */
+    float birth_per_plant;
 
     /* Inheritance. A child's genome is its parent's with each value, with
      * probability mutation_rate, moved by a normal step whose spread is

@@ -150,6 +150,7 @@ Settings settings_default(void)
         .birth_room = 0,
         .birth_crowd_price = 0.0f,
         .birth_capacity = 0,
+        .birth_per_plant = 0.0f,
         .mutation_rate = 0.05f,
         .mutation_spread = 0.05f,
         .weight_limit = 4.0f,
@@ -376,6 +377,8 @@ static const SettingInfo TABLE[] = {
                                          "neighbour, as a share (0: off)"),
     INT_ROW(birth_capacity, 0, POOL_MAX, "births slow as the alive near this "
                                          "(0: off)"),
+    FLOAT_ROW(birth_per_plant, 0, BIG, "births slow as the alive near this many "
+                                       "per plant (0: off)"),
     FLOAT_ROW(mutation_rate, 0, 1, "chance each gene changes in a child"),
     FLOAT_ROW(mutation_spread, 0, 1, "size of a change, by the gene's range"),
     FLOAT_ROW(weight_limit, 0, 1000, "largest network weight"),

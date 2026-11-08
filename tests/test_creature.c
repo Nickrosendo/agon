@@ -1362,6 +1362,35 @@ static void test_births_that_answer_crowding(void)
     CHECK(!crowded_pair_has_child(&s, &r));
     s.birth_capacity = 4000000;
     CHECK(crowded_pair_has_child(&s, &r));
+    s.birth_capacity = 0;
+}
+
+/* The plants' capacity: birth_per_plant times the plants counted this tick. */
+static void test_plants_set_the_capacity(void)
+{
+    World w;
+    Pool p;
+    int a, b;
+    Settings s = settings_default();
+    CHECK(s.birth_per_plant == 0.0f);
+    Rng r;
+    rng_seed(&r, 1);
+    Action mate = {.kind = ACT_MATE, .hold = 1};
+    s.birth_per_plant = 1.0f;
+
+    /* No plants: no room, whoever asks. */
+    adult_pair(&w, &p, &a, &b, &s, &r);
+    CHECK(p.plants == 0);
+    creature_act(&w, &p, b, mate, &s, &r);
+    CHECK(creature_act(&w, &p, a, mate, &s, &r) == -1);
+    /* Two alive and two plants at one each: full. */
+    p.plants = 2;
+    CHECK(creature_act(&w, &p, a, mate, &s, &r) == -1);
+    /* Two million plants: a refusal is one in a million. */
+    p.plants = 2000000;
+    CHECK(creature_act(&w, &p, a, mate, &s, &r) >= 0);
+    pool_free(&p);
+    world_free(&w);
 }
 
 static void test_fruit_tree_has_no_leaves_to_eat(void)
@@ -3563,6 +3592,7 @@ int main(void)
     test_empty_bite_costs();
     test_plant_eater_cap();
     test_births_that_answer_crowding();
+    test_plants_set_the_capacity();
     test_fruit_tree_has_no_leaves_to_eat();
     test_bare_leaves_cannot_be_bitten();
     test_leaf_bite_harms_plant();
