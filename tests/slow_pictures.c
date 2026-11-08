@@ -7,7 +7,10 @@
  * drawing took, and fails if any one frame built more than 500 pictures: a
  * cache that redraws most bodies every frame.
  *
- * The save: $AGON_LOOKS_SAVE, or the one the lightness notes measure with.
+ * The world: the save named by $AGON_LOOKS_SAVE, or else one made here the
+ * way the lightness save was made (seed 3, 256 by 144, run for 300 ticks:
+ * about 530 creatures). Made here, it cannot go stale: a save file stops
+ * loading whenever the save format's version moves on.
  * Times mean something only from a release build: make MODE=release run-slow-tests.
  */
 #include "test.h"
@@ -20,6 +23,7 @@
 #include "canvas.h"
 #include "save.h"
 #include "scene.h"
+#include "settings.h"
 #include "sim.h"
 
 #define FRAMES 600
@@ -30,6 +34,10 @@
 #define FRAMES_PER_SECOND 30
 #define BODY_MS_PER_FRAME 33u
 #define MOST_BUILDS_A_FRAME 500
+#define MADE_SEED 3
+#define MADE_W 256
+#define MADE_H 144
+#define MADE_TICKS 300
 
 /* A clock in milliseconds that only goes forwards. */
 static double now_ms(void)
@@ -39,12 +47,32 @@ static double now_ms(void)
     return (double)t.tv_sec * 1000.0 + (double)t.tv_nsec / 1e6;
 }
 
+/* The world to draw: loaded from path, or made here when path is NULL. */
+static bool get_world(Sim *s, const char *path)
+{
+    if (path == NULL) {
+        Settings set = settings_default();
+        if (!sim_init(s, &set, MADE_SEED, MADE_W, MADE_H)) {
+            fprintf(stderr, "slow_pictures: cannot make the world\n");
+            return false;
+        }
+        for (int i = 0; i < MADE_TICKS; i++) {
+            sim_step(s);
+        }
+        return true;
+    }
+    char err[256];
+    if (!save_read(s, path, err, sizeof(err))) {
+        fprintf(stderr, "slow_pictures: cannot load %s: %s\n", path, err);
+        return false;
+    }
+    return true;
+}
+
 static void test_cache_keeps_up(const char *path)
 {
     Sim s;
-    char err[256];
-    if (!save_read(&s, path, err, sizeof(err))) {
-        fprintf(stderr, "slow_pictures: cannot load %s: %s\n", path, err);
+    if (!get_world(&s, path)) {
         CHECK(false);
         return;
     }
@@ -94,15 +122,7 @@ static void test_cache_keeps_up(const char *path)
 
 int main(void)
 {
-    char path[1024];
     const char *chosen = getenv("AGON_LOOKS_SAVE");
-    if (chosen != NULL && chosen[0] != '\0') {
-        snprintf(path, sizeof(path), "%s", chosen);
-    } else {
-        const char *home = getenv("HOME");
-        snprintf(path, sizeof(path), "%s/notes/emergence/data/2026-11-07-looks-lightness.save",
-                 home != NULL ? home : ".");
-    }
-    test_cache_keeps_up(path);
+    test_cache_keeps_up(chosen != NULL && chosen[0] != '\0' ? chosen : NULL);
     TEST_SUMMARY();
 }
