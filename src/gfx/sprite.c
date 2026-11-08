@@ -239,7 +239,7 @@ static void store_reset(SpriteStore *st)
     st->used = 0;
 }
 
-static bool store_init(SpriteStore *st, int capacity, int grid_w, int grid_h)
+static bool store_init(SpriteStore *st, int capacity, int slot_bytes)
 {
     capacity = capacity < 1 ? 1 : capacity;
     int buckets = 1;
@@ -248,12 +248,11 @@ static bool store_init(SpriteStore *st, int capacity, int grid_w, int grid_h)
     }
     st->capacity = capacity;
     st->buckets = buckets;
-    st->grid_w = grid_w;
-    st->grid_h = grid_h;
+    st->slot_bytes = slot_bytes;
     st->entries = malloc((size_t)capacity * sizeof(SpriteEntry));
     /* The inks are only written as pictures are made, so this block is left as
      * malloc gives it: an untouched block costs the system no memory yet. */
-    st->inks = malloc((size_t)capacity * (size_t)grid_w * (size_t)grid_h);
+    st->inks = malloc((size_t)capacity * (size_t)slot_bytes);
     st->heads = malloc((size_t)buckets * sizeof(int32_t));
     if (st->entries == NULL || st->inks == NULL || st->heads == NULL) {
         return false;
@@ -317,9 +316,11 @@ bool sprite_cache_init(SpriteCache *c, int entries, int detail_entries)
 {
     *c = (SpriteCache){0}; /* every pointer NULL: free is safe on a half-made cache */
     c->raster = malloc(sizeof(SkeletonRaster));
+    int whole = entries / 6 < 1 ? 1 : entries / 6;
     if (c->raster == NULL ||
-        !store_init(&c->small, entries, SKELETON_W, SKELETON_H) ||
-        !store_init(&c->large, detail_entries, SKELETON_DETAIL_W, SKELETON_DETAIL_H)) {
+        !store_init(&c->trimmed, entries, SPRITE_TRIMMED_BYTES) ||
+        !store_init(&c->small, whole, SKELETON_W * SKELETON_H) ||
+        !store_init(&c->large, detail_entries, SKELETON_DETAIL_W * SKELETON_DETAIL_H)) {
         sprite_cache_free(c);
         return false;
     }
@@ -328,6 +329,7 @@ bool sprite_cache_init(SpriteCache *c, int entries, int detail_entries)
 
 void sprite_cache_free(SpriteCache *c)
 {
+    store_free(&c->trimmed);
     store_free(&c->small);
     store_free(&c->large);
     free(c->raster);
@@ -337,6 +339,9 @@ void sprite_cache_free(SpriteCache *c)
 
 void sprite_cache_reset(SpriteCache *c)
 {
+    if (c->trimmed.heads != NULL) {
+        store_reset(&c->trimmed);
+    }
     if (c->small.heads != NULL) {
         store_reset(&c->small);
     }
@@ -354,39 +359,60 @@ static uint8_t radius_byte(float v)
     return (uint8_t)(v >= 255.0f ? 255.0f : v + 0.5f);
 }
 
-/* Draws the picture of b, in that frame of that action, into entry e of st. */
-static void build(SpriteCache *c, SpriteStore *st, int e, const SpriteBody *b, int action,
-                  int frame)
+/* Draws the picture of b, in that frame of that action, into the scratch
+ * raster. Nothing is kept yet: keep() does that, once the size is known. */
+static void draw_raster(SpriteCache *c, const SpriteBody *b, int action, int frame,
+                        Anatomy *a)
 {
-    Anatomy a;
-    species_anatomy(&a, b->species, &b->traits, sprite_k(b));
+    species_anatomy(a, b->species, &b->traits, sprite_k(b));
     SpritePose pose;
     pose_at(&pose, b, action, frame);
-    SkeletonRaster *r = c->raster;
-    skeleton_raster(r, &a, &pose, b->base != SPRITE_BASE_FAR, b->base == SPRITE_BASE_DETAIL);
-    size_t cells = (size_t)st->grid_w * (size_t)st->grid_h;
-    uint8_t *ink = st->inks + (size_t)e * cells;
-    /* The raster's first w * h inks are this grid's, row after row. */
-    memcpy(ink, r->ink, cells);
+    skeleton_raster(c->raster, a, &pose, b->base != SPRITE_BASE_FAR,
+                    b->base == SPRITE_BASE_DETAIL);
+}
+
+/* The store a picture of this many inks belongs in. */
+static SpriteStore *store_for(SpriteCache *c, const SpriteBody *b, int cells)
+{
+    if (b->base == SPRITE_BASE_DETAIL) {
+        return &c->large;
+    }
+    return cells <= SPRITE_TRIMMED_BYTES ? &c->trimmed : &c->small;
+}
+
+/* Copies the raster's inked box into entry e of st, as picture p, every
+ * position moved by the box's corner (x0, y0) so the ground point, the eye and
+ * the bounds keep their places on the body. */
+static void keep(SpriteCache *c, SpriteStore *st, int e, const Anatomy *a)
+{
+    const SkeletonRaster *r = c->raster;
+    int w = r->x1 > r->x0 ? r->x1 - r->x0 : 0;
+    int h = r->y1 > r->y0 ? r->y1 - r->y0 : 0;
+    uint8_t *ink = st->inks + (size_t)e * (size_t)st->slot_bytes;
+    /* Row by row: a row of the box is w inks in a row of r->w. */
+    for (int y = 0; y < h; y++) {
+        memcpy(ink + (size_t)y * (size_t)w,
+               r->ink + (size_t)(r->y0 + y) * (size_t)r->w + (size_t)r->x0, (size_t)w);
+    }
     SpritePicture *p = &st->entries[e].picture;
     /* The casts to int16_t: every value is a grid position, under 128. */
     p->ink = ink;
-    p->w = (int16_t)r->w;
-    p->h = (int16_t)r->h;
-    p->ox = (int16_t)r->ox;
-    p->oy = (int16_t)r->oy;
-    p->x0 = (int16_t)r->x0;
-    p->y0 = (int16_t)r->y0;
-    p->x1 = (int16_t)r->x1;
-    p->y1 = (int16_t)r->y1;
-    p->eye_x = (int16_t)r->eye_x;
-    p->eye_y = (int16_t)r->eye_y;
+    p->w = (int16_t)w;
+    p->h = (int16_t)h;
+    p->ox = (int16_t)(r->ox - r->x0);
+    p->oy = (int16_t)(r->oy - r->y0);
+    p->x0 = 0;
+    p->y0 = 0;
+    p->x1 = (int16_t)w;
+    p->y1 = (int16_t)h;
+    /* -1, -1 means no eye (Far), and stays so. */
+    p->eye_x = (int16_t)(r->eye_x >= 0 ? r->eye_x - r->x0 : -1);
+    p->eye_y = (int16_t)(r->eye_y >= 0 ? r->eye_y - r->y0 : -1);
     p->shadow_dx = (int16_t)floorf(r->body_dx + 0.5f);
     p->shadow_rx = radius_byte(r->shadow_rx);
     p->shadow_ry = radius_byte(r->shadow_ry);
     p->eye_big = r->eye_big;
-    p->eye_detail = a.k > 1.6f;
-    c->builds++;
+    p->eye_detail = a->k > 1.6f;
 }
 
 SpritePicture sprite_picture(SpriteCache *c, const SpriteBody *b, int action, int frame)
@@ -395,20 +421,31 @@ SpritePicture sprite_picture(SpriteCache *c, const SpriteBody *b, int action, in
     int n = SPRITE_FRAMES[action];
     /* % keeps the sign of a negative number, so n is added before the second %. */
     frame = (frame % n + n) % n;
-    SpriteStore *st = b->base == SPRITE_BASE_DETAIL ? &c->large : &c->small;
     uint64_t key = key_of(b, action, frame);
-    int bucket = bucket_of(st, key);
     c->clock++;
-    int e = store_find(st, key, bucket);
-    if (e < 0) {
-        e = store_take(st);
-        build(c, st, e, b, action, frame);
-        st->entries[e].key = key;
-        st->entries[e].next = st->heads[bucket];
-        st->heads[bucket] = e;
+    /* A small picture may be in either small store, by its size. */
+    SpriteStore *found = b->base == SPRITE_BASE_DETAIL ? &c->large : &c->trimmed;
+    int e = store_find(found, key, bucket_of(found, key));
+    if (e < 0 && b->base != SPRITE_BASE_DETAIL) {
+        found = &c->small;
+        e = store_find(found, key, bucket_of(found, key));
     }
-    st->entries[e].last_used = c->clock;
-    return st->entries[e].picture;
+    if (e < 0) {
+        Anatomy a;
+        draw_raster(c, b, action, frame, &a);
+        const SkeletonRaster *r = c->raster;
+        int cells = (r->x1 - r->x0) * (r->y1 - r->y0);
+        found = store_for(c, b, cells > 0 ? cells : 0);
+        e = store_take(found);
+        keep(c, found, e, &a);
+        int bucket = bucket_of(found, key);
+        found->entries[e].key = key;
+        found->entries[e].next = found->heads[bucket];
+        found->heads[bucket] = e;
+        c->builds++;
+    }
+    found->entries[e].last_used = c->clock;
+    return found->entries[e].picture;
 }
 
 /* The scars' places, as shares of the body's extent: middle across, middle

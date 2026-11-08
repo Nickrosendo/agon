@@ -54,7 +54,9 @@ extern const int SPRITE_FRAMES[ACTION_COUNT];  /* 24, 24, 16, 30, 39, 54, 6 */
 
 /* One picture, facing right, as the cache keeps it. Grid pixel (x, y) is
  * ink[y * w + x]; (ox, oy) is the ground point under the body, the pixel drawn
- * at the creature's foot. Only x0..x1 - 1 by y0..y1 - 1 holds ink. */
+ * at the creature's foot. Only x0..x1 - 1 by y0..y1 - 1 holds ink. The cache
+ * keeps only that box, so its pictures have x0 = y0 = 0, x1 = w and y1 = h, and
+ * the ground point may lie outside them. */
 typedef struct {
     const uint8_t *ink;      /* w * h inks, inside the cache */
     int16_t w, h, ox, oy;    /* its grid and the ground point */
@@ -73,7 +75,13 @@ void sprite_palette_look(SpritePalette *out, int species);
 /* in with every colour flash (0..1) of the way to white: a creature being hit. */
 void sprite_palette_flash(SpritePalette *out, const SpritePalette *in, float flash);
 
-#define SPRITE_ENTRIES 4096        /* small-grid pictures */
+/* Small-grid pictures kept. Each is cut to its inked box first, which is 296
+ * bytes on average on a crowded world (2026-11-07) against 3,584 for the whole
+ * grid: SPRITE_ENTRIES of them go in slots of SPRITE_TRIMMED_BYTES, and the few
+ * bigger ones in SPRITE_ENTRIES / 6 whole-grid slots. 13.6 MB in all, less than
+ * the 14.7 MB that 4,096 whole grids took, for three times the pictures. */
+#define SPRITE_ENTRIES 12288
+#define SPRITE_TRIMMED_BYTES 512
 #define SPRITE_DETAIL_ENTRIES 512  /* large-grid pictures */
 
 /* One kept picture: its key, the next entry of the same hash chain (-1: none)
@@ -85,24 +93,29 @@ typedef struct {
     SpritePicture picture;
 } SpriteEntry;
 
-/* Pictures of one grid size. heads[b] is the first entry whose key hashes to
- * bucket b, or -1. used counts the entries handed out so far: until the store
- * is full a new picture takes the next one, then the one unused longest. */
+/* Pictures of up to slot_bytes inks each. heads[b] is the first entry whose
+ * key hashes to bucket b, or -1. used counts the entries handed out so far:
+ * until the store is full a new picture takes the next one, then the one
+ * unused longest. */
 typedef struct {
     SpriteEntry *entries;
-    uint8_t *inks;         /* entries * grid_w * grid_h bytes */
+    uint8_t *inks;         /* entries * slot_bytes bytes */
     int32_t *heads;
-    int capacity, buckets, used, grid_w, grid_h;
+    int capacity, buckets, used, slot_bytes;
 } SpriteStore;
 
 typedef struct {
-    SpriteStore small, large;
+    /* trimmed: small-grid pictures of up to SPRITE_TRIMMED_BYTES once cut;
+     * small: the bigger ones; large: the detailed grid's (the panel, the lab). */
+    SpriteStore trimmed, small, large;
     SkeletonRaster *raster;  /* the scratch every picture is drawn in: 22 KB */
     uint64_t clock;          /* counts lookups, to tell which was used longest ago */
     long builds;  /* pictures drawn so far: the tests and slow_pictures read it */
 } SpriteCache;
 
-/* All the memory, allocated once. False when it runs out; nothing to free then. */
+/* All the memory, allocated once: entries trimmed small pictures, entries / 6
+ * (at least 1) bigger ones, and detail_entries detailed ones. False when it
+ * runs out; nothing to free then. */
 bool sprite_cache_init(SpriteCache *c, int entries, int detail_entries);
 /* Frees the memory and empties *c; safe to call twice. */
 void sprite_cache_free(SpriteCache *c);

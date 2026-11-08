@@ -57,8 +57,13 @@ static void test_picture_cached(void)
     SpriteBody d = sprite_body_of(&t, SPECIES_DEER, 1.5f, SPRITE_BASE_DETAIL);
     SpritePicture pd = sprite_picture(&c, &d, ACTION_REST, 0);
     CHECK(c.builds == 3);
-    CHECK(pd.w == SKELETON_DETAIL_W && pd.h == SKELETON_DETAIL_H);
-    CHECK(p1.w == SKELETON_W && p1.h == SKELETON_H);
+    /* Each is kept cut to its inked box, which fits inside its grid. */
+    CHECK(pd.x0 == 0 && pd.y0 == 0 && pd.x1 == pd.w && pd.y1 == pd.h);
+    CHECK(pd.w <= SKELETON_DETAIL_W && pd.h <= SKELETON_DETAIL_H);
+    CHECK(p1.x0 == 0 && p1.y0 == 0 && p1.x1 == p1.w && p1.y1 == p1.h);
+    CHECK(p1.w <= SKELETON_W && p1.h <= SKELETON_H);
+    /* A deer at rest is small enough for a trimmed slot. */
+    CHECK(p1.w * p1.h <= SPRITE_TRIMMED_BYTES);
     sprite_cache_free(&c);
     sprite_cache_free(&c); /* safe twice */
 }
@@ -228,11 +233,18 @@ static void test_cap_keeps_giants_inside(void)
             for (int base = 0; base < SPRITE_BASES; base++) {
                 SpriteBody b = sprite_body_of(&t, species, 1000000.0f, base);
                 CHECK(b.k_level == SPECIES_K_LEVELS - 1);
+                long before = c.builds;
                 SpritePicture p = sprite_picture(&c, &b, ACTION_REST, 0);
                 w[base] = p.x1 - p.x0;
                 h[base] = p.y1 - p.y0;
+                /* The cache keeps the picture cut to its ink, so the margin is
+                 * read from the grid it was drawn in, the scratch raster, which
+                 * still holds this picture: it was just built. */
+                CHECK(c.builds == before + 1);
                 if (base == SPRITE_BASE_DETAIL) {
-                    CHECK(p.x0 >= 1 && p.y0 >= 1 && p.x1 <= p.w - 1 && p.y1 <= p.h - 1);
+                    const SkeletonRaster *r = c.raster;
+                    CHECK(r->x0 >= 1 && r->y0 >= 1 && r->x1 <= r->w - 1 &&
+                          r->y1 <= r->h - 1);
                 }
             }
             CHECK(w[SPRITE_BASE_NORMAL] <= SPRITE_MAX_W + 2);
