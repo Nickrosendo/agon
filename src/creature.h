@@ -327,6 +327,10 @@ int creature_crowd(const World *w, const Creature *c, int radius);
 float creature_crowd_cost(const World *w, const Creature *c, const Settings *s);
 /* Energy one tick of life costs this creature, before any crowding. */
 float creature_upkeep_cost(const Creature *c, const Settings *s);
+/* How far c has aged, its age scaled by how fast its ageing gene ages it: 0 at
+ * birth, 1 at the age where age alone costs ageing_upkeep a tick (ageing_span
+ * ticks for the quickest genes, four times that for the slowest by default). */
+float creature_aged(const Creature *c, const Settings *s);
 /* Energy the region under it costs per tick, by the size of its body: the cold
  * spares large bodies, heat and dry ground spare small ones. */
 float creature_region_cost(const World *w, const Creature *c, const Settings *s);

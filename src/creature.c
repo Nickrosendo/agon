@@ -190,17 +190,24 @@ float creature_max_health(const Creature *c, const Settings *s)
     return s->health_per_size * creature_size(c, s);
 }
 
-/* What age costs this creature per tick. e is how far it has aged: its age
- * scaled by how fast its genes age it. Squared, so that the cost is small for
- * most of a life and then climbs until food cannot pay for it: a practical end
- * set by genes and food, not a tick that kills a healthy creature. Slow ageing
- * is paid for from birth. Floats, so a huge age gives a huge cost and not a
- * wrapped one. */
-static float ageing_cost(const Creature *c, const Settings *s)
+/* See creature.h. Floats, so a huge age gives a huge result and not a wrapped
+ * one. */
+float creature_aged(const Creature *c, const Settings *s)
 {
     float gene = c->genome.g[GENE_AGEING];
     float rate = s->ageing_min_rate + (1.0f - s->ageing_min_rate) * gene;
-    float e = (float)c->age * rate / s->ageing_span;
+    return (float)c->age * rate / s->ageing_span;
+}
+
+/* What age costs this creature per tick. e is how far it has aged
+ * (creature_aged). Squared, so that the cost is small for most of a life and
+ * then climbs until food cannot pay for it: a practical end set by genes and
+ * food, not a tick that kills a healthy creature. Slow ageing is paid for from
+ * birth. */
+static float ageing_cost(const Creature *c, const Settings *s)
+{
+    float gene = c->genome.g[GENE_AGEING];
+    float e = creature_aged(c, s);
     return s->ageing_upkeep * e * e + s->slow_ageing_upkeep * (1.0f - gene);
 }
 

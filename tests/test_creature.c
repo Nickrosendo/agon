@@ -2199,6 +2199,20 @@ static void test_upkeep_rises_with_age(void)
     CHECK(middle < old);
 }
 
+/* creature_aged: 1 at ageing_span for the quickest genes, and the slowest age
+ * at ageing_min_rate of that speed. */
+static void test_how_far_aged(void)
+{
+    Settings s = settings_default();
+    Creature c = {.alive = true};
+    c.genome.g[GENE_AGEING] = 1.0f;
+    CHECK(creature_aged(&c, &s) == 0.0f);
+    c.age = (uint32_t)s.ageing_span;
+    CHECK(creature_aged(&c, &s) == 1.0f);
+    c.genome.g[GENE_AGEING] = 0.0f;
+    CHECK(creature_aged(&c, &s) == s.ageing_min_rate);
+}
+
 /* Slow ageing is a trade, not a gift: dearer while young, cheaper when old. */
 static void test_slow_ageing_pays_later(void)
 {
@@ -3689,6 +3703,7 @@ int main(void)
     test_digestion_costs();
     test_old_age();
     test_upkeep_rises_with_age();
+    test_how_far_aged();
     test_slow_ageing_pays_later();
     test_no_fixed_death_age();
     test_ageing_cost_stays_finite();

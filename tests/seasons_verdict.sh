@@ -1,6 +1,11 @@
 #!/bin/bash
 # The seasons verdict: runs seeds 1 to 15 side by side on the default world and
 # applies the pass rule agreed before running (the seasons design, section 8).
+# Two parts changed on 2026-11-08, Nicolas's word, after both proved out of
+# reach for any world that does not decline: crowding is judged on the whole
+# run only (the first ten years are still printed), and an adult's hunger death
+# after it reached its ageing span counts as old age (balance_report's
+# adult_worn), since ageing ends a life by making it too dear to feed.
 #
 # Usage: bash tests/seasons_verdict.sh [BASELINE] [TICKS] [CONFIG]
 #   BASELINE  a file this script printed before, on the code to compare with.
@@ -36,7 +41,8 @@ seq 1 "$SEEDS" | xargs -P "$SEEDS" -I{} sh -c \
 echo "seasons verdict: $SEEDS seeds, $TICKS ticks each${CONFIG:+, config $CONFIG}"
 echo
 echo "SUMMARY seed alive mean10y meanall fruit leaf eaters killers adult_life" \
-     "hunger_adult top_adult adult_deaths adult_wounds adult_hunger adult_age"
+     "hunger_adult top_adult adult_deaths adult_wounds adult_hunger adult_age" \
+     "adult_worn"
 for seed in $(seq 1 "$SEEDS"); do
     grep '^SUMMARY' "$TMP/$seed.txt"
 done
@@ -68,7 +74,7 @@ $1 == "SUMMARY" {
     if ($3 != 1) next
     alive++
     if (!(seed in base10)) { missing = missing " " seed; next }
-    if ($4 > base10[seed] / 2 || $5 > baseall[seed] / 2)
+    if ($5 > baseall[seed] / 2)
         crowded = crowded sprintf(" %d (%.0f/%.0f, %.0f/%.0f)", seed, $4,
                                   base10[seed], $5, baseall[seed])
     if ($6 <= 0 || $7 <= 0 || $8 <= 0 || $9 <= 0)
@@ -76,7 +82,9 @@ $1 == "SUMMARY" {
                                 seed, $6, $7, $8, $9)
     life += $10 * $13
     adults += $13
-    wounds += $14; hunger += $15; age += $16
+    # $17, adult_worn, is part of $15; it moves from hunger to age.
+    worn = $17 == "" ? 0 : $17
+    wounds += $14; hunger += $15 - worn; age += $16 + worn
 }
 END {
     fails = 0
@@ -85,7 +93,7 @@ END {
            alive, seeds, ok ? "PASS" : "FAIL"
     fails += !ok
     ok = crowded == "" && missing == ""
-    printf "  2. half as crowded: %s%s%s\n", ok ? "PASS" : "FAIL",
+    printf "  2. half as crowded over the whole run: %s%s%s\n", ok ? "PASS" : "FAIL",
            crowded == "" ? "" : ", too crowded (mean10y/base, meanall/base):" crowded,
            missing == "" ? "" : ", no baseline for:" missing
     fails += !ok
@@ -99,7 +107,8 @@ END {
     if (age > topn) { top = "age"; topn = age }
     ok = mean >= 2400 && top != "hunger" && adults > 0
     printf "  4. long lives: adults live %.0f ticks on average over %d deaths, 2400 " \
-           "needed; adult deaths wounds %d hunger %d age %d, commonest %s: %s\n",
+           "needed; adult deaths wounds %d hunger %d age (worn out included) %d, " \
+           "commonest %s: %s\n",
            mean, adults, wounds, hunger, age, top, ok ? "PASS" : "FAIL"
     fails += !ok
     printf "VERDICT %s (%d of 4 conditions failed)\n", fails ? "FAIL" : "PASS", fails

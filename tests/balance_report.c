@@ -119,6 +119,10 @@ typedef struct {
     uint64_t adult_deaths;
     uint64_t adult_by_cause[DEATH_COUNT + 1];
     double adult_age; /* summed over adult deaths */
+    /* Adult deaths of hunger that came after the creature reached its ageing
+     * span (creature_aged at 1 or more), where age alone costs five times a
+     * young body's upkeep: worn out by age, though the last blow was hunger. */
+    uint64_t adult_worn;
     uint64_t giants_starved[SEASON_COUNT]; /* by the season they died in */
     uint64_t births[SEASON_COUNT];         /* by the season they were born in */
     uint64_t starts[SEASON_COUNT];         /* how many times each season began */
@@ -163,6 +167,11 @@ static void verdict_death(Verdict *v, const Creature *slot, const Shadow *sh,
         v->adult_deaths++;
         v->adult_by_cause[cause]++;
         v->adult_age += (double)sh->age;
+        /* The slot still holds the dead creature's genes and age: its cause
+         * was read from it, which fails if anyone has moved in since. */
+        if (cause == DEATH_HUNGER && creature_aged(slot, set) >= 1.0f) {
+            v->adult_worn++;
+        }
     }
     bool giant = cause != CAUSE_UNKNOWN && (slot->tally.flags & TALLY_GIANT);
     if (giant && cause == DEATH_HUNGER) {
@@ -983,11 +992,13 @@ static void print_sleep(const Verdict *v)
  * SUMMARY seed alive mean10y meanall fruit leaf eaters killers adult_life
  * hunger_adult top_adult, then the adult deaths and their split by cause
  * (wounds hunger age), which the script needs to weigh worlds against each
- * other. Adult deaths of unknown cause are in the total but in no split. */
+ * other, and last adult_worn: those of the hunger deaths that were worn out by
+ * age. Adult deaths of unknown cause are in the total but in no split. */
 static void print_summary(const Sim *s, const Verdict *v)
 {
     EndCounts n = end_counts(s);
-    printf("SUMMARY %llu %d %.1f %.1f %d %d %d %d %.0f %.3f %s %llu %llu %llu %llu\n",
+    printf("SUMMARY %llu %d %.1f %.1f %d %d %d %d %.0f %.3f %s %llu %llu %llu %llu "
+           "%llu\n",
            (unsigned long long)s->seed, s->pool.count > 0 ? 1 : 0,
            mean_of(v->pop_first, v->ticks_first), mean_of(v->pop_all, v->ticks_all),
            n.fruit, n.leaf, n.eaters, n.killers,
@@ -996,7 +1007,8 @@ static void print_summary(const Sim *s, const Verdict *v)
            top_adult_cause(v), (unsigned long long)v->adult_deaths,
            (unsigned long long)v->adult_by_cause[DEATH_WOUNDS],
            (unsigned long long)v->adult_by_cause[DEATH_HUNGER],
-           (unsigned long long)v->adult_by_cause[DEATH_AGE]);
+           (unsigned long long)v->adult_by_cause[DEATH_AGE],
+           (unsigned long long)v->adult_worn);
 }
 
 /* Runs the world. The Sim is changed only by sim_step. */
