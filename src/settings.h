@@ -207,7 +207,7 @@ typedef struct {
      * hunter genes that lives on plants is never capped. An int, not a bool,
      * so the settings file can read it like every other whole number. */
     int cap_by_level;
-    /* Three births that answer crowding, to compare (2026-11-08); each 0 by
+    /* Three births that answer crowding, to compare (2026-11-07); each 0 by
      * default, which leaves the world exactly as without it.
      * birth_room: a pair has no child while the one asking has more than
      * this many creatures within crowd_radius cells: no room to raise one.
