@@ -775,12 +775,13 @@ static void test_mate_reach(void)
         world_free(&w);
     }
 
-    /* Alone on a 3 x 3 world: at reach 2 every ring-2 cell wraps round, one of
-     * them onto the creature itself. Still no child. */
+    /* Alone on a 2 x 2 world at reach 2: two steps in any direction wraps
+     * round to where it started, so ring 2 holds the creature itself (on 3 x 3
+     * it would not: 1 + 2 wraps to 0, and 1 - 2 to 2). Still no child. */
     s.mate_reach = 2;
-    make_world(&w, 3, 3);
+    make_world(&w, 2, 2);
     CHECK(pool_init(&p, 8));
-    a = spawn(&p, &w, 1, 1);
+    a = spawn(&p, &w, 0, 0);
     make_ready(&p.items[a], &s, &r);
     CHECK(creature_act(&w, &p, a, mate, &s, &r) == -1);
     CHECK(creature_act(&w, &p, a, mate, &s, &r) == -1);
