@@ -101,6 +101,7 @@ static void test_birth_names_parents_and_children(void)
     p.chronicle = &ch;
     p.now = 40;
     Settings s = settings_default();
+    s.birth_per_plant = 0.0f; /* a pool built by hand counts no plants */
     Rng r;
     rng_seed(&r, 5);
     int a = spawn(&p, &w, 3, 3);
@@ -766,6 +767,9 @@ static void test_memory_flat_with_churn(void)
      * grow or move it. Whether anything else allocates is the memory checkers'
      * job, run over this same program. */
     Settings set = settings_default();
+    /* Churn needs births; this small world's few plants would leave the
+     * plants' capacity below its founders, so the birth rule is off here. */
+    set.birth_per_plant = 0.0f;
     Sim sim;
     CHECK(sim_init(&sim, &set, 9, 48, 24));
     const NotableLife *table = sim.chronicle.lives;

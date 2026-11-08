@@ -150,7 +150,12 @@ Settings settings_default(void)
         .birth_room = 0,
         .birth_crowd_price = 0.0f,
         .birth_capacity = 0,
-        .birth_per_plant = 0.0f,
+        /* On since 2026-11-07, Nicolas's pick of the four birth rules: over
+         * 100 years on 15 seeds, 11 worlds lived (the fixed capacity: 9), the
+         * survivors levelled at 1,350-2,400 instead of booming to 5,000, and
+         * adults lived 2,538 ticks on average instead of 582. 0.75 lost 7
+         * worlds. The other three rules stay, off, for comparisons. */
+        .birth_per_plant = 0.5f,
         .mutation_rate = 0.05f,
         .mutation_spread = 0.05f,
         .weight_limit = 4.0f,

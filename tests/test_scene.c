@@ -457,10 +457,13 @@ static void test_known_world_pixels(void)
          * elsewhere at all but the closest level; looked at again. Re-pinned
          * for naps and hibernation (a nap lasts 10 ticks): Normal is back to
          * its picture from before the minimum sleep; the two wider levels
-         * were looked at. */
+         * were looked at. Re-pinned for the plants' birth capacity, on by
+         * default (2026-11-07): births differ, so creatures stand elsewhere at
+         * all but the closest level; the three pictures were saved and looked
+         * at, and drawing itself is unchanged (the lab's pin holds). */
         static const uint64_t EXPECTED[CAMERA_LEVELS] = {
-            0xbe5f57fb7c7bdabdu, 0x5a015897532bfe08u,
-            0x85d3a056a12b30acu, 0x8183ed4a345c4dc5u,
+            0xbe5f57fb7c7bdabdu, 0x4f23e7563e9cbf30u,
+            0x757fc2e576a69ff6u, 0x7441a02c875a6045u,
         };
         if (hashes[level] != EXPECTED[level]) {
             printf("level %d: 0x%llxu\n", level,

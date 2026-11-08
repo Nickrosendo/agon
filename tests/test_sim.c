@@ -58,9 +58,11 @@
  * and slower ageing change what every creature has; then a sleep lasts at least
  * 30 ticks, so brains that chose short sleeps sleep longer; then naps and
  * hibernation: a nap lasts 10 ticks at rest's cost, and only a well-fed winter
- * sleep is cheap and lasts until spring.
+ * sleep is cheap and lasts until spring; then the plants' birth capacity, on by
+ * default: births slow as the living near half the plants on the map, which
+ * draws a random number at each birth.
  */
-#define SEED_7_AFTER_500 0x9d37b9ec1e751699ULL
+#define SEED_7_AFTER_500 0x16ecf52215637587ULL
 
 static void test_same_seed_same_checksum(void)
 {

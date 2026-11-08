@@ -699,6 +699,7 @@ static void test_mate_needs_both(void)
     Pool p;
     int a, b;
     Settings s = settings_default();
+    s.birth_per_plant = 0.0f; /* about mating itself, not the birth rule */
     Rng r;
     rng_seed(&r, 1);
     Action mate = {.kind = ACT_MATE, .hold = 1};
@@ -744,6 +745,7 @@ static void test_barrier_stops_different_parents(void)
     Pool p;
     int a, b;
     Settings s = settings_default();
+    s.birth_per_plant = 0.0f; /* about mating itself, not the birth rule */
     s.mate_barrier = 0.6f;
     Rng r;
     rng_seed(&r, 1);
@@ -775,6 +777,7 @@ static void test_barrier_ignores_weights(void)
     Pool p;
     int a, b;
     Settings s = settings_default();
+    s.birth_per_plant = 0.0f; /* about mating itself, not the birth rule */
     s.mate_barrier = 0.99f;
     Rng r;
     rng_seed(&r, 1);
@@ -815,6 +818,7 @@ static void test_mate_costs_both_parents(void)
     Pool p;
     int a, b;
     Settings s = settings_default();
+    s.birth_per_plant = 0.0f; /* about mating itself, not the birth rule */
     Rng r;
     rng_seed(&r, 2);
     adult_pair(&w, &p, &a, &b, &s, &r);
@@ -844,6 +848,7 @@ static void test_mate_needs_adults(void)
     Pool p;
     int a, b;
     Settings s = settings_default();
+    s.birth_per_plant = 0.0f; /* about mating itself, not the birth rule */
     Rng r;
     rng_seed(&r, 3);
     Action mate = {.kind = ACT_MATE, .hold = 1};
@@ -881,6 +886,7 @@ static void test_child_surname_from_a_parent(void)
     Pool p;
     int a, b;
     Settings s = settings_default();
+    s.birth_per_plant = 0.0f; /* about mating itself, not the birth rule */
     s.mate_barrier = 0.0f; /* the pairs here are random, and must all have a child */
     Rng r;
     rng_seed(&r, 4);
@@ -929,6 +935,7 @@ static void test_mate_no_room(void)
     Pool p;
     int a, b;
     Settings s = settings_default();
+    s.birth_per_plant = 0.0f; /* about mating itself, not the birth rule */
     Rng r;
     rng_seed(&r, 5);
     adult_pair(&w, &p, &a, &b, &s, &r);
@@ -956,6 +963,7 @@ static void test_pool_full_counts_refused(void)
     World w;
     Pool p;
     Settings s = settings_default();
+    s.birth_per_plant = 0.0f; /* about mating itself, not the birth rule */
     Rng r;
     rng_seed(&r, 6);
     make_world(&w, 8, 8);
@@ -1013,6 +1021,7 @@ static void test_season_drives_fed_adults(void)
     Pool p;
     int a, b;
     Settings s = settings_default();
+    s.birth_per_plant = 0.0f; /* about mating itself, not the birth rule */
     Rng r;
     rng_seed(&r, 8);
     adult_pair(&w, &p, &a, &b, &s, &r);
@@ -1073,6 +1082,7 @@ static void test_out_of_season_needs_a_choice(void)
     Pool p;
     int a, b;
     Settings s = settings_default();
+    s.birth_per_plant = 0.0f; /* about mating itself, not the birth rule */
     Rng r;
     rng_seed(&r, 10);
     adult_pair(&w, &p, &a, &b, &s, &r);
@@ -1273,6 +1283,7 @@ static void test_plant_eater_cap(void)
     Pool p;
     int a, b;
     Settings s = settings_default();
+    s.birth_per_plant = 0.0f; /* about mating itself, not the birth rule */
     /* Plant-eaters told by their genes; test_cap_by_level covers the
      * count by food-chain level. */
     s.cap_by_level = 0;
@@ -1333,6 +1344,7 @@ static bool crowded_pair_has_child(const Settings *s, Rng *r)
 static void test_births_that_answer_crowding(void)
 {
     Settings s = settings_default();
+    s.birth_per_plant = 0.0f; /* the plants' rule has its own test below */
     CHECK(s.crowd_radius == 2 && s.crowd_free == 1);
     CHECK(near(s.mate_threshold, 30.0f)); /* each parent holds 40 */
     Rng r;
@@ -1372,7 +1384,7 @@ static void test_plants_set_the_capacity(void)
     Pool p;
     int a, b;
     Settings s = settings_default();
-    CHECK(s.birth_per_plant == 0.0f);
+    CHECK(s.birth_per_plant == 0.5f); /* on by default since 2026-11-07 */
     Rng r;
     rng_seed(&r, 1);
     Action mate = {.kind = ACT_MATE, .hold = 1};
@@ -2233,6 +2245,7 @@ static void test_full_pool_runs(void)
      * a small world, births must be refused without harm, and counted. The
      * checkers in the test build report any out-of-bounds access. */
     Settings set = settings_default();
+    set.birth_per_plant = 0.0f; /* about the pool limit, not the birth rule */
     snprintf(set.brain_name, sizeof(set.brain_name), "random");
     set.pool_capacity = 8;
     set.start_share = 1.0f; /* stops at the pool's 8 */
@@ -2566,6 +2579,7 @@ static void test_age_limit_is_its_own_cause(void)
 static void test_born_at_full_health(void)
 {
     Settings s = settings_default();
+    s.birth_per_plant = 0.0f; /* about mating itself, not the birth rule */
     Rng r;
     rng_seed(&r, 3);
     World w;
@@ -2876,6 +2890,7 @@ static void test_memory_from_a_bad_brain_is_held(void)
 static void test_child_memory_starts_empty(void)
 {
     Settings s = settings_default();
+    s.birth_per_plant = 0.0f; /* about mating itself, not the birth rule */
     Rng r;
     rng_seed(&r, 3);
     World w;
@@ -3006,6 +3021,7 @@ static void test_attack_spares_close_relatives(void)
 static void family_birth(float hue, float mutation, uint64_t seed, Creature *child_out)
 {
     Settings s = settings_default();
+    s.birth_per_plant = 0.0f; /* about mating itself, not the birth rule */
     s.mutation_rate = mutation;
     s.mutation_spread = 1.0f; /* any mutation is a large one */
     Rng r;
@@ -3042,6 +3058,7 @@ static void test_child_of_two_colours_joins_the_closer_family(void)
     /* No mutation, parents of far-apart colours in two families: the child's colour
      * is one parent's, so it must carry that parent's family and not found a new one. */
     Settings s = settings_default();
+    s.birth_per_plant = 0.0f; /* about mating itself, not the birth rule */
     s.mutation_rate = 0.0f;
     Rng r;
     rng_seed(&r, 11);
@@ -3273,6 +3290,7 @@ static void test_territory_gene_costs_upkeep(void)
 static void test_territory_does_not_stop_a_chosen_mating(void)
 {
     Settings s = settings_default();
+    s.birth_per_plant = 0.0f; /* about mating itself, not the birth rule */
     Rng r;
     rng_seed(&r, 5);
     World w;
@@ -3375,6 +3393,7 @@ static void test_sleeper_does_nothing(void)
     Pool p;
     int a, b;
     Settings s = settings_default();
+    s.birth_per_plant = 0.0f; /* about mating itself, not the birth rule */
     Rng r;
     rng_seed(&r, 12);
     adult_pair(&w, &p, &a, &b, &s, &r);
