@@ -6,6 +6,11 @@
  * than this. Random genomes rarely match (about 1 value in 20); a child
  * keeps every value it did not mutate. */
 #define KIN_TOLERANCE 0.05f
+/* GENOME_LEN rounded down to a multiple of 8. At -O2, GCC only runs a loop
+ * several values at a time when the count divides evenly into its blocks, so
+ * genome_kinship counts this many in one loop and the few left in another.
+ * ~7 is the bits 0b...11111000: & with it clears the last three bits. */
+#define KIN_BLOCKED (GENOME_LEN & ~7)
 
 static float clamp(float v, float lo, float hi)
 {
@@ -112,16 +117,23 @@ void genome_cross(Genome *child, const Genome *a, const Genome *b, Rng *r,
 
 float genome_kinship(const Genome *a, const Genome *b)
 {
+    /* Every gene counted the plain way first, with no test of which gene it
+     * is inside the loop: a loop with no branch is one the compiler can run
+     * several genes at a time (SSE instructions). This is the hottest loop of
+     * a crowded world, called for every neighbour every tick. */
     int matches = 0;
-    for (int i = 0; i < GENOME_LEN; i++) {
-        float d = fabsf(a->g[i] - b->g[i]);
-        if (i == GENE_HUE && d > 0.5f) {
-            d = 1.0f - d; /* 0.98 and 0.01 are close on the wheel */
-        }
-        if (d < KIN_TOLERANCE) {
-            matches++;
-        }
+    for (int i = 0; i < KIN_BLOCKED; i++) {
+        /* A comparison is an int in C, 1 or 0, so it adds like a count. */
+        matches += fabsf(a->g[i] - b->g[i]) < KIN_TOLERANCE;
     }
+    for (int i = KIN_BLOCKED; i < GENOME_LEN; i++) {
+        matches += fabsf(a->g[i] - b->g[i]) < KIN_TOLERANCE;
+    }
+    /* Then the one gene on a wheel is put right: 0.98 and 0.01 are close.
+     * Take back the plain count of it and add the count round the wheel. */
+    float d = fabsf(a->g[GENE_HUE] - b->g[GENE_HUE]);
+    float round = d > 0.5f ? 1.0f - d : d;
+    matches += (round < KIN_TOLERANCE) - (d < KIN_TOLERANCE);
     /* Counting is symmetric because fabsf(a - b) == fabsf(b - a) exactly:
      * a - b and b - a are the same number with opposite signs. */
     return (float)matches / (float)GENOME_LEN;
