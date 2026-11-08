@@ -60,9 +60,10 @@
  * hibernation: a nap lasts 10 ticks at rest's cost, and only a well-fed winter
  * sleep is cheap and lasts until spring; then the plants' birth capacity, on by
  * default: births slow as the living near half the plants on the map, which
- * draws a random number at each birth.
+ * draws a random number at each birth; then a partner may stand two steps
+ * away, so pairs that stood just apart now have children.
  */
-#define SEED_7_AFTER_500 0x16ecf52215637587ULL
+#define SEED_7_AFTER_500 0xc6978583783f1fedULL
 
 static void test_same_seed_same_checksum(void)
 {

@@ -758,7 +758,7 @@ static void test_mate_reach(void)
     int a, b;
     Settings s = settings_default();
     s.birth_per_plant = 0.0f; /* about mating itself, not the birth rule */
-    CHECK(s.mate_reach == 1);
+    CHECK(s.mate_reach == 2);
     Rng r;
     rng_seed(&r, 1);
     Action mate = {.kind = ACT_MATE, .hold = 1};

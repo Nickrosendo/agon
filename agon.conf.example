@@ -225,7 +225,7 @@ mate_barrier = 0.55
 mate_window = 5
 
 # steps a partner may stand away (1: beside) (1 to 4)
-mate_reach = 1
+mate_reach = 2
 
 # ticks before a creature can mate (0 to 2147483647)
 mate_age = 50

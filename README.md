@@ -204,7 +204,7 @@ for the build that wrote them; a build with a different format refuses them.
 6. Energy is the only currency. Living costs energy, and bigger, faster,
    farther-seeing bodies cost more, as does growing old, at a speed set by a
    gene. At zero, a creature dies and leaves carrion.
-7. Two grown creatures side by side that both choose to mate have a child, and
+7. Two grown creatures at most two steps apart that both choose to mate have a child, and
    each pays for it with energy. Each part of its genome comes from one parent
    or the other, with small changes. No fitness function exists: what lives
    long enough to have children spreads. In spring, the mating season, every fed

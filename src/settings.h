@@ -183,9 +183,8 @@ typedef struct {
     float mate_barrier;
     int mate_window;         /* ticks a wish to mate lasts */
     /* How far a partner may stand, in steps (a diagonal step counts as one):
-     * 1, the default, is the 8 cells beside; 2 is the 24 cells within two
-     * steps. Nearer cells are always looked at first. Added 2026-11-08 to
-     * measure whether small worlds die because pairs just miss each other. */
+     * 1 is the 8 cells beside; 2, the default since 2026-11-08, is the 24
+     * cells within two steps. Nearer cells are always looked at first. */
     int mate_reach;
     int mate_age;            /* ticks before a creature can mate */
     float sense_age_half;    /* the age sensed as 0.5 */

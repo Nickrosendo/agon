@@ -135,7 +135,11 @@ Settings settings_default(void)
         .mate_share = 0.5f,
         .mate_barrier = 0.55f,
         .mate_window = 5,
-        .mate_reach = 1,
+        /* 2 since 2026-11-08, Nicolas's pick: over 100 years on 15 seeds,
+         * all 15 worlds lived (beside only: 11). At 1 the founders' die-off
+         * was followed by years of decline, births half the deaths, until
+         * four worlds died; the pairs were there but a step too far apart. */
+        .mate_reach = 2,
         .mate_age = 50,
         .sense_age_half = 200.0f,
         .ageing_upkeep = 0.3f,
