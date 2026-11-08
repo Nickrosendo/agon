@@ -225,7 +225,7 @@ typedef struct {
     int birth_capacity;
     /* The same as birth_capacity, but the plants set it: the capacity is
      * birth_per_plant times the cells holding a plant this tick. 0 is off;
-     * 0.5 by default, the birth rule chosen on 2026-11-07. */
+     * 0.4 by default (the rule chosen on 2026-11-07, lowered 2026-11-08). */
     float birth_per_plant;
 
     /* Inheritance. A child's genome is its parent's with each value, with

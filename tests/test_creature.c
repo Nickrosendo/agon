@@ -1437,7 +1437,7 @@ static void test_plants_set_the_capacity(void)
     Pool p;
     int a, b;
     Settings s = settings_default();
-    CHECK(s.birth_per_plant == 0.5f); /* on by default since 2026-11-07 */
+    CHECK(s.birth_per_plant == 0.4f); /* on by default since 2026-11-07 */
     Rng r;
     rng_seed(&r, 1);
     Action mate = {.kind = ACT_MATE, .hold = 1};

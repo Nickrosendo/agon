@@ -264,7 +264,7 @@ birth_crowd_price = 0
 birth_capacity = 0
 
 # births slow as the alive near this many per plant (0: off) (0 to 1e+06)
-birth_per_plant = 0.5
+birth_per_plant = 0.4
 
 # chance each gene changes in a child (0 to 1)
 mutation_rate = 0.05

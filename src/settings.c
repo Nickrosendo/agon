@@ -159,8 +159,10 @@ Settings settings_default(void)
          * 100 years on 15 seeds, 11 worlds lived (the fixed capacity: 9), the
          * survivors levelled at 1,350-2,400 instead of booming to 5,000, and
          * adults lived 2,538 ticks on average instead of 582. 0.75 lost 7
-         * worlds. The other three rules stay, off, for comparisons. */
-        .birth_per_plant = 0.5f,
+         * worlds. The other three rules stay, off, for comparisons. 0.4 since
+         * 2026-11-08, with a partner two steps away: still 15 of 15 worlds,
+         * adults 2,475 ticks instead of 2,329, a fifth fewer creatures. */
+        .birth_per_plant = 0.4f,
         .mutation_rate = 0.05f,
         .mutation_spread = 0.05f,
         .weight_limit = 4.0f,
