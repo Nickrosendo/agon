@@ -677,20 +677,32 @@ static void test_bite(void)
 
 /* Two grown creatures with plenty of energy, side by side at (3, 3) and
  * (4, 3), each with its own random genome. */
-static void adult_pair(World *w, Pool *p, int *a, int *b, const Settings *s,
-                       Rng *r)
+/* A grown, fed creature of random genes and size 1, ready to mate. */
+static void make_ready(Creature *c, const Settings *s, Rng *r)
+{
+    genome_random(&c->genome, r, s);
+    c->genome.g[GENE_SIZE] = 0.5f; /* size 1 */
+    c->age = (uint32_t)s->mate_age;
+    c->energy = s->mate_threshold + 10.0f;
+}
+
+/* Two ready adults on an 8 x 8 world, a at (3,3) and b at (bx,by). */
+static void adult_pair_at(World *w, Pool *p, int *a, int *b, int bx, int by,
+                          const Settings *s, Rng *r)
 {
     make_world(w, 8, 8);
     CHECK(pool_init(p, 8));
     *a = spawn(p, w, 3, 3);
-    *b = spawn(p, w, 4, 3);
-    for (int k = 0; k < 2; k++) {
-        Creature *c = &p->items[k == 0 ? *a : *b];
-        genome_random(&c->genome, r, s);
-        c->genome.g[GENE_SIZE] = 0.5f; /* size 1 */
-        c->age = (uint32_t)s->mate_age;
-        c->energy = s->mate_threshold + 10.0f;
-    }
+    *b = spawn(p, w, bx, by);
+    make_ready(&p->items[*a], s, r);
+    make_ready(&p->items[*b], s, r);
+}
+
+/* Two ready adults side by side, a at (3,3) and b at (4,3). */
+static void adult_pair(World *w, Pool *p, int *a, int *b, const Settings *s,
+                       Rng *r)
+{
+    adult_pair_at(w, p, a, b, 4, 3, s, r);
 }
 
 static void test_mate_needs_both(void)
@@ -733,6 +745,46 @@ static void test_mate_needs_both(void)
     CHECK(p.items[a].mate_wish == 0);
     CHECK(creature_act(&w, &p, b, mate, &s, &r) == -1);
     CHECK(p.count == 2);
+    pool_free(&p);
+    world_free(&w);
+}
+
+/* mate_reach: a partner two steps away is found at 2 and not at 1, and on a
+ * world narrower than the search a creature never pairs with itself. */
+static void test_mate_reach(void)
+{
+    World w;
+    Pool p;
+    int a, b;
+    Settings s = settings_default();
+    s.birth_per_plant = 0.0f; /* about mating itself, not the birth rule */
+    CHECK(s.mate_reach == 1);
+    Rng r;
+    rng_seed(&r, 1);
+    Action mate = {.kind = ACT_MATE, .hold = 1};
+
+    /* Two steps apart on the diagonal: (3,3) and (5,5). */
+    for (int reach = 1; reach <= 2; reach++) {
+        s.mate_reach = reach;
+        adult_pair_at(&w, &p, &a, &b, 5, 5, &s, &r);
+        CHECK(creature_act(&w, &p, a, mate, &s, &r) == -1);
+        int child = creature_act(&w, &p, b, mate, &s, &r);
+        CHECK(reach == 1 ? child == -1 : child >= 0);
+        CHECK(p.count == (reach == 1 ? 2 : 3));
+        pool_free(&p);
+        world_free(&w);
+    }
+
+    /* Alone on a 3 x 3 world: at reach 2 every ring-2 cell wraps round, one of
+     * them onto the creature itself. Still no child. */
+    s.mate_reach = 2;
+    make_world(&w, 3, 3);
+    CHECK(pool_init(&p, 8));
+    a = spawn(&p, &w, 1, 1);
+    make_ready(&p.items[a], &s, &r);
+    CHECK(creature_act(&w, &p, a, mate, &s, &r) == -1);
+    CHECK(creature_act(&w, &p, a, mate, &s, &r) == -1);
+    CHECK(p.count == 1);
     pool_free(&p);
     world_free(&w);
 }
@@ -3593,6 +3645,7 @@ int main(void)
     test_turns();
     test_bite();
     test_mate_needs_both();
+    test_mate_reach();
     test_barrier_stops_different_parents();
     test_barrier_ignores_weights();
     test_founders_can_mate_at_default();

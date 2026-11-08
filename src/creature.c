@@ -947,8 +947,46 @@ static bool can_mate(const Creature *c, const Settings *s)
            c->energy > 0.0f && c->energy >= mate_needs(c, s);
 }
 
-/* The slot of a neighbour that wishes to mate and still can, looking round
- * from a random start so that no side is favoured; -1 for none. */
+/* Whether the creature in slot other can be c's partner now. */
+static bool is_partner_for(const Pool *p, const Creature *c, int other,
+                           const Settings *s)
+{
+    if (other < 0) {
+        return false; /* an empty cell */
+    }
+    const Creature *o = &p->items[other];
+    /* On a world narrower than the search, a far cell can wrap round onto c
+     * itself, and c has just made its wish: without this it would pair with
+     * itself. Two pointers into one array are equal only for the same slot. */
+    if (o == c) {
+        return false;
+    }
+    /* A sleeper is no partner, whatever wish it fell asleep with. */
+    return o->mate_wish > 0 && !creature_asleep(o) && can_mate(o, s) &&
+           genome_body_likeness(&c->genome, &o->genome) >= s->mate_barrier;
+}
+
+/* The k-th cell, 0 <= k < 8 * d, of the square ring d steps from the centre,
+ * walked clockwise from its top-left corner: top row, right side, bottom row,
+ * left side, each side 2 * d cells long. Written to *dx and *dy. */
+static void ring_cell(int d, int k, int *dx, int *dy)
+{
+    int side = k / (2 * d);
+    int t = k % (2 * d);
+    switch (side) {
+    case 0: *dx = -d + t; *dy = -d; break;
+    case 1: *dx = d; *dy = -d + t; break;
+    case 2: *dx = d - t; *dy = d; break;
+    default: *dx = -d; *dy = d - t; break;
+    }
+}
+
+/* The slot of a creature within mate_reach steps that wishes to mate and still
+ * can; -1 for none. The 8 cells beside come first, then each wider ring, so a
+ * nearer partner is always chosen over a farther one. Each ring is looked round
+ * from a random start so that no side is favoured. The first ring is read in the
+ * AROUND order with the one draw it always had, so a mate_reach of 1 draws the
+ * same numbers as before the setting and gives the same worlds. */
 static int find_partner(const World *w, const Pool *p, const Creature *c,
                         const Settings *s, Rng *r)
 {
@@ -956,14 +994,21 @@ static int find_partner(const World *w, const Pool *p, const Creature *c,
     for (int k = 0; k < 8; k++) {
         int dir = (start + k) % 8;
         int cell = world_idx(w, c->x + AROUND_X[dir], c->y + AROUND_Y[dir]);
-        int other = w->occupant[cell];
-        /* A sleeper is no partner, whatever wish it fell asleep with. */
-        if (other >= 0 && p->items[other].mate_wish > 0 &&
-            !creature_asleep(&p->items[other]) &&
-            can_mate(&p->items[other], s) &&
-            genome_body_likeness(&c->genome, &p->items[other].genome) >=
-                s->mate_barrier) {
-            return other;
+        if (is_partner_for(p, c, w->occupant[cell], s)) {
+            return w->occupant[cell];
+        }
+    }
+    for (int d = 2; d <= s->mate_reach; d++) {
+        int cells = 8 * d;
+        /* cells is at most 32 (mate_reach is at most 4), so the cast is safe. */
+        int from = (int)rng_below(r, (uint32_t)cells);
+        for (int k = 0; k < cells; k++) {
+            int dx, dy;
+            ring_cell(d, (from + k) % cells, &dx, &dy);
+            int cell = world_idx(w, c->x + dx, c->y + dy);
+            if (is_partner_for(p, c, w->occupant[cell], s)) {
+                return w->occupant[cell];
+            }
         }
     }
     return -1;
