@@ -21,6 +21,7 @@
  * first. A pointer to a struct whose insides are unknown is allowed: every
  * object pointer has the same size. Reading a field through it is not. */
 struct Chronicle;
+struct TacticWatch;
 
 /* Headings in clockwise order, so turning right is + 1 and turning left
  * is + 3 (that is, - 1), both modulo 4. */
@@ -221,6 +222,11 @@ typedef struct {
      * before anyone acts, like now, so it never points into a Sim that has moved.
      * Neither saved nor hashed. */
     struct Chronicle *chronicle;
+    /* The tactic watch to tell about chosen hits, or NULL; set like chronicle. */
+    struct TacticWatch *tactics;
+    /* How light it is, 1 at noon down to 0 at midnight: worked out from the
+     * tick by the Sim before anyone acts, like year_phase. */
+    float light;
 } Pool;
 
 /* Allocates capacity empty slots. False for a capacity below 1 or when

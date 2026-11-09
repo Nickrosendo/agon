@@ -395,6 +395,16 @@ typedef struct {
     /* Life stories (chronicle.h): 1 records them, 0 records nothing. No rule
      * reads them, so turning this off changes no world, and a test checks it. */
     int chronicle;
+    /* The tactic watch (tactics.h), which no rule reads either. A family's
+     * habit is a tactic when it happens at least tactic_lift times as often as
+     * chance or the other families would have it, over at least tactic_min
+     * events of the last year or so, and the family does at least
+     * tactic_useful times as well as the others of its diet. tactics: 1 watches,
+     * 0 does not, and a test checks that this changes no world. */
+    int tactics;
+    float tactic_lift;
+    int tactic_min;
+    float tactic_useful;
     /* The body size from which a creature counts as a giant: crossing it is an
      * event in its story. 6 is where it is drawn three tiles wide. Only the story
      * reads it. */

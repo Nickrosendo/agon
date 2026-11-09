@@ -14,6 +14,7 @@
 #include "rng.h"
 #include "settings.h"
 #include "stats.h"
+#include "tactics.h"
 #include "world.h"
 
 /* One creature's place in the shuffled order of a tick: its slot and the
@@ -57,6 +58,9 @@ typedef struct {
     /* Life stories. Saved, but not in sim_checksum: no rule reads them, and the
      * fingerprint is what proves that (sim_story_checksum covers them). */
     Chronicle chronicle;
+    /* The tactic watch: neither saved nor fingerprinted, for the same reason,
+     * and after a load it starts counting again. */
+    TacticWatch tactics;
 } Sim;
 
 /* Allocates a w by h world and a creature pool, opens the brain named in

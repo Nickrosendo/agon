@@ -452,5 +452,17 @@ ticks_per_year = 600
 # 1: record life stories, 0: record none (changes no world) (0 to 1)
 chronicle = 1
 
+# 1: watch for tactics, 0: do not (changes no world) (0 to 1)
+tactics = 1
+
+# how many times chance a family's habit must be to count as a tactic (1 to 100)
+tactic_lift = 2
+
+# events of the last year a tactic needs (1 to 100000)
+tactic_min = 10
+
+# how many times better than the others of its diet a family with a tactic does (1 to 100)
+tactic_useful = 1.2
+
 # body size from which a life story counts a giant (0 to 1e+06)
 giant_size = 6

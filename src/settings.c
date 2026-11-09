@@ -266,6 +266,10 @@ Settings settings_default(void)
         .stats_every = 25,
         .ticks_per_year = 600,
         .chronicle = 1,
+        .tactics = 1,
+        .tactic_lift = 2.0f,
+        .tactic_min = 10,
+        .tactic_useful = 1.2f,
         .giant_size = 6.0f,
     };
     return s;
@@ -467,6 +471,12 @@ static const SettingInfo TABLE[] = {
             "mating season"),
     INT_ROW(chronicle, 0, 1, "1: record life stories, 0: record none "
                              "(changes no world)"),
+    INT_ROW(tactics, 0, 1, "1: watch for tactics, 0: do not (changes no world)"),
+    FLOAT_ROW(tactic_lift, 1, 100, "how many times chance a family's habit "
+                                   "must be to count as a tactic"),
+    INT_ROW(tactic_min, 1, 100000, "events of the last year a tactic needs"),
+    FLOAT_ROW(tactic_useful, 1, 100, "how many times better than the others "
+                                     "of its diet a family with a tactic does"),
     FLOAT_ROW(giant_size, 0, BIG, "body size from which a life story counts a "
                                   "giant"),
 };

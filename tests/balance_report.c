@@ -25,6 +25,7 @@
 #include "rng.h"
 #include "settings.h"
 #include "sim.h"
+#include "tactics.h"
 #include "years.h"
 
 /* A creature that had not changed cell for this many ticks counts as still. */
@@ -100,6 +101,9 @@ typedef struct {
     /* Moving away after losses: kin losses watched, how many were followed by a
      * move within AFTER_LOSS_TICKS, all moves, and creature-ticks lived. */
     uint64_t kin_losses, moved_after_loss, moves, creature_ticks;
+    /* The tick from which tactics count for the TACTICS line (--tactics), or -1
+     * for no line. */
+    long tactics_from;
 } Report;
 
 /* The seasons' verdict (the seasons design, section 8) is judged on the whole
@@ -1093,6 +1097,9 @@ static void run(Sim *s, long ticks, Shadow *shadow, Report *rep, Verdict *v)
             rep->started_counting = true;
             memcpy(rep->deaths_at_start, s->pool.deaths, sizeof(s->pool.deaths));
         }
+        if (rep->tactics_from >= 0 && (long)s->tick == rep->tactics_from) {
+            tactics_reset_seen(&s->tactics);
+        }
         sim_step(s);
         watch_slots(s, shadow, rep, v);
         /* Unsigned subtraction: right even if the ids wrapped past 2^32. */
@@ -1123,10 +1130,67 @@ static void run(Sim *s, long ticks, Shadow *shadow, Report *rep, Verdict *v)
     }
 }
 
+/* The tactics seen since --tactics' tick: one TACTICS line naming them, then
+ * one TACTIC line each with its highest lift and how many families of its diet
+ * showed it at the end. */
+static void print_tactics(const Sim *s)
+{
+    printf("TACTICS %llu", (unsigned long long)s->seed);
+    int n = 0;
+    for (int k = 0; k < TACTIC_COUNT; k++) {
+        n += tactics_seen(&s->tactics, k);
+    }
+    printf(" %d ", n);
+    if (n == 0) {
+        printf("-");
+    }
+    bool first = true;
+    for (int k = 0; k < TACTIC_COUNT; k++) {
+        if (tactics_seen(&s->tactics, k)) {
+            printf("%s%s", first ? "" : ",", tactics_name(k));
+            first = false;
+        }
+    }
+    printf("\n");
+    /* With AGON_FAMILIES set in the environment, every family's counts too:
+     * for looking into why a tactic is or is not confirmed. */
+    if (getenv("AGON_FAMILIES") != NULL) {
+        for (int i = 0; i < TACTIC_FAMILIES; i++) {
+            const TacticFamily *f = &s->tactics.rows[i];
+            if (!f->used || f->members == 0) {
+                continue;
+            }
+            printf("FAMILY %u %s members %d kills %.1f dark %.1f pack %.1f lone %.1f"
+                   " attacked %.1f deaths %.1f defended %.1f shield %.1f/%.1f/%.1f"
+                   " darkkin %.2f lightkin %.2f lifts",
+                   f->lineage, f->hunters ? "hunt" : "plant", f->members,
+                   (double)f->kills, (double)f->kills_dark, (double)f->kills_pack,
+                   (double)f->kills_lone, (double)f->attacks_on, (double)f->deaths,
+                   (double)f->defended, (double)f->shield_toughest,
+                   (double)f->shield_expected, (double)f->shield_hits,
+                   (double)(f->dark_decisions > 0 ? f->dark_kin / f->dark_decisions : 0),
+                   (double)(f->light_decisions > 0 ? f->light_kin / f->light_decisions : 0));
+            for (int k = 0; k < TACTIC_COUNT; k++) {
+                printf(" %.2f", (double)f->lift[k]);
+            }
+            printf("\n");
+        }
+    }
+    for (int k = 0; k < TACTIC_COUNT; k++) {
+        if (tactics_seen(&s->tactics, k)) {
+            int of_diet = 0;
+            int showing = tactics_families(&s->tactics, k, &of_diet);
+            printf("TACTIC %llu %s %.2f %d %d\n", (unsigned long long)s->seed,
+                   tactics_name(k), (double)tactics_lift(&s->tactics, k), showing,
+                   of_diet);
+        }
+    }
+}
+
 static int usage(void)
 {
     fprintf(stderr, "usage: balance_report --seed N --ticks N [--size WxH] "
-                    "[--config PATH] [--header] [--summary]\n");
+                    "[--config PATH] [--header] [--summary] [--tactics FROM]\n");
     return 2;
 }
 
@@ -1138,6 +1202,7 @@ int main(int argc, char **argv)
     int height = 144;
     const char *config = NULL;
     bool summary = false;
+    long tactics_from = -1;
     for (int i = 1; i < argc; i++) {
         /* Every option here takes a value in the next argument, except
          * --header, which prints the column names and nothing else. */
@@ -1163,6 +1228,8 @@ int main(int argc, char **argv)
             }
         } else if (strcmp(argv[i - 1], "--config") == 0) {
             config = value;
+        } else if (strcmp(argv[i - 1], "--tactics") == 0) {
+            tactics_from = strtol(value, NULL, 10);
         } else {
             return usage();
         }
@@ -1187,7 +1254,7 @@ int main(int argc, char **argv)
         sim_free(&sim);
         return 1;
     }
-    Report rep = {.first_born_id = sim.pool.next_id};
+    Report rep = {.first_born_id = sim.pool.next_id, .tactics_from = tactics_from};
     Verdict verdict = {0};
     run(&sim, ticks, shadow, &rep, &verdict);
     print_row(&sim, shadow, &rep);
@@ -1196,6 +1263,9 @@ int main(int argc, char **argv)
     print_sleep(&verdict);
     if (summary) {
         print_summary(&sim, &verdict);
+    }
+    if (tactics_from >= 0) {
+        print_tactics(&sim);
     }
     free(shadow);
     sim_free(&sim);

@@ -159,7 +159,7 @@ bool sim_alloc(Sim *s, const Settings *set, int w, int h)
     s->turns = malloc((size_t)set->pool_capacity * sizeof(*s->turns));
     s->scratch = malloc((size_t)set->pool_capacity * sizeof(*s->scratch));
     if (s->turns == NULL || s->scratch == NULL ||
-        !chronicle_init(&s->chronicle)) {
+        !chronicle_init(&s->chronicle) || !tactics_init(&s->tactics)) {
         sim_free(s);
         return false;
     }
@@ -188,6 +188,7 @@ static void tell_the_season(Sim *s)
     /* A SEASON_ value is 0 to 3, so it fits a uint8_t; the cast says so. */
     s->pool.season = (uint8_t)years_season_of(s->tick, per_year);
     s->pool.year_phase = years_phase(s->tick, per_year);
+    s->pool.light = 1.0f; /* no night yet */
 }
 
 bool sim_resume(Sim *s)
@@ -215,6 +216,7 @@ bool sim_reseed(Sim *s, uint64_t seed)
     world_clear(&s->world);
     pool_clear(&s->pool);
     chronicle_clear(&s->chronicle);
+    tactics_clear(&s->tactics);
     /* The brain's random numbers start over too, so a reseeded Sim and a
      * fresh one make the same decisions. */
     brain_close(&s->brain);
@@ -327,6 +329,7 @@ static void take_turn(Sim *s, int idx)
             a.hold = 1;
         }
         start_sleep(s, c, &a);
+        tactics_note_decision(s->pool.tactics, c, &in, false, s->pool.light);
         keep_memory(c, &a);
         c->current = a;
         c->hold_left = a.hold > 0 ? a.hold : 1;
@@ -602,6 +605,7 @@ void sim_step(Sim *s)
     /* Set each step rather than once: a pointer into this Sim, stored once,
      * would point at the old place if the Sim were ever copied elsewhere. */
     s->pool.chronicle = recorder(s);
+    s->pool.tactics = s->set.tactics ? &s->tactics : NULL;
     climate_step(&s->world, &s->set, s->tick);
     flora_step(&s->world, &s->rng, &s->set,
                years_season_of(s->tick, s->set.ticks_per_year));
@@ -619,6 +623,9 @@ void sim_step(Sim *s)
     if (note_ending(s) || sample_due) {
         sample(s);
     }
+    if (sample_due && s->set.tactics) {
+        tactics_check(&s->tactics, &s->world, &s->pool, recorder(s), &s->set);
+    }
 }
 
 void sim_free(Sim *s)
@@ -629,6 +636,7 @@ void sim_free(Sim *s)
     free(s->scratch);
     s->scratch = NULL;
     chronicle_free(&s->chronicle);
+    tactics_free(&s->tactics);
     pool_free(&s->pool);
     world_free(&s->world);
 }

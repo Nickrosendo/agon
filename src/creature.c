@@ -7,6 +7,7 @@
 #include "chronicle.h" /* chronicle_note, LIFE_ kinds */
 #include "climate.h" /* climate_region, climate_region_hue */
 #include "flora.h" /* carrion_add, CARRION_MIN, plant_gives_shade */
+#include "tactics.h" /* tactics_note_hit */
 #include "years.h" /* SEASON_SUMMER */
 
 /* One step in each heading, in HEADING_ order: north is up, which is
@@ -699,9 +700,11 @@ static void wake(Creature *c)
 /* An attack on whatever stands ahead. It costs the same hit, miss or swing at
  * nothing. The target is only hurt: if its health reaches 0 it stops acting, and
  * the end-of-tick accounting kills it and leaves its body as carrion, so the
- * attacker gains nothing directly. */
+ * attacker gains nothing directly. chosen: the brain chose it (ACT_ATTACK), as
+ * against the territory drive; only chosen hits are told to the tactic watch,
+ * which must never take a reflex for a tactic. */
 static void act_attack(const World *w, Pool *p, int idx, const Settings *s,
-                       Rng *r)
+                       Rng *r, bool chosen)
 {
     Creature *c = &p->items[idx];
     c->energy -= s->attack_cost;
@@ -718,6 +721,10 @@ static void act_attack(const World *w, Pool *p, int idx, const Settings *s,
         float before = target->health;
         target->health -= hit_damage(c, target, a, s);
         record_hit(p, c, target, before, s); /* reads the ring before the hit */
+        if (chosen) {
+            tactics_note_hit(p->tactics, w, p, c, target, target->health <= 0.0f,
+                             s);
+        }
         note_hit(target, c->id, p->now);
         wake(target);
     }
@@ -1224,7 +1231,7 @@ static bool territorial_drive(const World *w, Pool *p, int idx, const Settings *
         if (creature_attack_target(w, p, idx, s) >= 0) {
             float chance = s->territory_drive * c->genome.g[GENE_TERRITORY];
             if (rng_unit(r) < chance) {
-                act_attack(w, p, idx, s, r); /* now facing it */
+                act_attack(w, p, idx, s, r, false); /* now facing it */
                 return true;
             }
             break;
@@ -1277,7 +1284,7 @@ int creature_act(World *w, Pool *p, int idx, Action a, const Settings *s,
         act_bite(w, p, idx, s, r);
         break;
     case ACT_ATTACK:
-        act_attack(w, p, idx, s, r);
+        act_attack(w, p, idx, s, r, true);
         break;
     case ACT_MATE:
         return act_mate(w, p, idx, s, r);
