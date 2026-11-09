@@ -84,6 +84,14 @@ static void scene_close(Scene *sc)
     world_free(&sc->w);
 }
 
+/* n checks in a row, as the Sim would make them stats_every ticks apart. */
+static void checks(Scene *sc, int n)
+{
+    for (int k = 0; k < n; k++) {
+        tactics_check(&sc->t, &sc->w, &sc->p, NULL, &sc->s);
+    }
+}
+
 static void test_pack_kills_confirm(void)
 {
     Scene sc;
@@ -95,13 +103,15 @@ static void test_pack_kills_confirm(void)
     int a = place(&sc.p, &sc.w, 10, 10, &g1, 1);
     int b = place(&sc.p, &sc.w, 12, 10, &g1, 1);
     int c = place(&sc.p, &sc.w, 30, 30, &g2, 2);
-    for (uint64_t k = 0; k < 12; k++) {
+    for (uint64_t k = 0; k < 15; k++) {
         kill_beside(&sc.t, &sc.w, &sc.p, a, b, 11, 10, 100 + k, &sc.s);
     }
-    for (uint64_t k = 0; k < 4; k++) {
+    for (uint64_t k = 0; k < 5; k++) {
         kill_beside(&sc.t, &sc.w, &sc.p, c, -1, 31, 30, 200 + k, &sc.s);
     }
     tactics_check(&sc.t, &sc.w, &sc.p, NULL, &sc.s);
+    CHECK(!tactics_seen(&sc.t, TACTIC_PACK_HUNT)); /* one check is a blip */
+    checks(&sc, TACTIC_HOLD - 1);
     CHECK(tactics_seen(&sc.t, TACTIC_PACK_HUNT));
     CHECK(tactics_lift(&sc.t, TACTIC_PACK_HUNT) >= sc.s.tactic_lift);
     int of_diet = 0;
@@ -120,14 +130,14 @@ static void test_night_kills_confirm(void)
     int c = place(&sc.p, &sc.w, 30, 30, &g2, 2);
     place(&sc.p, &sc.w, 30, 34, &g2, 2); /* family 2 has two members */
     sc.p.light = 0.1f;
-    for (uint64_t k = 0; k < 12; k++) {
+    for (uint64_t k = 0; k < 15; k++) {
         kill_beside(&sc.t, &sc.w, &sc.p, a, -1, 11, 10, 100 + k, &sc.s);
     }
     sc.p.light = 0.9f;
-    for (uint64_t k = 0; k < 12; k++) {
+    for (uint64_t k = 0; k < 15; k++) {
         kill_beside(&sc.t, &sc.w, &sc.p, c, -1, 31, 30, 200 + k, &sc.s);
     }
-    tactics_check(&sc.t, &sc.w, &sc.p, NULL, &sc.s);
+    checks(&sc, TACTIC_HOLD);
     CHECK(tactics_seen(&sc.t, TACTIC_NIGHT_HUNT));
     int of_diet = 0;
     CHECK(tactics_families(&sc.t, TACTIC_NIGHT_HUNT, &of_diet) == 1);
@@ -144,7 +154,7 @@ static void test_too_few_events(void)
     for (uint64_t k = 0; k < 9; k++) {
         kill_beside(&sc.t, &sc.w, &sc.p, a, -1, 11, 10, 100 + k, &sc.s);
     }
-    tactics_check(&sc.t, &sc.w, &sc.p, NULL, &sc.s);
+    checks(&sc, TACTIC_HOLD);
     CHECK(!tactics_seen(&sc.t, TACTIC_NIGHT_HUNT));
     scene_close(&sc);
 }

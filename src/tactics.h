@@ -40,6 +40,10 @@ enum {
  * few dozen once its founders' families die out; while the table is full,
  * families without a row are not followed. */
 #define TACTIC_FAMILIES 256
+/* A habit must hold at this many checks in a row (stats_every ticks apart, so
+ * 200 ticks by default, a third of a year) to be confirmed: a family's counts
+ * swing about from one check to the next, and a blip is not a habit. */
+#define TACTIC_HOLD 8
 /* Light below this is dark: with light 0.5 + 0.5 cos, a third of every day. */
 #define TACTIC_DARK 0.25f
 /* The share of the dark in a day, for the night hunt's chance level. */
@@ -67,7 +71,9 @@ typedef struct {
     float seen_decisions, seen_calls, quiet_decisions, quiet_calls;
     /* Decisions in the dark and in the light, and the kin-near sense summed. */
     float dark_decisions, dark_kin, light_decisions, light_kin;
-    uint8_t confirmed; /* bit k: tactic k holds now */
+    /* Checks in a row at which tactic k held, up to TACTIC_HOLD. */
+    uint8_t streak[TACTIC_COUNT];
+    uint8_t confirmed; /* bit k: tactic k has held at TACTIC_HOLD checks in a row */
     uint8_t told;      /* bit k: tactic k already went into its members' stories */
     float lift[TACTIC_COUNT]; /* at the last check */
 } TacticFamily;

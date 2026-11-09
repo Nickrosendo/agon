@@ -356,6 +356,8 @@ static float floored(float v)
 typedef struct {
     float kills, kills_pack, member_ticks;
     float attacks_on, deaths, defended;
+    float shield_toughest, shield_expected;
+    float dark_decisions, dark_kin, light_decisions, light_kin;
 } DietTotals;
 
 static void add_totals(DietTotals *d, const TacticFamily *f)
@@ -366,6 +368,20 @@ static void add_totals(DietTotals *d, const TacticFamily *f)
     d->attacks_on += f->attacks_on;
     d->deaths += f->deaths;
     d->defended += f->defended;
+    d->shield_toughest += f->shield_toughest;
+    d->shield_expected += f->shield_expected;
+    d->dark_decisions += f->dark_decisions;
+    d->dark_kin += f->dark_kin;
+    d->light_decisions += f->light_decisions;
+    d->light_kin += f->light_kin;
+}
+
+/* How much more a family keeps together in the dark than in the light. */
+static float huddle_ratio(float dark_kin, float dark_decisions, float light_kin,
+                          float light_decisions)
+{
+    return share(dark_kin, dark_decisions) /
+           floored(share(light_kin, light_decisions));
 }
 
 /* Whether a hunter family kills more per member than the other hunter families,
@@ -433,14 +449,29 @@ static uint8_t judge(TacticFamily *f, const DietTotals *hunt,
             useful) {
             holds |= 1u << TACTIC_DEFENCE;
         }
-        f->lift[TACTIC_SHIELD] = share(f->shield_toughest, f->shield_expected);
+        /* Against chance, and against the other plant-eater families too:
+         * whatever makes the toughest get hit more in every family (big bodies
+         * being easier to reach, say) is the world's doing, not a habit. */
+        float others_shield =
+            share(plant->shield_toughest - f->shield_toughest,
+                  plant->shield_expected - f->shield_expected);
+        f->lift[TACTIC_SHIELD] = share(f->shield_toughest, f->shield_expected) /
+                                 (others_shield > 1.0f ? others_shield : 1.0f);
         if (f->shield_hits >= min && f->lift[TACTIC_SHIELD] >= s->tactic_lift &&
             useful) {
             holds |= 1u << TACTIC_SHIELD;
         }
-        float dark_kin = share(f->dark_kin, f->dark_decisions);
-        float light_kin = share(f->light_kin, f->light_decisions);
-        f->lift[TACTIC_HUDDLE] = dark_kin / floored(light_kin);
+        /* Against the other plant-eater families: darkness alone makes every
+         * family keep closer (blind creatures wander less), which a run with
+         * the day senses blinded showed, so only keeping together more than
+         * the rest of the world counts. */
+        float mine = huddle_ratio(f->dark_kin, f->dark_decisions, f->light_kin,
+                                  f->light_decisions);
+        float theirs = huddle_ratio(plant->dark_kin - f->dark_kin,
+                                    plant->dark_decisions - f->dark_decisions,
+                                    plant->light_kin - f->light_kin,
+                                    plant->light_decisions - f->light_decisions);
+        f->lift[TACTIC_HUDDLE] = mine / (theirs > 1.0f ? theirs : 1.0f);
         /* Useful: fewer of its deaths in the dark than the dark's share of time.
          * A family that lost no one has nothing to show against it. */
         bool safer = f->deaths < 1.0f ||
@@ -581,7 +612,20 @@ void tactics_check(TacticWatch *t, const World *w, Pool *p,
         if (!f->used) {
             continue;
         }
-        f->confirmed = judge(f, &hunt, &plant, t->lone_share, s);
+        uint8_t holds = judge(f, &hunt, &plant, t->lone_share, s);
+        f->confirmed = 0;
+        for (int tac = 0; tac < TACTIC_COUNT; tac++) {
+            if (holds & (1u << tac)) {
+                f->streak[tac] = (uint8_t)(f->streak[tac] < TACTIC_HOLD
+                                               ? f->streak[tac] + 1
+                                               : TACTIC_HOLD);
+            } else {
+                f->streak[tac] = 0;
+            }
+            if (f->streak[tac] >= TACTIC_HOLD) {
+                f->confirmed |= (uint8_t)(1u << tac);
+            }
+        }
         for (int tac = 0; tac < TACTIC_COUNT; tac++) {
             if (f->confirmed & (1u << tac)) {
                 t->seen |= (uint8_t)(1u << tac);
