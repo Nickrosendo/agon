@@ -209,7 +209,9 @@ for the build that wrote them; a build with a different format refuses them.
    or the other, with small changes. No fitness function exists: what lives
    long enough to have children spreads. In spring, the mating season, every fed
    adult is willing without choosing to be; outside it, both must choose, which
-   is rarer.
+   is rarer. Births slow as the world fills: the closer the living come to 0.4
+   for every plant on the map (`birth_per_plant`), the likelier a mating ends
+   with no child.
 8. Any creature can attack whatever stands right ahead of it, and biting only
    eats. Bigger attackers hit more often, and the odds rise for each other
    creature that has just hit the same target. A hit takes health, not energy.
@@ -229,8 +231,10 @@ for the build that wrote them; a build with a different format refuses them.
     hit harder, bite more and hold more health, and cost more to keep. Armour and
     a weapon are genes too, each with its own upkeep.
 12. A creature carries a few numbers from one decision to the next, its memory,
-    and also senses its hunger, its wounds, the relatives and strangers beside it
-    and a random number. What it does with them is left to selection.
+    and also senses its hunger, how recently it ate, its wounds, the relatives and
+    strangers beside it and a random number. Its sight for plants sees only food a
+    bite could take: a bare or fruitless plant does not count. What it does with
+    all this is left to selection.
 13. A creature does not strike a close relative, or anyone of a similar colour. A newborn whose colour has
     drifted far from its family's starts a new family, and the old one stays safe
     from it for as long as the two remain close relatives. Resting costs half of
@@ -257,6 +261,22 @@ for the build that wrote them; a build with a different format refuses them.
     and a `*` after a name marks a hunter. The window's `l` page shows the whole
     story: every creature keeps its newest 8 events, and the 64 most notable lives,
     the dead among them, keep 48 each.
+18. Winter is the same for the whole map. Rain falls as snow and piles up on the
+    soil; on the first tick of spring it all melts into the ground at once, so
+    spring is wet. Summer is drier. A resting plant earns nothing and pays its
+    upkeep from what it stored: every plant rests in winter, and fruit trees from
+    autumn, keeping the fruit they hold but making none. Leaf plants stand bare
+    from autumn to the end of winter, with nothing to bite. In spring plants earn
+    and fruit one and a half times as much.
+19. Leaf plants grow a little each spring and summer, into trees. A tree big
+    enough gives shade, and in summer a creature out of the shade pays for the
+    heat.
+20. Sleep is one action, and the season decides what it means. Started in
+    winter by a creature with stores of at least three matings' worth, it is
+    hibernation: it costs a tenth of the usual upkeep and lasts until spring, or
+    until something bites. Any other sleep is a nap: it costs what resting does
+    and lasts at least 10 ticks. Whether to hibernate is the brain's choice, so
+    it evolves; in every world tested some creatures learned it.
 
 ## Licence
 
