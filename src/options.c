@@ -11,7 +11,7 @@ const char OPTIONS_USAGE[] =
     "  --size WxH    world size in cells (default: fit the window;\n"
     "                80x40 with --once)\n"
     "  --speed N     ticks per second, rounded down to 1, 2, 5, 10, 15,\n"
-    "                30, 60 or 120 (default 10)\n"
+    "                30, 60 or 120 (default 2)\n"
     "  --once        print one snapshot after --ticks ticks and exit\n"
     "  --ticks N     ticks to run before the snapshot (default 2000)\n"
     "  --no-floor    turn off a floor a settings file set\n"

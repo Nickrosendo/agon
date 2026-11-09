@@ -1,8 +1,9 @@
 /*
  * slow_pictures: whether the picture cache keeps up with a real world. Loads
  * the lightness save and draws 600 frames of it at Normal into a 1280 by 720
- * canvas, with no window: 10 ticks a second, 33 ms of body time a frame, as
- * the window runs. Over the last 540 frames (the first 60 fill the cache) it
+ * canvas, with no window: 10 ticks a second (the window's default until
+ * 2026-11-09, kept so the numbers stay comparable with older runs), 33 ms of
+ * body time a frame, as the window runs. Over the last 540 frames (the first 60 fill the cache) it
  * prints how many pictures were built per second and how long a frame's
  * drawing took, and fails if any one frame built more than 500 pictures: a
  * cache that redraws most bodies every frame.

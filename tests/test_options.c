@@ -2,6 +2,7 @@
 
 #include <string.h> /* strstr */
 
+#include "app.h"
 #include "options.h"
 
 static bool size_ok(const char *text, int w, int h)
@@ -214,6 +215,14 @@ static void test_parse_twice(void)
     CHECK(parse(second, &o, err, sizeof(err)) && o.seed == 2);
 }
 
+/* With no --speed both programs start at APP_DEFAULT_SPEED: 2 ticks a
+ * second, slow enough to follow one creature. --speed still picks any step. */
+static void test_default_speed(void)
+{
+    CHECK(APP_SPEEDS[APP_DEFAULT_SPEED] == 2);
+    CHECK(app_speed_step(10) == 3); /* the old default is still a step */
+}
+
 int main(void)
 {
     test_parse_size();
@@ -226,5 +235,6 @@ int main(void)
     test_window_options();
     test_paused_option();
     test_parse_twice();
+    test_default_speed();
     TEST_SUMMARY();
 }

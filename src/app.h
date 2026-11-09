@@ -28,7 +28,7 @@ enum { EXIT_FINE = 0, EXIT_FAILED = 1, EXIT_USAGE = 2 };
  */
 extern const int APP_SPEEDS[];
 enum { APP_SPEED_COUNT = 8 };
-#define APP_DEFAULT_SPEED 3 /* 10 ticks per second */
+#define APP_DEFAULT_SPEED 1 /* 2 ticks per second: slow enough to follow one creature */
 
 /* The speed step for a number of ticks per second: the fastest step not
  * above it, or the slowest step when it is below them all. */
