@@ -54,7 +54,7 @@ echo
 echo "Reported, never judged:"
 for seed in $(seq 1 "$SEEDS"); do
     echo "  seed $seed"
-    grep -E '^     (deaths|giants starved|births per season|population as|sleep:)' \
+    grep -E '^     (deaths|giants starved|births per season|population as|sleep:|shade:)' \
         "$TMP/$seed.txt"
 done
 
