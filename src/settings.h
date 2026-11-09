@@ -391,6 +391,14 @@ typedef struct {
      * ACT_MATE, which random brains almost never do. At the default speed of 10
      * ticks a second, the default makes a year a minute, 15 seconds a season. */
     int ticks_per_year;
+    /* How many ticks make a day, noon first (years.h). Light falls to 0 at
+     * midnight and sight with it; night eyes (GENE_NIGHT_EYES) see in the dark
+     * at night_eye_power's share of their sight and lose night_glare's share in
+     * full light, and cost night_eye_upkeep a tick at the full gene. */
+    int ticks_per_day;
+    float night_eye_power;
+    float night_glare;
+    float night_eye_upkeep;
 
     /* Life stories (chronicle.h): 1 records them, 0 records nothing. No rule
      * reads them, so turning this off changes no world, and a test checks it. */

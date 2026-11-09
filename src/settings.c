@@ -265,6 +265,12 @@ Settings settings_default(void)
          * on screen. */
         .stats_every = 25,
         .ticks_per_year = 600,
+        /* The tactics design: 10 days a year, 30 seconds a day at 2 ticks a
+         * second. */
+        .ticks_per_day = 60,
+        .night_eye_power = 0.8f,
+        .night_glare = 0.4f,
+        .night_eye_upkeep = 0.05f,
         .chronicle = 1,
         .tactics = 1,
         .tactic_lift = 2.0f,
@@ -469,6 +475,12 @@ static const SettingInfo TABLE[] = {
     INT_ROW(ticks_per_year, YEARS_MIN_LENGTH, 1000000,
             "ticks in a year of four seasons, spring first; spring is the "
             "mating season"),
+    INT_ROW(ticks_per_day, YEARS_MIN_DAY, 1000000,
+            "ticks in a day, noon first; sight fails in the dark"),
+    FLOAT_ROW(night_eye_power, 0, 1, "share of its sight a creature with full "
+                                     "night eyes keeps at midnight"),
+    FLOAT_ROW(night_glare, 0, 1, "share of its sight full night eyes lose at noon"),
+    FLOAT_ROW(night_eye_upkeep, 0, BIG, "upkeep of full night eyes"),
     INT_ROW(chronicle, 0, 1, "1: record life stories, 0: record none "
                              "(changes no world)"),
     INT_ROW(tactics, 0, 1, "1: watch for tactics, 0: do not (changes no world)"),

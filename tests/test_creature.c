@@ -1186,6 +1186,69 @@ static void test_senses_season(void)
     world_free(&w);
 }
 
+static void test_senses_day(void)
+{
+    World w;
+    Pool p;
+    int a, b;
+    Settings s = settings_default();
+    Rng r;
+    rng_seed(&r, 11);
+    adult_pair(&w, &p, &a, &b, &s, &r);
+    Senses in;
+    /* A quarter of the way through the day: sin 1, cos 0, moved into 0..1. */
+    p.day_phase = 0.25f;
+    creature_sense(&w, &p, a, &s, &in);
+    CHECK(fabsf(in.v[SENSE_DAY_SIN] - 1.0f) < 0.001f);
+    CHECK(fabsf(in.v[SENSE_DAY_COS] - 0.5f) < 0.001f);
+    pool_free(&p);
+    world_free(&w);
+}
+
+static void test_vision_in_the_dark(void)
+{
+    Settings s = settings_default();
+    Creature c = {0};
+    /* No night eyes: as far as the light lets it see. */
+    CHECK(creature_vision(&c, 0.0f, &s) == 0.0f);
+    CHECK(creature_vision(&c, 1.0f, &s) == 1.0f);
+    /* Full night eyes: 0.8 at midnight, 0.6 at noon from the glare. */
+    c.genome.g[GENE_NIGHT_EYES] = 1.0f;
+    CHECK(fabsf(creature_vision(&c, 0.0f, &s) - 0.8f) < 1e-6f);
+    CHECK(fabsf(creature_vision(&c, 1.0f, &s) - 0.6f) < 1e-6f);
+    /* They cost upkeep. */
+    Creature plain = {0};
+    CHECK(creature_upkeep_cost(&c, &s) > creature_upkeep_cost(&plain, &s));
+}
+
+static void test_blind_ray_sees_beside(void)
+{
+    /* At midnight with no night eyes, a creature beside is still seen and one
+     * three cells off is not. */
+    World w;
+    make_world(&w, 12, 12);
+    Pool p;
+    CHECK(pool_init(&p, 4));
+    Settings s = settings_default();
+    int a = spawn(&p, &w, 5, 5);
+    p.items[a].genome.g[GENE_SIGHT] = 1.0f;
+    p.items[a].heading = HEADING_EAST;
+    int b = spawn(&p, &w, 6, 5);
+    Senses in;
+    p.light = 0.0f;
+    creature_sense(&w, &p, a, &s, &in);
+    CHECK(in.v[SENSE_RAYS + RAY_AHEAD * RAY_VALUES + RAY_NEAR] == 1.0f);
+    pool_kill(&p, &w, b, &s, DEATH_HUNGER);
+    spawn(&p, &w, 8, 5);
+    creature_sense(&w, &p, a, &s, &in);
+    CHECK(in.v[SENSE_RAYS + RAY_AHEAD * RAY_VALUES + RAY_NEAR] == 0.0f);
+    p.light = 1.0f; /* by day it is seen */
+    creature_sense(&w, &p, a, &s, &in);
+    CHECK(in.v[SENSE_RAYS + RAY_AHEAD * RAY_VALUES + RAY_NEAR] > 0.0f);
+    pool_free(&p);
+    world_free(&w);
+}
+
 /* What is one step ahead, in the way the creature faces: the sense a creature
  * needs in order to stop walking into a wall. */
 static void test_senses_blocked(void)
@@ -3772,6 +3835,9 @@ int main(void)
     test_season_leaves_the_action();
     test_out_of_season_needs_a_choice();
     test_senses_season();
+    test_senses_day();
+    test_vision_in_the_dark();
+    test_blind_ray_sees_beside();
     test_senses_blocked();
     test_senses_plant_along_ray();
     test_plant_ray_sees_only_food();

@@ -468,10 +468,14 @@ static void test_known_world_pixels(void)
          * input changes every random genome, so creatures stand elsewhere at
          * the two wider levels; both pictures were written out and looked at.
          * Re-pinned for the territory drive at 0.15 (2026-11-09): fewer fights,
-         * creatures elsewhere at the same two levels; both looked at again. */
+         * creatures elsewhere at the same two levels; both looked at again.
+         * Re-pinned for days and night eyes (2026-11-09): every random genome
+         * is re-rolled and sight fails in the dark, so creatures stand
+         * elsewhere at the two wider levels. Drawing is unchanged (the lab's
+         * pin holds); the pictures are looked at when night is drawn. */
         static const uint64_t EXPECTED[CAMERA_LEVELS] = {
             0xbe5f57fb7c7bdabdu, 0x5a015897532bfe08u,
-            0x3c5c94036a9fd1aeu, 0x6d46f9b78cdae3e5u,
+            0xd2a57eadcebf5852u, 0x30d259427248b6e5u,
         };
         if (hashes[level] != EXPECTED[level]) {
             printf("level %d: 0x%llxu\n", level,

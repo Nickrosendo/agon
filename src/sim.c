@@ -188,7 +188,8 @@ static void tell_the_season(Sim *s)
     /* A SEASON_ value is 0 to 3, so it fits a uint8_t; the cast says so. */
     s->pool.season = (uint8_t)years_season_of(s->tick, per_year);
     s->pool.year_phase = years_phase(s->tick, per_year);
-    s->pool.light = 1.0f; /* no night yet */
+    s->pool.light = years_light(s->tick, s->set.ticks_per_day);
+    s->pool.day_phase = years_day_phase(s->tick, s->set.ticks_per_day);
 }
 
 bool sim_resume(Sim *s)

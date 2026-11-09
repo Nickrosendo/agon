@@ -47,6 +47,10 @@ void pool_clear(Pool *p)
     p->free_head = 0;
     p->count = 0;
     p->next_id = 0;
+    /* A new pool starts at noon, in full light, until the Sim says otherwise:
+     * a pool made by hand (a test, a tool) would otherwise be at light 0, and
+     * every creature in it near blind. */
+    p->light = 1.0f;
     p->plant_eaters = 0;
     p->births_refused = 0;
     /* The struct's array itself, so this clears every cause, however many. */
@@ -186,6 +190,20 @@ int creature_sight(const Creature *c, const Settings *s)
     return 1 + (int)(gene * (float)(s->sight_max - 1) + 0.5f);
 }
 
+float creature_vision(const Creature *c, float light, const Settings *s)
+{
+    float eyes = c->genome.g[GENE_NIGHT_EYES];
+    float seen = clamp01(light + (1.0f - light) * eyes * s->night_eye_power);
+    return seen * clamp01(1.0f - s->night_glare * eyes * light);
+}
+
+int creature_sight_now(const Creature *c, float light, const Settings *s)
+{
+    float cells = (float)creature_sight(c, s) * creature_vision(c, light, s);
+    int now = (int)(cells + 0.5f);
+    return now > 1 ? now : 1;
+}
+
 float creature_max_health(const Creature *c, const Settings *s)
 {
     return s->health_per_size * creature_size(c, s);
@@ -222,7 +240,8 @@ float creature_upkeep_cost(const Creature *c, const Settings *s)
            s->digest_upkeep * digest * digest + ageing_cost(c, s) +
            s->armour_upkeep * c->genome.g[GENE_ARMOUR] +
            s->weapon_upkeep * c->genome.g[GENE_WEAPON] +
-           s->territory_upkeep * c->genome.g[GENE_TERRITORY];
+           s->territory_upkeep * c->genome.g[GENE_TERRITORY] +
+           s->night_eye_upkeep * c->genome.g[GENE_NIGHT_EYES];
 }
 
 float creature_region_cost(const World *w, const Creature *c, const Settings *s)
@@ -442,7 +461,8 @@ static void sense_ray(const World *w, const Pool *p, const Creature *c,
     float scent = w->scent[first];
     out[RAY_CARRION] = scent / (scent + s->bite_meat_energy);
 
-    int sight = creature_sight(c, s);
+    /* In the dark the rays reach less far: as far as this light lets it see. */
+    int sight = creature_sight_now(c, p->light, s);
     for (int d = 1; d <= sight; d++) {
         int cell = world_idx(w, c->x + d * STEP_X[heading],
                              c->y + d * STEP_Y[heading]);
@@ -522,6 +542,9 @@ void creature_sense(const World *w, const Pool *p, int idx,
     float angle = 6.28318531f * p->year_phase;
     out->v[SENSE_YEAR_SIN] = 0.5f + 0.5f * sinf(angle);
     out->v[SENSE_YEAR_COS] = 0.5f + 0.5f * cosf(angle);
+    float day_angle = 6.28318531f * p->day_phase;
+    out->v[SENSE_DAY_SIN] = 0.5f + 0.5f * sinf(day_angle);
+    out->v[SENSE_DAY_COS] = 0.5f + 0.5f * cosf(day_angle);
 
     /* The drives. Hunger is the sense of energy the other way up. */
     out->v[SENSE_HUNGER] = 1.0f - out->v[SENSE_ENERGY];

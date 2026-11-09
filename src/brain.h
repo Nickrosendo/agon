@@ -42,7 +42,7 @@ enum {
  * the rays: ray k's value j is at SENSE_RAYS + k * RAY_VALUES + j. After the
  * rays come the drives, then the memory values, the last ones between -1 and 1.
  * The neural network has one input per sense, so its NET_IN must equal
- * SENSE_COUNT (44). An enum value may be set from earlier ones, and the next
+ * SENSE_COUNT (46). An enum value may be set from earlier ones, and the next
  * goes on counting from there. */
 enum {
     SENSE_ENERGY,
@@ -57,6 +57,10 @@ enum {
      * runs smoothly into spring. */
     SENSE_YEAR_SIN,
     SENSE_YEAR_COS,
+    /* The time of day, the same way: a point going round a circle once a day,
+     * so dusk and dawn read differently although both are half light. */
+    SENSE_DAY_SIN,
+    SENSE_DAY_COS,
     SENSE_BLOCKED, /* 1 when a step ahead cannot succeed: water, rock or a creature */
     SENSE_RAYS,
     SENSE_HUNGER = SENSE_RAYS + RAY_COUNT * RAY_VALUES, /* 1 with no energy */

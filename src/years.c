@@ -1,6 +1,7 @@
 #include "years.h"
 
 #include <inttypes.h> /* PRIu64 */
+#include <math.h>     /* cosf */
 #include <limits.h>   /* INT_MAX */
 #include <stdio.h>    /* snprintf */
 
@@ -30,6 +31,26 @@ float years_phase(uint64_t ticks, int ticks_per_year)
      * result is below 1 as a double, and length is at most a million, so even
      * the nearest float to it stays below 1. */
     return (float)((double)(ticks % length) / (double)length);
+}
+
+float years_day_phase(uint64_t ticks, int ticks_per_day)
+{
+    uint64_t length = ticks_per_day >= YEARS_MIN_DAY ? (uint64_t)ticks_per_day
+                                                     : (uint64_t)YEARS_MIN_DAY;
+    return (float)((double)(ticks % length) / (double)length);
+}
+
+float years_light(uint64_t ticks, int ticks_per_day)
+{
+    /* 2 pi as a float constant, as in creature_sense: M_PI is not standard C. */
+    float angle = 6.28318531f * years_day_phase(ticks, ticks_per_day);
+    float light = 0.5f + 0.5f * cosf(angle);
+    /* cosf can land a hair outside -1..1 on some platforms' maths libraries;
+     * the light is kept in 0..1 whatever it returns. */
+    if (light < 0.0f) {
+        return 0.0f;
+    }
+    return light > 1.0f ? 1.0f : light;
 }
 
 bool years_season_starts(uint64_t ticks, int ticks_per_year, int season)

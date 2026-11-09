@@ -449,6 +449,18 @@ stats_every = 25
 # ticks in a year of four seasons, spring first; spring is the mating season (4 to 1000000)
 ticks_per_year = 600
 
+# ticks in a day, noon first; sight fails in the dark (2 to 1000000)
+ticks_per_day = 60
+
+# share of its sight a creature with full night eyes keeps at midnight (0 to 1)
+night_eye_power = 0.8
+
+# share of its sight full night eyes lose at noon (0 to 1)
+night_glare = 0.4
+
+# upkeep of full night eyes (0 to 1e+06)
+night_eye_upkeep = 0.05
+
 # 1: record life stories, 0: record none (changes no world) (0 to 1)
 chronicle = 1
 

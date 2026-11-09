@@ -32,6 +32,19 @@ float years_phase(uint64_t ticks, int ticks_per_year);
 /* True on the first tick of the given season, in any year. */
 bool years_season_starts(uint64_t ticks, int ticks_per_year, int season);
 
+/* The shortest day: a day of 1 tick would be noon for ever. Shorter or nonsense
+ * lengths are read as this inside the day functions, as for the year. */
+#define YEARS_MIN_DAY 2
+
+/* Where in its day a tick falls: 0 at noon, the first tick of every day, rising
+ * towards 1 and never reaching it. */
+float years_day_phase(uint64_t ticks, int ticks_per_day);
+
+/* How light it is: 1 at noon, 0 at midnight half a day later, along a smooth
+ * curve, 0.5 + 0.5 cos(2 pi * phase). One light for the whole map. Below 0.25 it
+ * is dark, which is a third of every day. */
+float years_light(uint64_t ticks, int ticks_per_day);
+
 /* Writes a length of time as "3 y", or "3.4 y" when a tenth of a year or more
  * is left over. Tenths are cut, never rounded up, so nobody reads as a year old
  * before they are. Always ends the text with '\0' and stays within len. */

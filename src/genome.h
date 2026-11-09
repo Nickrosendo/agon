@@ -30,6 +30,7 @@ enum {
     GENE_TERRITORY, /* how readily an adult turns on a stranger beside it */
     GENE_LEGS, /* long legs: crosses marsh and sand free, pays on other ground */
     GENE_SWIM, /* a swimming body: crosses shallows free, pays on land */
+    GENE_NIGHT_EYES, /* sees in the dark, is dazzled in full light; costs upkeep */
     GENE_TRAITS
 };
 
@@ -37,7 +38,7 @@ enum {
  * values, which plus a constant 1 feed NET_OUT outputs, one per action and
  * one per memory value. NET_IN must equal SENSE_COUNT and NET_OUT
  * ACT_COUNT + MEMORY_VALUES (brain.h); brain_net.c checks both when compiled. */
-#define NET_IN 44
+#define NET_IN 46
 #define NET_HIDDEN 6
 #define NET_OUT 11
 /* The parentheses matter: a macro is pasted as text, and without them

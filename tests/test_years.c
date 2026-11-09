@@ -1,6 +1,7 @@
 #include "test.h"
 
 #include <limits.h> /* INT_MAX */
+#include <math.h>   /* fabsf */
 #include <string.h> /* strcmp, strlen */
 
 #include "settings.h"
@@ -142,10 +143,30 @@ static void test_spring_is_the_mating_season(void)
     }
 }
 
+static void test_light_curve(void)
+{
+    /* Noon at 0, midnight half a day later, half light a quarter of the way. */
+    CHECK(years_light(0, 60) == 1.0f);
+    CHECK(years_light(30, 60) < 1e-6f);
+    CHECK(fabsf(years_light(15, 60) - 0.5f) < 1e-5f);
+    CHECK(years_light(60, 60) == 1.0f); /* the next noon */
+    /* Odd and nonsense lengths still give a light in 0..1 at every tick. */
+    int lengths[] = {7, 2, 1, 0, -5, 600};
+    for (int k = 0; k < 6; k++) {
+        for (uint64_t t = 0; t < 1300; t++) {
+            float l = years_light(t, lengths[k]);
+            CHECK(l >= 0.0f && l <= 1.0f);
+        }
+    }
+    CHECK(fabsf(years_day_phase(45, 60) - 0.75f) < 1e-6f);
+    CHECK(years_day_phase(59, 60) < 1.0f);
+}
+
 int main(void)
 {
     test_years_season();
     test_spring_is_the_mating_season();
+    test_light_curve();
     test_years_format();
     test_years_format_small_buffer();
     test_bad_year_length_is_safe();

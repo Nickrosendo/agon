@@ -227,6 +227,7 @@ typedef struct {
     /* How light it is, 1 at noon down to 0 at midnight: worked out from the
      * tick by the Sim before anyone acts, like year_phase. */
     float light;
+    float day_phase; /* how far through its day, 0 at noon up to 1 */
 } Pool;
 
 /* Allocates capacity empty slots. False for a capacity below 1 or when
@@ -362,6 +363,14 @@ float creature_heat_cost(const World *w, const Creature *c, const Settings *s,
  * swimming body. Paid only for a step really taken. */
 float creature_step_extra(const World *w, const Creature *c, int cell,
                           const Settings *s);
+/* How well c sees in this light, as a share of its sight, 0 to 1:
+ * light + (1 - light) * eyes * night_eye_power, times 1 - night_glare * eyes *
+ * light, where eyes is its night-eye gene. Without night eyes it sees only as
+ * far as the light lets it. */
+float creature_vision(const Creature *c, float light, const Settings *s);
+/* How many cells c's rays reach in this light: its sight times its vision,
+ * rounded, and never under 1, since the cell beside is always seen. */
+int creature_sight_now(const Creature *c, float light, const Settings *s);
 /* The share, 0 to 1, of a looker's sight at which this creature, standing on
  * seen_cell, can be seen: below 1 when its colour matches the ground there. */
 float sight_reach(const Creature *seen, int seen_cell, const World *w,

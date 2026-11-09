@@ -64,9 +64,11 @@
  * away, so pairs that stood just apart now have children; then the plant ray
  * sees only food and a sense says how recently a creature ate: one more brain
  * input, so 6 more weights in every random genome; then the territory drive
- * halved to 0.15, so fewer strangers beside each other are attacked.
+ * halved to 0.15, so fewer strangers beside each other are attacked; then
+ * days of 60 ticks, with sight that fails in the dark, night eyes as a gene
+ * and two day senses: every random genome is re-rolled.
  */
-#define SEED_7_AFTER_500 0xb4f00f8579d84ecfULL
+#define SEED_7_AFTER_500 0x6533a436ca0e848dULL
 
 static void test_same_seed_same_checksum(void)
 {
