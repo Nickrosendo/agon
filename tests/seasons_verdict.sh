@@ -5,7 +5,11 @@
 # reach for any world that does not decline: crowding is judged on the whole
 # run only (the first ten years are still printed), and an adult's hunger death
 # after it reached its ageing span counts as old age (balance_report's
-# adult_worn), since ageing ends a life by making it too dear to feed.
+# adult_worn), since ageing ends a life by making it too dear to feed. On
+# 2026-11-09, also Nicolas's word, long lives are judged on length only: with
+# worlds held at the plants' capacity something must end the lives births add,
+# and every option measured left hunger the commonest adult death (51-66 %).
+# The causes are still printed.
 #
 # Usage: bash tests/seasons_verdict.sh [BASELINE] [TICKS] [CONFIG]
 #   BASELINE  a file this script printed before, on the code to compare with.
@@ -105,10 +109,10 @@ END {
     top = "wounds"; topn = wounds
     if (hunger > topn) { top = "hunger"; topn = hunger }
     if (age > topn) { top = "age"; topn = age }
-    ok = mean >= 2400 && top != "hunger" && adults > 0
+    ok = mean >= 2400 && adults > 0
     printf "  4. long lives: adults live %.0f ticks on average over %d deaths, 2400 " \
            "needed; adult deaths wounds %d hunger %d age (worn out included) %d, " \
-           "commonest %s: %s\n",
+           "commonest %s (reported, not judged): %s\n",
            mean, adults, wounds, hunger, age, top, ok ? "PASS" : "FAIL"
     fails += !ok
     printf "VERDICT %s (%d of 4 conditions failed)\n", fails ? "FAIL" : "PASS", fails
