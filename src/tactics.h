@@ -37,7 +37,8 @@ enum {
 };
 
 /* How many families the watch follows at once. A world rarely has more than a
- * few dozen; when the table is full the family with fewest members goes. */
+ * few dozen once its founders' families die out; while the table is full,
+ * families without a row are not followed. */
 #define TACTIC_FAMILIES 256
 /* Light below this is dark: with light 0.5 + 0.5 cos, a third of every day. */
 #define TACTIC_DARK 0.25f
@@ -71,9 +72,9 @@ typedef struct {
     float lift[TACTIC_COUNT]; /* at the last check */
 } TacticFamily;
 
-/* The index from a lineage to its row is lineage % TACTIC_INDEX. A wrong guess
- * is caught by checking the row's lineage, and then the rows are searched. */
-#define TACTIC_INDEX 1024
+/* The index from a lineage to its row: an open-addressing table (tactics.c). */
+#define TACTIC_INDEX_BITS 10
+#define TACTIC_INDEX (1 << TACTIC_INDEX_BITS)
 
 typedef struct TacticWatch {
     TacticFamily *rows; /* TACTIC_FAMILIES rows, allocated once */

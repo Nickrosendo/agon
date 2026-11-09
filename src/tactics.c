@@ -47,46 +47,76 @@ void tactics_free(TacticWatch *t)
     t->rows = NULL;
 }
 
-/* The row of a family, or NULL if it has none. */
-static TacticFamily *find_row(TacticWatch *t, uint32_t lineage)
+/* Where in the index a lineage's search starts: its number times a large odd
+ * constant, keeping the top 10 bits. Multiplying spreads lineages that differ
+ * by little (founders get ids 1, 2, 3, ...) all over the index. The product is
+ * a uint32_t, so it wraps modulo 2^32, which is defined for unsigned types. */
+static uint32_t index_start(uint32_t lineage)
 {
-    int guess = t->index[lineage % TACTIC_INDEX];
-    if (guess >= 0 && t->rows[guess].used && t->rows[guess].lineage == lineage) {
-        return &t->rows[guess];
-    }
-    for (int i = 0; i < TACTIC_FAMILIES; i++) {
-        if (t->rows[i].used && t->rows[i].lineage == lineage) {
-            t->index[lineage % TACTIC_INDEX] = (int16_t)i;
-            return &t->rows[i];
+    return (lineage * 2654435761u) >> (32 - TACTIC_INDEX_BITS);
+}
+
+/* The row of a family, or NULL if it has none. The index is an open-addressing
+ * table: a lineage sits at its start slot or at the first free one after it, so
+ * a search walks on from the start until it finds the lineage or a free slot. It
+ * holds at most 256 rows in 1024 slots, so walks are short. */
+static TacticFamily *find_row(const TacticWatch *t, uint32_t lineage)
+{
+    uint32_t slot = index_start(lineage);
+    for (int k = 0; k < TACTIC_INDEX; k++) {
+        int row = t->index[slot];
+        if (row < 0) {
+            return NULL;
         }
+        if (t->rows[row].lineage == lineage) {
+            return &t->rows[row];
+        }
+        slot = (slot + 1) % TACTIC_INDEX;
     }
     return NULL;
 }
 
-/* The row of c's family, made if it has none: in a free row, else over the row
- * with fewest members, the least followed. */
+static void index_add(TacticWatch *t, int row)
+{
+    uint32_t slot = index_start(t->rows[row].lineage);
+    while (t->index[slot] >= 0) {
+        slot = (slot + 1) % TACTIC_INDEX;
+    }
+    t->index[slot] = (int16_t)row;
+}
+
+/* After rows are freed: an open-addressing table cannot simply forget one entry
+ * (the walk to an entry after it would stop early), so it is built again. */
+static void index_rebuild(TacticWatch *t)
+{
+    for (int i = 0; i < TACTIC_INDEX; i++) {
+        t->index[i] = -1;
+    }
+    for (int i = 0; i < TACTIC_FAMILIES; i++) {
+        if (t->rows[i].used) {
+            index_add(t, i);
+        }
+    }
+}
+
+/* The row of c's family, made in a free row if it has none; NULL when every row
+ * is taken. A full table follows the families it has until some die out. */
 static TacticFamily *row_for(TacticWatch *t, const Creature *c)
 {
     TacticFamily *row = find_row(t, c->lineage);
     if (row != NULL) {
         return row;
     }
-    int pick = -1;
     for (int i = 0; i < TACTIC_FAMILIES; i++) {
         if (!t->rows[i].used) {
-            pick = i;
-            break;
-        }
-        if (pick < 0 || t->rows[i].member_ticks < t->rows[pick].member_ticks) {
-            pick = i;
+            t->rows[i] = (TacticFamily){.used = true,
+                                        .lineage = c->lineage,
+                                        .hunters = creature_is_hunter(c)};
+            index_add(t, i);
+            return &t->rows[i];
         }
     }
-    row = &t->rows[pick];
-    *row = (TacticFamily){.used = true,
-                          .lineage = c->lineage,
-                          .hunters = creature_is_hunter(c)};
-    t->index[c->lineage % TACTIC_INDEX] = (int16_t)pick;
-    return row;
+    return NULL;
 }
 
 static bool related(const Creature *a, const Creature *b, const Settings *s)
@@ -227,7 +257,15 @@ void tactics_note_hit(TacticWatch *t, const World *w, const Pool *p,
     bool dark = p->light < TACTIC_DARK;
     /* The target's family first, and done with before the attacker's row is
      * found: making that row could reuse this one. */
+    /* A family the watch does not follow is counted into a throwaway row. It is
+     * declared here, at the top level of the function, so it lives until the
+     * function returns: a compound literal such as &(TacticFamily){0} written
+     * inside the if below would live only until that if's closing brace. */
+    TacticFamily throwaway = {0};
     TacticFamily *tf = row_for(t, target);
+    if (tf == NULL) {
+        tf = &throwaway;
+    }
     if (fight_starts(target, p->now)) {
         tf->attacks_on += 1.0f;
     }
@@ -246,6 +284,9 @@ void tactics_note_hit(TacticWatch *t, const World *w, const Pool *p,
     }
 
     TacticFamily *bf = row_for(t, by);
+    if (bf == NULL) {
+        return;
+    }
     if (creature_is_hunter(by)) {
         if (killed) {
             bf->kills += 1.0f;
@@ -272,7 +313,12 @@ void tactics_note_decision(TacticWatch *t, const Creature *c, const Senses *in,
     if (t == NULL || t->rows == NULL || creature_asleep(c)) {
         return;
     }
-    TacticFamily *row = row_for(t, c);
+    /* Decisions never make a row: there are many of them, and a family worth
+     * following gets its row at the next check. */
+    TacticFamily *row = find_row(t, c->lineage);
+    if (row == NULL) {
+        return;
+    }
     bool hunter_seen = false;
     for (int ray = 0; ray < RAY_COUNT; ray++) {
         const float *v = &in->v[SENSE_RAYS + ray * RAY_VALUES];
@@ -479,26 +525,49 @@ void tactics_check(TacticWatch *t, const World *w, Pool *p,
         if (!c->alive) {
             continue;
         }
-        TacticFamily *row = row_for(t, c);
-        row->members++;
-        if (creature_is_hunter(c)) {
-            hunters[row - t->rows]++;
-        } else if (seen_plants++ % step == 0) {
+        TacticFamily *row = find_row(t, c->lineage);
+        if (row != NULL) {
+            row->members++;
+            hunters[row - t->rows] += creature_is_hunter(c);
+        }
+        if (!creature_is_hunter(c) && seen_plants++ % step == 0) {
             bool unused;
             sampled++;
             lone += relatives_near(w, p, c, s, &unused) == 0;
         }
     }
     t->lone_share = share((float)lone, (float)sampled);
+    /* Families that died out give their rows back; then families not yet
+     * followed get the free rows, in slot order. */
+    for (int i = 0; i < TACTIC_FAMILIES; i++) {
+        if (t->rows[i].used && t->rows[i].members == 0) {
+            t->rows[i].used = false;
+        }
+    }
+    index_rebuild(t);
+    for (int i = 0; i < p->capacity; i++) {
+        const Creature *c = &p->items[i];
+        if (!c->alive || find_row(t, c->lineage) != NULL) {
+            continue;
+        }
+        TacticFamily *row = row_for(t, c);
+        if (row == NULL) {
+            break; /* every row taken */
+        }
+        /* A new row: count all its members now, so it starts right. */
+        for (int j = i; j < p->capacity; j++) {
+            const Creature *m = &p->items[j];
+            if (m->alive && m->lineage == c->lineage) {
+                row->members++;
+                hunters[row - t->rows] += creature_is_hunter(m);
+            }
+        }
+    }
 
     DietTotals hunt = {0}, plant = {0};
     for (int i = 0; i < TACTIC_FAMILIES; i++) {
         TacticFamily *f = &t->rows[i];
         if (!f->used) {
-            continue;
-        }
-        if (f->members == 0 && f->member_ticks < 1.0f) {
-            f->used = false; /* died out and faded: the row is free again */
             continue;
         }
         f->member_ticks += (float)f->members * (float)s->stats_every;
