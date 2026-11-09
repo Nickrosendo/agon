@@ -42,7 +42,7 @@ enum {
  * the rays: ray k's value j is at SENSE_RAYS + k * RAY_VALUES + j. After the
  * rays come the drives, then the memory values, the last ones between -1 and 1.
  * The neural network has one input per sense, so its NET_IN must equal
- * SENSE_COUNT (43). An enum value may be set from earlier ones, and the next
+ * SENSE_COUNT (44). An enum value may be set from earlier ones, and the next
  * goes on counting from there. */
 enum {
     SENSE_ENERGY,
@@ -63,6 +63,10 @@ enum {
     SENSE_PAIN, /* the share of its health it has lost */
     SENSE_KIN_NEAR, /* the share of the 8 cells around holding relatives */
     SENSE_STRANGERS_NEAR, /* the share holding anyone else */
+    /* How recently it ate: 1 just after a meal, 0 after fed_fade_ticks or more
+     * without one. A body sense, felt asleep too. Without it a creature biting
+     * at nothing could tell only from energy falling slowly. */
+    SENSE_FED,
     /* A fresh draw for each decision, written by the Sim and left 0 by
      * creature_sense, which the drawing side calls too and which must not
      * change the random generator. */

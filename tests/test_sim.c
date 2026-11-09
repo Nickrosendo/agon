@@ -61,9 +61,11 @@
  * sleep is cheap and lasts until spring; then the plants' birth capacity, on by
  * default: births slow as the living near half the plants on the map, which
  * draws a random number at each birth; then a partner may stand two steps
- * away, so pairs that stood just apart now have children.
+ * away, so pairs that stood just apart now have children; then the plant ray
+ * sees only food and a sense says how recently a creature ate: one more brain
+ * input, so 6 more weights in every random genome.
  */
-#define SEED_7_AFTER_500 0xc6978583783f1fedULL
+#define SEED_7_AFTER_500 0xb92a39cae26d7860ULL
 
 static void test_same_seed_same_checksum(void)
 {

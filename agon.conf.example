@@ -233,6 +233,9 @@ mate_age = 50
 # the age sensed as 0.5 (1 to 1e+06)
 sense_age_half = 200
 
+# ticks without a meal for the fed sense to fall to 0 (1 to 65535)
+fed_fade_ticks = 150
+
 # what age costs at the span below (0 to 1e+06)
 ageing_upkeep = 0.3
 

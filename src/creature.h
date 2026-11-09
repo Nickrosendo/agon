@@ -137,6 +137,10 @@ typedef struct {
      * the first meal, level is LEVEL_START or the mean of its parents'. */
     float level;
     float eaten;
+    /* Ticks since its last meal, counted by creature_upkeep and stopping at
+     * 65,535; creature_ate sets it back to 0, and a newborn starts at 0. What
+     * SENSE_FED is made from. */
+    uint16_t since_meal;
     /* A seed from fruit it ate, and the ticks until it drops. While gut_ticks
      * is 0 there is none and gut_seed means nothing. Dying loses it: the slot's
      * next owner starts from zeroes. */
@@ -152,7 +156,7 @@ typedef struct {
      * whose size does not depend on the compiler. */
     uint8_t hibernating;
     /* Stored inside the creature, not behind a pointer: GENOME_LEN floats
-     * (1,420 bytes) in every slot, allocated with the pool and never freed
+     * (1,444 bytes) in every slot, allocated with the pool and never freed
      * on its own. */
     Genome genome;
     /* Its life story: counts, and a ring of the newest events, newest at

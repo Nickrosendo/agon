@@ -463,10 +463,13 @@ static void test_known_world_pixels(void)
          * at, and drawing itself is unchanged (the lab's pin holds).
          * Re-pinned for a partner two steps away, on by default (2026-11-08):
          * births differ again, the same three levels; the four pictures were
-         * written out and looked at, and the lab's pin holds. */
+         * written out and looked at, and the lab's pin holds. Re-pinned for
+         * the honest plant ray and the fed sense (2026-11-09): one more brain
+         * input changes every random genome, so creatures stand elsewhere at
+         * the two wider levels; both pictures were written out and looked at. */
         static const uint64_t EXPECTED[CAMERA_LEVELS] = {
             0xbe5f57fb7c7bdabdu, 0x5a015897532bfe08u,
-            0x006a51bc61fadd09u, 0x8b6c1fc545ad1725u,
+            0x02fd16e3b285f0b8u, 0xca8e0404fd7c7c4du,
         };
         if (hashes[level] != EXPECTED[level]) {
             printf("level %d: 0x%llxu\n", level,

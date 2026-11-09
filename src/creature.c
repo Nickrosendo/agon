@@ -396,16 +396,39 @@ void creature_ate(Creature *c, float energy, float source_level)
     if (energy <= 0.0f) {
         return;
     }
+    c->since_meal = 0;
     float total = c->eaten + energy;
     c->level = 1.0f + (c->eaten * (c->level - 1.0f) + energy * source_level) /
                           total;
     c->eaten = total;
 }
 
+/* Whether a bite could take something from plant cell i right now, by the same
+ * rules as plant_take and fruit_take below: a fruit tree offers no leaves, so
+ * only a whole fruit; a leaf plant offers its leaves above the root, unless it
+ * stands bare for the season. What the eater's own digestion would make of it
+ * does not matter here: this is what the plant ray reports. */
+static bool plant_has_food(const World *w, int i, const Settings *s, int season)
+{
+    const Plant *plant = &w->plant[i];
+    if (w->veg[i] == 0) {
+        return false;
+    }
+    if (plant_offers_fruit(plant)) {
+        return plant->fruit >= 1.0f;
+    }
+    if (plant_is_bare(plant, season)) {
+        return false;
+    }
+    /* veg is a uint8_t and plant_leaf_root an int: the uint8_t is promoted to
+     * int before the comparison, so nothing wraps round. */
+    return w->veg[i] > s->plant_leaf_root;
+}
+
 /* What one ray senses, written into its RAY_VALUES slots of out. The
  * first cell gives the vegetation and the scent of carrion. Then the ray
- * walks up to sight cells, stopping at rock, and reports the nearest plant's
- * closeness and the nearest creature: its closeness, relative size, kinship,
+ * walks up to sight cells, stopping at rock, and reports the closeness of the
+ * nearest plant with food on it now (plant_has_food) and the nearest creature: its closeness, relative size, kinship,
  * whether it hunts, whether it wishes to mate and how alike it looks. A creature
  * blocks the view of whatever is behind it. */
 static void sense_ray(const World *w, const Pool *p, const Creature *c,
@@ -427,7 +450,7 @@ static void sense_ray(const World *w, const Pool *p, const Creature *c,
         }
         /* Still 0 means none seen yet, and a plant in sight always reads above
          * 0: d - 1 is below sight. */
-        if (out[RAY_PLANT] == 0.0f && w->veg[cell] > 0) {
+        if (out[RAY_PLANT] == 0.0f && plant_has_food(w, cell, s, p->season)) {
             out[RAY_PLANT] = 1.0f - (float)(d - 1) / (float)sight;
         }
         if (w->occupant[cell] >= 0) {
@@ -502,6 +525,10 @@ void creature_sense(const World *w, const Pool *p, int idx,
     /* The drives. Hunger is the sense of energy the other way up. */
     out->v[SENSE_HUNGER] = 1.0f - out->v[SENSE_ENERGY];
     out->v[SENSE_PAIN] = clamp01(1.0f - c->health / creature_max_health(c, s));
+    /* Both are converted to float before dividing: as ints, 75 / 150 would be
+     * 0, not 0.5. */
+    out->v[SENSE_FED] =
+        clamp01(1.0f - (float)c->since_meal / (float)s->fed_fade_ticks);
     for (int m = 0; m < MEMORY_VALUES; m++) {
         out->v[SENSE_MEMORY + m] = c->memory[m];
     }
@@ -1315,6 +1342,9 @@ bool creature_upkeep(Creature *c, const Settings *s)
     }
     if (creature_asleep(c) && c->sleep_ticks < UINT16_MAX) {
         c->sleep_ticks++;
+    }
+    if (c->since_meal < UINT16_MAX) {
+        c->since_meal++;
     }
     if (c->mate_wish > 0) {
         c->mate_wish--;

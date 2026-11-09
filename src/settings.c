@@ -142,6 +142,9 @@ Settings settings_default(void)
         .mate_reach = 2,
         .mate_age = 50,
         .sense_age_half = 200.0f,
+        /* A season: the probe of 2026-11-08 found most starving adults had gone
+         * a season or more without a meal, biting at nothing on one spot. */
+        .fed_fade_ticks = 150,
         .ageing_upkeep = 0.3f,
         /* 1500 until the seasons (task 8): a fed size 8 body with middling genes
          * then starved of its own age before 4 years (2,000 still did, 2,500 was
@@ -374,6 +377,7 @@ static const SettingInfo TABLE[] = {
     INT_ROW(mate_reach, 1, 4, "steps a partner may stand away (1: beside)"),
     INT_ROW(mate_age, 0, INT_MAX, "ticks before a creature can mate"),
     FLOAT_ROW(sense_age_half, 1, BIG, "the age sensed as 0.5"),
+    INT_ROW(fed_fade_ticks, 1, 65535, "ticks without a meal for the fed sense to fall to 0"),
     FLOAT_ROW(ageing_upkeep, 0, BIG, "what age costs at the span below"),
     FLOAT_ROW(ageing_span, 1, BIG, "ticks for quick genes to reach that cost"),
     FLOAT_ROW(ageing_min_rate, 0, 1, "how fast the slowest genes age, as a "

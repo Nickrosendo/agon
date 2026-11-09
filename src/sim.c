@@ -684,6 +684,7 @@ static uint64_t hash_creature(uint64_t hash, const Creature *c)
     hash = fnv1a(hash, &c->eaten, sizeof(c->eaten));
     hash = fnv1a(hash, &c->gut_seed, sizeof(c->gut_seed));
     hash = fnv1a(hash, &c->gut_ticks, sizeof(c->gut_ticks));
+    hash = fnv1a(hash, &c->since_meal, sizeof(c->since_meal));
     hash = fnv1a(hash, &c->sleep_ticks, sizeof(c->sleep_ticks));
     hash = fnv1a(hash, &c->hibernating, sizeof(c->hibernating));
     /* sizeof of an array that is a struct field is the whole array,

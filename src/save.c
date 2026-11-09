@@ -36,7 +36,7 @@
  */
 #define SAVE_MAGIC "AGONSAVE"
 #define SAVE_MAGIC_LEN 8
-#define SAVE_VERSION 15u
+#define SAVE_VERSION 16u
 
 /* No value in a healthy world comes near this. Bounding them keeps sums
  * from reaching infinity, and float-to-int conversions defined. */
@@ -284,6 +284,7 @@ static void put_creature(Writer *w, const Creature *c)
     put_float(w, c->eaten);
     put_plant(w, &c->gut_seed);
     put_u16(w, c->gut_ticks);
+    put_u16(w, c->since_meal);
     put_u16(w, c->sleep_ticks);
     put_bytes(w, &c->hibernating, 1);
     put_floats(w, c->memory, MEMORY_VALUES);
@@ -700,6 +701,7 @@ static void get_creature(Reader *r, Creature *c, const Settings *set,
     c->eaten = get_float(r, 0.0f, FLOAT_LIMIT);
     get_plant(r, &c->gut_seed);
     c->gut_ticks = get_u16(r);
+    c->since_meal = get_u16(r);
     c->sleep_ticks = get_u16(r);
     c->hibernating = get_byte(r);
     /* Ticks of a sleep belong only to a sleeper: the tick a creature wakes in

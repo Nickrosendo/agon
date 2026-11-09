@@ -1256,16 +1256,16 @@ static void test_senses_plant_along_ray(void)
     creature_sense(&w, &p, i, &s, &in);
     CHECK(ahead[RAY_PLANT] == 0.0f); /* nothing to see */
 
-    /* Three cells ahead: seen, closer reads higher, and the first-cell value
+    /* Three cells ahead, a leaf plant with a step above its root: seen, closer reads higher, and the first-cell value
      * stays 0, since it is not within a bite. */
-    w.veg[world_idx(&w, 16, 13)] = 1;
+    w.veg[world_idx(&w, 16, 13)] = 2;
     creature_sense(&w, &p, i, &s, &in);
     CHECK(near(ahead[RAY_PLANT], 1.0f - 2.0f / (float)sight));
     CHECK(ahead[RAY_VEG] == 0.0f);
     CHECK(left[RAY_PLANT] == 0.0f); /* the other rays see nothing */
 
     /* The nearest of two counts. */
-    w.veg[world_idx(&w, 16, 15)] = 1;
+    w.veg[world_idx(&w, 16, 15)] = 2;
     creature_sense(&w, &p, i, &s, &in);
     CHECK(near(ahead[RAY_PLANT], 1.0f));
     w.veg[world_idx(&w, 16, 15)] = 0;
@@ -1288,14 +1288,112 @@ static void test_senses_plant_along_ray(void)
 
     /* Past its sight, and with poor sight: unseen. */
     w.veg[world_idx(&w, 16, 13)] = 0;
-    w.veg[world_idx(&w, 16, 16 - sight - 1)] = 1;
+    w.veg[world_idx(&w, 16, 16 - sight - 1)] = 2;
     creature_sense(&w, &p, i, &s, &in);
     CHECK(ahead[RAY_PLANT] == 0.0f);
     w.veg[world_idx(&w, 16, 16 - sight - 1)] = 0;
-    w.veg[world_idx(&w, 16, 13)] = 1;
+    w.veg[world_idx(&w, 16, 13)] = 2;
     p.items[i].genome.g[GENE_SIGHT] = 0.0f; /* sight 1 */
     creature_sense(&w, &p, i, &s, &in);
     CHECK(ahead[RAY_PLANT] == 0.0f);
+    pool_free(&p);
+    world_free(&w);
+}
+
+/* The plant ray sees only food a bite could take now: not a leaf plant grazed
+ * to its root or standing bare for autumn and winter, not a fruit tree without
+ * a whole fruit. A fruit tree bearing one is food in any season. */
+static void test_plant_ray_sees_only_food(void)
+{
+    World w;
+    make_world(&w, 32, 32);
+    Settings s = settings_default();
+    Pool p;
+    CHECK(pool_init(&p, 1));
+    int i = spawn(&p, &w, 16, 16); /* heading north */
+    p.items[i].genome.g[GENE_SIGHT] = 1.0f;
+    Senses in;
+    const float *ahead = &in.v[SENSE_RAYS + RAY_AHEAD * RAY_VALUES];
+    int cell = world_idx(&w, 16, 13);
+
+    /* A leaf plant: food above its root, nothing at it. */
+    w.veg[cell] = (uint8_t)(s.plant_leaf_root + 1);
+    p.season = SEASON_SPRING;
+    creature_sense(&w, &p, i, &s, &in);
+    CHECK(ahead[RAY_PLANT] > 0.0f);
+    w.veg[cell] = (uint8_t)s.plant_leaf_root;
+    creature_sense(&w, &p, i, &s, &in);
+    CHECK(ahead[RAY_PLANT] == 0.0f);
+
+    /* Bare in autumn and winter, however dense. */
+    w.veg[cell] = VEG_MAX;
+    p.season = SEASON_AUTUMN;
+    creature_sense(&w, &p, i, &s, &in);
+    CHECK(ahead[RAY_PLANT] == 0.0f);
+    p.season = SEASON_WINTER;
+    creature_sense(&w, &p, i, &s, &in);
+    CHECK(ahead[RAY_PLANT] == 0.0f);
+
+    /* A fruit tree: no leaves to eat, so food only with a whole fruit. */
+    w.plant[cell].fruit_share = 1.0f;
+    w.plant[cell].fruit = 0.9f;
+    creature_sense(&w, &p, i, &s, &in);
+    CHECK(ahead[RAY_PLANT] == 0.0f);
+    w.plant[cell].fruit = 1.0f;
+    creature_sense(&w, &p, i, &s, &in);
+    CHECK(ahead[RAY_PLANT] > 0.0f); /* winter does not strip a fruit tree */
+    pool_free(&p);
+    world_free(&w);
+}
+
+/* How recently it ate: 1 just after a meal, falling evenly to 0 over
+ * fed_fade_ticks of upkeep with no meal, and back to 1 with the next. A body
+ * sense, so a sleeper feels it too. */
+static void test_senses_how_recently_fed(void)
+{
+    World w;
+    make_world(&w, 16, 16);
+    Settings s = settings_default();
+    s.fed_fade_ticks = 10;
+    Pool p;
+    CHECK(pool_init(&p, 1));
+    int i = spawn(&p, &w, 8, 8);
+    Creature *c = &p.items[i];
+    c->energy = 1000.0f; /* never starving here */
+    Senses in;
+
+    CHECK(c->since_meal == 0); /* born as if just fed */
+    creature_sense(&w, &p, i, &s, &in);
+    CHECK(in.v[SENSE_FED] == 1.0f);
+    for (int t = 0; t < 5; t++) {
+        CHECK(creature_upkeep(c, &s));
+    }
+    CHECK(c->since_meal == 5);
+    creature_sense(&w, &p, i, &s, &in);
+    CHECK(near(in.v[SENSE_FED], 0.5f));
+    for (int t = 0; t < 20; t++) {
+        CHECK(creature_upkeep(c, &s));
+    }
+    creature_sense(&w, &p, i, &s, &in);
+    CHECK(in.v[SENSE_FED] == 0.0f); /* not below 0 */
+
+    /* Asleep: still felt. */
+    c->current = (Action){.kind = ACT_SLEEP, .hold = 50};
+    c->hold_left = 50;
+    c->since_meal = 5;
+    creature_sense(&w, &p, i, &s, &in);
+    CHECK(near(in.v[SENSE_FED], 0.5f));
+
+    /* A meal sets it back; nothing eaten does not. */
+    creature_ate(c, 0.0f, 1.0f);
+    CHECK(c->since_meal == 5);
+    creature_ate(c, 2.0f, 1.0f);
+    CHECK(c->since_meal == 0);
+
+    /* It stops at the top of its type instead of wrapping round to 0. */
+    c->since_meal = UINT16_MAX;
+    CHECK(creature_upkeep(c, &s));
+    CHECK(c->since_meal == UINT16_MAX);
     pool_free(&p);
     world_free(&w);
 }
@@ -3676,6 +3774,8 @@ int main(void)
     test_senses_season();
     test_senses_blocked();
     test_senses_plant_along_ray();
+    test_plant_ray_sees_only_food();
+    test_senses_how_recently_fed();
     test_empty_bite_costs();
     test_plant_eater_cap();
     test_births_that_answer_crowding();

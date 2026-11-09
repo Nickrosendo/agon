@@ -188,6 +188,9 @@ typedef struct {
     int mate_reach;
     int mate_age;            /* ticks before a creature can mate */
     float sense_age_half;    /* the age sensed as 0.5 */
+    /* How recently a creature ate is sensed as 1 just after a meal, falling
+     * evenly to 0 after fed_fade_ticks with no meal (SENSE_FED). */
+    int fed_fade_ticks;
     /* Ageing, a cost in place of an age limit. Upkeep gains ageing_upkeep * e *
      * e + slow_ageing_upkeep * (1 - gene), where e = age * rate / ageing_span
      * and rate = ageing_min_rate + (1 - ageing_min_rate) * gene, for GENE_AGEING.

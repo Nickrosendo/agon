@@ -155,6 +155,7 @@ static void test_sleeper_saved(void)
     c->hold_left = 250;
     c->sleep_ticks = 150;
     c->hibernating = 1;
+    c->since_meal = 77;
     CHECK(save_write(&a, SAVE_FILE, err, sizeof(err)));
     CHECK(save_read(&b, SAVE_FILE, err, sizeof(err)));
     const Creature *loaded = &b.pool.items[slot];
@@ -162,7 +163,12 @@ static void test_sleeper_saved(void)
     CHECK(loaded->hold_left == 250);
     CHECK(loaded->sleep_ticks == 150);
     CHECK(loaded->hibernating == 1);
+    CHECK(loaded->since_meal == 77);
     CHECK(sim_checksum(&a) == sim_checksum(&b));
+    /* So is how long since its last meal. */
+    b.pool.items[slot].since_meal = 78;
+    CHECK(sim_checksum(&a) != sim_checksum(&b));
+    b.pool.items[slot].since_meal = 77;
     /* So is hibernating. */
     b.pool.items[slot].hibernating = 0;
     CHECK(sim_checksum(&a) != sim_checksum(&b));
@@ -566,10 +572,11 @@ enum {
     AT_EATEN = 121,
     AT_GUT_SEED = 125, /* seven floats: 28 bytes */
     AT_GUT_TICKS = 153,
-    AT_SLEEP_TICKS = 155,
-    AT_HIBERNATING = 157,
-    AT_MEMORY = 158,
-    AT_GENOME = 170,
+    AT_SINCE_MEAL = 155,
+    AT_SLEEP_TICKS = 157,
+    AT_HIBERNATING = 159,
+    AT_MEMORY = 160,
+    AT_GENOME = 172,
     /* The life story: ten u32 counts, max_size, flags, two region bytes and
      * region_ticks (49 bytes); then events_noted and 8 events of 13 bytes each
      * (tick, kind, other_id, value: the struct's 3 padding bytes are not written). */
