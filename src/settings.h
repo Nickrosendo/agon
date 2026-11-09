@@ -396,6 +396,9 @@ typedef struct {
      * at night_eye_power's share of their sight and lose night_glare's share in
      * full light, and cost night_eye_upkeep a tick at the full gene. */
     int ticks_per_day;
+    /* BLIND_ bits (brain.h): the senses held at 0 for every brain. 0, the
+     * default, blinds nothing. For testing what a tactic rests on. */
+    int blind_senses;
     float night_eye_power;
     float night_glare;
     float night_eye_upkeep;

@@ -472,10 +472,12 @@ static void test_known_world_pixels(void)
          * Re-pinned for days and night eyes (2026-11-09): every random genome
          * is re-rolled and sight fails in the dark, so creatures stand
          * elsewhere at the two wider levels. Drawing is unchanged (the lab's
-         * pin holds); the pictures are looked at when night is drawn. */
+         * pin holds); the pictures are looked at when night is drawn.
+         * Re-pinned for the fight and family senses, the same day: brains
+         * re-rolled again, creatures elsewhere at all but the closest level. */
         static const uint64_t EXPECTED[CAMERA_LEVELS] = {
-            0xbe5f57fb7c7bdabdu, 0x5a015897532bfe08u,
-            0xd2a57eadcebf5852u, 0x30d259427248b6e5u,
+            0xbe5f57fb7c7bdabdu, 0xb9ca5b91d405bc85u,
+            0x018345850d672790u, 0x36c1b25d090bca25u,
         };
         if (hashes[level] != EXPECTED[level]) {
             printf("level %d: 0x%llxu\n", level,

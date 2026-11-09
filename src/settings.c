@@ -268,6 +268,7 @@ Settings settings_default(void)
         /* The tactics design: 10 days a year, 30 seconds a day at 2 ticks a
          * second. */
         .ticks_per_day = 60,
+        .blind_senses = 0,
         .night_eye_power = 0.8f,
         .night_glare = 0.4f,
         .night_eye_upkeep = 0.05f,
@@ -477,6 +478,8 @@ static const SettingInfo TABLE[] = {
             "mating season"),
     INT_ROW(ticks_per_day, YEARS_MIN_DAY, 1000000,
             "ticks in a day, noon first; sight fails in the dark"),
+    INT_ROW(blind_senses, 0, 31, "senses held at 0 for every brain: 1 day, 2 a "
+                                 "fight seen, 4 a stray seen, 8 kin hit, 16 hearing"),
     FLOAT_ROW(night_eye_power, 0, 1, "share of its sight a creature with full "
                                      "night eyes keeps at midnight"),
     FLOAT_ROW(night_glare, 0, 1, "share of its sight full night eyes lose at noon"),

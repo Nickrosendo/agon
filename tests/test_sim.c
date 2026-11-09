@@ -66,9 +66,11 @@
  * input, so 6 more weights in every random genome; then the territory drive
  * halved to 0.15, so fewer strangers beside each other are attacked; then
  * days of 60 ticks, with sight that fails in the dark, night eyes as a gene
- * and two day senses: every random genome is re-rolled.
+ * and two day senses: every random genome is re-rolled; then a fight, a
+ * stray and a wound seen along each ray and a relative's hit felt, ten more
+ * inputs, re-rolled again.
  */
-#define SEED_7_AFTER_500 0x6533a436ca0e848dULL
+#define SEED_7_AFTER_500 0xd2004cde46f9d10aULL
 
 static void test_same_seed_same_checksum(void)
 {

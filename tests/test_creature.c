@@ -1249,6 +1249,136 @@ static void test_blind_ray_sees_beside(void)
     world_free(&w);
 }
 
+/* A looker at (5, 5) facing east, and a stranger with a random genome two
+ * cells ahead, in a pool whose date is 100. */
+static void ray_scene(World *w, Pool *p, int *looker, int *seen, Rng *r,
+                        const Settings *s)
+{
+    make_world(w, 16, 16);
+    CHECK(pool_init(p, 16));
+    *looker = spawn(p, w, 5, 5);
+    p->items[*looker].genome.g[GENE_SIGHT] = 1.0f;
+    p->items[*looker].heading = HEADING_EAST;
+    genome_random(&p->items[*looker].genome, r, s);
+    p->items[*looker].genome.g[GENE_SIGHT] = 1.0f;
+    *seen = spawn(p, w, 7, 5);
+    genome_random(&p->items[*seen].genome, r, s);
+    p->items[*seen].health = creature_max_health(&p->items[*seen], s);
+    p->now = 100;
+}
+
+static float ahead_value(const World *w, const Pool *p, int looker, int which,
+                         const Settings *s)
+{
+    Senses in;
+    creature_sense(w, p, looker, s, &in);
+    return in.v[SENSE_RAYS + RAY_AHEAD * RAY_VALUES + which];
+}
+
+static void test_ray_sees_a_fight(void)
+{
+    Settings s = settings_default();
+    Rng r;
+    rng_seed(&r, 5);
+    World w;
+    Pool p;
+    int a, b;
+    ray_scene(&w, &p, &a, &b, &r, &s);
+    CHECK(ahead_value(&w, &p, a, RAY_FIGHTING, &s) == 0.0f);
+    p.items[b].recent_hits[0] = (Hit){99, 97}; /* 3 ticks ago */
+    p.items[b].hits_taken = 1;
+    CHECK(ahead_value(&w, &p, a, RAY_FIGHTING, &s) == 1.0f);
+    p.items[b].recent_hits[0].tick = 80; /* 20 ago, with gang_window 10 */
+    CHECK(ahead_value(&w, &p, a, RAY_FIGHTING, &s) == 0.0f);
+    pool_free(&p);
+    world_free(&w);
+}
+
+static void test_ray_alone_and_hurt(void)
+{
+    Settings s = settings_default();
+    Rng r;
+    rng_seed(&r, 6);
+    World w;
+    Pool p;
+    int a, b;
+    ray_scene(&w, &p, &a, &b, &r, &s);
+    CHECK(ahead_value(&w, &p, a, RAY_ALONE, &s) == 1.0f); /* a stray */
+    /* Four relatives around it, copies of its genome: half its cells. */
+    int around[4][2] = {{7, 4}, {7, 6}, {8, 4}, {8, 6}};
+    for (int k = 0; k < 4; k++) {
+        int kin = spawn(&p, &w, around[k][0], around[k][1]);
+        p.items[kin].genome = p.items[b].genome;
+    }
+    CHECK(fabsf(ahead_value(&w, &p, a, RAY_ALONE, &s) - 0.5f) < 1e-6f);
+    CHECK(ahead_value(&w, &p, a, RAY_HURT, &s) == 0.0f);
+    p.items[b].health = 0.25f * creature_max_health(&p.items[b], &s);
+    CHECK(fabsf(ahead_value(&w, &p, a, RAY_HURT, &s) - 0.75f) < 1e-5f);
+    pool_free(&p);
+    world_free(&w);
+}
+
+static void test_kin_hit_sense(void)
+{
+    Settings s = settings_default();
+    Rng r;
+    rng_seed(&r, 7);
+    World w;
+    Pool p;
+    int a, b;
+    ray_scene(&w, &p, &a, &b, &r, &s);
+    Senses in;
+    /* A relative three cells off, just hit. */
+    int kin = spawn(&p, &w, 5, 8);
+    p.items[kin].genome = p.items[a].genome;
+    creature_sense(&w, &p, a, &s, &in);
+    CHECK(in.v[SENSE_KIN_HIT] == 0.0f);
+    p.items[kin].recent_hits[0] = (Hit){99, 99};
+    p.items[kin].hits_taken = 1;
+    creature_sense(&w, &p, a, &s, &in);
+    CHECK(in.v[SENSE_KIN_HIT] == 1.0f);
+    /* A stranger being hit is not felt. */
+    p.items[kin].hits_taken = 0;
+    p.items[b].recent_hits[0] = (Hit){99, 99};
+    p.items[b].hits_taken = 1;
+    creature_sense(&w, &p, a, &s, &in);
+    CHECK(in.v[SENSE_KIN_HIT] == 0.0f);
+    pool_free(&p);
+    world_free(&w);
+}
+
+static void test_blind_mask_zeroes(void)
+{
+    Settings s = settings_default();
+    Rng r;
+    rng_seed(&r, 8);
+    World w;
+    Pool p;
+    int a, b;
+    ray_scene(&w, &p, &a, &b, &r, &s);
+    p.items[b].recent_hits[0] = (Hit){99, 99};
+    p.items[b].hits_taken = 1;
+    p.day_phase = 0.25f;
+    Senses open, shut;
+    creature_sense(&w, &p, a, &s, &open);
+    s.blind_senses = BLIND_FIGHTING;
+    creature_sense(&w, &p, a, &s, &shut);
+    int ahead = SENSE_RAYS + RAY_AHEAD * RAY_VALUES;
+    CHECK(open.v[ahead + RAY_FIGHTING] == 1.0f && shut.v[ahead + RAY_FIGHTING] == 0.0f);
+    /* Nothing else moved. */
+    int differ = 0;
+    for (int i = 0; i < SENSE_COUNT; i++) {
+        differ += open.v[i] != shut.v[i];
+    }
+    CHECK(differ == 1);
+    s.blind_senses = BLIND_DAY | BLIND_ALONE;
+    creature_sense(&w, &p, a, &s, &shut);
+    CHECK(shut.v[SENSE_DAY_SIN] == 0.0f && shut.v[SENSE_DAY_COS] == 0.0f);
+    CHECK(open.v[ahead + RAY_ALONE] == 1.0f && shut.v[ahead + RAY_ALONE] == 0.0f);
+    pool_free(&p);
+    world_free(&w);
+}
+
 /* What is one step ahead, in the way the creature faces: the sense a creature
  * needs in order to stop walking into a wall. */
 static void test_senses_blocked(void)
@@ -3838,6 +3968,10 @@ int main(void)
     test_senses_day();
     test_vision_in_the_dark();
     test_blind_ray_sees_beside();
+    test_ray_sees_a_fight();
+    test_ray_alone_and_hurt();
+    test_kin_hit_sense();
+    test_blind_mask_zeroes();
     test_senses_blocked();
     test_senses_plant_along_ray();
     test_plant_ray_sees_only_food();

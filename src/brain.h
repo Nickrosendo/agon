@@ -35,6 +35,12 @@ enum {
     RAY_READY,
     RAY_ALIKE,
     RAY_PLANT, /* closeness of the nearest plant in sight: 1 beside, 0 for none */
+    /* Of the creature seen: 1 if it was hit in the last gang_window ticks; 1
+     * minus the share of the 8 cells around it holding its own relatives (1 for
+     * a stray); the share of its health it has lost. */
+    RAY_FIGHTING,
+    RAY_ALONE,
+    RAY_HURT,
     RAY_VALUES
 };
 
@@ -42,7 +48,7 @@ enum {
  * the rays: ray k's value j is at SENSE_RAYS + k * RAY_VALUES + j. After the
  * rays come the drives, then the memory values, the last ones between -1 and 1.
  * The neural network has one input per sense, so its NET_IN must equal
- * SENSE_COUNT (46). An enum value may be set from earlier ones, and the next
+ * SENSE_COUNT (56). An enum value may be set from earlier ones, and the next
  * goes on counting from there. */
 enum {
     SENSE_ENERGY,
@@ -67,6 +73,9 @@ enum {
     SENSE_PAIN, /* the share of its health it has lost */
     SENSE_KIN_NEAR, /* the share of the 8 cells around holding relatives */
     SENSE_STRANGERS_NEAR, /* the share holding anyone else */
+    /* 1 if a relative within KIN_NEAR cells (chronicle.h) was hit in the last
+     * gang_window ticks: the rays tell where, this tells that. */
+    SENSE_KIN_HIT,
     /* How recently it ate: 1 just after a meal, 0 after fed_fade_ticks or more
      * without one. A body sense, felt asleep too. Without it a creature biting
      * at nothing could tell only from energy falling slowly. */
@@ -98,6 +107,17 @@ enum {
 typedef struct {
     float v[SENSE_COUNT];
 } Senses;
+
+/* Senses that can be held at 0 for every brain, as blind_senses' bits: to test
+ * whether a tactic really rests on them (the tactics design, section 11). */
+enum {
+    BLIND_DAY = 1 << 0,      /* SENSE_DAY_SIN and SENSE_DAY_COS */
+    BLIND_FIGHTING = 1 << 1, /* RAY_FIGHTING on every ray */
+    BLIND_ALONE = 1 << 2,    /* RAY_ALONE on every ray */
+    BLIND_KIN_HIT = 1 << 3,  /* SENSE_KIN_HIT */
+    BLIND_HEARING = 1 << 4,  /* the three hearing senses */
+    BLIND_ALL = (1 << 5) - 1
+};
 
 /* An answer from a brain: what to do (an ACT_ value), for how many ticks to
  * keep doing it, and what to remember. A hold of 0 counts as 1. memory arrives

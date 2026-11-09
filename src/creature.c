@@ -451,6 +451,53 @@ static bool plant_has_food(const World *w, int i, const Settings *s, int season)
  * nearest plant with food on it now (plant_has_food) and the nearest creature: its closeness, relative size, kinship,
  * whether it hunts, whether it wishes to mate and how alike it looks. A creature
  * blocks the view of whatever is behind it. */
+/* Whether c was hit in the last gang_window ticks. Unsigned subtraction gives
+ * the true distance even across the wrap of the 32-bit date. */
+static bool hit_lately(const Creature *c, uint32_t now, const Settings *s)
+{
+    if (c->hits_taken == 0) {
+        return false;
+    }
+    const Hit *last = &c->recent_hits[(c->hits_taken - 1) % HITS_KEPT];
+    return now - last->tick <= (uint32_t)s->gang_window;
+}
+
+/* The share of the 8 cells around c holding its own relatives. */
+static float kin_share_around(const World *w, const Pool *p, const Creature *c,
+                              const Settings *s)
+{
+    int kin = 0;
+    for (int dir = 0; dir < 8; dir++) {
+        int other = w->occupant[world_idx(w, c->x + AROUND_X[dir], c->y + AROUND_Y[dir])];
+        if (other >= 0 &&
+            genome_kinship(&c->genome, &p->items[other].genome) >= s->kin_sense) {
+            kin++;
+        }
+    }
+    return (float)kin / 8.0f;
+}
+
+/* Whether a relative of c within KIN_NEAR cells (a square) was hit lately. The
+ * date is checked first: it is cheap, and kinship compares whole genomes. */
+static bool kin_hit_near(const World *w, const Pool *p, const Creature *c,
+                         const Settings *s)
+{
+    for (int dy = -KIN_NEAR; dy <= KIN_NEAR; dy++) {
+        for (int dx = -KIN_NEAR; dx <= KIN_NEAR; dx++) {
+            int other = w->occupant[world_idx(w, c->x + dx, c->y + dy)];
+            if (other < 0 || &p->items[other] == c) {
+                continue;
+            }
+            const Creature *o = &p->items[other];
+            if (hit_lately(o, p->now, s) &&
+                genome_kinship(&c->genome, &o->genome) >= s->kin_sense) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 static void sense_ray(const World *w, const Pool *p, const Creature *c,
                       uint8_t heading, const Settings *s, float *out)
 {
@@ -490,6 +537,10 @@ static void sense_ray(const World *w, const Pool *p, const Creature *c,
             out[RAY_HUNTER] = (float)creature_is_hunter(seen);
             out[RAY_READY] = seen->mate_wish > 0 ? 1.0f : 0.0f;
             out[RAY_ALIKE] = genome_body_likeness(&c->genome, &seen->genome);
+            out[RAY_FIGHTING] = hit_lately(seen, p->now, s) ? 1.0f : 0.0f;
+            out[RAY_ALONE] = 1.0f - kin_share_around(w, p, seen, s);
+            out[RAY_HURT] =
+                clamp01(1.0f - seen->health / creature_max_health(seen, s));
             return;
         }
     }
@@ -517,10 +568,43 @@ static void sense_neighbours(const World *w, const Pool *p, const Creature *c,
     }
     out->v[SENSE_KIN_NEAR] = (float)kin / 8.0f;
     out->v[SENSE_STRANGERS_NEAR] = (float)strangers / 8.0f;
+    out->v[SENSE_KIN_HIT] = kin_hit_near(w, p, c, s) ? 1.0f : 0.0f;
 }
+
+/* Holds at 0 the senses blind_senses names (BLIND_ bits, brain.h). */
+static void blind(int mask, Senses *out)
+{
+    if (mask & BLIND_DAY) {
+        out->v[SENSE_DAY_SIN] = 0.0f;
+        out->v[SENSE_DAY_COS] = 0.0f;
+    }
+    for (int ray = 0; ray < RAY_COUNT; ray++) {
+        float *slots = &out->v[SENSE_RAYS + ray * RAY_VALUES];
+        if (mask & BLIND_FIGHTING) {
+            slots[RAY_FIGHTING] = 0.0f;
+        }
+        if (mask & BLIND_ALONE) {
+            slots[RAY_ALONE] = 0.0f;
+        }
+    }
+    if (mask & BLIND_KIN_HIT) {
+        out->v[SENSE_KIN_HIT] = 0.0f;
+    }
+}
+
+static void sense_all(const World *w, const Pool *p, int idx,
+                      const Settings *s, Senses *out);
 
 void creature_sense(const World *w, const Pool *p, int idx,
                     const Settings *s, Senses *out)
+{
+    sense_all(w, p, idx, s, out);
+    blind(s->blind_senses, out);
+}
+
+/* Every sense, before any blinding. */
+static void sense_all(const World *w, const Pool *p, int idx,
+                      const Settings *s, Senses *out)
 {
     const Creature *c = &p->items[idx];
     /* Every sense starts at 0, including those not filled in yet. */
