@@ -2,17 +2,17 @@
 
 *agon* (ἀγών): Greek for struggle or contest.
 
-A terminal world where nobody decides who wins. Terrain is generated from a
-seed, vegetation spreads by neighbour rules that it inherits, and creatures
-with inherited neural-network brains graze, hunt, scavenge, reproduce and die.
-Food chains, population swings and families of related creatures are not
-programmed in; they emerge.
+A world where nobody decides who wins. Terrain is generated from a seed,
+vegetation spreads by neighbour rules that it inherits, and creatures with
+inherited neural-network brains graze, hunt, scavenge, reproduce, sleep through
+winter and die. Food chains, population swings and families of related creatures
+are not programmed in; they emerge.
 
-![A new world, seed 3, at 120 ticks per second: plants spread and coloured families of creatures take over the soil, while the panel tracks the population.](docs/agon.gif)
+![Seed 1 in spring of year 5, in the window at the closest zoom and the default 2 ticks a second: animals of many families walk and graze among leaf trees, sleepers show a z, and the panel tracks the population.](docs/agon.gif)
 
 Written in C11 with no dependencies beyond the C standard library and POSIX.
-Leave it running in a terminal, or have it print one snapshot of a world and
-exit.
+Leave it running in a terminal or a window, or have it print one snapshot of a
+world and exit.
 
 ## Build and run
 
@@ -32,6 +32,8 @@ sudo make uninstall
 
 `make test` runs the tests with the memory checkers on.
 
+![The same world in the terminal program in summer of year 5: plants and coloured families on the soil, with the population panel on the right.](docs/terminal.png)
+
 The display uses 24-bit colour and two square pixels per character cell, so
 it wants a terminal with true colour and a font with the half-block character.
 The colours follow the seasons: from autumn to the end of winter leaf plants
@@ -48,8 +50,12 @@ its family (wolves, lions and tigers hunt; elephants, rhinos and armadillos wear
 armour; and so on), sized and coloured by its genes. Animals walk, run, hop,
 graze, sleep and breathe, and meat-eaters crouch, pounce and bite their prey,
 which bleeds. Drawing never changes the world: the same seed gives the same
-world in both programs. It needs SDL 2;
-nothing else in agon does, and `make` and `make test` work without it.
+world in both programs.
+
+![Seed 1 at the far zoom in summer and in winter of year 5: green plants and 888 creatures, then bare brown trees, snow lying on the soil and 461 creatures.](docs/seasons.png)
+
+It needs SDL 2; nothing else in agon does, and `make` and `make test` work
+without it.
 
 ```sh
 sudo apt install libsdl2-dev   # on Debian and Ubuntu
@@ -60,8 +66,13 @@ make window MODE=release
 The default world is 256x144 cells. `--seed`, `--size`, `--speed`, `--no-floor`,
 `--config`, `--save` and `--load` work as they do below, and save files are shared
 by both programs. `--zoom close|normal|far|world` picks the starting zoom.
-`--keys TEXT`, with `--frames`, presses those keys one a frame in the last
-frames, for tests and screenshots: `--frames 300 --keys l --screenshot page.ppm`.
+`--paused` starts paused. `--keys TEXT`, with `--frames`, presses those keys one a
+frame in the last frames, for tests and screenshots:
+`--frames 300 --keys l --screenshot page.ppm`. `--checksum` prints a fingerprint
+of the world on leaving, the same one the terminal program gives for that world.
+
+Both programs start at 2 ticks a second, slow enough to watch one animal; `+`
+speeds up through 5, 10, 15, 30, 60 and 120, and `--speed` starts at any of them.
 
 When a creature first grows to giant size (`giant_size`, 6 by default) the title
 line announces it, with its name, family and year, for ten seconds; `j` jumps to
@@ -137,7 +148,8 @@ These are for the terminal program, `agon`.
 ```
 --seed N       the world's seed: a whole number, or 0x hexadecimal
 --size WxH     world size in cells (default: fit the window; 80x40 with --once)
---speed N      ticks per second (default 10)
+--speed N      ticks per second, rounded down to 1, 2, 5, 10, 15, 30, 60
+               or 120 (default 2)
 --once         print one snapshot after --ticks ticks and exit
 --ticks N      ticks to run before the snapshot (default 2000)
 --no-floor     turn off a floor a settings file set
@@ -146,6 +158,7 @@ These are for the terminal program, `agon`.
                (with --once: after the last tick)
 --load PATH    resume a saved world
 --settings     print every setting and its default, and exit
+--checksum     print a fingerprint of the world on leaving
 -h, --help     help
 --version      the version
 ```
@@ -246,7 +259,8 @@ for the build that wrote them; a build with a different format refuses them.
     stranger right beside it, whatever its brain chose, unless it chose to mate.
     Close relatives are safe.
 16. Time passes in years of four seasons, spring first. A year is 600 ticks by
-    default (`ticks_per_year`), a minute at normal speed, and it is a rule: spring
+    default (`ticks_per_year`), five minutes at the default speed of 2 ticks a
+    second, and it is a rule: spring
     is the mating season, and creatures sense the time of year. The title names
     the season.
 17. Every creature's life is written down as it happens, and only what happened:
