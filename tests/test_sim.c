@@ -63,9 +63,10 @@
  * draws a random number at each birth; then a partner may stand two steps
  * away, so pairs that stood just apart now have children; then the plant ray
  * sees only food and a sense says how recently a creature ate: one more brain
- * input, so 6 more weights in every random genome.
+ * input, so 6 more weights in every random genome; then the territory drive
+ * halved to 0.15, so fewer strangers beside each other are attacked.
  */
-#define SEED_7_AFTER_500 0xb92a39cae26d7860ULL
+#define SEED_7_AFTER_500 0xb4f00f8579d84ecfULL
 
 static void test_same_seed_same_checksum(void)
 {

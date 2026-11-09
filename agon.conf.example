@@ -408,7 +408,7 @@ hibernate_energy = 3
 nap_min_ticks = 10
 
 # chance a full territory gene attacks a stranger beside it (0 to 1)
-territory_drive = 0.3
+territory_drive = 0.15
 
 # upkeep of a full territory gene (0 to 1e+06)
 territory_upkeep = 0.05

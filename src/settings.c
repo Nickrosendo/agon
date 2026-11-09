@@ -239,8 +239,13 @@ Settings settings_default(void)
          * 26.3 % against 2.4 %, still and starving 7 % against 20 %. Alone, territory
          * lost a world; stronger crowding lost one or two and left worlds of under 70.
          * Later, with leaf roots kept and three times the founders, crowding at
-         * 0.08 is what keeps still-and-starving deaths near 10 % (2026-11-05). */
-        .territory_drive = 0.3f,
+         * 0.08 is what keeps still-and-starving deaths near 10 % (2026-11-05).
+         * The drive halved to 0.15 on 2026-11-09, Nicolas's pick: once the plant
+         * ray saw only food, creatures left spent spots and met strangers far
+         * more often, and 97 % of kills were this drive. Seasons verdict, 100
+         * years: adults live 2,702 ticks instead of 2,251, wounds 29 % of adult
+         * deaths (0 gave 3,575 and only 12 %). */
+        .territory_drive = 0.15f,
         .territory_upkeep = 0.05f,
         .crowd_upkeep = 0.08f,
         .crowd_radius = 2,

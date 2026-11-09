@@ -466,10 +466,12 @@ static void test_known_world_pixels(void)
          * written out and looked at, and the lab's pin holds. Re-pinned for
          * the honest plant ray and the fed sense (2026-11-09): one more brain
          * input changes every random genome, so creatures stand elsewhere at
-         * the two wider levels; both pictures were written out and looked at. */
+         * the two wider levels; both pictures were written out and looked at.
+         * Re-pinned for the territory drive at 0.15 (2026-11-09): fewer fights,
+         * creatures elsewhere at the same two levels; both looked at again. */
         static const uint64_t EXPECTED[CAMERA_LEVELS] = {
             0xbe5f57fb7c7bdabdu, 0x5a015897532bfe08u,
-            0x02fd16e3b285f0b8u, 0xca8e0404fd7c7c4du,
+            0x3c5c94036a9fd1aeu, 0x6d46f9b78cdae3e5u,
         };
         if (hashes[level] != EXPECTED[level]) {
             printf("level %d: 0x%llxu\n", level,
