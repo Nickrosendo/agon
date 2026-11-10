@@ -482,9 +482,18 @@ static float kin_share_around(const World *w, const Pool *p, const Creature *c,
 static bool kin_hit_near(const World *w, const Pool *p, const Creature *c,
                          const Settings *s)
 {
-    for (int dy = -KIN_NEAR; dy <= KIN_NEAR; dy++) {
-        for (int dx = -KIN_NEAR; dx <= KIN_NEAR; dx++) {
-            int other = w->occupant[world_idx(w, c->x + dx, c->y + dy)];
+    /* The square's wrapped columns and rows, worked out once: 14 wraps instead
+     * of the 98 that world_idx would do for 49 cells. The square is
+     * 2 * KIN_NEAR + 1 cells a side. */
+    enum { SIDE = 2 * KIN_NEAR + 1 };
+    int cols[SIDE], rows[SIDE];
+    for (int k = 0; k < SIDE; k++) {
+        cols[k] = ((c->x + k - KIN_NEAR) % w->w + w->w) % w->w;
+        rows[k] = ((c->y + k - KIN_NEAR) % w->h + w->h) % w->h;
+    }
+    for (int i = 0; i < SIDE; i++) {
+        for (int j = 0; j < SIDE; j++) {
+            int other = w->occupant[rows[i] * w->w + cols[j]];
             if (other < 0 || &p->items[other] == c) {
                 continue;
             }
