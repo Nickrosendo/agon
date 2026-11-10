@@ -157,8 +157,17 @@ bool sim_alloc(Sim *s, const Settings *set, int w, int h)
         return false;
     }
     s->turns = malloc((size_t)set->pool_capacity * sizeof(*s->turns));
+    s->callers = malloc((size_t)set->pool_capacity * sizeof(*s->callers));
+    /* (w + CALL_BLOCK - 1) / CALL_BLOCK rounds the division up, so a map that
+     * is not a whole number of squares wide gets a last, narrower square. */
+    s->call_cols = (w + CALL_BLOCK - 1) / CALL_BLOCK;
+    s->call_rows = (h + CALL_BLOCK - 1) / CALL_BLOCK;
+    size_t squares = (size_t)s->call_cols * (size_t)s->call_rows;
+    s->call_start = malloc((squares + 1) * sizeof(*s->call_start));
+    s->call_fill = malloc(squares * sizeof(*s->call_fill));
     s->scratch = malloc((size_t)set->pool_capacity * sizeof(*s->scratch));
-    if (s->turns == NULL || s->scratch == NULL ||
+    if (s->turns == NULL || s->scratch == NULL || s->callers == NULL ||
+        s->call_start == NULL || s->call_fill == NULL ||
         !chronicle_init(&s->chronicle) || !tactics_init(&s->tactics)) {
         sim_free(s);
         return false;
@@ -176,6 +185,48 @@ bool sim_init(Sim *s, const Settings *set, uint64_t seed, int w, int h)
         return false;
     }
     return true;
+}
+
+/* Lists who is calling now, to be heard on the next tick, and points the Pool
+ * at the list. Done at the end of every tick, and after a build or a load. */
+static int call_square(const Sim *s, const Creature *c)
+{
+    return (c->y / CALL_BLOCK) * s->call_cols + c->x / CALL_BLOCK;
+}
+
+/* Sorted by square in two passes, a counting sort: count each square's calls,
+ * turn the counts into where each square's calls start, then place each call
+ * at its square's next free place. Within a square, calls stay in slot order. */
+static void list_callers(Sim *s)
+{
+    int squares = s->call_cols * s->call_rows;
+    for (int b = 0; b <= squares; b++) {
+        s->call_start[b] = 0;
+    }
+    for (int i = 0; i < s->pool.capacity; i++) {
+        const Creature *c = &s->pool.items[i];
+        if (c->alive && c->calling) {
+            s->call_start[call_square(s, c) + 1]++;
+        }
+    }
+    for (int b = 0; b < squares; b++) {
+        s->call_start[b + 1] += s->call_start[b];
+        s->call_fill[b] = s->call_start[b];
+    }
+    for (int i = 0; i < s->pool.capacity; i++) {
+        const Creature *c = &s->pool.items[i];
+        if (c->alive && c->calling) {
+            int b = call_square(s, c);
+            s->callers[s->call_fill[b]] = (Caller){i, c->id, c->x, c->y};
+            s->call_fill[b]++;
+        }
+    }
+    s->n_callers = s->call_start[squares];
+    s->pool.callers = s->callers;
+    s->pool.n_callers = s->n_callers;
+    s->pool.call_start = s->call_start;
+    s->pool.call_cols = s->call_cols;
+    s->pool.call_rows = s->call_rows;
 }
 
 /* Tells the Pool the time of year, from the tick alone: creature_act and
@@ -205,6 +256,7 @@ bool sim_resume(Sim *s)
         }
     }
     tell_the_season(s);
+    list_callers(s);
     stats_measure(&s->stats, &s->world, &s->pool, s->tick, s->scratch);
     return true;
 }
@@ -242,6 +294,7 @@ bool sim_reseed(Sim *s, uint64_t seed)
         }
     }
     records_start(s);
+    list_callers(s);
     /* A first sample at tick 0, so the panel has numbers from the start,
      * and fresh histories for the new world. */
     stats_clear(&s->stats);
@@ -330,12 +383,17 @@ static void take_turn(Sim *s, int idx)
             a.hold = 1;
         }
         start_sleep(s, c, &a);
-        tactics_note_decision(s->pool.tactics, c, &in, false, s->pool.light);
+        /* A sleeper makes no sound, whatever its brain's call output says. */
+        c->calling = a.kind != ACT_SLEEP && a.call > 0.5f;
+        tactics_note_decision(s->pool.tactics, c, &in, c->calling, s->pool.light);
         keep_memory(c, &a);
         c->current = a;
         c->hold_left = a.hold > 0 ? a.hold : 1;
     }
     c->hold_left--;
+    if (c->calling) {
+        c->energy -= s->set.call_cost;
+    }
     int child = creature_act(&s->world, &s->pool, idx, c->current, &s->set,
                              &s->rng);
     if (child >= 0) {
@@ -615,6 +673,7 @@ void sim_step(Sim *s)
     creatures_act(s);
     accounting(s);
     restock(s);
+    list_callers(s);
     s->tick++;
     bool sample_due =
         s->set.stats_every > 0 && s->tick % (uint64_t)s->set.stats_every == 0;
@@ -634,6 +693,12 @@ void sim_free(Sim *s)
     brain_close(&s->brain);
     free(s->turns);
     s->turns = NULL;
+    free(s->callers);
+    s->callers = NULL;
+    free(s->call_start);
+    s->call_start = NULL;
+    free(s->call_fill);
+    s->call_fill = NULL;
     free(s->scratch);
     s->scratch = NULL;
     chronicle_free(&s->chronicle);
@@ -696,6 +761,7 @@ static uint64_t hash_creature(uint64_t hash, const Creature *c)
     hash = fnv1a(hash, &c->since_meal, sizeof(c->since_meal));
     hash = fnv1a(hash, &c->sleep_ticks, sizeof(c->sleep_ticks));
     hash = fnv1a(hash, &c->hibernating, sizeof(c->hibernating));
+    hash = fnv1a(hash, &c->calling, sizeof(c->calling));
     /* sizeof of an array that is a struct field is the whole array,
      * GENOME_LEN * sizeof(float): it has not decayed to a pointer here,
      * as an array passed to a function would. */

@@ -474,10 +474,12 @@ static void test_known_world_pixels(void)
          * elsewhere at the two wider levels. Drawing is unchanged (the lab's
          * pin holds); the pictures are looked at when night is drawn.
          * Re-pinned for the fight and family senses, the same day: brains
-         * re-rolled again, creatures elsewhere at all but the closest level. */
+         * re-rolled again, creatures elsewhere at all but the closest level.
+         * Re-pinned for calls: brains re-rolled once more, the same three
+         * levels. */
         static const uint64_t EXPECTED[CAMERA_LEVELS] = {
-            0xbe5f57fb7c7bdabdu, 0xb9ca5b91d405bc85u,
-            0x018345850d672790u, 0x36c1b25d090bca25u,
+            0xbe5f57fb7c7bdabdu, 0x5a015897532bfe08u,
+            0x85fe87df4ce9ff86u, 0x088d7f7bff6bfc25u,
         };
         if (hashes[level] != EXPECTED[level]) {
             printf("level %d: 0x%llxu\n", level,

@@ -118,6 +118,9 @@ static void test_round_trip_and_continue(void)
     CHECK(history_same(&a.stats.hist_meat_eaters, &b.stats.hist_meat_eaters));
     CHECK(history_same(&a.stats.hist_planted, &b.stats.hist_planted));
     CHECK(b.stats.creatures == a.pool.count);
+    /* Calls made on the last tick are heard after the load as before it. */
+    CHECK(a.n_callers > 0);
+    CHECK(b.n_callers == a.n_callers);
     Settings copied = a.set;
     CHECK(memcmp(&copied, &b.set, sizeof(copied)) == 0);
 
@@ -575,8 +578,9 @@ enum {
     AT_SINCE_MEAL = 155,
     AT_SLEEP_TICKS = 157,
     AT_HIBERNATING = 159,
-    AT_MEMORY = 160,
-    AT_GENOME = 172,
+    AT_CALLING = 160,
+    AT_MEMORY = 161,
+    AT_GENOME = 173,
     /* The life story: ten u32 counts, max_size, flags, two region bytes and
      * region_ticks (49 bytes); then events_noted and 8 events of 13 bytes each
      * (tick, kind, other_id, value: the struct's 3 padding bytes are not written). */

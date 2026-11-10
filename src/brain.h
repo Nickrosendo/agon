@@ -48,7 +48,7 @@ enum {
  * the rays: ray k's value j is at SENSE_RAYS + k * RAY_VALUES + j. After the
  * rays come the drives, then the memory values, the last ones between -1 and 1.
  * The neural network has one input per sense, so its NET_IN must equal
- * SENSE_COUNT (56). An enum value may be set from earlier ones, and the next
+ * SENSE_COUNT (59). An enum value may be set from earlier ones, and the next
  * goes on counting from there. */
 enum {
     SENSE_ENERGY,
@@ -80,6 +80,14 @@ enum {
      * without one. A body sense, felt asleep too. Without it a creature biting
      * at nothing could tell only from energy falling slowly. */
     SENSE_FED,
+    /* Calls heard (tactics design, section 7), from creatures that called on the
+     * last tick within call_reach cells: how loud the loudest relative's call is,
+     * 1 beside and falling with distance, 0 for none; which side it comes from,
+     * 0 left, 0.5 straight ahead or behind, 1 right; and how loud the loudest
+     * stranger's call is. */
+    SENSE_CALL_KIN,
+    SENSE_CALL_KIN_SIDE,
+    SENSE_CALL_STRANGER,
     /* A fresh draw for each decision, written by the Sim and left 0 by
      * creature_sense, which the drawing side calls too and which must not
      * change the random generator. */
@@ -127,6 +135,9 @@ typedef struct {
     uint8_t kind;
     uint16_t hold;
     float memory[MEMORY_VALUES];
+    /* Above 0.5: call out while doing it. A signal with no meaning given to
+     * it; what it comes to mean is up to each family's brains. */
+    float call;
 } Action;
 
 /* An incomplete type: the compiler learns that a struct Genome exists,

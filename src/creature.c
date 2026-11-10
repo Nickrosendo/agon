@@ -571,6 +571,119 @@ static void sense_neighbours(const World *w, const Pool *p, const Creature *c,
     out->v[SENSE_KIN_HIT] = kin_hit_near(w, p, c, s) ? 1.0f : 0.0f;
 }
 
+/* The shorter way from a to b on a ring of n cells: the map wraps at its edges,
+ * so a creature at x = 1 hears one at x = n - 1 two cells away. */
+static int wrapped_delta(int a, int b, int n)
+{
+    int d = b - a;
+    if (d > n / 2) {
+        d -= n;
+    } else if (d < -n / 2) {
+        d += n;
+    }
+    return d;
+}
+
+/* The calls c hears: the loudest relative's, the side it comes from, and the
+ * loudest stranger's (SENSE_CALL_, brain.h). */
+/* Running loudest calls, as hear_calls finds them. */
+typedef struct {
+    float kin_loud, kin_side, stranger_loud;
+    uint32_t kin_id; /* who made the loudest relative's call */
+} Heard;
+
+/* One call, against the loudest heard so far. */
+static void hear_one(const World *w, const Pool *p, const Creature *c,
+                     const Settings *s, const Caller *call, Heard *h)
+{
+    const Creature *who = &p->items[call->idx];
+    /* Not itself, and not a slot that holds someone else by now. */
+    if (who == c || !who->alive || who->id != call->id) {
+        return;
+    }
+    int dx = wrapped_delta(c->x, call->x, w->w);
+    int dy = wrapped_delta(c->y, call->y, w->h);
+    int ax = dx < 0 ? -dx : dx;
+    int ay = dy < 0 ? -dy : dy;
+    int d = ax > ay ? ax : ay;
+    if (d < 1 || d > s->call_reach) {
+        return;
+    }
+    float loud = 1.0f - (float)(d - 1) / (float)s->call_reach;
+    /* The cheap test first: kinship compares whole genomes, and a call quieter
+     * than both heard so far cannot change anything. */
+    if (loud < h->kin_loud && loud <= h->stranger_loud) {
+        return;
+    }
+    if (genome_kinship(&c->genome, &who->genome) >= s->kin_sense) {
+        /* Of two equally loud, the lower id: the answer must not depend on the
+         * order the calls are looked at in, or sorting them would change the
+         * world. Only the side can differ between them. */
+        if (loud > h->kin_loud || (loud == h->kin_loud && who->id < h->kin_id)) {
+            h->kin_loud = loud;
+            h->kin_id = who->id;
+            /* Right or left of the way it faces: the step to the right, dotted
+             * with the way to the caller. */
+            uint8_t right = turned(c->heading, 1);
+            int towards = dx * STEP_X[right] + dy * STEP_Y[right];
+            h->kin_side = towards > 0 ? 1.0f : towards < 0 ? 0.0f : 0.5f;
+        }
+    } else if (loud > h->stranger_loud) {
+        h->stranger_loud = loud;
+    }
+}
+
+/* The squares (CALL_BLOCK cells a side) within reach cells of v along one
+ * direction of a map n cells long, as square numbers in out, each once. Returns
+ * how many. The map wraps, and on a small map the reach can cover a square
+ * twice, hence the check for repeats. */
+static int squares_in_reach(int v, int reach, int n, int count, int *out)
+{
+    int found = 0;
+    for (int d = -reach; d <= reach; d++) {
+        /* ((v + d) % n + n) % n: C's % keeps the sign of the left side, so -1 % n
+         * is -1, and adding n once puts it back on the map. */
+        int cell = ((v + d) % n + n) % n;
+        int square = cell / CALL_BLOCK;
+        bool seen = false;
+        for (int k = 0; k < found; k++) {
+            seen = seen || out[k] == square;
+        }
+        if (!seen && found < count) {
+            out[found] = square;
+            found++;
+        }
+    }
+    return found;
+}
+
+static void hear_calls(const World *w, const Pool *p, const Creature *c,
+                       const Settings *s, Senses *out)
+{
+    Heard h = {0.0f, 0.0f, 0.0f, UINT32_MAX};
+    if (p->call_start == NULL) {
+        for (int k = 0; k < p->n_callers; k++) {
+            hear_one(w, p, c, s, &p->callers[k], &h);
+        }
+    } else {
+        /* A reach of at most 32 cells spans at most 2 * 32 / 8 + 2 squares. */
+        int cols[12], rows[12];
+        int nc = squares_in_reach(c->x, s->call_reach, w->w, 12, cols);
+        int nr = squares_in_reach(c->y, s->call_reach, w->h, 12, rows);
+        for (int i = 0; i < nr; i++) {
+            for (int j = 0; j < nc; j++) {
+                int b = rows[i] * p->call_cols + cols[j];
+                for (int k = p->call_start[b]; k < p->call_start[b + 1]; k++) {
+                    hear_one(w, p, c, s, &p->callers[k], &h);
+                }
+            }
+        }
+    }
+    out->v[SENSE_CALL_KIN] = h.kin_loud;
+    out->v[SENSE_CALL_KIN_SIDE] = h.kin_side;
+    out->v[SENSE_CALL_STRANGER] = h.stranger_loud;
+}
+
 /* Holds at 0 the senses blind_senses names (BLIND_ bits, brain.h). */
 static void blind(int mask, Senses *out)
 {
@@ -589,6 +702,11 @@ static void blind(int mask, Senses *out)
     }
     if (mask & BLIND_KIN_HIT) {
         out->v[SENSE_KIN_HIT] = 0.0f;
+    }
+    if (mask & BLIND_HEARING) {
+        out->v[SENSE_CALL_KIN] = 0.0f;
+        out->v[SENSE_CALL_KIN_SIDE] = 0.0f;
+        out->v[SENSE_CALL_STRANGER] = 0.0f;
     }
 }
 
@@ -651,6 +769,7 @@ static void sense_all(const World *w, const Pool *p, int idx,
     int ahead = cell_towards(w, c->x, c->y, c->heading);
     out->v[SENSE_BLOCKED] = cell_is_free(w, ahead) ? 0.0f : 1.0f;
     sense_neighbours(w, p, c, s, out);
+    hear_calls(w, p, c, s, out);
 
     /* The directions of the three rays, in RAY_ order. */
     const uint8_t ray_heading[RAY_COUNT] = {

@@ -156,6 +156,9 @@ typedef struct {
      * uint8_t, not a bool, so the save file and the fingerprint hold one byte
      * whose size does not depend on the compiler. */
     uint8_t hibernating;
+    /* 1 while its brain's last answer said to call out (Action.call above 0.5),
+     * 0 otherwise and always 0 asleep. Heard by others on the next tick. */
+    uint8_t calling;
     /* Stored inside the creature, not behind a pointer: GENOME_LEN floats
      * (1,444 bytes) in every slot, allocated with the pool and never freed
      * on its own. */
@@ -176,6 +179,18 @@ typedef struct {
  * meat-eater. The panel's bands and the plant-eater cap (with
  * cap_by_level) both use it. */
 #define LEVEL_MEAT 2.5f
+
+/* One creature that called on the last tick: its slot, its id then (if the
+ * slot holds someone else by now, the ids differ and the call is not heard),
+ * and where it stood. */
+typedef struct {
+    int32_t idx;
+    uint32_t id;
+    int x, y;
+} Caller;
+
+/* The side of the squares calls are sorted into. */
+#define CALL_BLOCK 8
 
 /* Below 0 and above 1 are not possible, but a sum of 0.25f four times is
  * exactly 1 while a sum of 0.1f ten times is 0.99999994. A move is
@@ -228,6 +243,18 @@ typedef struct {
      * tick by the Sim before anyone acts, like year_phase. */
     float light;
     float day_phase; /* how far through its day, 0 at noon up to 1 */
+    /* The calls made on the last tick, listed by the Sim at the end of each
+     * tick: n_callers entries, in an array the Sim owns. NULL and 0 in a pool
+     * made by hand, which then hears nothing. */
+    const Caller *callers;
+    int n_callers;
+    /* The calls sorted by CALL_BLOCK-sized square of the map, so a hearer looks
+     * only at the squares within its reach: the calls in square b are
+     * callers[call_start[b]] up to callers[call_start[b + 1] - 1], with squares
+     * numbered row by row, call_cols to a row. NULL in a pool made by hand,
+     * whose callers are then searched one by one. */
+    const int32_t *call_start;
+    int call_cols, call_rows;
 } Pool;
 
 /* Allocates capacity empty slots. False for a capacity below 1 or when

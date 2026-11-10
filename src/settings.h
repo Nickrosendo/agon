@@ -399,6 +399,10 @@ typedef struct {
     /* BLIND_ bits (brain.h): the senses held at 0 for every brain. 0, the
      * default, blinds nothing. For testing what a tactic rests on. */
     int blind_senses;
+    /* Calls: the energy a tick of calling costs, and how far, in cells along
+     * the larger of the two directions, a call is heard. */
+    float call_cost;
+    int call_reach;
     float night_eye_power;
     float night_glare;
     float night_eye_upkeep;

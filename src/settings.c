@@ -269,6 +269,8 @@ Settings settings_default(void)
          * second. */
         .ticks_per_day = 60,
         .blind_senses = 0,
+        .call_cost = 0.05f,
+        .call_reach = 6,
         .night_eye_power = 0.8f,
         .night_glare = 0.4f,
         .night_eye_upkeep = 0.05f,
@@ -480,6 +482,8 @@ static const SettingInfo TABLE[] = {
             "ticks in a day, noon first; sight fails in the dark"),
     INT_ROW(blind_senses, 0, 31, "senses held at 0 for every brain: 1 day, 2 a "
                                  "fight seen, 4 a stray seen, 8 kin hit, 16 hearing"),
+    FLOAT_ROW(call_cost, 0, BIG, "energy a tick of calling costs"),
+    INT_ROW(call_reach, 1, 32, "how many cells away a call is heard"),
     FLOAT_ROW(night_eye_power, 0, 1, "share of its sight a creature with full "
                                      "night eyes keeps at midnight"),
     FLOAT_ROW(night_glare, 0, 1, "share of its sight full night eyes lose at noon"),

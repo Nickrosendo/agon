@@ -455,6 +455,12 @@ ticks_per_day = 60
 # senses held at 0 for every brain: 1 day, 2 a fight seen, 4 a stray seen, 8 kin hit, 16 hearing (0 to 31)
 blind_senses = 0
 
+# energy a tick of calling costs (0 to 1e+06)
+call_cost = 0.05
+
+# how many cells away a call is heard (1 to 32)
+call_reach = 6
+
 # share of its sight a creature with full night eyes keeps at midnight (0 to 1)
 night_eye_power = 0.8
 

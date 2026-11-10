@@ -1,4 +1,8 @@
 #include "test.h"
+#include <math.h>  /* fabsf */
+#include <stdio.h> /* snprintf */
+#include "brain_script.h"
+#include "creature.h"
 
 #include "settings.h"
 #include "sim.h"
@@ -68,9 +72,47 @@
  * days of 60 ticks, with sight that fails in the dark, night eyes as a gene
  * and two day senses: every random genome is re-rolled; then a fight, a
  * stray and a wound seen along each ray and a relative's hit felt, ten more
- * inputs, re-rolled again.
+ * inputs, re-rolled again; then calls, an output and three hearing senses,
+ * re-rolled once more.
  */
-#define SEED_7_AFTER_500 0xd2004cde46f9d10aULL
+#define SEED_7_AFTER_500 0xd932032dc1767abbULL
+
+/* One creature in a bare 16x16 world with the scripted brain, resting for a
+ * tick, calling or not. Returns the energy it has left. */
+static float energy_after_rest(bool call, float cost)
+{
+    Settings set = settings_default();
+    snprintf(set.brain_name, sizeof(set.brain_name), "script");
+    set.start_share = 0.0f;
+    set.min_creatures = 0;
+    set.veg_start_chance = 0.0f;
+    set.call_cost = cost;
+    Sim sim;
+    CHECK(sim_init(&sim, &set, 7, 16, 16));
+    for (int i = 0; i < 16 * 16; i++) {
+        sim.world.terrain[i] = TERRAIN_SOIL;
+    }
+    int c = pool_spawn(&sim.pool, &sim.world, 8, 8);
+    Creature *me = &sim.pool.items[c];
+    me->energy = 100.0f;
+    me->health = 1.0f;
+    Action script[] = {{.kind = ACT_REST, .hold = 1, .call = call ? 1.0f : 0.0f}};
+    brain_script_load(&sim.brain, script, 1);
+    sim_step(&sim);
+    CHECK(me->calling == (call ? 1 : 0));
+    /* Listed at the end of the tick, to be heard on the next. */
+    CHECK(sim.n_callers == (call ? 1 : 0));
+    float left = me->energy;
+    sim_free(&sim);
+    return left;
+}
+
+static void test_call_costs(void)
+{
+    float quiet = energy_after_rest(false, 0.5f);
+    float loud = energy_after_rest(true, 0.5f);
+    CHECK(fabsf((quiet - loud) - 0.5f) < 1e-4f);
+}
 
 static void test_same_seed_same_checksum(void)
 {
@@ -478,6 +520,8 @@ int main(void)
     test_records_do_not_change_the_world();
     test_is_over();
     test_floor_brings_a_world_back();
+    CHECK(brain_register(&BRAIN_SCRIPT));
+    test_call_costs();
     test_same_seed_same_checksum();
     test_other_seed_differs();
     test_reseed_matches_fresh_init();

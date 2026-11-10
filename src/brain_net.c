@@ -17,8 +17,8 @@
  * the build stops with the message. The network has one input per sense
  * and one output per action, and the two headers count them separately. */
 static_assert(NET_IN == SENSE_COUNT, "one network input per sense");
-static_assert(NET_OUT == ACT_COUNT + MEMORY_VALUES,
-              "one network output per action and per memory value");
+static_assert(NET_OUT == ACT_COUNT + MEMORY_VALUES + 1,
+              "one network output per action and per memory value, and the call");
 
 static bool net_create(Brain *b, const Settings *s, uint64_t seed)
 {
@@ -92,6 +92,7 @@ static bool net_decide(Brain *b, uint32_t id, const Genome *g,
     for (int m = 0; m < MEMORY_VALUES; m++) {
         out->memory[m] = tanhf(output(g, hidden, ACT_COUNT + m));
     }
+    out->call = tanhf(output(g, hidden, ACT_COUNT + MEMORY_VALUES));
     return true;
 }
 

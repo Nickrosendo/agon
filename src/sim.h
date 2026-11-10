@@ -50,6 +50,16 @@ typedef struct {
     Pool pool;
     Brain brain;
     Turn *turns;  /* pool capacity entries, reused every tick */
+    /* The calls of the last tick, pool capacity entries, n_callers used; the
+     * Pool's callers point here. Made from the creatures' calling flags, so
+     * neither saved nor hashed: a load lists them again. */
+    Caller *callers;
+    int n_callers;
+    /* The calls sorted by square of the map (see Pool.call_start): the start of
+     * each square's calls, squares + 1 entries, and a cursor per square used
+     * while sorting. */
+    int32_t *call_start, *call_fill;
+    int call_cols, call_rows;
     Stats stats;
     uint32_t *scratch; /* pool capacity entries, for stats_sample */
     Rng rng;

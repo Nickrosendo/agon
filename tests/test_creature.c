@@ -1379,6 +1379,121 @@ static void test_blind_mask_zeroes(void)
     world_free(&w);
 }
 
+/* A hearer at (5, 5) facing north with a genome of its own, in a pool whose
+ * calls are listed in callers. */
+static void call_scene(World *w, Pool *p, int *hearer, Rng *r, const Settings *s,
+                       Caller *callers)
+{
+    make_world(w, 24, 24);
+    CHECK(pool_init(p, 16));
+    *hearer = spawn(p, w, 5, 5);
+    genome_random(&p->items[*hearer].genome, r, s);
+    p->items[*hearer].heading = HEADING_NORTH;
+    p->callers = callers;
+    p->n_callers = 0;
+}
+
+/* A creature at (x, y) calling, listed among the pool's calls. relative: a copy
+ * of the hearer's genome; otherwise a random one. */
+static int add_caller(World *w, Pool *p, int x, int y, int hearer, bool relative,
+                      Rng *r, const Settings *s, Caller *callers)
+{
+    int idx = spawn(p, w, x, y);
+    if (relative) {
+        p->items[idx].genome = p->items[hearer].genome;
+    } else {
+        genome_random(&p->items[idx].genome, r, s);
+    }
+    p->items[idx].calling = 1;
+    callers[p->n_callers] = (Caller){idx, p->items[idx].id, x, y};
+    p->n_callers++;
+    return idx;
+}
+
+static void test_hears_kin_call(void)
+{
+    Settings s = settings_default();
+    Rng r;
+    rng_seed(&r, 21);
+    World w;
+    Pool p;
+    Caller callers[16];
+    int h;
+    call_scene(&w, &p, &h, &r, &s, callers);
+    Senses in;
+    creature_sense(&w, &p, h, &s, &in);
+    CHECK(in.v[SENSE_CALL_KIN] == 0.0f && in.v[SENSE_CALL_STRANGER] == 0.0f);
+    /* A relative 3 cells to the east, the hearer's right when facing north:
+     * loudness 1 - (3 - 1) / 6. */
+    add_caller(&w, &p, 8, 5, h, true, &r, &s, callers);
+    creature_sense(&w, &p, h, &s, &in);
+    CHECK(fabsf(in.v[SENSE_CALL_KIN] - (1.0f - 2.0f / 6.0f)) < 1e-6f);
+    CHECK(in.v[SENSE_CALL_KIN_SIDE] == 1.0f);
+    CHECK(in.v[SENSE_CALL_STRANGER] == 0.0f);
+    /* Facing south, the same call comes from the left. */
+    p.items[h].heading = HEADING_SOUTH;
+    creature_sense(&w, &p, h, &s, &in);
+    CHECK(in.v[SENSE_CALL_KIN_SIDE] == 0.0f);
+    pool_free(&p);
+    world_free(&w);
+}
+
+static void test_stranger_call_and_reach(void)
+{
+    Settings s = settings_default();
+    Rng r;
+    rng_seed(&r, 22);
+    World w;
+    Pool p;
+    Caller callers[16];
+    int h;
+    call_scene(&w, &p, &h, &r, &s, callers);
+    Senses in;
+    add_caller(&w, &p, 5, 3, h, false, &r, &s, callers); /* 2 cells north */
+    creature_sense(&w, &p, h, &s, &in);
+    CHECK(in.v[SENSE_CALL_KIN] == 0.0f);
+    CHECK(fabsf(in.v[SENSE_CALL_STRANGER] - (1.0f - 1.0f / 6.0f)) < 1e-6f);
+    /* Seven cells away is out of reach; so is the far side of a wrapping map
+     * only when it really is far: (5, 22) is 7 cells north across the edge. */
+    p.n_callers = 0;
+    add_caller(&w, &p, 12, 5, h, false, &r, &s, callers);
+    add_caller(&w, &p, 5, 22, h, false, &r, &s, callers);
+    creature_sense(&w, &p, h, &s, &in);
+    CHECK(in.v[SENSE_CALL_STRANGER] == 0.0f);
+    add_caller(&w, &p, 5, 23, h, false, &r, &s, callers); /* 6 across the edge */
+    creature_sense(&w, &p, h, &s, &in);
+    CHECK(fabsf(in.v[SENSE_CALL_STRANGER] - (1.0f - 5.0f / 6.0f)) < 1e-5f);
+    /* Asleep, it hears nothing; blinded, nothing either. */
+    s.blind_senses = BLIND_HEARING;
+    creature_sense(&w, &p, h, &s, &in);
+    CHECK(in.v[SENSE_CALL_STRANGER] == 0.0f);
+    pool_free(&p);
+    world_free(&w);
+}
+
+static void test_dead_caller_not_heard(void)
+{
+    Settings s = settings_default();
+    Rng r;
+    rng_seed(&r, 23);
+    World w;
+    Pool p;
+    Caller callers[16];
+    int h;
+    call_scene(&w, &p, &h, &r, &s, callers);
+    int caller = add_caller(&w, &p, 6, 5, h, true, &r, &s, callers);
+    /* The caller dies and a newborn takes its slot before the call is heard. */
+    pool_kill(&p, &w, caller, &s, DEATH_HUNGER);
+    int newborn = spawn(&p, &w, 6, 5);
+    CHECK(newborn == caller);
+    p.items[newborn].genome = p.items[h].genome;
+    Senses in;
+    creature_sense(&w, &p, h, &s, &in);
+    CHECK(in.v[SENSE_CALL_KIN] == 0.0f);
+    pool_free(&p);
+    world_free(&w);
+}
+
 /* What is one step ahead, in the way the creature faces: the sense a creature
  * needs in order to stop walking into a wall. */
 static void test_senses_blocked(void)
@@ -3972,6 +4087,9 @@ int main(void)
     test_ray_alone_and_hurt();
     test_kin_hit_sense();
     test_blind_mask_zeroes();
+    test_hears_kin_call();
+    test_stranger_call_and_reach();
+    test_dead_caller_not_heard();
     test_senses_blocked();
     test_senses_plant_along_ray();
     test_plant_ray_sees_only_food();
