@@ -2784,6 +2784,50 @@ static void test_hit_takes_health_not_energy(void)
     world_free(&w);
 }
 
+/* A mouth built for meat bites whatever is in front of it: a hunter that
+ * chooses to bite while a stranger stands ahead strikes it, as an attack
+ * would, and pays an attack's cost. A plant-eater's bite never hurts anyone,
+ * nor a hunter's with bite_strikes off. */
+static void test_hunter_bite_strikes_a_stranger(void)
+{
+    Settings s = settings_default();
+    s.attack_steepness = 16.0f;
+    Rng r;
+    rng_seed(&r, 3);
+    World w;
+    Pool p;
+    int a, t;
+    fight_scene(&w, &p, &s, &a, &t);
+    p.items[a].genome.g[GENE_SIZE] = 1.0f; /* far larger: almost always hits */
+    p.items[t].genome.g[GENE_SIZE] = 0.0f;
+    float health = p.items[t].health;
+    /* A plant-eater's bite: nobody hurt, nothing to eat, the empty cost. */
+    creature_act(&w, &p, a, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
+    CHECK(p.items[t].health == health);
+    CHECK(near(p.items[a].energy, 100.0f - s.bite_empty_cost));
+    /* The same bite from a hunter strikes. */
+    make_hunter(&p.items[a]);
+    p.items[a].energy = 100.0f;
+    for (int k = 0; k < 5 && p.items[t].health == health; k++) {
+        creature_act(&w, &p, a, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
+    }
+    CHECK(near(p.items[t].health, health - s.bite_damage * 1.5f));
+    CHECK(p.items[t].energy == 100.0f);
+    /* Each bite cost an attack's price, not an empty bite's. */
+    float spent = 100.0f - p.items[a].energy;
+    float per = spent / roundf(spent / s.attack_cost);
+    CHECK(near(per, s.attack_cost));
+    /* With the rule off, a hunter's bite is a plain bite again. */
+    s.bite_strikes = 0;
+    health = p.items[t].health;
+    for (int k = 0; k < 20; k++) {
+        creature_act(&w, &p, a, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
+    }
+    CHECK(p.items[t].health == health);
+    pool_free(&p);
+    world_free(&w);
+}
+
 static void test_zero_energy_loses_health_slowly(void)
 {
     Settings s = settings_default();
@@ -2908,6 +2952,7 @@ static void test_bite_never_attacks(void)
     int a, t;
     fight_scene(&w, &p, &s, &a, &t);
     make_hunter(&p.items[a]);
+    s.bite_strikes = 0; /* on, a hunter's bite strikes: tested below */
     float health = p.items[t].health;
     for (int k = 0; k < 20; k++) {
         creature_act(&w, &p, a, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
@@ -4046,6 +4091,8 @@ static void test_bitten_sleeper_wakes(void)
     sleeper->hold_left = 400;
     sleeper->sleep_ticks = 100;
     sleeper->hibernating = 1; /* a hibernation ends on a bite like a nap */
+    /* Three hits must land and leave it alive: about waking, not damage. */
+    s.bite_damage = 6.0f;
     float health = sleeper->health;
     Action attack = {.kind = ACT_ATTACK, .hold = 1};
     for (int k = 0; k < 5 && sleeper->hits_taken == 0; k++) {
@@ -4216,5 +4263,6 @@ int main(void)
     test_sleeper_does_nothing();
     test_sleeper_senses_only_inside();
     test_bitten_sleeper_wakes();
+    test_hunter_bite_strikes_a_stranger();
     TEST_SUMMARY();
 }

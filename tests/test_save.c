@@ -91,6 +91,16 @@ static bool history_same(const History *a, const History *b)
  * that is missing from the checksum but changes the future (the order of
  * the free list, the random generator) shows up only by running on.
  */
+/* How many living creatures called on the last tick. */
+static int callers_now(const Sim *s)
+{
+    int n = 0;
+    for (int i = 0; i < s->pool.capacity; i++) {
+        n += s->pool.items[i].alive && s->pool.items[i].calling;
+    }
+    return n;
+}
+
 static void test_round_trip_and_continue(void)
 {
     Settings set = settings_default();
@@ -98,6 +108,11 @@ static void test_round_trip_and_continue(void)
     char err[256] = "";
     CHECK(sim_init(&a, &set, 7, 64, 32));
     for (int i = 0; i < 1000; i++) {
+        sim_step(&a);
+    }
+    /* On, until someone calls on the last tick, so that calls are tested
+     * travelling: which tick that is depends on the rules of the day. */
+    while (a.tick < 3000 && callers_now(&a) == 0) {
         sim_step(&a);
     }
     /* A seed being carried travels too, or the world would differ when it drops. */
@@ -110,7 +125,7 @@ static void test_round_trip_and_continue(void)
     }
     CHECK(save_write(&a, SAVE_FILE, err, sizeof(err)));
     CHECK(save_read(&b, SAVE_FILE, err, sizeof(err)));
-    CHECK(b.seed == 7 && b.tick == 1000);
+    CHECK(b.seed == 7 && b.tick == a.tick);
     CHECK(b.world.w == 64 && b.world.h == 32);
     CHECK(b.pool.free_head == a.pool.free_head);
     CHECK(sim_checksum(&a) == sim_checksum(&b));

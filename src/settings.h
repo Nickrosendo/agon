@@ -326,6 +326,9 @@ typedef struct {
      * ground costs less than walking to food a few cells away. */
     float bite_empty_cost;
     float bite_damage;
+    /* 1: a hunter's bite at a creature an attack would strike is that attack
+     * (see act_bite). 0: a bite only ever eats. */
+    int bite_strikes;
     /* A neighbour counts as a relative in the senses from this genome_kinship up. */
     float kin_sense;
     /* An attack does not strike a creature whose genome_kinship with the attacker

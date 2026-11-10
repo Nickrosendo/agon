@@ -486,10 +486,13 @@ static void test_known_world_pixels(void)
          * Re-pinned for the fight and family senses, the same day: brains
          * re-rolled again, creatures elsewhere at all but the closest level.
          * Re-pinned for calls: brains re-rolled once more, the same three
-         * levels. Re-pinned for learning within a life: the two wider levels. */
+         * levels. Re-pinned for learning within a life: the two wider levels.
+         * Re-pinned for bite strikes and hits of 15 (2026-11-10): fights end
+         * sooner, creatures elsewhere at the two wider levels; drawing is
+         * unchanged (the lab's pin holds). */
         static const uint64_t EXPECTED[CAMERA_LEVELS] = {
             0xbe5f57fb7c7bdabdu, 0x5a015897532bfe08u,
-            0xffa8dfb35333fdffu, 0xdc74037711df647du,
+            0x6f728fbe0a63465du, 0x3a1c1007d7e06455u,
         };
         if (hashes[level] != EXPECTED[level]) {
             printf("level %d: 0x%llxu\n", level,

@@ -381,7 +381,10 @@ starve_damage = 0.5
 bite_empty_cost = 0
 
 # health a hit takes, by attacker's size (0 to 1e+06)
-bite_damage = 6
+bite_damage = 15
+
+# 1: a hunter biting a creature ahead strikes it (0 to 1)
+bite_strikes = 1
 
 # kinship from which a neighbour counts as family (0 to 1)
 kin_sense = 0.5

@@ -212,7 +212,10 @@ Settings settings_default(void)
         /* Off: measured on seeds 1 to 5 it made worlds die without reducing how much
          * creatures stand still (2 to 3 of 5 alive at 0.05 and above). */
         .bite_empty_cost = 0.0f,
-        .bite_damage = 6.0f,
+        /* 15, not 6, from the 2026-11-10 hunt probe: a kill took about five
+         * hits and half the chases escaped; at 15 it takes two. */
+        .bite_damage = 15.0f,
+        .bite_strikes = 1,
         .kin_sense = 0.5f,
         /* Nicolas, 2026-11-03: a creature leaves its family without turning on it.
          * Measured on seeds 1 to 15: hits within a family name fell from 57 % to
@@ -461,6 +464,7 @@ static const SettingInfo TABLE[] = {
     FLOAT_ROW(starve_damage, 0, BIG, "health lost per tick at zero energy"),
     FLOAT_ROW(bite_empty_cost, 0, BIG, "energy a bite that finds nothing costs"),
     FLOAT_ROW(bite_damage, 0, BIG, "health a hit takes, by attacker's size"),
+    INT_ROW(bite_strikes, 0, 1, "1: a hunter biting a creature ahead strikes it"),
     FLOAT_ROW(kin_sense, 0, 1, "kinship from which a neighbour counts as family"),
     FLOAT_ROW(family_peace, 0, 2, "kinship from which an attack does not strike"),
     FLOAT_ROW(colour_peace, 0, 0.5, "colour distance within which an attack does not strike"),

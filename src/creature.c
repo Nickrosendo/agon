@@ -1188,9 +1188,20 @@ BiteChoice creature_bite_choice(const World *w, const Pool *p, int idx,
     return choice;
 }
 
+/* A mouth built for meat bites whatever stands in front of it: with
+ * bite_strikes on, a hunter's bite at a creature an attack would strike is
+ * that attack, cost and odds included, and counts as chosen, since the brain
+ * chose to bite. Without it, the brain had to link "stranger ahead" to a
+ * separate attack output, and almost never did (2026-11-10 hunt probe: 89 %
+ * of attacks struck an empty cell). */
 static void act_bite(World *w, Pool *p, int idx, const Settings *s, Rng *r)
 {
     Creature *c = &p->items[idx];
+    if (s->bite_strikes && creature_is_hunter(c) &&
+        creature_attack_target(w, p, idx, s) >= 0) {
+        act_attack(w, p, idx, s, r, true);
+        return;
+    }
     BiteChoice choice = creature_bite_choice(w, p, idx, s);
     switch (choice.kind) {
     case BITE_CARRION:
