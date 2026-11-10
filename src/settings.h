@@ -186,6 +186,13 @@ typedef struct {
      * 1 is the 8 cells beside; 2, the default since 2026-11-08, is the 24
      * cells within two steps. Nearer cells are always looked at first. */
     int mate_reach;
+    /* 1: of the partners within mate_reach that wish to mate, the most related
+     * (highest genome_kinship, brain genes included) is chosen, the nearer when
+     * two are as related; 0: the nearest. Nobody is barred, so a creature with no
+     * relative in reach still mates. From the 2026-11-10 brain-difference probe:
+     * families that interbreed lose any way of acting of their own, because a
+     * child of two unrelated brains answers like neither. */
+    int mate_by_kin;
     int mate_age;            /* ticks before a creature can mate */
     float sense_age_half;    /* the age sensed as 0.5 */
     /* How recently a creature ate is sensed as 1 just after a meal, falling

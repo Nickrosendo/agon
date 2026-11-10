@@ -790,6 +790,44 @@ static void test_mate_reach(void)
     world_free(&w);
 }
 
+/* mate_by_kin: of the willing partners in reach, the most related is chosen
+ * over a nearer stranger; off, the nearest is. a at (3,3); b, a stranger, beside
+ * it at (4,3); c, a's twin, two steps away at (1,1). b and c are three steps
+ * apart, beyond each other's reach, so each wishes alone first. The partner is
+ * the one whose wish the birth clears. */
+static void test_mate_by_kin(void)
+{
+    Settings s = settings_default();
+    s.birth_per_plant = 0.0f; /* about mating itself, not the birth rule */
+    CHECK(s.mate_reach == 2);
+    Action mate = {.kind = ACT_MATE, .hold = 1};
+    for (int on = 0; on <= 1; on++) {
+        s.mate_by_kin = on;
+        World w;
+        Pool p;
+        int a, b;
+        Rng r;
+        rng_seed(&r, 1);
+        adult_pair(&w, &p, &a, &b, &s, &r);
+        int c = spawn(&p, &w, 1, 1);
+        make_ready(&p.items[c], &s, &r);
+        p.items[c].genome = p.items[a].genome; /* a struct copy: a twin */
+        CHECK(genome_body_likeness(&p.items[a].genome, &p.items[b].genome) >=
+              s.mate_barrier);
+        CHECK(genome_kinship(&p.items[a].genome, &p.items[b].genome) <
+              genome_kinship(&p.items[a].genome, &p.items[c].genome));
+        CHECK(creature_act(&w, &p, b, mate, &s, &r) == -1);
+        CHECK(creature_act(&w, &p, c, mate, &s, &r) == -1);
+        CHECK(creature_act(&w, &p, a, mate, &s, &r) >= 0);
+        int partner = on ? c : b;
+        int passed = on ? b : c;
+        CHECK(p.items[partner].mate_wish == 0);
+        CHECK(p.items[passed].mate_wish == s.mate_window);
+        pool_free(&p);
+        world_free(&w);
+    }
+}
+
 /* Parents whose bodies differ too much have no child, and the wish stays with
  * each, since either might yet find someone like itself. */
 static void test_barrier_stops_different_parents(void)
@@ -4151,6 +4189,7 @@ int main(void)
     test_bite();
     test_mate_needs_both();
     test_mate_reach();
+    test_mate_by_kin();
     test_barrier_stops_different_parents();
     test_barrier_ignores_weights();
     test_founders_can_mate_at_default();

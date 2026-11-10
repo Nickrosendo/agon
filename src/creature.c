@@ -1271,21 +1271,51 @@ static void ring_cell(int d, int k, int *dx, int *dy)
     }
 }
 
+/* Weighs the creature in slot other as c's partner: if it is one, and more
+ * related to c than the best so far (*best_kin), it becomes the best. Returns
+ * true when the search can stop here: with mate_by_kin off, the first partner
+ * found is the one. Only a strictly higher kinship replaces the best, so of two
+ * as related the one found first, the nearer, stays. */
+static bool weigh_partner(const Pool *p, const Creature *c, int other,
+                          const Settings *s, int *best, float *best_kin)
+{
+    if (!is_partner_for(p, c, other, s)) {
+        return false;
+    }
+    if (!s->mate_by_kin) {
+        *best = other;
+        return true;
+    }
+    float kin = genome_kinship(&c->genome, &p->items[other].genome);
+    if (kin > *best_kin) {
+        *best = other;
+        *best_kin = kin;
+    }
+    return false;
+}
+
 /* The slot of a creature within mate_reach steps that wishes to mate and still
- * can; -1 for none. The 8 cells beside come first, then each wider ring, so a
- * nearer partner is always chosen over a farther one. Each ring is looked round
- * from a random start so that no side is favoured. The first ring is read in the
- * AROUND order with the one draw it always had, so a mate_reach of 1 draws the
- * same numbers as before the setting and gives the same worlds. */
+ * can; -1 for none. The 8 cells beside come first, then each wider ring. With
+ * mate_by_kin off the first one found is chosen, so a nearer partner always wins
+ * over a farther one; on, every cell in reach is weighed and the most related
+ * wins (weigh_partner). Each ring is looked round from a random start so that no
+ * side is favoured. The first ring is read in the AROUND order with the one draw
+ * it always had, so a mate_reach of 1 draws the same numbers as before the
+ * setting and gives the same worlds. With mate_by_kin on, every ring is drawn
+ * for even when a partner was found beside: a different count of draws, so
+ * different worlds, which a new rule gives anyway. */
 static int find_partner(const World *w, const Pool *p, const Creature *c,
                         const Settings *s, Rng *r)
 {
+    int best = -1;
+    /* Below any kinship (0 to 1), so the first partner weighed always counts. */
+    float best_kin = -1.0f;
     int start = (int)rng_below(r, 8);
     for (int k = 0; k < 8; k++) {
         int dir = (start + k) % 8;
         int cell = world_idx(w, c->x + AROUND_X[dir], c->y + AROUND_Y[dir]);
-        if (is_partner_for(p, c, w->occupant[cell], s)) {
-            return w->occupant[cell];
+        if (weigh_partner(p, c, w->occupant[cell], s, &best, &best_kin)) {
+            return best;
         }
     }
     for (int d = 2; d <= s->mate_reach; d++) {
@@ -1296,12 +1326,12 @@ static int find_partner(const World *w, const Pool *p, const Creature *c,
             int dx, dy;
             ring_cell(d, (from + k) % cells, &dx, &dy);
             int cell = world_idx(w, c->x + dx, c->y + dy);
-            if (is_partner_for(p, c, w->occupant[cell], s)) {
-                return w->occupant[cell];
+            if (weigh_partner(p, c, w->occupant[cell], s, &best, &best_kin)) {
+                return best;
             }
         }
     }
-    return -1;
+    return best;
 }
 
 /* A free cell a body can stand on beside c, looking round from start; -1 for none. */

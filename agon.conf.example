@@ -227,6 +227,9 @@ mate_window = 5
 # steps a partner may stand away (1: beside) (1 to 4)
 mate_reach = 2
 
+# 1: the most related willing partner in reach, not the nearest (0 to 1)
+mate_by_kin = 0
+
 # ticks before a creature can mate (0 to 2147483647)
 mate_age = 50
 

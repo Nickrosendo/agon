@@ -140,6 +140,7 @@ Settings settings_default(void)
          * was followed by years of decline, births half the deaths, until
          * four worlds died; the pairs were there but a step too far apart. */
         .mate_reach = 2,
+        .mate_by_kin = 0,
         .mate_age = 50,
         .sense_age_half = 200.0f,
         /* A season: the probe of 2026-11-08 found most starving adults had gone
@@ -405,6 +406,7 @@ static const SettingInfo TABLE[] = {
     FLOAT_ROW(mate_barrier, 0, 1, "bodies less alike than this have no child (0 is off)"),
     INT_ROW(mate_window, 1, 65535, "ticks a wish to mate lasts"),
     INT_ROW(mate_reach, 1, 4, "steps a partner may stand away (1: beside)"),
+    INT_ROW(mate_by_kin, 0, 1, "1: the most related willing partner in reach, not the nearest"),
     INT_ROW(mate_age, 0, INT_MAX, "ticks before a creature can mate"),
     FLOAT_ROW(sense_age_half, 1, BIG, "the age sensed as 0.5"),
     INT_ROW(fed_fade_ticks, 1, 65535, "ticks without a meal for the fed sense to fall to 0"),
