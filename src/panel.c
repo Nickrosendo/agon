@@ -345,7 +345,7 @@ static void add_line(PanelLine *lines, int *n, PanelLine line)
 
 void tactics_list(const Sim *s, char *out, size_t size)
 {
-    uint8_t now = tactics_now(&s->tactics);
+    uint16_t now = tactics_now(&s->tactics);
     size_t used = 0;
     out[0] = '\0';
     for (int k = 0; k < TACTIC_COUNT && used < size; k++) {

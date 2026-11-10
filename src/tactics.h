@@ -34,6 +34,9 @@ enum {
     TACTIC_SHIELD,     /* plant-eaters: the toughest of them took the hits */
     TACTIC_ALARM,      /* anyone: calls far more with a hunter in sight */
     TACTIC_HUDDLE,     /* plant-eaters: keep together in the dark */
+    TACTIC_NIGHT_FEED, /* plant-eaters: bite far more in the dark than in the light */
+    TACTIC_WINTER_GATHER, /* plant-eaters: keep together in winter */
+    TACTIC_FEED_TOGETHER, /* plant-eaters: keep together while they bite */
     TACTIC_COUNT
 };
 
@@ -75,10 +78,20 @@ typedef struct {
     float heard_decisions, heard_moves, unheard_decisions, unheard_moves;
     /* Decisions in the dark and in the light, and the kin-near sense summed. */
     float dark_decisions, dark_kin, light_decisions, light_kin;
+    /* Bites among those decisions, in the dark and in the light. */
+    float dark_bites, light_bites;
+    /* Decisions in winter and in summer, with the kin-near sense summed. */
+    float winter_decisions, winter_kin, summer_decisions, summer_kin;
+    /* Decisions to bite and all others, with the kin-near sense summed. */
+    float bite_decisions, bite_kin, other_decisions, other_kin;
+    /* Young: members counted at a check while younger than stats_every, so
+     * each is counted once, at the first check after its birth. */
+    float young;
     /* Checks in a row at which tactic k held, up to TACTIC_HOLD. */
     uint8_t streak[TACTIC_COUNT];
-    uint8_t confirmed; /* bit k: tactic k has held at TACTIC_HOLD checks in a row */
-    uint8_t told;      /* bit k: tactic k already went into its members' stories */
+    /* 16 bits: more tactics than the 8 a uint8_t holds. */
+    uint16_t confirmed; /* bit k: tactic k has held at TACTIC_HOLD checks in a row */
+    uint16_t told;      /* bit k: tactic k already went into its members' stories */
     float lift[TACTIC_COUNT]; /* at the last check */
 } TacticFamily;
 
@@ -92,7 +105,7 @@ typedef struct TacticWatch {
     int16_t index[TACTIC_INDEX];
     /* Bit k: tactic k was confirmed for some family since the last reset, and
      * the highest lift it reached. */
-    uint8_t seen;
+    uint16_t seen;
     float best_lift[TACTIC_COUNT];
     /* The share of plant-eaters with no relative within KIN_NEAR, measured at
      * the last check: the chance level for picking strays. */
@@ -110,10 +123,10 @@ void tactics_free(TacticWatch *t);
 void tactics_note_hit(TacticWatch *t, const World *w, const Pool *p,
                       const Creature *by, const Creature *target, bool killed,
                       const Settings *s);
-/* A decision: the senses it was made on, the action chosen (an ACT_ value) and
- * whether the creature called. */
+/* A decision: the senses it was made on, the action chosen (an ACT_ value),
+ * whether the creature called, the light and the season (a SEASON_ value). */
 void tactics_note_decision(TacticWatch *t, const Creature *c, const Senses *in,
-                           uint8_t kind, bool calling, float light);
+                           uint8_t kind, bool calling, float light, int season);
 /* Every stats_every ticks: fades the counts, counts members, works out each
  * family's lifts and confirms its tactics. ch may be NULL. */
 void tactics_check(TacticWatch *t, const World *w, Pool *p,
@@ -127,7 +140,7 @@ float tactics_lift(const TacticWatch *t, int tactic);
 /* Families now showing tactic, and in *of_diet the families of its diet. */
 int tactics_families(const TacticWatch *t, int tactic, int *of_diet);
 /* Bit k: tactic k holds now for some living family. For the panel. */
-uint8_t tactics_now(const TacticWatch *t);
+uint16_t tactics_now(const TacticWatch *t);
 
 /* A LifeEvent has one number, value, and a tactic's story needs three: which
  * tactic and two counts ("8 of 11"). Packed into one int32_t: the tactic in the

@@ -2,11 +2,13 @@
 # The tactics verdict: runs seeds 1 to 15 side by side and applies rules 1 to 3
 # of the pass rule agreed before running (the tactics design, section 11):
 #   1. every seed shows at least one tactic in the watched years;
-#   2. at least 4 of the 7 tactics appear across the seeds, and no one set of
+#   2. at least 4 of the 10 tactics appear across the seeds, and no one set of
 #      tactics is shared by more than 7 seeds;
-#   3. a hunter tactic (night, pack, strays) in at least 8 seeds, and a
-#      plant-eater tactic (defence, shield, huddle) in at least 8. Alarm calls
-#      count for neither side: they can belong to either.
+#   3. a plant-eater tactic (defence, shield, huddle, darkfeed, winter,
+#      together) in at least 8 seeds. Alarm calls count for neither side: they
+#      can belong to either. Hunter tactics (night, pack, strays) are counted
+#      and printed but not required: Nicolas, 2026-11-10, after every hunt test
+#      failed, "plant-eater tactics only", with worlds allowed few or no hunters.
 # Rules 4 (blinded reruns) and 5 (the seasons verdict) are run by hand.
 #
 # Usage: bash tests/tactics_verdict.sh [FROM] [YEARS] [CONFIG]
@@ -74,7 +76,7 @@ done | awk -v seeds="$SEEDS" '
     if (n > 0) with_any++
     sets[list]++
     if (list ~ /night|pack|strays/) hunter++
-    if (list ~ /defence|shield|huddle/) plant++
+    if (list ~ /defence|shield|huddle|darkfeed|winter|together/) plant++
     split(list, names, ",")
     for (i in names) if (names[i] != "-") kinds[names[i]] = 1
 }
@@ -83,10 +85,10 @@ END {
     top = 0; for (s in sets) if (sets[s] > top && s != "-") top = sets[s]
     r1 = (with_any == seeds) ? "PASS" : "FAIL"
     r2 = (nkinds >= 4 && top <= 7) ? "PASS" : "FAIL"
-    r3 = (hunter >= 8 && plant >= 8) ? "PASS" : "FAIL"
+    r3 = (plant >= 8) ? "PASS" : "FAIL"
     printf "rule 1, a tactic in every seed: %d of %d -> %s\n", with_any, seeds, r1
     printf "rule 2, variety: %d kinds, largest shared set %d seeds -> %s\n", nkinds, top, r2
-    printf "rule 3, both sides: hunter tactics in %d, plant-eater tactics in %d -> %s\n", hunter, plant, r3
+    printf "rule 3, plant-eaters: plant-eater tactics in %d (hunter tactics in %d, not required) -> %s\n", plant, hunter, r3
     passed = (r1 == "PASS") + (r2 == "PASS") + (r3 == "PASS")
     printf "verdict: %d of 3\n", passed
 }'

@@ -9,6 +9,7 @@
 #include "sim.h"
 #include "tactics.h"
 #include "world.h"
+#include "years.h"
 
 /* A world of all soil, fertility 1. */
 static void make_world(World *w, int width, int height)
@@ -228,10 +229,13 @@ static bool alarm_confirmed(bool heeded)
     const Creature *c = &sc.p.items[a];
     for (int round = 0; round < TACTIC_HOLD; round++) {
         for (int k = 0; k < 20; k++) {
-            tactics_note_decision(&sc.t, c, &hunter, ACT_BITE, true, 1.0f);
-            tactics_note_decision(&sc.t, c, &quiet, ACT_BITE, false, 1.0f);
+            tactics_note_decision(&sc.t, c, &hunter, ACT_BITE, true, 1.0f,
+                                  SEASON_SUMMER);
+            tactics_note_decision(&sc.t, c, &quiet, ACT_BITE, false, 1.0f,
+                                  SEASON_SUMMER);
             tactics_note_decision(&sc.t, c, &heard,
-                                  heeded ? ACT_MOVE : ACT_BITE, false, 1.0f);
+                                  heeded ? ACT_MOVE : ACT_BITE, false, 1.0f,
+                                  SEASON_SUMMER);
         }
         tactics_check(&sc.t, &sc.w, &sc.p, NULL, &sc.s);
     }
@@ -246,10 +250,105 @@ static void test_alarm_needs_hearers_who_react(void)
     CHECK(alarm_confirmed(true));
 }
 
+/* One decision of a plant-eater for the habit tests: kin near is the share of
+ * the 8 cells around holding relatives. */
+static void decide(Scene *sc, int idx, uint8_t kind, float kin, float light,
+                   int season)
+{
+    Senses in = {0};
+    in.v[SENSE_KIN_NEAR] = kin;
+    tactics_note_decision(&sc->t, &sc->p.items[idx], &in, kind, false, light,
+                          season);
+}
+
+/* One family's decisions in one round, with or without the habit. Without
+ * it, the family does the same everywhere: bites half its decisions, with a
+ * relative in 3 of 10 cells. */
+static void habit_round(Scene *sc, int idx, int tactic, bool habit)
+{
+    for (int k = 0; k < 20; k++) {
+        bool many = k < 15; /* 15 of 20 */
+        bool few = k < 5;   /* 5 of 20 */
+        bool half = k < 10;
+        switch (tactic) {
+        case TACTIC_NIGHT_FEED: /* bites in the dark and in the light */
+            decide(sc, idx, (habit ? many : half) ? ACT_BITE : ACT_REST, 0.3f,
+                   0.0f, SEASON_SUMMER);
+            decide(sc, idx, (habit ? few : half) ? ACT_BITE : ACT_REST, 0.3f,
+                   1.0f, SEASON_SUMMER);
+            break;
+        case TACTIC_WINTER_GATHER: /* relatives near in winter and in summer */
+            decide(sc, idx, ACT_REST, habit ? 0.6f : 0.3f, 1.0f, SEASON_WINTER);
+            decide(sc, idx, ACT_REST, habit ? 0.1f : 0.3f, 1.0f, SEASON_SUMMER);
+            break;
+        case TACTIC_FEED_TOGETHER: /* relatives near while biting and not */
+            decide(sc, idx, ACT_BITE, habit ? 0.6f : 0.3f, 1.0f, SEASON_SUMMER);
+            decide(sc, idx, ACT_MOVE, habit ? 0.1f : 0.3f, 1.0f, SEASON_SUMMER);
+            break;
+        }
+    }
+}
+
+/* Two plant-eater families of two members, watched for TACTIC_HOLD checks.
+ * habit1, habit2: whether each shows the tactic's habit. breeds: whether
+ * family 1 has a young one each round (family 2 one every third, from the
+ * second).
+ * Returns whether the tactic was confirmed for some family. */
+static bool habit_confirmed(int tactic, bool habit1, bool habit2, bool breeds)
+{
+    Scene sc;
+    scene_open(&sc);
+    Genome g1 = family_genome(1, false, &sc.s);
+    Genome g2 = family_genome(2, false, &sc.s);
+    int a = place(&sc.p, &sc.w, 10, 10, &g1, 1);
+    place(&sc.p, &sc.w, 12, 10, &g1, 1);
+    int b = place(&sc.p, &sc.w, 30, 30, &g2, 2);
+    place(&sc.p, &sc.w, 32, 30, &g2, 2);
+    for (int i = 0; i < sc.p.capacity; i++) {
+        sc.p.items[i].age = 10000; /* adults: not counted as young */
+    }
+    tactics_check(&sc.t, &sc.w, &sc.p, NULL, &sc.s); /* both get a row */
+    for (int round = 0; round < TACTIC_HOLD; round++) {
+        /* Last round's young grow past stats_every: young once, at one check. */
+        for (int i = 0; i < sc.p.capacity; i++) {
+            sc.p.items[i].age += (uint32_t)sc.s.stats_every;
+        }
+        if (breeds) {
+            place(&sc.p, &sc.w, 14 + round, 12, &g1, 1);
+        }
+        if (round % 3 == 1) {
+            place(&sc.p, &sc.w, 30 + round, 34, &g2, 2);
+        }
+        habit_round(&sc, a, tactic, habit1);
+        habit_round(&sc, b, tactic, habit2);
+        tactics_check(&sc.t, &sc.w, &sc.p, NULL, &sc.s);
+    }
+    bool seen = tactics_seen(&sc.t, tactic);
+    scene_close(&sc);
+    return seen;
+}
+
+static void test_plant_eater_habits(void)
+{
+    int habits[] = {TACTIC_NIGHT_FEED, TACTIC_WINTER_GATHER, TACTIC_FEED_TOGETHER};
+    for (int i = 0; i < 3; i++) {
+        int k = habits[i];
+        /* uneven and useful: confirmed */
+        CHECK(habit_confirmed(k, true, false, true));
+        /* the same habit without more young is not a tactic */
+        CHECK(!habit_confirmed(k, true, false, false));
+        /* every family doing it is the world's doing, not a habit */
+        CHECK(!habit_confirmed(k, true, true, true));
+        /* no habit, more young: nothing */
+        CHECK(!habit_confirmed(k, false, false, true));
+    }
+}
+
 static void test_names(void)
 {
     CHECK(tactics_name(TACTIC_NIGHT_HUNT)[0] == 'n');
     CHECK(tactics_name(TACTIC_HUDDLE)[0] == 'h');
+    CHECK(tactics_name(TACTIC_FEED_TOGETHER)[0] == 't');
     CHECK(tactics_name(TACTIC_COUNT)[0] == '?');
 }
 
@@ -261,6 +360,7 @@ int main(void)
     test_drive_hits_are_not_counted();
     test_watch_changes_nothing();
     test_alarm_needs_hearers_who_react();
+    test_plant_eater_habits();
     test_names();
     TEST_SUMMARY();
 }

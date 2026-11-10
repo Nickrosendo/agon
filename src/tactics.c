@@ -12,6 +12,7 @@
 #include "chronicle.h"
 #include "genome.h"
 #include "world.h"
+#include "years.h" /* SEASON_ values */
 
 /* A chance level or another family's share below this is taken as this, so a
  * habit nobody else has gets a large but finite lift, not a division by 0. */
@@ -309,7 +310,7 @@ void tactics_note_hit(TacticWatch *t, const World *w, const Pool *p,
 }
 
 void tactics_note_decision(TacticWatch *t, const Creature *c, const Senses *in,
-                           uint8_t kind, bool calling, float light)
+                           uint8_t kind, bool calling, float light, int season)
 {
     if (t == NULL || t->rows == NULL || creature_asleep(c)) {
         return;
@@ -344,12 +345,31 @@ void tactics_note_decision(TacticWatch *t, const Creature *c, const Senses *in,
         row->unheard_decisions += 1.0f;
         row->unheard_moves += moves;
     }
+    float kin = in->v[SENSE_KIN_NEAR];
+    float bite = kind == ACT_BITE ? 1.0f : 0.0f;
     if (light < TACTIC_DARK) {
         row->dark_decisions += 1.0f;
-        row->dark_kin += in->v[SENSE_KIN_NEAR];
+        row->dark_kin += kin;
+        row->dark_bites += bite;
     } else {
         row->light_decisions += 1.0f;
-        row->light_kin += in->v[SENSE_KIN_NEAR];
+        row->light_kin += kin;
+        row->light_bites += bite;
+    }
+    /* Spring and autumn count for neither: the habit is winter against summer. */
+    if (season == SEASON_WINTER) {
+        row->winter_decisions += 1.0f;
+        row->winter_kin += kin;
+    } else if (season == SEASON_SUMMER) {
+        row->summer_decisions += 1.0f;
+        row->summer_kin += kin;
+    }
+    if (kind == ACT_BITE) {
+        row->bite_decisions += 1.0f;
+        row->bite_kin += kin;
+    } else {
+        row->other_decisions += 1.0f;
+        row->other_kin += kin;
     }
 }
 
@@ -370,6 +390,10 @@ typedef struct {
     float attacks_on, deaths, defended;
     float shield_toughest, shield_expected;
     float dark_decisions, dark_kin, light_decisions, light_kin;
+    float dark_bites, light_bites;
+    float winter_decisions, winter_kin, summer_decisions, summer_kin;
+    float bite_decisions, bite_kin, other_decisions, other_kin;
+    float young;
 } DietTotals;
 
 static void add_totals(DietTotals *d, const TacticFamily *f)
@@ -386,6 +410,17 @@ static void add_totals(DietTotals *d, const TacticFamily *f)
     d->dark_kin += f->dark_kin;
     d->light_decisions += f->light_decisions;
     d->light_kin += f->light_kin;
+    d->dark_bites += f->dark_bites;
+    d->light_bites += f->light_bites;
+    d->winter_decisions += f->winter_decisions;
+    d->winter_kin += f->winter_kin;
+    d->summer_decisions += f->summer_decisions;
+    d->summer_kin += f->summer_kin;
+    d->bite_decisions += f->bite_decisions;
+    d->bite_kin += f->bite_kin;
+    d->other_decisions += f->other_decisions;
+    d->other_kin += f->other_kin;
+    d->young += f->young;
 }
 
 /* How much more a family keeps together in the dark than in the light. */
@@ -425,12 +460,39 @@ static bool loses_fewer(const TacticFamily *f, const DietTotals *all,
     return theirs > 0.0f && mine * s->tactic_useful <= theirs;
 }
 
+/* Whether a family has more young per member-tick than the other families of
+ * its diet, by tactic_useful: the measure of success for the habits that answer
+ * hunger, cold and crowding rather than attack. Not judged with no others. */
+static bool breeds_more(const TacticFamily *f, const DietTotals *all,
+                        const Settings *s)
+{
+    float other_ticks = all->member_ticks - f->member_ticks;
+    if (other_ticks <= 0.0f) {
+        return true;
+    }
+    float theirs = (all->young - f->young) / other_ticks;
+    float mine = share(f->young, f->member_ticks);
+    return mine > 0.0f && mine >= s->tactic_useful * theirs;
+}
+
+/* How much more one condition's rate is than another's (a / a_n against
+ * b / b_n), for a family, divided by the same for the rest of its diet, never
+ * by less than 1: only a habit stronger than the rest of the world's counts.
+ * The rest's counts are all minus the family's. */
+static float lift_vs_rest(float a, float a_n, float b, float b_n, float all_a,
+                          float all_a_n, float all_b, float all_b_n)
+{
+    float mine = huddle_ratio(a, a_n, b, b_n);
+    float theirs = huddle_ratio(all_a - a, all_a_n - a_n, all_b - b, all_b_n - b_n);
+    return mine / (theirs > 1.0f ? theirs : 1.0f);
+}
+
 /* Works out one family's lifts and which tactics hold. */
-static uint8_t judge(TacticFamily *f, const DietTotals *hunt,
+static uint16_t judge(TacticFamily *f, const DietTotals *hunt,
                      const DietTotals *plant, float lone_share, const Settings *s)
 {
     float min = (float)s->tactic_min;
-    uint8_t holds = 0;
+    uint16_t holds = 0;
     for (int k = 0; k < TACTIC_COUNT; k++) {
         f->lift[k] = 0.0f;
     }
@@ -448,7 +510,7 @@ static uint8_t judge(TacticFamily *f, const DietTotals *hunt,
         f->lift[TACTIC_STRAYS] = share(f->kills_lone, f->kills) / floored(lone_share);
         for (int k = TACTIC_NIGHT_HUNT; k <= TACTIC_STRAYS; k++) {
             if (f->kills >= min && f->lift[k] >= s->tactic_lift && useful) {
-                holds |= (uint8_t)(1u << k);
+                holds |= (uint16_t)(1u << k);
             }
         }
     } else {
@@ -492,6 +554,35 @@ static uint8_t judge(TacticFamily *f, const DietTotals *hunt,
         if (f->dark_decisions >= min && f->light_decisions >= min &&
             f->lift[TACTIC_HUDDLE] >= s->tactic_lift && safer) {
             holds |= 1u << TACTIC_HUDDLE;
+        }
+        /* Three habits against hunger, cold and crowding, each judged as the
+         * huddle is (against the rest of the plant-eaters), useful when the
+         * family has more young. */
+        bool breeds = breeds_more(f, plant, s);
+        f->lift[TACTIC_NIGHT_FEED] =
+            lift_vs_rest(f->dark_bites, f->dark_decisions, f->light_bites,
+                         f->light_decisions, plant->dark_bites, plant->dark_decisions,
+                         plant->light_bites, plant->light_decisions);
+        if (f->dark_bites >= min && f->light_decisions >= min &&
+            f->lift[TACTIC_NIGHT_FEED] >= s->tactic_lift && breeds) {
+            holds |= 1u << TACTIC_NIGHT_FEED;
+        }
+        f->lift[TACTIC_WINTER_GATHER] =
+            lift_vs_rest(f->winter_kin, f->winter_decisions, f->summer_kin,
+                         f->summer_decisions, plant->winter_kin,
+                         plant->winter_decisions, plant->summer_kin,
+                         plant->summer_decisions);
+        if (f->winter_decisions >= min && f->summer_decisions >= min &&
+            f->lift[TACTIC_WINTER_GATHER] >= s->tactic_lift && breeds) {
+            holds |= 1u << TACTIC_WINTER_GATHER;
+        }
+        f->lift[TACTIC_FEED_TOGETHER] =
+            lift_vs_rest(f->bite_kin, f->bite_decisions, f->other_kin,
+                         f->other_decisions, plant->bite_kin, plant->bite_decisions,
+                         plant->other_kin, plant->other_decisions);
+        if (f->bite_decisions >= min && f->other_decisions >= min &&
+            f->lift[TACTIC_FEED_TOGETHER] >= s->tactic_lift && breeds) {
+            holds |= 1u << TACTIC_FEED_TOGETHER;
         }
     }
     /* Alarm calls, for either diet: calls per decision with a hunter in sight
@@ -540,6 +631,17 @@ static void fade_row(TacticFamily *f, float k)
     f->dark_kin *= k;
     f->light_decisions *= k;
     f->light_kin *= k;
+    f->dark_bites *= k;
+    f->light_bites *= k;
+    f->winter_decisions *= k;
+    f->winter_kin *= k;
+    f->summer_decisions *= k;
+    f->summer_kin *= k;
+    f->bite_decisions *= k;
+    f->bite_kin *= k;
+    f->other_decisions *= k;
+    f->other_kin *= k;
+    f->young *= k;
 }
 
 /* The counts left after one check: a share of stats_every / ticks_per_year
@@ -598,7 +700,7 @@ static void tell_members(TacticWatch *t, Pool *p, struct Chronicle *ch,
         }
         bool newborn = c->age < (uint32_t)s->stats_every;
         for (int k = 0; k < TACTIC_COUNT; k++) {
-            uint8_t bit = (uint8_t)(1u << k);
+            uint16_t bit = (uint16_t)(1u << k);
             bool fresh = (f->confirmed & bit) && !(f->told & bit);
             if (fresh || ((f->confirmed & bit) && newborn)) {
                 chronicle_note(ch, c,
@@ -646,6 +748,7 @@ void tactics_check(TacticWatch *t, const World *w, Pool *p,
         if (row != NULL) {
             row->members++;
             hunters[row - t->rows] += creature_is_hunter(c);
+            row->young += c->age < (uint32_t)s->stats_every ? 1.0f : 0.0f;
         }
         if (!creature_is_hunter(c) && seen_plants++ % step == 0) {
             bool unused;
@@ -698,7 +801,7 @@ void tactics_check(TacticWatch *t, const World *w, Pool *p,
         if (!f->used) {
             continue;
         }
-        uint8_t holds = judge(f, &hunt, &plant, t->lone_share, s);
+        uint16_t holds = judge(f, &hunt, &plant, t->lone_share, s);
         f->confirmed = 0;
         for (int tac = 0; tac < TACTIC_COUNT; tac++) {
             if (holds & (1u << tac)) {
@@ -709,12 +812,12 @@ void tactics_check(TacticWatch *t, const World *w, Pool *p,
                 f->streak[tac] = 0;
             }
             if (f->streak[tac] >= TACTIC_HOLD) {
-                f->confirmed |= (uint8_t)(1u << tac);
+                f->confirmed |= (uint16_t)(1u << tac);
             }
         }
         for (int tac = 0; tac < TACTIC_COUNT; tac++) {
             if (f->confirmed & (1u << tac)) {
-                t->seen |= (uint8_t)(1u << tac);
+                t->seen |= (uint16_t)(1u << tac);
                 if (f->lift[tac] > t->best_lift[tac]) {
                     t->best_lift[tac] = f->lift[tac];
                 }
@@ -726,9 +829,9 @@ void tactics_check(TacticWatch *t, const World *w, Pool *p,
     }
 }
 
-uint8_t tactics_now(const TacticWatch *t)
+uint16_t tactics_now(const TacticWatch *t)
 {
-    uint8_t now = 0;
+    uint16_t now = 0;
     for (int i = 0; i < TACTIC_FAMILIES; i++) {
         if (t->rows[i].used && t->rows[i].members > 0) {
             now |= t->rows[i].confirmed;
@@ -781,6 +884,18 @@ void tactics_words(int32_t value, char *out, size_t len)
         snprintf(out, len,
                  "its family: keeps together in the dark %d times as much as others",
                  a);
+        break;
+    case TACTIC_NIGHT_FEED:
+        snprintf(out, len,
+                 "its family: feeds in the dark %d times as much as others", a);
+        break;
+    case TACTIC_WINTER_GATHER:
+        snprintf(out, len,
+                 "its family: keeps together in winter %d times as much as others", a);
+        break;
+    case TACTIC_FEED_TOGETHER:
+        snprintf(out, len,
+                 "its family: keeps together at food %d times as much as others", a);
         break;
     default:
         snprintf(out, len, "its family: a tactic");
@@ -836,7 +951,8 @@ const char *tactics_name(int tactic)
     /* An array of string literals: each entry points at text the program keeps
      * for its whole run, so returning one is safe. */
     static const char *const names[TACTIC_COUNT] = {
-        "night", "pack", "strays", "defence", "shield", "alarm", "huddle"};
+        "night",  "pack",   "strays", "defence",  "shield",
+        "alarm",  "huddle", "darkfeed", "winter", "together"};
     if (tactic < 0 || tactic >= TACTIC_COUNT) {
         return "?";
     }
