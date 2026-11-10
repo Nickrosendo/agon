@@ -387,7 +387,8 @@ static void take_turn(Sim *s, int idx)
         start_sleep(s, c, &a);
         /* A sleeper makes no sound, whatever its brain's call output says. */
         c->calling = a.kind != ACT_SLEEP && a.call > 0.5f;
-        tactics_note_decision(s->pool.tactics, c, &in, c->calling, s->pool.light);
+        tactics_note_decision(s->pool.tactics, c, &in, a.kind, c->calling,
+                              s->pool.light);
         keep_memory(c, &a);
         c->current = a;
         c->hold_left = a.hold > 0 ? a.hold : 1;

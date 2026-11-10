@@ -210,6 +210,42 @@ static void test_watch_changes_nothing(void)
     sim_free(&b);
 }
 
+/* One family of two plant-eaters that calls whenever a hunter is in sight.
+ * heeded: whether its members, hearing a relative's call, move instead of
+ * biting. Returns whether alarm calls were confirmed. */
+static bool alarm_confirmed(bool heeded)
+{
+    Scene sc;
+    scene_open(&sc);
+    Genome g = family_genome(1, false, &sc.s);
+    int a = place(&sc.p, &sc.w, 10, 10, &g, 1);
+    place(&sc.p, &sc.w, 12, 10, &g, 1);
+    tactics_check(&sc.t, &sc.w, &sc.p, NULL, &sc.s); /* the family gets a row */
+    Senses hunter = {0}, quiet = {0}, heard = {0};
+    hunter.v[SENSE_RAYS + RAY_AHEAD * RAY_VALUES + RAY_NEAR] = 0.5f;
+    hunter.v[SENSE_RAYS + RAY_AHEAD * RAY_VALUES + RAY_HUNTER] = 1.0f;
+    heard.v[SENSE_CALL_KIN] = 0.8f;
+    const Creature *c = &sc.p.items[a];
+    for (int round = 0; round < TACTIC_HOLD; round++) {
+        for (int k = 0; k < 20; k++) {
+            tactics_note_decision(&sc.t, c, &hunter, ACT_BITE, true, 1.0f);
+            tactics_note_decision(&sc.t, c, &quiet, ACT_BITE, false, 1.0f);
+            tactics_note_decision(&sc.t, c, &heard,
+                                  heeded ? ACT_MOVE : ACT_BITE, false, 1.0f);
+        }
+        tactics_check(&sc.t, &sc.w, &sc.p, NULL, &sc.s);
+    }
+    bool seen = tactics_seen(&sc.t, TACTIC_ALARM);
+    scene_close(&sc);
+    return seen;
+}
+
+static void test_alarm_needs_hearers_who_react(void)
+{
+    CHECK(!alarm_confirmed(false)); /* calls nobody acts on are not an alarm */
+    CHECK(alarm_confirmed(true));
+}
+
 static void test_names(void)
 {
     CHECK(tactics_name(TACTIC_NIGHT_HUNT)[0] == 'n');
@@ -224,6 +260,7 @@ int main(void)
     test_too_few_events();
     test_drive_hits_are_not_counted();
     test_watch_changes_nothing();
+    test_alarm_needs_hearers_who_react();
     test_names();
     TEST_SUMMARY();
 }

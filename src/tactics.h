@@ -70,6 +70,9 @@ typedef struct {
     float shield_toughest, shield_expected, shield_hits;
     /* Decisions with a hunter in sight and without, and calls at each. */
     float seen_decisions, seen_calls, quiet_decisions, quiet_calls;
+    /* Decisions while hearing a relative's call and without, and how many of
+     * each were a move or a turn: whether the family reacts to its calls. */
+    float heard_decisions, heard_moves, unheard_decisions, unheard_moves;
     /* Decisions in the dark and in the light, and the kin-near sense summed. */
     float dark_decisions, dark_kin, light_decisions, light_kin;
     /* Checks in a row at which tactic k held, up to TACTIC_HOLD. */
@@ -107,9 +110,10 @@ void tactics_free(TacticWatch *t);
 void tactics_note_hit(TacticWatch *t, const World *w, const Pool *p,
                       const Creature *by, const Creature *target, bool killed,
                       const Settings *s);
-/* A decision: the senses it was made on and whether the creature called. */
+/* A decision: the senses it was made on, the action chosen (an ACT_ value) and
+ * whether the creature called. */
 void tactics_note_decision(TacticWatch *t, const Creature *c, const Senses *in,
-                           bool calling, float light);
+                           uint8_t kind, bool calling, float light);
 /* Every stats_every ticks: fades the counts, counts members, works out each
  * family's lifts and confirms its tactics. ch may be NULL. */
 void tactics_check(TacticWatch *t, const World *w, Pool *p,

@@ -309,7 +309,7 @@ void tactics_note_hit(TacticWatch *t, const World *w, const Pool *p,
 }
 
 void tactics_note_decision(TacticWatch *t, const Creature *c, const Senses *in,
-                           bool calling, float light)
+                           uint8_t kind, bool calling, float light)
 {
     if (t == NULL || t->rows == NULL || creature_asleep(c)) {
         return;
@@ -332,6 +332,17 @@ void tactics_note_decision(TacticWatch *t, const Creature *c, const Senses *in,
     } else {
         row->quiet_decisions += 1.0f;
         row->quiet_calls += call;
+    }
+    float moves = (kind == ACT_MOVE || kind == ACT_TURN_LEFT ||
+                   kind == ACT_TURN_RIGHT)
+                      ? 1.0f
+                      : 0.0f;
+    if (in->v[SENSE_CALL_KIN] > 0.0f) {
+        row->heard_decisions += 1.0f;
+        row->heard_moves += moves;
+    } else {
+        row->unheard_decisions += 1.0f;
+        row->unheard_moves += moves;
     }
     if (light < TACTIC_DARK) {
         row->dark_decisions += 1.0f;
@@ -484,13 +495,20 @@ static uint8_t judge(TacticFamily *f, const DietTotals *hunt,
         }
     }
     /* Alarm calls, for either diet: calls per decision with a hunter in sight
-     * against without one. */
+     * against without one, and relatives who hear a call reacting to it, moving
+     * or turning tactic_lift times as often as when they hear none. Calling more
+     * at a hunter alone is not an alarm: a hearing-blinded rerun showed families
+     * doing it with nobody able to hear (the study doc of 2026-11-09). */
     float seen_rate = share(f->seen_calls, f->seen_decisions);
     float quiet_rate = share(f->quiet_calls, f->quiet_decisions);
     f->lift[TACTIC_ALARM] = seen_rate / floored(quiet_rate);
+    float heard_rate = share(f->heard_moves, f->heard_decisions);
+    float unheard_rate = share(f->unheard_moves, f->unheard_decisions);
+    bool heeded = f->heard_decisions >= min &&
+                  heard_rate >= s->tactic_lift * floored(unheard_rate);
     bool alarm_useful = f->hunters ? kills_better(f, hunt, s) : loses_fewer(f, plant, s);
     if (f->seen_calls >= min && f->lift[TACTIC_ALARM] >= s->tactic_lift &&
-        alarm_useful) {
+        heeded && alarm_useful) {
         holds |= 1u << TACTIC_ALARM;
     }
     return holds;
@@ -514,6 +532,10 @@ static void fade_row(TacticFamily *f, float k)
     f->seen_calls *= k;
     f->quiet_decisions *= k;
     f->quiet_calls *= k;
+    f->heard_decisions *= k;
+    f->heard_moves *= k;
+    f->unheard_decisions *= k;
+    f->unheard_moves *= k;
     f->dark_decisions *= k;
     f->dark_kin *= k;
     f->light_decisions *= k;
