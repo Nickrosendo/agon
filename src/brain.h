@@ -101,7 +101,9 @@ enum {
     ACT_TURN_LEFT,
     ACT_TURN_RIGHT,
     ACT_MOVE,
-    ACT_BITE, /* eat the best food around; never hurts anyone (creature.c) */
+    /* Eat the best food around. With bite_strikes on, a hunter's bite at a
+     * creature an attack would strike is that attack (act_bite, creature.c). */
+    ACT_BITE,
     ACT_MATE, /* wish to mate, with anyone beside it who wishes too */
     ACT_ATTACK, /* attack whatever creature is on the cell ahead, of any kind */
     /* Deep sleep: upkeep falls to sleep_upkeep's share, the creature does

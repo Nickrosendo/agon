@@ -263,8 +263,9 @@ typedef struct {
     float sight_upkeep;      /* per cell of sight */
 
     /* Food. A bite looks at the eight cells around the creature and eats
-     * the food that gives it the most energy, and never hurts anyone
-     * (see act_bite in creature.c). Energy gained
+     * the food that gives it the most energy; a hunter's bite at a creature
+     * ahead strikes it instead, with bite_strikes on (see act_bite in
+     * creature.c). Energy gained
      * is what was taken times the efficiency for that food: digest_floor
      * + (1 - digest_floor) * gene, with GENE_LEAF, GENE_FRUIT or GENE_MEAT.
      * Digesting costs upkeep every tick: digest_upkeep * (leaf + fruit +
