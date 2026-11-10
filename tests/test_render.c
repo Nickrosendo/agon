@@ -126,6 +126,7 @@ static int plain_soil_cell(Sim *s)
 static void test_snow_whitens_ground(void)
 {
     Settings set = settings_default();
+    set.ticks_per_day = 1000000; /* a day far longer than the test: full light */
     Sim s;
     CHECK(sim_init(&s, &set, 7, 64, 32));
     s.tick = TICK_WINTER;
@@ -151,6 +152,7 @@ static void test_snow_whitens_ground(void)
 static void test_bare_in_autumn(void)
 {
     Settings set = settings_default();
+    set.ticks_per_day = 1000000; /* a day far longer than the test: full light */
     Sim s;
     CHECK(sim_init(&s, &set, 7, 64, 32));
     int i = plain_soil_cell(&s);
@@ -176,6 +178,7 @@ static void test_bare_in_autumn(void)
 static void test_sleeper_drawn_dim(void)
 {
     Settings set = settings_default();
+    set.ticks_per_day = 1000000; /* a day far longer than the test: full light */
     Sim s;
     CHECK(sim_init(&s, &set, 7, 64, 32));
     CHECK(s.pool.count > 0);

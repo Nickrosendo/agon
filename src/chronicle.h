@@ -33,6 +33,8 @@ enum {
     LIFE_GIANT,       /* reached giant_size; value: size in tenths */
     LIFE_DIED,        /* value: a DeathCause; other: the killer, for wounds */
     LIFE_SLEPT,       /* woke from a deep sleep of SLEEP_NOTED ticks or more; value: its ticks */
+    LIFE_TACTIC,      /* its family's tactic was confirmed; other: the family's
+                       * lineage; value: tactics_pack's tactic and two counts */
     LIFE_COUNT
 };
 

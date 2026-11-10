@@ -2020,8 +2020,18 @@ void scene_draw_world(Scene *sc, Canvas *c, const Camera *cam, const Sim *s,
     }
     place_ground(sc, c, cam, s, water_ms, view_x, view_y);
     draw_overlays(sc, c, cam, s, water_ms, view_x, view_y);
+    /* Night, in two passes. The ground ends at palette_ground_light of full
+     * brightness and everything on it at palette_body_light: the second pass
+     * darkens the ground again, so the first takes only the share that the
+     * second will not. In 256ths, the canvas's whole-number form. */
+    WorldArea area = world_area(cam, view_x, view_y);
+    float light = years_light(s->tick, s->set.ticks_per_day);
+    float body = palette_body_light(light);
+    int ground_keep = (int)(256.0f * palette_ground_light(light) / body + 0.5f);
+    canvas_darken_clip(c, ground_keep, area.clip);
     draw_items(sc, c, cam, s, tick_fraction, water_ms, body_ms, view_x, view_y);
     draw_particles(sc, c, cam, s, body_ms, view_x, view_y);
+    canvas_darken_clip(c, (int)(256.0f * body + 0.5f), area.clip);
 }
 
 /* Shares the panel's rows between its text and the bodies below it. */

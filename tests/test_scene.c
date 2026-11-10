@@ -22,9 +22,19 @@
 
 /* Everything a frame draws, at every zoom level in turn: if any of it wrote
  * to the simulation or used its random numbers, the checksums would part. */
+/* The default settings with a day far longer than any test here, so every
+ * picture is drawn in full light: these tests are about other things than the
+ * night, and its darkening would change their colours. */
+static Settings day_settings(void)
+{
+    Settings s = settings_default();
+    s.ticks_per_day = 1000000;
+    return s;
+}
+
 static void test_drawing_changes_nothing(void)
 {
-    Settings set = settings_default();
+    Settings set = day_settings();
     Sim plain, drawn;
     CHECK(sim_init(&plain, &set, 3, 64, 32));
     CHECK(sim_init(&drawn, &set, 3, 64, 32));
@@ -76,7 +86,7 @@ static void test_drawing_changes_nothing(void)
 
 static void test_empty_view_draws_nothing(void)
 {
-    Settings set = settings_default();
+    Settings set = day_settings();
     Sim s;
     CHECK(sim_init(&s, &set, 3, 16, 16));
     Scene sc;
@@ -101,7 +111,7 @@ static void test_empty_view_draws_nothing(void)
 
 static void test_tiny_world_on_black(void)
 {
-    Settings set = settings_default();
+    Settings set = day_settings();
     Sim s;
     CHECK(sim_init(&s, &set, 3, 4, 3));
     Scene sc;
@@ -139,7 +149,7 @@ static bool near_white(uint32_t px)
  * *prey. */
 static void make_fight(Sim *s, int action, int *hunter, int *prey)
 {
-    Settings set = settings_default();
+    Settings set = day_settings();
     CHECK(sim_init(s, &set, 3, 16, 16));
     for (int i = 0; i < s->pool.capacity; i++) {
         if (s->pool.items[i].alive) {
@@ -216,7 +226,7 @@ static void test_fight_draws_an_attack(void)
 /* A world of bare soil with nobody in it, for placing creatures by hand. */
 static void make_empty_sim(Sim *s, int w, int h)
 {
-    Settings set = settings_default();
+    Settings set = day_settings();
     snprintf(set.brain_name, sizeof(set.brain_name), "script");
     set.start_share = 0.0f;
     set.min_creatures = 0;
@@ -419,7 +429,7 @@ static uint64_t hash_canvas(const Canvas *c)
  */
 static void test_known_world_pixels(void)
 {
-    Settings set = settings_default();
+    Settings set = settings_default(); /* the real world, night and all */
     Sim s;
     CHECK(sim_init(&s, &set, 3, 64, 32));
     Scene sc;
@@ -565,7 +575,7 @@ static void test_ground_layer_refreshes_when_it_should(void)
  * water or rain: the picture must be the one a whole redraw would give. */
 static void test_water_only_redraw_matches_whole(void)
 {
-    Settings set = settings_default();
+    Settings set = day_settings();
     Sim s;
     CHECK(sim_init(&s, &set, 3, 64, 32));
     for (int t = 0; t < 50; t++) {
@@ -999,7 +1009,7 @@ static uint64_t soil_picture(Scene *sc, Sim *s, Canvas *c, Camera *cam, int leve
 
 static void test_ground_shows_water_and_rain(void)
 {
-    Settings set = settings_default();
+    Settings set = day_settings();
     set.start_share = 0.0f;
     Sim s;
     CHECK(sim_init(&s, &set, 1, 64, 64));
@@ -1139,7 +1149,7 @@ static uint64_t region_picture(Scene *sc, Sim *s, Canvas *c, Camera *cam,
  * creature standing on it is drawn exactly the same. */
 static void test_region_tint(void)
 {
-    Settings set = settings_default();
+    Settings set = day_settings();
     set.start_share = 0.0f;
     Sim s;
     CHECK(sim_init(&s, &set, 1, 64, 64));
@@ -1378,7 +1388,7 @@ static void test_scars_follow_recent_hits(void)
  * it would with nothing drawn. */
 static void test_drawing_large_leaves_fingerprint_equal(void)
 {
-    Settings set = settings_default();
+    Settings set = day_settings();
     Sim plain, drawn;
     CHECK(sim_init(&plain, &set, 3, 64, 32));
     CHECK(sim_init(&drawn, &set, 3, 64, 32));
@@ -1522,7 +1532,7 @@ static void crown_colours(const Plant *p, uint32_t out[4])
 
 static void test_bare_in_autumn(void)
 {
-    Settings set = settings_default();
+    Settings set = day_settings();
     int year = set.ticks_per_year;
     uint64_t summer = (uint64_t)(3 * year + year * 3 / 8);
     uint64_t autumn = (uint64_t)(3 * year + year * 5 / 8);
@@ -1729,7 +1739,7 @@ static void test_more_tufts_on_fertile_soil(void)
  * fresh scene draws. */
 static void test_ground_follows_within_a_second(void)
 {
-    Settings set = settings_default();
+    Settings set = day_settings();
     Sim s;
     CHECK(sim_init(&s, &set, 3, 64, 32));
     for (int t = 0; t < 50; t++) {
@@ -1916,7 +1926,7 @@ static void test_paused_soil_colour_catches_up(void)
  * drawn the frame before. At every zoom with bodies. */
 static void test_second_frame_builds_nothing(void)
 {
-    Settings set = settings_default();
+    Settings set = day_settings();
     Sim s;
     CHECK(sim_init(&s, &set, 3, 64, 32));
     for (int t = 0; t < 50; t++) {

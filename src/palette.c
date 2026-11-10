@@ -199,3 +199,23 @@ Colour palette_creature(float hue, float meat)
         CREATURE_SATURATION + (1.0f - CREATURE_SATURATION) * meat;
     return palette_hue(hue_towards_red(hue, meat), saturation);
 }
+
+float palette_ground_light(float light)
+{
+    return 0.35f + 0.65f * light;
+}
+
+float palette_body_light(float light)
+{
+    return 0.6f + 0.4f * light;
+}
+
+Colour palette_dim(Colour c, float keep)
+{
+    keep = keep < 0.0f ? 0.0f : (keep > 1.0f ? 1.0f : keep);
+    /* + 0.5f rounds to the nearest whole value; the result is 0 to 255, so the
+     * conversion to uint8_t loses nothing. */
+    return (Colour){(uint8_t)((float)c.r * keep + 0.5f),
+                    (uint8_t)((float)c.g * keep + 0.5f),
+                    (uint8_t)((float)c.b * keep + 0.5f)};
+}

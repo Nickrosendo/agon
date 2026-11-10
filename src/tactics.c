@@ -5,6 +5,7 @@
  */
 #include "tactics.h"
 
+#include <stdio.h>  /* snprintf */
 #include <stdlib.h> /* calloc, free */
 #include <string.h> /* memset */
 
@@ -527,10 +528,73 @@ static float fade_factor(const Settings *s)
     return k > 0.0f ? k : 0.0f;
 }
 
+/* A count for the story, rounded to the nearest whole event and kept within
+ * what tactics_pack can hold. */
+static int story_count(float v)
+{
+    int n = (int)(v + 0.5f);
+    if (n < 0) {
+        return 0;
+    }
+    return n > 4095 ? 4095 : n;
+}
+
+/* The two numbers a tactic's story gives, from its family's counts. */
+static int32_t story_value(const TacticFamily *f, int tactic)
+{
+    switch (tactic) {
+    case TACTIC_NIGHT_HUNT:
+        return tactics_pack(tactic, story_count(f->kills_dark), story_count(f->kills));
+    case TACTIC_PACK_HUNT:
+        return tactics_pack(tactic, story_count(f->kills_pack), story_count(f->kills));
+    case TACTIC_STRAYS:
+        return tactics_pack(tactic, story_count(f->kills_lone), story_count(f->kills));
+    case TACTIC_DEFENCE:
+        return tactics_pack(tactic, story_count(f->defended),
+                            story_count(f->attacks_on));
+    case TACTIC_SHIELD:
+        return tactics_pack(tactic, story_count(f->shield_toughest),
+                            story_count(f->shield_hits));
+    default: /* alarm and huddle: how many times as often, rounded */
+        return tactics_pack(tactic, story_count(f->lift[tactic]), 0);
+    }
+}
+
+/* Tells the family's living members of a tactic newly confirmed, and each
+ * member born since the last check of one that still holds. */
+static void tell_members(TacticWatch *t, Pool *p, struct Chronicle *ch,
+                         const Settings *s)
+{
+    for (int i = 0; i < p->capacity; i++) {
+        Creature *c = &p->items[i];
+        if (!c->alive) {
+            continue;
+        }
+        TacticFamily *f = find_row(t, c->lineage);
+        if (f == NULL || f->confirmed == 0) {
+            continue;
+        }
+        bool newborn = c->age < (uint32_t)s->stats_every;
+        for (int k = 0; k < TACTIC_COUNT; k++) {
+            uint8_t bit = (uint8_t)(1u << k);
+            bool fresh = (f->confirmed & bit) && !(f->told & bit);
+            if (fresh || ((f->confirmed & bit) && newborn)) {
+                chronicle_note(ch, c,
+                               (LifeEvent){.tick = p->now,
+                                           .kind = LIFE_TACTIC,
+                                           .other_id = c->lineage,
+                                           .value = story_value(f, k)});
+            }
+        }
+    }
+    for (int i = 0; i < TACTIC_FAMILIES; i++) {
+        t->rows[i].told |= t->rows[i].confirmed;
+    }
+}
+
 void tactics_check(TacticWatch *t, const World *w, Pool *p,
                    struct Chronicle *ch, const Settings *s)
 {
-    (void)ch; /* the stories come with the next task */
     if (t == NULL || t->rows == NULL) {
         return;
     }
@@ -634,6 +698,71 @@ void tactics_check(TacticWatch *t, const World *w, Pool *p,
                 }
             }
         }
+    }
+    if (ch != NULL) {
+        tell_members(t, p, ch, s);
+    }
+}
+
+uint8_t tactics_now(const TacticWatch *t)
+{
+    uint8_t now = 0;
+    for (int i = 0; i < TACTIC_FAMILIES; i++) {
+        if (t->rows[i].used && t->rows[i].members > 0) {
+            now |= t->rows[i].confirmed;
+        }
+    }
+    return now;
+}
+
+int32_t tactics_pack(int tactic, int a, int b)
+{
+    /* Each piece is masked to its width and shifted into place; | joins them
+     * since their bits do not overlap. Shifting a negative number is undefined
+     * behaviour, hence the masks on non-negative ints first. */
+    uint32_t v = ((uint32_t)tactic & 0xFu) | (((uint32_t)a & 0xFFFu) << 4) |
+                 (((uint32_t)b & 0xFFFu) << 16);
+    return (int32_t)v;
+}
+
+void tactics_words(int32_t value, char *out, size_t len)
+{
+    uint32_t v = (uint32_t)value;
+    int tactic = (int)(v & 0xFu);
+    int a = (int)((v >> 4) & 0xFFFu);
+    int b = (int)((v >> 16) & 0xFFFu);
+    switch (tactic) {
+    case TACTIC_NIGHT_HUNT:
+        snprintf(out, len, "its family: %d of its last %d kills in the dark", a, b);
+        break;
+    case TACTIC_PACK_HUNT:
+        snprintf(out, len, "its family: hunted together in %d of its last %d kills",
+                 a, b);
+        break;
+    case TACTIC_STRAYS:
+        snprintf(out, len, "its family: %d of its last %d kills of a lone animal",
+                 a, b);
+        break;
+    case TACTIC_DEFENCE:
+        snprintf(out, len,
+                 "its family: struck back two or more strong at %d of %d attackers",
+                 a, b);
+        break;
+    case TACTIC_SHIELD:
+        snprintf(out, len, "its family: its toughest took %d of %d hits", a, b);
+        break;
+    case TACTIC_ALARM:
+        snprintf(out, len,
+                 "its family: calls %d times as often with a hunter in sight", a);
+        break;
+    case TACTIC_HUDDLE:
+        snprintf(out, len,
+                 "its family: keeps together in the dark %d times as much as others",
+                 a);
+        break;
+    default:
+        snprintf(out, len, "its family: a tactic");
+        break;
     }
 }
 

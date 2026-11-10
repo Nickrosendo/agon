@@ -1,4 +1,5 @@
 #include "chronicle.h"
+#include "tactics.h" /* tactics_words */
 
 #include <stdio.h>  /* snprintf */
 #include <stdlib.h> /* malloc, free */
@@ -401,6 +402,9 @@ static void event_words(const LifeEvent *e, const LifeTally *t,
         snprintf(out, len, "slept %s, woke in %s", second,
                  years_season(e->tick, ticks_per_year));
         break;
+    case LIFE_TACTIC:
+        tactics_words(e->value, out, len);
+        break;
     case LIFE_DIED:
         if (e->value == DEATH_WOUNDS) {
             snprintf(out, len, "%s, last struck by %s", death_words(e->value),
@@ -519,6 +523,11 @@ void chronicle_short_line(const LifeEvent *e, int ticks_per_year, char *out,
         snprintf(words, sizeof(words), "slept %s", length);
         break;
     }
+    case LIFE_TACTIC:
+        /* The tactic sits in the value's low 4 bits (tactics_pack). */
+        snprintf(words, sizeof(words), "tactic %s",
+                 tactics_name((int)((uint32_t)e->value & 0xFu)));
+        break;
     default:
         snprintf(words, sizeof(words), "?");
         break;

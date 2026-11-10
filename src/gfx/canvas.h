@@ -60,6 +60,9 @@ void canvas_mask_wide(Canvas *c, const uint64_t *rows, int size, int x, int y,
 void canvas_picture(Canvas *c, const uint8_t *ink, int stride, int w, int h,
                     int x, int y, int scale, bool flip, const uint32_t *colours,
                     CanvasClip clip);
+/* Multiplies every pixel inside the clip by keep / 256 (0 black, 256 as it
+ * was): the night over the world. */
+void canvas_darken_clip(Canvas *c, int keep, CanvasClip clip);
 /* Multiplies every pixel inside the ellipse by keep / 256: a soft shadow. */
 void canvas_darken_ellipse(Canvas *c, int cx, int cy, int rx, int ry, int keep,
                            CanvasClip clip);

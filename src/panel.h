@@ -64,6 +64,9 @@ void panel_format_count(char *out, size_t size, int64_t n);
  * out needs 3 * cols + 1 bytes; with less, it holds as many whole
  * characters as fit. Always ends out with '\0' (unless size is 0). cols
  * must divide HISTORY. */
+/* The tactics some living family shows now, by name and joined by commas
+ * ("night, pack"), or "none yet". Always ends out with '\0' within size. */
+void tactics_list(const Sim *s, char *out, size_t size);
 void panel_sparkline(char *out, size_t size, const History *h, int cols);
 
 /* Draws the panel in the screen area starting at (col, row0), PANEL_COLS

@@ -200,6 +200,24 @@ static uint32_t darkened(uint32_t p, int keep)
     return (p & 0xFF000000u) | (r << 16) | (g << 8) | b;
 }
 
+void canvas_darken_clip(Canvas *c, int keep, CanvasClip clip)
+{
+    keep = keep < 0 ? 0 : (keep > 256 ? 256 : keep);
+    if (keep == 256) {
+        return; /* nothing would change */
+    }
+    int x0 = clip.x < 0 ? 0 : clip.x;
+    int y0 = clip.y < 0 ? 0 : clip.y;
+    int x1 = clip.x + clip.w > c->w ? c->w : clip.x + clip.w;
+    int y1 = clip.y + clip.h > c->h ? c->h : clip.y + clip.h;
+    for (int py = y0; py < y1; py++) {
+        uint32_t *row = &c->px[py * c->w];
+        for (int px = x0; px < x1; px++) {
+            row[px] = darkened(row[px], keep);
+        }
+    }
+}
+
 void canvas_darken_ellipse(Canvas *c, int cx, int cy, int rx, int ry, int keep,
                            CanvasClip clip)
 {

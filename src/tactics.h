@@ -17,6 +17,7 @@
 #define AGON_TACTICS_H
 
 #include <stdbool.h>
+#include <stddef.h> /* size_t */
 #include <stdint.h>
 
 #include "brain.h"
@@ -121,6 +122,18 @@ void tactics_reset_seen(TacticWatch *t);
 float tactics_lift(const TacticWatch *t, int tactic);
 /* Families now showing tactic, and in *of_diet the families of its diet. */
 int tactics_families(const TacticWatch *t, int tactic, int *of_diet);
+/* Bit k: tactic k holds now for some living family. For the panel. */
+uint8_t tactics_now(const TacticWatch *t);
+
+/* A LifeEvent has one number, value, and a tactic's story needs three: which
+ * tactic and two counts ("8 of 11"). Packed into one int32_t: the tactic in the
+ * low 4 bits, then a in the next 12 and b in the 12 above, each count capped at
+ * 4,095. 4 + 12 + 12 = 28 bits, so the value stays positive. */
+int32_t tactics_pack(int tactic, int a, int b);
+/* The story's words for a packed value, facts only: "its family: 8 of its last
+ * 11 kills in the dark". */
+void tactics_words(int32_t value, char *out, size_t len);
+
 /* A short name: night, pack, strays, defence, shield, alarm, huddle. */
 const char *tactics_name(int tactic);
 

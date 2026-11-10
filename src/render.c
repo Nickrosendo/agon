@@ -87,7 +87,24 @@ static Colour ground_colour(const Sim *s, int i, int season)
                        (float)shade / (float)PALETTE_WITHER_SHADES);
 }
 
+static Colour cell_colour_by_day(const Sim *s, int i, int season);
+
+/* A cell as drawn in this light: night darkens the ground more than the
+ * creatures on it, the same shares as the window's (palette.h). */
 static Colour cell_colour(const Sim *s, int i, int season)
+{
+    float light = years_light(s->tick, s->set.ticks_per_day);
+    Colour day = cell_colour_by_day(s, i, season);
+    bool body = s->world.occupant[i] >= 0;
+    float keep = body ? palette_body_light(light) : palette_ground_light(light);
+    /* In eighths: the terminal redraws only cells whose colour changed, and a
+     * light changing a little every tick would change them all, every tick. */
+    keep = (float)(int)(keep * 8.0f + 0.5f) / 8.0f;
+    return palette_dim(day, keep);
+}
+
+/* A cell's colour in full light. */
+static Colour cell_colour_by_day(const Sim *s, int i, int season)
 {
     const World *w = &s->world;
     /* A creature hides whatever is under it. occupant holds its slot in

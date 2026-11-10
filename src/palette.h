@@ -68,6 +68,15 @@ Colour palette_ground(float fertility, float water);
  * PALETTE_WITHER_SHADES (about to disappear). */
 int palette_wither_shade(int wither, int ticks);
 
+/* How bright the ground and the creatures on it are drawn in this light (0 at
+ * midnight, 1 at noon), as a share of full brightness: 0.35 + 0.65 * light and
+ * 0.6 + 0.4 * light. Both programs use them. Creatures stay brighter, so they
+ * can still be followed at night. */
+float palette_ground_light(float light);
+float palette_body_light(float light);
+/* The colour at keep's share of its brightness, 0 to 1. */
+Colour palette_dim(Colour c, float keep);
+
 /* How much of a creature's food is meat, from its food-chain level: 0 at
  * level 2 or below (plants only), 1 at level 3 or above (meat only). */
 float render_meat_share(float level);

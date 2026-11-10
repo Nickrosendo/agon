@@ -343,6 +343,24 @@ static void add_line(PanelLine *lines, int *n, PanelLine line)
     }
 }
 
+void tactics_list(const Sim *s, char *out, size_t size)
+{
+    uint8_t now = tactics_now(&s->tactics);
+    size_t used = 0;
+    out[0] = '\0';
+    for (int k = 0; k < TACTIC_COUNT && used < size; k++) {
+        if (now & (1u << k)) {
+            /* snprintf returns how much it wrote (or would have); the int is
+             * never negative here, so the conversion to size_t is safe. */
+            used += (size_t)snprintf(out + used, size - used, "%s%s",
+                                     used > 0 ? ", " : "", tactics_name(k));
+        }
+    }
+    if (now == 0) {
+        snprintf(out, size, "none yet");
+    }
+}
+
 void panel_draw(const Sim *s, int col, int row0, int rows)
 {
     const Stats *st = &s->stats;
@@ -392,6 +410,14 @@ void panel_draw(const Sim *s, int col, int row0, int rows)
     if (s->pool.births_refused > 0) {
         add_line(lines, &n, count_line("refused", s->pool.births_refused));
     }
+    /* The tactics some living family shows now, by name, or none. After the
+     * rows that can be clicked (panel.h), so they stay where they are.
+     * Outlives its line, like oldest above. */
+    char tactics[PANEL_LINE_BYTES];
+    tactics_list(s, tactics, sizeof(tactics));
+    PanelLine tactics_line = count_line("tactics", 0);
+    tactics_line.value = tactics;
+    add_line(lines, &n, tactics_line);
     add_line(lines, &n, heading(""));
     add_line(lines, &n, heading(" map"));
     add_line(lines, &n,
@@ -557,6 +583,9 @@ static void describe_creature(Lines *l, const Sim *s, const Creature *c)
     add_float(l, "territory gene", c->genome.g[GENE_TERRITORY], 2);
     add_float(l, "legs gene", c->genome.g[GENE_LEGS], 2);
     add_float(l, "swim gene", c->genome.g[GENE_SWIM], 2);
+    add_float(l, "night eyes gene", c->genome.g[GENE_NIGHT_EYES], 2);
+    add_float(l, "learning gene", c->genome.g[GENE_LEARN], 2);
+    add_pair(l, "calling", c->calling ? "yes" : "no");
     add_float(l, "upkeep", creature_upkeep_cost(c, set), 2);
     /* kind comes from a brain; checked before indexing the array. */
     const char *doing =
