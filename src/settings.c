@@ -277,6 +277,9 @@ Settings settings_default(void)
         .learn_trace_fade = 0.9f,
         .learn_limit = 2.0f,
         .learn_upkeep = 0.05f,
+        /* About two minutes of waiting on the machine it was measured on (20 years
+         * headless: 98 s, 2026-11-09); settled in the tactics tuning. */
+        .ancestor_years = 20,
         .night_eye_power = 0.8f,
         .night_glare = 0.4f,
         .night_eye_upkeep = 0.05f,
@@ -496,6 +499,8 @@ static const SettingInfo TABLE[] = {
     FLOAT_ROW(learn_trace_fade, 0, 1, "share of the trace of a choice kept each tick"),
     FLOAT_ROW(learn_limit, 0, 1000, "largest learned weight"),
     FLOAT_ROW(learn_upkeep, 0, BIG, "upkeep of the full learning gene"),
+    INT_ROW(ancestor_years, 0, 1000, "years a new world evolves unseen before "
+                                     "it opens"),
     FLOAT_ROW(night_eye_power, 0, 1, "share of its sight a creature with full "
                                      "night eyes keeps at midnight"),
     FLOAT_ROW(night_glare, 0, 1, "share of its sight full night eyes lose at noon"),

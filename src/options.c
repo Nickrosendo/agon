@@ -24,6 +24,9 @@ const char OPTIONS_USAGE[] =
     "  --settings    print every setting and its default, in the form\n"
     "                --config reads, and exit\n"
     "  --checksum    print a fingerprint of the world on leaving\n"
+    "  --ancestors N years a new world evolves unseen before it opens\n"
+    "                (default: the setting ancestor_years; any key ends it\n"
+    "                early; with --once or --frames only when given)\n"
     "  -h, --help    this text\n"
     "  --version     the version\n"
     "keys: space pause, +/- speed, r new seed, i inspect, s save, q quit\n";
@@ -125,7 +128,8 @@ enum {
     OPT_SCREENSHOT,
     OPT_ZOOM,
     OPT_KEYS,
-    OPT_PAUSED
+    OPT_PAUSED,
+    OPT_ANCESTORS
 };
 
 /* The table getopt_long reads: name, whether a value follows, a flag
@@ -150,6 +154,7 @@ static const struct option LONG_OPTIONS[] = {
     {"zoom", required_argument, NULL, OPT_ZOOM},
     {"keys", required_argument, NULL, OPT_KEYS},
     {"paused", no_argument, NULL, OPT_PAUSED},
+    {"ancestors", required_argument, NULL, OPT_ANCESTORS},
     {NULL, 0, NULL, 0},
 };
 
@@ -205,6 +210,15 @@ static bool take_value(int opt, const char *value, Options *o, char *err,
                      value, OPTIONS_MAX_SIDE);
         }
         return o->size_given;
+    case OPT_ANCESTORS:
+        if (!parse_long(value, 0, OPTIONS_MAX_ANCESTORS, &n)) {
+            snprintf(err, err_size,
+                     "--ancestors needs a whole number of years from 0 to %d",
+                     OPTIONS_MAX_ANCESTORS);
+            return false;
+        }
+        o->ancestors = (int)n;
+        return true;
     case OPT_SPEED:
         if (!parse_long(value, 1, OPTIONS_MAX_SPEED, &n)) {
             snprintf(err, err_size, "--speed needs a whole number from 1 to %d",
@@ -227,7 +241,7 @@ static bool take_value(int opt, const char *value, Options *o, char *err,
 bool options_parse(int argc, char **argv, Options *o, char *err,
                    size_t err_size)
 {
-    *o = (Options){.ticks = OPTIONS_DEFAULT_TICKS};
+    *o = (Options){.ticks = OPTIONS_DEFAULT_TICKS, .ancestors = -1};
     if (err_size > 0) {
         err[0] = '\0';
     }

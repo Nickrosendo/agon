@@ -10,8 +10,8 @@
 # Rules 4 (blinded reruns) and 5 (the seasons verdict) are run by hand.
 #
 # Usage: bash tests/tactics_verdict.sh [FROM] [YEARS] [CONFIG]
-#   FROM    the tick the watched years start at: the end of the prelude. 0 until
-#           worlds start from evolved ancestors.
+#   FROM    the tick the watched years start at, or "-" for the end of the
+#           prelude: ancestor_years from CONFIG if it sets it, else the default.
 #   YEARS   watched years, 3 unless given.
 #   CONFIG  a settings file passed to every world, for trying a change.
 #
@@ -20,15 +20,28 @@
 # never judged.
 set -eu
 
-FROM=${1:-0}
+FROM=${1:--}
 YEARS=${2:-3}
 CONFIG=${3:-}
 SEEDS=15
 YEAR_TICKS=600
-TICKS=$((FROM + YEARS * YEAR_TICKS))
 TOOL=build/release/balance_report
 
 make -s balance >/dev/null
+make -s release >/dev/null
+if [ "$FROM" = "-" ]; then
+    # The prelude's length: the config's line if it has one, else the default
+    # the program prints with --settings.
+    ANCESTORS=""
+    if [ -n "$CONFIG" ]; then
+        ANCESTORS=$(awk '$1 == "ancestor_years" {print $3}' "$CONFIG")
+    fi
+    if [ -z "$ANCESTORS" ]; then
+        ANCESTORS=$(build/release/agon --settings | awk '$1 == "ancestor_years" {print $3}')
+    fi
+    FROM=$((ANCESTORS * YEAR_TICKS))
+fi
+TICKS=$((FROM + YEARS * YEAR_TICKS))
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 

@@ -415,6 +415,10 @@ typedef struct {
     float learn_trace_fade;
     float learn_limit;
     float learn_upkeep;
+    /* Years a new world evolves unseen before it opens in either program
+     * (app.h, the prelude). Not a rule of the world: the same seed gives the
+     * same world either way, just further on. */
+    int ancestor_years;
     float night_eye_power;
     float night_glare;
     float night_eye_upkeep;

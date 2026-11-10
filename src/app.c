@@ -40,6 +40,68 @@ bool app_open_world(Sim *sim, const Options *o, const Settings *settings,
     return true;
 }
 
+int app_prelude_years(const Options *o, const Settings *s, bool interactive)
+{
+    if (o->load_path != NULL) {
+        return 0; /* a saved world has lived already */
+    }
+    if (o->ancestors >= 0) {
+        return o->ancestors;
+    }
+    return interactive ? s->ancestor_years : 0;
+}
+
+void app_prelude_start(Prelude *p, const Sim *sim, int years)
+{
+    p->years = years > 0 ? years : 0;
+    /* Converted before multiplying: years times a long year could pass the
+     * largest int, and signed overflow is undefined behaviour. */
+    p->until = (uint64_t)p->years * (uint64_t)sim->set.ticks_per_year;
+    p->active = sim->tick < p->until && !sim_is_over(sim);
+}
+
+/* One tick of the prelude, ending it when it is over. */
+static void prelude_tick(Prelude *p, Sim *sim)
+{
+    sim_step(sim);
+    if (sim->tick >= p->until || sim_is_over(sim)) {
+        p->active = false;
+    }
+}
+
+bool app_prelude_step(Prelude *p, Sim *sim, uint64_t (*now_ms)(void),
+                      uint64_t budget_ms)
+{
+    uint64_t start = now_ms();
+    while (p->active) {
+        prelude_tick(p, sim);
+        /* Unsigned subtraction: right even if the clock wrapped. */
+        if (now_ms() - start >= budget_ms) {
+            break;
+        }
+    }
+    return p->active;
+}
+
+void app_prelude_finish(Prelude *p, Sim *sim)
+{
+    while (p->active) {
+        prelude_tick(p, sim);
+    }
+}
+
+void app_prelude_stop(Prelude *p)
+{
+    p->active = false;
+}
+
+void app_prelude_text(const Prelude *p, const Sim *sim, char *out, size_t size)
+{
+    int year = years_whole(sim->tick, sim->set.ticks_per_year) + 1;
+    snprintf(out, size, "evolving ancestors: year %d of %d, any key to stop",
+             year < p->years ? year : p->years, p->years);
+}
+
 int app_game_over_lines(const Sim *sim, char lines[][APP_OVER_COLS])
 {
     const WorldRecords *r = &sim->records;

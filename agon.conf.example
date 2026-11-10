@@ -479,6 +479,9 @@ learn_limit = 2
 # upkeep of the full learning gene (0 to 1e+06)
 learn_upkeep = 0.05
 
+# years a new world evolves unseen before it opens (0 to 1000)
+ancestor_years = 20
+
 # share of its sight a creature with full night eyes keeps at midnight (0 to 1)
 night_eye_power = 0.8
 

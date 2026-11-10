@@ -17,6 +17,8 @@
 #define OPTIONS_MAX_TICKS 100000000L
 /* The range --speed accepts, in ticks per second. */
 #define OPTIONS_MAX_SPEED 1000
+/* The most --ancestors accepts. */
+#define OPTIONS_MAX_ANCESTORS 1000
 /* The most --frames accepts. */
 #define OPTIONS_MAX_FRAMES 100000000L
 
@@ -32,6 +34,9 @@ typedef struct {
     bool help, version;
     bool list_settings;      /* --settings */
     bool checksum;           /* --checksum: print the world's on leaving */
+    /* --ancestors: years a new world evolves unseen before it opens; -1 when
+     * not given, and the setting ancestor_years decides. */
+    int ancestors;
     /* For the window program only; the terminal program refuses them. */
     long frames;             /* --frames: stop after this many; 0 for never */
     const char *screenshot_path; /* --screenshot: the last frame goes here */

@@ -50,6 +50,12 @@ static int64_t now_ns(void)
     return (int64_t)t.tv_sec * NANOSECONDS_PER_SECOND + t.tv_nsec;
 }
 
+/* The same clock in milliseconds, the form the prelude takes (app.h). */
+static uint64_t now_ms(void)
+{
+    return (uint64_t)(now_ns() / 1000000);
+}
+
 static void sleep_until(int64_t deadline)
 {
     int64_t left = deadline - now_ns();
@@ -233,6 +239,11 @@ static int run_once(const Options *o, const Settings *settings,
         fprintf(stderr, "agon: %s\n", err);
         return EXIT_FAILED;
     }
+    /* With --ancestors, the prelude first, whole: --once must come out the
+     * same every time, which a prelude cut short by a clock would not. */
+    Prelude prelude;
+    app_prelude_start(&prelude, &sim, app_prelude_years(o, settings, false));
+    app_prelude_finish(&prelude, &sim);
     /* A dead world stays as it died: the tick shown is the tick it ended. */
     for (long i = 0; i < o->ticks && !sim_is_over(&sim); i++) {
         sim_step(&sim);
@@ -340,6 +351,11 @@ int main(int argc, char **argv)
     Rng seed_source;
     rng_seed(&seed_source, sim.seed); /* a loaded world has its own seed */
 
+    /* A new world's ancestors evolve first, shown fast-forwarded (app.h). */
+    int prelude_years = app_prelude_years(&opt, &settings, true);
+    Prelude prelude;
+    app_prelude_start(&prelude, &sim, prelude_years);
+
     int speed = opt.speed > 0 ? app_speed_step(opt.speed) : APP_DEFAULT_SPEED;
     int paused = 0;
     int running = 1;
@@ -367,6 +383,11 @@ int main(int argc, char **argv)
             int dx, dy;
             if (key == 'q') {
                 running = 0;
+            } else if (prelude.active) {
+                /* Any other key ends the prelude where it got to, and does
+                 * nothing else: it was pressed to stop the waiting. */
+                app_prelude_stop(&prelude);
+                notice[0] = '\0';
             } else if (key == ' ') {
                 paused = !paused;
             } else if (key == 'i') {
@@ -392,7 +413,10 @@ int main(int argc, char **argv)
                 if (!sim_reseed(&sim, rng_next(&seed_source))) {
                     failed = 1; /* the brain could not be reopened */
                     running = 0;
-                } else if (inspect.on) {
+                    continue;
+                }
+                app_prelude_start(&prelude, &sim, prelude_years);
+                if (inspect.on) {
                     /* Ids start again from 0 in a new world: the id being
                      * followed now belongs to someone else. */
                     inspect_start(&inspect, &sim, max_x, max_y);
@@ -403,7 +427,17 @@ int main(int argc, char **argv)
             }
         }
 
-        if (!paused && !sim_is_over(&sim)) {
+        if (prelude.active) {
+            /* As many prelude ticks as fit in 28 ms of the frame's 33, so the
+             * screen and the keys still keep up. */
+            app_prelude_step(&prelude, &sim, now_ms, APP_PRELUDE_FRAME_MS);
+            if (prelude.active) {
+                app_prelude_text(&prelude, &sim, notice, sizeof(notice));
+            } else {
+                notice[0] = '\0';
+            }
+            notice_frames = 0; /* the text is set again every frame */
+        } else if (!paused && !sim_is_over(&sim)) {
             ticks_due += APP_SPEEDS[speed];
             /* Checked on every tick: at high speed a frame runs several, and
              * the world may end during the first. */

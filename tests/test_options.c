@@ -76,6 +76,8 @@ static bool parse(char **argv, Options *o, char *err, size_t size)
     return options_parse(argc, argv, o, err, size);
 }
 
+static bool fails_with(char **argv, const char *want);
+
 static void test_defaults(void)
 {
     char *argv[] = {"agon", NULL};
@@ -86,6 +88,24 @@ static void test_defaults(void)
     CHECK(o.speed == 0);
     CHECK(o.ticks == OPTIONS_DEFAULT_TICKS);
     CHECK(!o.help && !o.version);
+    CHECK(o.ancestors == -1); /* not given: the setting decides */
+}
+
+static void test_ancestors_option(void)
+{
+    char *argv[] = {"agon", "--ancestors", "12", NULL};
+    Options o;
+    char err[128];
+    CHECK(parse(argv, &o, err, sizeof(err)));
+    CHECK(o.ancestors == 12);
+    char *none[] = {"agon", "--ancestors", "0", NULL};
+    CHECK(parse(none, &o, err, sizeof(err)) && o.ancestors == 0);
+    char *negative[] = {"agon", "--ancestors", "-1", NULL};
+    CHECK(fails_with(negative, "--ancestors"));
+    char *huge[] = {"agon", "--ancestors", "1001", NULL};
+    CHECK(fails_with(huge, "--ancestors"));
+    char *word[] = {"agon", "--ancestors", "many", NULL};
+    CHECK(fails_with(word, "--ancestors"));
 }
 
 static void test_every_option(void)
@@ -236,5 +256,6 @@ int main(void)
     test_paused_option();
     test_parse_twice();
     test_default_speed();
+    test_ancestors_option();
     TEST_SUMMARY();
 }

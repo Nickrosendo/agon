@@ -103,6 +103,10 @@ typedef struct {
     char notice[256];
     uint64_t body_ms;  /* a clock that stops while paused */
     uint64_t last_ms;
+    /* A new world's ancestors evolving, shown fast-forwarded (app.h), and how
+     * many years each new world gets. */
+    Prelude prelude;
+    int prelude_years;
 } App;
 
 static void apply_window_size(App *a, int w, int h)
@@ -186,6 +190,10 @@ static void new_world(App *a)
     announce_reset(&a->announce);
     family_reset(&a->families);
     a->ticks_due = 0;
+    app_prelude_start(&a->prelude, &a->sim, a->prelude_years);
+    if (a->opt->frames > 0) {
+        app_prelude_finish(&a->prelude, &a->sim); /* as at the start */
+    }
 }
 
 static void say(App *a, const char *text, int frames)
@@ -225,6 +233,14 @@ static void jump(App *a)
 
 static void handle_key(App *a, int key)
 {
+    /* While the ancestors evolve, any key but q ends that where it got to,
+     * and does nothing else: it was pressed to stop the waiting. */
+    if (a->prelude.active && key != 'q') {
+        app_prelude_stop(&a->prelude);
+        a->notice[0] = '\0';
+        a->redraw = true;
+        return;
+    }
     switch (key) {
     case 'q':
         if (!PLATFORM_IS_PAGE) { /* stopping a page would only freeze it */
@@ -620,7 +636,19 @@ static void app_frame(void *arg)
         platform_stop();
         return;
     }
-    if (!a->paused && !sim_is_over(&a->sim)) {
+    if (a->prelude.active) {
+        /* As many prelude ticks as fit in 28 ms of the frame's 33, so the
+         * window and the keys still keep up; pausing does not hold it. */
+        app_prelude_step(&a->prelude, &a->sim, platform_now_ms,
+                         APP_PRELUDE_FRAME_MS);
+        if (a->prelude.active) {
+            app_prelude_text(&a->prelude, &a->sim, a->notice, sizeof(a->notice));
+            a->notice_frames = 0; /* set again every frame */
+        } else {
+            a->notice[0] = '\0';
+        }
+        a->redraw = true;
+    } else if (!a->paused && !sim_is_over(&a->sim)) {
         a->ticks_due += APP_SPEEDS[a->speed];
         /* Checked on every tick: at high speed a frame runs several, and the
          * world may end during the first. */
@@ -777,6 +805,14 @@ int main(int argc, char **argv)
         return EXIT_FAILED;
     }
     rng_seed(&app.seed_source, app.sim.seed);
+    /* With --frames (tests and screenshots) the prelude runs whole before the
+     * first frame, and only when --ancestors asks for it: a picture must come
+     * out the same every time, which a prelude cut by a clock would not. */
+    app.prelude_years = app_prelude_years(&opt, &settings, opt.frames == 0);
+    app_prelude_start(&app.prelude, &app.sim, app.prelude_years);
+    if (opt.frames > 0) {
+        app_prelude_finish(&app.prelude, &app.sim);
+    }
     app.speed = opt.speed > 0 ? app_speed_step(opt.speed) : APP_DEFAULT_SPEED;
     app.running = true;
     app.redraw = true;
