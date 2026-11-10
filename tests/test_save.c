@@ -118,9 +118,25 @@ static void test_round_trip_and_continue(void)
     CHECK(history_same(&a.stats.hist_meat_eaters, &b.stats.hist_meat_eaters));
     CHECK(history_same(&a.stats.hist_planted, &b.stats.hist_planted));
     CHECK(b.stats.creatures == a.pool.count);
-    /* Calls made on the last tick are heard after the load as before it. */
-    CHECK(a.n_callers > 0);
-    CHECK(b.n_callers == a.n_callers);
+    /* Calls made on the last tick travel as the creatures' flags, and the
+     * loaded world lists them at once. */
+    int calling = 0;
+    for (int i = 0; i < a.pool.capacity; i++) {
+        calling += a.pool.items[i].alive && a.pool.items[i].calling;
+    }
+    CHECK(calling > 0);
+    CHECK(b.n_callers == calling);
+    /* Some creature has learned something by now, and it travels. */
+    bool learned = false;
+    for (int i = 0; i < a.pool.capacity; i++) {
+        const Creature *c = &a.pool.items[i];
+        if (c->alive && c->mind.adjust[ACT_BITE * (NET_HIDDEN + 1) + NET_HIDDEN] != 0.0f) {
+            learned = true;
+            CHECK(memcmp(&c->mind, &b.pool.items[i].mind, sizeof(c->mind)) == 0);
+            break;
+        }
+    }
+    CHECK(learned);
     Settings copied = a.set;
     CHECK(memcmp(&copied, &b.set, sizeof(copied)) == 0);
 
@@ -158,6 +174,7 @@ static void test_sleeper_saved(void)
     c->hold_left = 250;
     c->sleep_ticks = 150;
     c->hibernating = 1;
+    c->calling = 0; /* a sleeper makes no sound */
     c->since_meal = 77;
     CHECK(save_write(&a, SAVE_FILE, err, sizeof(err)));
     CHECK(save_read(&b, SAVE_FILE, err, sizeof(err)));
@@ -580,7 +597,8 @@ enum {
     AT_HIBERNATING = 159,
     AT_CALLING = 160,
     AT_MEMORY = 161,
-    AT_GENOME = 173,
+    AT_MIND = 173, /* adjust then trace, MIND_LEN floats each */
+    AT_GENOME = AT_MIND + 2 * 4 * MIND_LEN,
     /* The life story: ten u32 counts, max_size, flags, two region bytes and
      * region_ticks (49 bytes); then events_noted and 8 events of 13 bytes each
      * (tick, kind, other_id, value: the struct's 3 padding bytes are not written). */

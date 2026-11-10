@@ -36,7 +36,7 @@
  */
 #define SAVE_MAGIC "AGONSAVE"
 #define SAVE_MAGIC_LEN 8
-#define SAVE_VERSION 19u
+#define SAVE_VERSION 20u
 
 /* No value in a healthy world comes near this. Bounding them keeps sums
  * from reaching infinity, and float-to-int conversions defined. */
@@ -289,6 +289,8 @@ static void put_creature(Writer *w, const Creature *c)
     put_bytes(w, &c->hibernating, 1);
     put_bytes(w, &c->calling, 1);
     put_floats(w, c->memory, MEMORY_VALUES);
+    put_floats(w, c->mind.adjust, MIND_LEN);
+    put_floats(w, c->mind.trace, MIND_LEN);
     put_floats(w, c->genome.g, GENOME_LEN);
     put_tally(w, &c->tally);
     put_events(w, c->events_noted, c->events, CREATURE_EVENTS);
@@ -722,6 +724,11 @@ static void get_creature(Reader *r, Creature *c, const Settings *set,
         return;
     }
     get_floats(r, c->memory, MEMORY_VALUES, -1.0f, 1.0f);
+    /* A learned weight is within learn_limit, at most 1000; a trace is a sum of
+     * hidden values in -1..1 fading by a share each tick, so at most
+     * 1 / (1 - fade): kept within the same generous bound. */
+    get_floats(r, c->mind.adjust, MIND_LEN, -1000.0f, 1000.0f);
+    get_floats(r, c->mind.trace, MIND_LEN, -FLOAT_LIMIT, FLOAT_LIMIT);
     get_genome(r, &c->genome, set);
     get_tally(r, &c->tally);
     get_events(r, &c->events_noted, c->events, CREATURE_EVENTS);

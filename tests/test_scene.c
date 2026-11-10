@@ -476,10 +476,10 @@ static void test_known_world_pixels(void)
          * Re-pinned for the fight and family senses, the same day: brains
          * re-rolled again, creatures elsewhere at all but the closest level.
          * Re-pinned for calls: brains re-rolled once more, the same three
-         * levels. */
+         * levels. Re-pinned for learning within a life: the two wider levels. */
         static const uint64_t EXPECTED[CAMERA_LEVELS] = {
             0xbe5f57fb7c7bdabdu, 0x5a015897532bfe08u,
-            0x85fe87df4ce9ff86u, 0x088d7f7bff6bfc25u,
+            0xffa8dfb35333fdffu, 0xdc74037711df647du,
         };
         if (hashes[level] != EXPECTED[level]) {
             printf("level %d: 0x%llxu\n", level,
@@ -1929,6 +1929,14 @@ static void test_second_frame_builds_nothing(void)
     CHECK(canvas_init(&c, VIEW_W, VIEW_H));
     Camera cam;
     camera_init(&cam, 64, 32, VIEW_W, VIEW_H);
+    /* Looking at a living creature, so every zoom has a body to draw. */
+    for (int i = 0; i < s.pool.capacity; i++) {
+        if (s.pool.items[i].alive) {
+            camera_centre_on(&cam, (float)s.pool.items[i].x + 0.5f,
+                             (float)s.pool.items[i].y + 0.5f);
+            break;
+        }
+    }
     for (int level = 0; level < CAMERA_WORLD; level++) {
         cam.level = level;
         long before = sc.sprites.builds;

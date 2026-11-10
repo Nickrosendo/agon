@@ -461,6 +461,24 @@ call_cost = 0.05
 # how many cells away a call is heard (1 to 32)
 call_reach = 6
 
+# how much a unit of energy eaten teaches (0 to 1e+06)
+reward_meal = 0.05
+
+# how much losing all its health to hits teaches (0 to 1e+06)
+reward_pain = 1
+
+# learning rate at the full learning gene (0 to 1e+06)
+learn_rate_max = 0.05
+
+# share of the trace of a choice kept each tick (0 to 1)
+learn_trace_fade = 0.9
+
+# largest learned weight (0 to 1000)
+learn_limit = 2
+
+# upkeep of the full learning gene (0 to 1e+06)
+learn_upkeep = 0.05
+
 # share of its sight a creature with full night eyes keeps at midnight (0 to 1)
 night_eye_power = 0.8
 

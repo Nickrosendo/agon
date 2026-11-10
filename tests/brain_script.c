@@ -23,11 +23,12 @@ static void script_destroy(Brain *b)
     b->state = NULL;
 }
 
-static bool script_decide(Brain *b, uint32_t id, const Genome *g,
+static bool script_decide(Brain *b, uint32_t id, const Genome *g, Mind *mind,
                           const Senses *in, Action *out)
 {
     (void)id;
     (void)g;
+    (void)mind;
     Script *sc = b->state;
     sc->decisions++;
     sc->last_senses = *in;
@@ -45,6 +46,16 @@ static void script_on_birth(Brain *b, uint32_t id, const Genome *g)
     (void)g;
     Script *sc = b->state;
     sc->births++;
+}
+
+static void script_learn(Brain *b, Mind *mind, float reward, float rate,
+                         const Settings *s)
+{
+    (void)b;
+    (void)mind;
+    (void)reward;
+    (void)rate;
+    (void)s;
 }
 
 static void script_on_death(Brain *b, uint32_t id)
@@ -98,6 +109,7 @@ const Brain BRAIN_SCRIPT = {
     .create = script_create,
     .destroy = script_destroy,
     .decide = script_decide,
+    .learn = script_learn,
     .on_birth = script_on_birth,
     .on_death = script_on_death,
 };

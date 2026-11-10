@@ -1789,6 +1789,11 @@ static bool crowded_pair_has_child(const Settings *s, Rng *r)
     Pool p;
     int a, b;
     adult_pair(&w, &p, &a, &b, s, r);
+    /* The same body, so the pair is always alike enough to mate (mate_barrier):
+     * this test is about crowding, and two random bodies may not be. */
+    for (int g = 0; g < GENE_TRAITS; g++) {
+        p.items[b].genome.g[g] = p.items[a].genome.g[g];
+    }
     spawn(&p, &w, 2, 2);
     spawn(&p, &w, 2, 4);
     CHECK(creature_crowd(&w, &p.items[a], s->crowd_radius) == 3);
@@ -3518,6 +3523,38 @@ static void family_birth(float hue, float mutation, uint64_t seed, Creature *chi
     world_free(&w);
 }
 
+static void test_child_starts_blank(void)
+{
+    /* Parents who have learned a lot; a child who has learned nothing. */
+    Settings s = settings_default();
+    s.birth_per_plant = 0.0f;
+    Rng r;
+    rng_seed(&r, 12);
+    World w;
+    make_world(&w, 8, 8);
+    Pool p;
+    CHECK(pool_init(&p, 3));
+    int a = spawn(&p, &w, 3, 3);
+    int t = spawn(&p, &w, 3, 2);
+    p.items[a].energy = p.items[t].energy = 100.0f;
+    p.items[a].age = p.items[t].age = (uint32_t)s.mate_age;
+    for (int i = 0; i < MIND_LEN; i++) {
+        p.items[a].mind.adjust[i] = p.items[t].mind.adjust[i] = 1.5f;
+        p.items[a].mind.trace[i] = p.items[t].mind.trace[i] = 2.0f;
+    }
+    p.items[t].mate_wish = 5;
+    int child = creature_act(&w, &p, a, (Action){.kind = ACT_MATE, .hold = 1}, &s, &r);
+    CHECK(child >= 0);
+    if (child >= 0) {
+        for (int i = 0; i < MIND_LEN; i++) {
+            CHECK(p.items[child].mind.adjust[i] == 0.0f);
+            CHECK(p.items[child].mind.trace[i] == 0.0f);
+        }
+    }
+    pool_free(&p);
+    world_free(&w);
+}
+
 static void test_child_stays_in_family_without_drift(void)
 {
     Creature c;
@@ -4090,6 +4127,7 @@ int main(void)
     test_hears_kin_call();
     test_stranger_call_and_reach();
     test_dead_caller_not_heard();
+    test_child_starts_blank();
     test_senses_blocked();
     test_senses_plant_along_ray();
     test_plant_ray_sees_only_food();

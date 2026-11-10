@@ -31,6 +31,7 @@ enum {
     GENE_LEGS, /* long legs: crosses marsh and sand free, pays on other ground */
     GENE_SWIM, /* a swimming body: crosses shallows free, pays on land */
     GENE_NIGHT_EYES, /* sees in the dark, is dazzled in full light; costs upkeep */
+    GENE_LEARN, /* how fast it learns in its life from meals and pain; costs upkeep */
     GENE_TRAITS
 };
 

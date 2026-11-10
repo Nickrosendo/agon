@@ -187,8 +187,9 @@ bool sim_init(Sim *s, const Settings *set, uint64_t seed, int w, int h)
     return true;
 }
 
-/* Lists who is calling now, to be heard on the next tick, and points the Pool
- * at the list. Done at the end of every tick, and after a build or a load. */
+/* Lists who is calling now, to be heard this tick, and points the Pool at the
+ * list. Done at the start of every tick, and after a build or a load so the
+ * drawing side's senses hear the same. */
 static int call_square(const Sim *s, const Creature *c)
 {
     return (c->y / CALL_BLOCK) * s->call_cols + c->x / CALL_BLOCK;
@@ -375,7 +376,8 @@ static void take_turn(Sim *s, int idx)
         creature_sense(&s->world, &s->pool, idx, &s->set, &in);
         /* Here and not in creature_sense, which must draw no random numbers. */
         in.v[SENSE_RANDOM] = rng_unit(&s->rng);
-        bool ready = s->brain.decide(&s->brain, c->id, &c->genome, &in, &a);
+        bool ready =
+            s->brain.decide(&s->brain, c->id, &c->genome, &c->mind, &in, &a);
         /* The brain is not trusted: an unknown kind counts as resting,
          * like a brain that is not ready. */
         if (!ready || a.kind >= ACT_COUNT) {
@@ -426,6 +428,10 @@ static void creatures_act(Sim *s)
                          ? flora_count_planted(&s->world)
                          : 0;
     tell_the_season(s);
+    /* Who called on the last tick, made from the calling flags as they stand
+     * now, before anyone acts: the flags are saved, so a loaded world lists the
+     * same calls as the world that wrote it. */
+    list_callers(s);
     /* The conversion keeps the low 32 bits, which is defined for an unsigned
      * target, and all that comparing two recent ticks needs. */
     s->pool.now = (uint32_t)s->tick;
@@ -438,6 +444,31 @@ static void creatures_act(Sim *s)
         if (c->alive && c->id == s->turns[k].id && c->health > 0.0f) {
             take_turn(s, s->turns[k].idx);
         }
+    }
+}
+
+/* After everyone acted: each living creature learns from what it felt this
+ * tick, and the feelings are set back to 0. In slot order, drawing no random
+ * numbers. The dying learn too; it changes nothing, as they are about to go. */
+static void lessons(Sim *s)
+{
+    for (int i = 0; i < s->pool.capacity; i++) {
+        Creature *c = &s->pool.items[i];
+        if (!c->alive) {
+            continue;
+        }
+        float rate = s->set.learn_rate_max * c->genome.g[GENE_LEARN];
+        if (rate > 0.0f && (c->meal_tick > 0.0f || c->hurt_tick > 0.0f)) {
+            float reward = s->set.reward_meal * c->meal_tick -
+                           s->set.reward_pain * c->hurt_tick /
+                               creature_max_health(c, &s->set);
+            s->brain.learn(&s->brain, &c->mind, reward, rate, &s->set);
+        } else if (rate > 0.0f) {
+            /* Nothing felt: no lesson, but the trace still fades. */
+            s->brain.learn(&s->brain, &c->mind, 0.0f, rate, &s->set);
+        }
+        c->meal_tick = 0.0f;
+        c->hurt_tick = 0.0f;
     }
 }
 
@@ -671,9 +702,9 @@ void sim_step(Sim *s)
     carrion_step(&s->world, &s->set);
     scent_step(&s->world, &s->set);
     creatures_act(s);
+    lessons(s);
     accounting(s);
     restock(s);
-    list_callers(s);
     s->tick++;
     bool sample_due =
         s->set.stats_every > 0 && s->tick % (uint64_t)s->set.stats_every == 0;
@@ -762,6 +793,8 @@ static uint64_t hash_creature(uint64_t hash, const Creature *c)
     hash = fnv1a(hash, &c->sleep_ticks, sizeof(c->sleep_ticks));
     hash = fnv1a(hash, &c->hibernating, sizeof(c->hibernating));
     hash = fnv1a(hash, &c->calling, sizeof(c->calling));
+    hash = fnv1a(hash, c->mind.adjust, sizeof(c->mind.adjust));
+    hash = fnv1a(hash, c->mind.trace, sizeof(c->mind.trace));
     /* sizeof of an array that is a struct field is the whole array,
      * GENOME_LEN * sizeof(float): it has not decayed to a pointer here,
      * as an array passed to a function would. */

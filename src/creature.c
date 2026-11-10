@@ -241,7 +241,8 @@ float creature_upkeep_cost(const Creature *c, const Settings *s)
            s->armour_upkeep * c->genome.g[GENE_ARMOUR] +
            s->weapon_upkeep * c->genome.g[GENE_WEAPON] +
            s->territory_upkeep * c->genome.g[GENE_TERRITORY] +
-           s->night_eye_upkeep * c->genome.g[GENE_NIGHT_EYES];
+           s->night_eye_upkeep * c->genome.g[GENE_NIGHT_EYES] +
+           s->learn_upkeep * c->genome.g[GENE_LEARN];
 }
 
 float creature_region_cost(const World *w, const Creature *c, const Settings *s)
@@ -416,6 +417,7 @@ void creature_ate(Creature *c, float energy, float source_level)
     if (energy <= 0.0f) {
         return;
     }
+    c->meal_tick += energy;
     c->since_meal = 0;
     float total = c->eaten + energy;
     c->level = 1.0f + (c->eaten * (c->level - 1.0f) + energy * source_level) /
@@ -955,6 +957,7 @@ static void act_attack(const World *w, Pool *p, int idx, const Settings *s,
     if (rng_unit(r) < chance) {
         float before = target->health;
         target->health -= hit_damage(c, target, a, s);
+        target->hurt_tick += before - target->health;
         record_hit(p, c, target, before, s); /* reads the ring before the hit */
         if (chosen) {
             tactics_note_hit(p->tactics, w, p, c, target, target->health <= 0.0f,

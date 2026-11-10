@@ -30,11 +30,12 @@ static void random_destroy(Brain *b)
     b->state = NULL;
 }
 
-static bool random_decide(Brain *b, uint32_t id, const Genome *g,
+static bool random_decide(Brain *b, uint32_t id, const Genome *g, Mind *mind,
                           const Senses *in, Action *out)
 {
     (void)id;
     (void)g;
+    (void)mind;
     (void)in;
     /* Back from void * to what create stored. C converts without a cast
      * and cannot check it: had state pointed to something else, this
@@ -52,6 +53,17 @@ static void random_on_birth(Brain *b, uint32_t id, const Genome *g)
     (void)g;
 }
 
+/* A random brain learns nothing. */
+static void random_learn(Brain *b, Mind *mind, float reward, float rate,
+                         const Settings *s)
+{
+    (void)b;
+    (void)mind;
+    (void)reward;
+    (void)rate;
+    (void)s;
+}
+
 static void random_on_death(Brain *b, uint32_t id)
 {
     (void)b;
@@ -66,6 +78,7 @@ const Brain BRAIN_RANDOM = {
     .create = random_create,
     .destroy = random_destroy,
     .decide = random_decide,
+    .learn = random_learn,
     .on_birth = random_on_birth,
     .on_death = random_on_death,
 };

@@ -51,8 +51,8 @@ typedef struct {
     Brain brain;
     Turn *turns;  /* pool capacity entries, reused every tick */
     /* The calls of the last tick, pool capacity entries, n_callers used; the
-     * Pool's callers point here. Made from the creatures' calling flags, so
-     * neither saved nor hashed: a load lists them again. */
+     * Pool's callers point here. Made from the creatures' calling flags at the
+     * start of each tick, so neither saved nor hashed. */
     Caller *callers;
     int n_callers;
     /* The calls sorted by square of the map (see Pool.call_start): the start of

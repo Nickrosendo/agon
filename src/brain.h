@@ -149,9 +149,27 @@ typedef struct Genome Genome;
 typedef struct Brain Brain;
 
 /*
+ * What a creature has learned in its life (the tactics design, section 8): an
+ * adjustment to its brain's weights from the hidden values into each action,
+ * added to the genome's own when deciding, and a trace of which hidden values
+ * were active when each action was last chosen, fading every tick. Weights
+ * from hidden value j (NET_HIDDEN for the constant 1) into action o sit at
+ * o * (NET_HIDDEN + 1) + j. The genome never changes; a child starts blank.
+ * The hidden layer's size is repeated here as MIND_HIDDEN: genome.h, where
+ * NET_HIDDEN lives, is not included by this header (which only declares that a
+ * Genome exists), and brain_net.c, which includes both, checks they agree.
+ */
+#define MIND_HIDDEN 6
+#define MIND_LEN (ACT_COUNT * (MIND_HIDDEN + 1))
+typedef struct {
+    float adjust[MIND_LEN];
+    float trace[MIND_LEN];
+} Mind;
+
+/*
  * A brain. The fields are function pointers: variables that hold the
  * address of a function, called like the function itself. Every brain
- * fills in all five. state is the brain's own data, kept behind a
+ * fills in all six. state is the brain's own data, kept behind a
  * void * (a pointer to "something"); only the brain's own functions know
  * what it really points to.
  */
@@ -164,9 +182,14 @@ struct Brain {
     void (*destroy)(Brain *b);
     /* Fills *out for creature id, given its senses, and returns true; or
      * returns false at once for "not ready", leaving *out alone. Never
-     * waits. */
-    bool (*decide)(Brain *b, uint32_t id, const Genome *g, const Senses *in,
-                   Action *out);
+     * waits. mind is what the creature has learned, read and marked by a
+     * brain that learns; NULL for none. */
+    bool (*decide)(Brain *b, uint32_t id, const Genome *g, Mind *mind,
+                   const Senses *in, Action *out);
+    /* One tick's lesson: reward (a meal above 0, pain below) at this learning
+     * rate. A brain that does not learn leaves mind alone. */
+    void (*learn)(Brain *b, Mind *mind, float reward, float rate,
+                  const Settings *s);
     /* A creature was born or placed in the world. */
     void (*on_birth)(Brain *b, uint32_t id, const Genome *g);
     /* A creature died; per-creature state can go. */

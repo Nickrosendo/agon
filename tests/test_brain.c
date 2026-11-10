@@ -1,5 +1,7 @@
 #include "test.h"
 
+#include <math.h> /* NAN, INFINITY, isfinite, fabsf */
+
 #include "brain.h"
 #include "brain_script.h"
 #include "genome.h"
@@ -30,7 +32,7 @@ static void test_random_always_ready(void)
     int bad = 0;
     for (int i = 0; i < 1000; i++) {
         Action a = {0};
-        if (!b.decide(&b, 1, NULL, &in, &a) || a.kind >= ACT_COUNT ||
+        if (!b.decide(&b, 1, NULL, NULL, &in, &a) || a.kind >= ACT_COUNT ||
             a.hold < 1) {
             bad++;
         }
@@ -52,8 +54,8 @@ static void test_random_same_seed_same_actions(void)
      * share a generator. */
     for (int i = 0; i < 1000; i++) {
         Action x, y;
-        a.decide(&a, 1, NULL, &in, &x);
-        b.decide(&b, 1, NULL, &in, &y);
+        a.decide(&a, 1, NULL, NULL, &in, &x);
+        b.decide(&b, 1, NULL, NULL, &in, &y);
         if (x.kind != y.kind || x.hold != y.hold) {
             differ++;
         }
@@ -76,12 +78,12 @@ static void test_script_plays_back(void)
     brain_script_load(&b, script, 3);
     Senses in = {0};
     Action out;
-    CHECK(b.decide(&b, 1, NULL, &in, &out) && out.kind == ACT_MOVE &&
+    CHECK(b.decide(&b, 1, NULL, NULL, &in, &out) && out.kind == ACT_MOVE &&
           out.hold == 3);
-    CHECK(b.decide(&b, 1, NULL, &in, &out) && out.kind == ACT_BITE);
-    CHECK(b.decide(&b, 1, NULL, &in, &out) && out.kind == ACT_TURN_LEFT);
-    CHECK(!b.decide(&b, 1, NULL, &in, &out));
-    CHECK(!b.decide(&b, 1, NULL, &in, &out));
+    CHECK(b.decide(&b, 1, NULL, NULL, &in, &out) && out.kind == ACT_BITE);
+    CHECK(b.decide(&b, 1, NULL, NULL, &in, &out) && out.kind == ACT_TURN_LEFT);
+    CHECK(!b.decide(&b, 1, NULL, NULL, &in, &out));
+    CHECK(!b.decide(&b, 1, NULL, NULL, &in, &out));
     CHECK(brain_script_decisions(&b) == 5);
     brain_close(&b);
 }
@@ -110,7 +112,7 @@ static void test_net_bias_decides(void)
             in.v[i] = rng_unit(&r);
         }
         Action a = {0};
-        if (!b.decide(&b, 1, &g, &in, &a) || a.kind != ACT_MOVE ||
+        if (!b.decide(&b, 1, &g, NULL, &in, &a) || a.kind != ACT_MOVE ||
             a.hold < 1) {
             not_move++;
         }
@@ -134,9 +136,9 @@ static void test_net_sees_vegetation(void)
     Senses in = {0};
     Action a = {0};
     in.v[veg_ahead] = 1.0f;
-    CHECK(b.decide(&b, 1, &g, &in, &a) && a.kind == ACT_BITE);
+    CHECK(b.decide(&b, 1, &g, NULL, &in, &a) && a.kind == ACT_BITE);
     in.v[veg_ahead] = 0.0f;
-    CHECK(b.decide(&b, 1, &g, &in, &a) && a.kind != ACT_BITE);
+    CHECK(b.decide(&b, 1, &g, NULL, &in, &a) && a.kind != ACT_BITE);
     brain_close(&b);
 }
 
@@ -153,9 +155,9 @@ static void test_memory_changes_a_decision(void)
     Senses in = {0};
     Action a = {0};
     in.v[SENSE_MEMORY] = 1.0f;
-    CHECK(b.decide(&b, 1, &g, &in, &a) && a.kind == ACT_BITE);
+    CHECK(b.decide(&b, 1, &g, NULL, &in, &a) && a.kind == ACT_BITE);
     in.v[SENSE_MEMORY] = -1.0f;
-    CHECK(b.decide(&b, 1, &g, &in, &a) && a.kind != ACT_BITE);
+    CHECK(b.decide(&b, 1, &g, NULL, &in, &a) && a.kind != ACT_BITE);
     brain_close(&b);
 }
 
@@ -170,7 +172,7 @@ static void test_net_writes_memory_and_it_never_chooses(void)
     g.g[net_out_weight(ACT_COUNT + 1, NET_HIDDEN)] = 4.0f;
     Senses in = {0};
     Action a = {0};
-    CHECK(b.decide(&b, 1, &g, &in, &a));
+    CHECK(b.decide(&b, 1, &g, NULL, &in, &a));
     CHECK(a.kind == ACT_REST);
     CHECK(a.memory[0] == 0.0f);
     CHECK(a.memory[1] > 0.99f && a.memory[1] <= 1.0f); /* through tanh */
@@ -185,7 +187,108 @@ static void test_net_needs_a_genome(void)
     CHECK(brain_open(&b, "net", &set, 1));
     Senses in = {0};
     Action a = {0};
-    CHECK(!b.decide(&b, 1, NULL, &in, &a)); /* no genome: not ready */
+    CHECK(!b.decide(&b, 1, NULL, NULL, &in, &a)); /* no genome: not ready */
+    brain_close(&b);
+}
+
+/* A random genome and random senses, for the learning tests. */
+static void learning_setup(Genome *g, Senses *in, uint64_t seed)
+{
+    Settings set = settings_default();
+    Rng r;
+    rng_seed(&r, seed);
+    genome_random(g, &r, &set);
+    for (int i = 0; i < SENSE_COUNT; i++) {
+        in->v[i] = rng_unit(&r);
+    }
+}
+
+static void test_learns_from_a_meal(void)
+{
+    Settings set = settings_default();
+    Brain b;
+    CHECK(brain_open(&b, "net", &set, 1));
+    Genome g;
+    Senses in;
+    learning_setup(&g, &in, 31);
+    Mind mind = {0};
+    Action a = {0};
+    CHECK(b.decide(&b, 1, &g, &mind, &in, &a));
+    uint8_t chosen = a.kind;
+    b.learn(&b, &mind, 1.0f, 0.05f, &set);
+    /* The chosen action's learned bias rose; every other action's row is 0. */
+    CHECK(mind.adjust[chosen * (NET_HIDDEN + 1) + NET_HIDDEN] > 0.0f);
+    for (int o = 0; o < ACT_COUNT; o++) {
+        for (int j = 0; j <= NET_HIDDEN && o != chosen; j++) {
+            CHECK(mind.adjust[o * (NET_HIDDEN + 1) + j] == 0.0f);
+        }
+    }
+    /* Rewarded again and again, it keeps choosing it. */
+    for (int k = 0; k < 20; k++) {
+        CHECK(b.decide(&b, 1, &g, &mind, &in, &a) && a.kind == chosen);
+        b.learn(&b, &mind, 1.0f, 0.05f, &set);
+    }
+    brain_close(&b);
+}
+
+static void test_pain_unlearns(void)
+{
+    Settings set = settings_default();
+    set.learn_limit = 1000.0f; /* room enough to turn any choice */
+    Brain b;
+    CHECK(brain_open(&b, "net", &set, 1));
+    Genome g;
+    Senses in;
+    learning_setup(&g, &in, 32);
+    Mind mind = {0};
+    Action a = {0};
+    CHECK(b.decide(&b, 1, &g, &mind, &in, &a));
+    uint8_t first = a.kind;
+    for (int k = 0; k < 500 && a.kind == first; k++) {
+        b.learn(&b, &mind, -1.0f, 0.05f, &set);
+        CHECK(b.decide(&b, 1, &g, &mind, &in, &a));
+    }
+    CHECK(a.kind != first); /* it hurt every time: it chose something else */
+    brain_close(&b);
+}
+
+static void test_no_rate_no_learning(void)
+{
+    Settings set = settings_default();
+    Brain b;
+    CHECK(brain_open(&b, "net", &set, 1));
+    Genome g;
+    Senses in;
+    learning_setup(&g, &in, 33);
+    Mind mind = {0};
+    Action a = {0};
+    CHECK(b.decide(&b, 1, &g, &mind, &in, &a));
+    b.learn(&b, &mind, 5.0f, 0.0f, &set);
+    for (int i = 0; i < MIND_LEN; i++) {
+        CHECK(mind.adjust[i] == 0.0f);
+    }
+    brain_close(&b);
+}
+
+static void test_learning_stays_finite(void)
+{
+    Settings set = settings_default();
+    Brain b;
+    CHECK(brain_open(&b, "net", &set, 1));
+    Genome g;
+    Senses in;
+    learning_setup(&g, &in, 34);
+    Mind mind = {0};
+    Action a = {0};
+    float rewards[] = {1e30f, NAN, INFINITY, -INFINITY, -1e30f};
+    for (int k = 0; k < 5; k++) {
+        CHECK(b.decide(&b, 1, &g, &mind, &in, &a));
+        b.learn(&b, &mind, rewards[k], 0.05f, &set);
+        for (int i = 0; i < MIND_LEN; i++) {
+            CHECK(isfinite(mind.adjust[i]));
+            CHECK(fabsf(mind.adjust[i]) <= set.learn_limit);
+        }
+    }
     brain_close(&b);
 }
 
@@ -199,6 +302,10 @@ int main(void)
     test_random_same_seed_same_actions();
     test_script_plays_back();
     test_net_bias_decides();
+    test_learns_from_a_meal();
+    test_pain_unlearns();
+    test_no_rate_no_learning();
+    test_learning_stays_finite();
     test_net_sees_vegetation();
     test_memory_changes_a_decision();
     test_net_writes_memory_and_it_never_chooses();

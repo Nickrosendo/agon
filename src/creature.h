@@ -159,6 +159,13 @@ typedef struct {
     /* 1 while its brain's last answer said to call out (Action.call above 0.5),
      * 0 otherwise and always 0 asleep. Heard by others on the next tick. */
     uint8_t calling;
+    /* What it has learned in its life (brain.h). Zero at birth: learning is
+     * not inherited. Saved and fingerprinted. */
+    Mind mind;
+    /* This tick's feelings, for the lesson the Sim gives after everyone acts:
+     * energy eaten and health lost to hits. Always 0 between ticks, so neither
+     * saved nor fingerprinted. */
+    float meal_tick, hurt_tick;
     /* Stored inside the creature, not behind a pointer: GENOME_LEN floats
      * (1,444 bytes) in every slot, allocated with the pool and never freed
      * on its own. */

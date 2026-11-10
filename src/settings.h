@@ -403,6 +403,18 @@ typedef struct {
      * the larger of the two directions, a call is heard. */
     float call_cost;
     int call_reach;
+    /* Learning within a life (brain.h, Mind). Each tick's reward is
+     * reward_meal times the energy eaten minus reward_pain times the share of
+     * its full health lost to hits; the rate is learn_rate_max times its
+     * learning gene, which costs learn_upkeep a tick at the full gene. The
+     * trace keeps learn_trace_fade of itself each tick, and no learned weight
+     * goes past plus or minus learn_limit. */
+    float reward_meal;
+    float reward_pain;
+    float learn_rate_max;
+    float learn_trace_fade;
+    float learn_limit;
+    float learn_upkeep;
     float night_eye_power;
     float night_glare;
     float night_eye_upkeep;
