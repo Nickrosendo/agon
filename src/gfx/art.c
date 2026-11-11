@@ -141,12 +141,15 @@ void art_raster(SkeletonRaster *r, const ArtClip *clip, int frame, float scale,
     if (!any) {
         return;
     }
-    /* The silhouette's edge becomes the outline. Changing a pixel to the
-     * outline keeps it inked, so the test of a later pixel's neighbours gives
-     * the same answer whichever order they are visited in. */
+    /* The silhouette's edge becomes the outline: only fur shades, so a horn
+     * one or two pixels thin keeps its colour instead of turning all outline.
+     * Changing a pixel to the outline keeps it inked, so the test of a later
+     * pixel's neighbours gives the same answer whichever order they are
+     * visited in. */
     for (int gy = y0; gy < y1; gy++) {
         for (int gx = x0; gx < x1; gx++) {
-            if (inked_at(r, gx, gy) &&
+            uint8_t here = r->ink[gy * r->w + gx];
+            if (here >= INK_DEEP && here <= INK_BELLY &&
                 (!inked_at(r, gx - 1, gy) || !inked_at(r, gx + 1, gy) ||
                  !inked_at(r, gx, gy - 1) || !inked_at(r, gx, gy + 1))) {
                 r->ink[gy * r->w + gx] = INK_OUTLINE;

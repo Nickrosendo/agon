@@ -9,7 +9,7 @@ Input: a folder per species, holding a folder per clip (idle, walk, run,
 graze, bite, attack, sleep) of numbered PNGs (0.png, 1.png, ...), as PixelLab's
 east-facing frames come. Canvases may differ in size (68 for the template
 clips, 84 for the custom ones): they share a centre, so each is put on one
-84 x 84 canvas first.
+128 x 128 canvas first.
 
 Run:  python3 tools/art/pixellab_to_c.py ART_DIR > src/gfx/art_data.c
       (needs Pillow; ART_DIR holds wolf/idle/0.png ...)
@@ -19,9 +19,10 @@ import sys
 
 from PIL import Image
 
-CANVAS = 84
+CANVAS = 128  # larger than any PixelLab canvas (68 to 88 so far): only the margin changes
 # skeleton.h's inks
 NONE, DEEP, SHADOW, BASE, LIGHT, HIGH, BELLY, OUTLINE, MOUTH = range(9)
+HORN0 = 11  # INK_HORN0: five horn shades, dark to light, fixed colours
 
 # species name -> its SPECIES_ value and the parts its frames already show
 # (art.h's ART_COVERS_ bits): a swimmer's body is its fin, an armoured one's
@@ -45,12 +46,17 @@ ACTIONS = [
     ("ACTION_ATTACK", "attack"),
     ("ACTION_SLEEP", "sleep"),
 ]
+# Species whose red-brown pixels are horn (drawn in the engine's fixed horn
+# colours), not the inside of a mouth.
+RED_IS_HORN = {"goat"}
+
 # Which frames of a clip to use, (first, last) inclusive, last None for the
 # end; a clip not listed uses all. Custom clips start with the standing pose
 # PixelLab keeps as frame 0, which is not part of a loop; a lying-down clip
 # is cut to the frames lying down. Set after looking at each clip.
 FRAMES = {
     "wolf": {"graze": (1, None), "bite": (1, None), "sleep": (5, None)},
+    "goat": {"bite": (1, None), "sleep": (5, None)},
 }
 
 
@@ -58,11 +64,44 @@ def lum(rgb):
     return (rgb[0] + rgb[1] + rgb[2]) / 3.0
 
 
+def body_only(im):
+    """The frame with everything but its largest group of touching pixels
+    (corners count as touching) made transparent: a dream bubble or a loose
+    dot of dust is not part of the body."""
+    w, h = im.size
+    alpha = im.getchannel("A").tobytes()
+    seen = bytearray(w * h)
+    best = []
+    for start in range(w * h):
+        if alpha[start] < 128 or seen[start]:
+            continue
+        group, todo = [], [start]
+        seen[start] = 1
+        while todo:
+            i = todo.pop()
+            group.append(i)
+            x, y = i % w, i // w
+            for dy in (-1, 0, 1):
+                for dx in (-1, 0, 1):
+                    nx, ny = x + dx, y + dy
+                    j = ny * w + nx
+                    if 0 <= nx < w and 0 <= ny < h and not seen[j] and alpha[j] >= 128:
+                        seen[j] = 1
+                        todo.append(j)
+        if len(group) > len(best):
+            best = group
+    keep = set(best)
+    out = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    for i in keep:
+        out.putpixel((i % w, i // w), im.getpixel((i % w, i // w)))
+    return out
+
+
 def on_canvas(path):
     im = Image.open(path).convert("RGBA")
     big = Image.new("RGBA", (CANVAS, CANVAS), (0, 0, 0, 0))
     big.alpha_composite(im, ((CANVAS - im.width) // 2, (CANVAS - im.height) // 2))
-    return big
+    return body_only(big)
 
 
 def pixels(im):
@@ -81,12 +120,14 @@ def body_level(im):
     return max(counts, key=counts.get)
 
 
-def ink_of(px, m):
+def ink_of(px, m, red_is_horn=False):
     r, g, b, a = px
     if a < 128:
         return NONE
     v = lum((r, g, b))
     if r > g + 40 and r > b + 25:
+        if red_is_horn:
+            return HORN0 + min(4, int(v / 40))
         return MOUTH
     if v < 40:
         return OUTLINE
@@ -194,7 +235,8 @@ def main():
         m = body_level(stand)
         sx0, sy0, sx1, sy1 = stand.getbbox()
         sw, sh = sx1 - sx0, sy1 - sy0
-        sinks = [ink_of(stand.getpixel((x, y)), m) for y in range(sy0, sy1) for x in range(sx0, sx1)]
+        sinks = [ink_of(stand.getpixel((x, y)), m, name in RED_IS_HORN)
+                 for y in range(sy0, sy1) for x in range(sx0, sx1)]
         eye = find_eye(sinks, sw, sh)
         offset = None
         if eye is not None:
@@ -208,6 +250,11 @@ def main():
                 clips.append((action, None))
                 continue
             frames = frames_of(path, span)
+            # The fur's shade measured on the clip itself: PixelLab's colours
+            # drift a little from clip to clip, and each clip's main fur
+            # colour should be the family's base all the same.
+            cm = body_level(frames[0])
+            horn = name in RED_IS_HORN
             fnames = []
             # The game's eye for every frame of the clip or for none: an eye
             # that comes and goes would blink on its own.
@@ -215,7 +262,7 @@ def main():
             for im in frames:
                 bx0, by0, bx1, by1 = im.getbbox()
                 fw, fh = bx1 - bx0, by1 - by0
-                inks = [ink_of(im.getpixel((x, y)), m)
+                inks = [ink_of(im.getpixel((x, y)), cm, horn)
                         for y in range(by0, by1) for x in range(bx0, bx1)]
                 plain = list(inks)
                 ex, ey = place_eye(inks, fw, fh, offset)

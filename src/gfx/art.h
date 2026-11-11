@@ -68,7 +68,7 @@ float art_scale_for(int species, int w, int h);
  * set: the anchor goes at (anchor_x, anchor_y) and every art pixel is `scale`
  * grid pixels (below 1 shrinks it). Each grid pixel takes the ink most of its
  * art pixels have, or none when fewer than a third are inked; then every inked
- * pixel next to an empty one becomes the outline, so a shrunk body keeps one,
+ * fur pixel next to an empty one becomes the outline, so a shrunk body keeps one,
  * and a base pixel under the outline turns light, one over it shadow, for
  * the rim of light the skeleton's bodies have. Sets the ink, the part
  * (PART_BODY where inked), the inked box, and the eye (-1, -1 for none).

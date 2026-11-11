@@ -114,7 +114,7 @@ static void test_raster_scale(void)
     CHECK(r.x1 == r.x0);
 }
 
-/* The silhouette's edge is the outline, at every scale; and the same
+/* The silhouette's fur edge is the outline, at every scale; and the same
  * arguments give the same pixels. */
 static void test_raster_outline_and_pure(void)
 {
@@ -136,7 +136,8 @@ static void test_raster_outline_and_pure(void)
                                 r.ink[y * r.w + x + 1] == INK_NONE ||
                                 r.ink[(y - 1) * r.w + x] == INK_NONE ||
                                 r.ink[(y + 1) * r.w + x] == INK_NONE;
-                    if (ink != INK_NONE && edge && ink != INK_OUTLINE) {
+                    bool fur = ink >= INK_DEEP && ink <= INK_BELLY;
+                    if (fur && edge) {
                         edges_ok = false;
                     }
                 }

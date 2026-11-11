@@ -15,6 +15,7 @@ import io
 import os
 import re
 import sys
+import urllib.error
 import urllib.request
 import zipfile
 
@@ -29,8 +30,13 @@ def main():
     character, species = sys.argv[1], sys.argv[2]
     if not re.fullmatch(r"[0-9a-f-]{36}", character) or not re.fullmatch(r"[a-z]+", species):
         sys.exit("usage: fetch_pixellab.py CHARACTER_ID SPECIES")
-    with urllib.request.urlopen(URL % character) as reply:
-        data = zipfile.ZipFile(io.BytesIO(reply.read()))
+    try:
+        with urllib.request.urlopen(URL % character) as reply:
+            data = zipfile.ZipFile(io.BytesIO(reply.read()))
+    except urllib.error.HTTPError as e:
+        if e.code == 423:  # PixelLab locks the ZIP while any job runs
+            sys.exit("still generating: try again when its jobs are done")
+        raise
     found = {}
     for name in data.namelist():
         m = re.fullmatch(r"[^/]+/animations/([^/]+)/east/frame_(\d+)\.png", name)
