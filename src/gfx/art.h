@@ -31,11 +31,18 @@ typedef struct {
     const ArtFrame *frame;
 } ArtClip;
 
+/* The parts a species' frames already show, as bits of ArtSet.covers: an
+ * otter's frames are a swimmer's body, an armadillo's are all shell. A gene
+ * for a covered part does not send the body back to the skeleton. */
+enum { ART_COVERS_ARMOUR = 1u << 0, ART_COVERS_WEAPON = 1u << 1,
+       ART_COVERS_SWIM = 1u << 2 };
+
 /* A species' clips, by ACTION_ value, and how wide and tall its standing
  * pose is in art pixels: its area is matched to the skeleton's standing body,
  * so the genes still decide how big it is drawn. */
 typedef struct {
     int species;
+    unsigned covers;  /* ART_COVERS_ bits */
     int16_t stand_w, stand_h;
     const ArtClip *clip;  /* ACTION_COUNT of them */
 } ArtSet;
@@ -45,8 +52,9 @@ extern const ArtSet ART_SETS[];
 extern const int ART_SET_COUNT;
 
 /* The clip for this species and action, or NULL when it has none. A body
- * whose armour, weapon or swim gene is at PART_FROM or above gets NULL too:
- * the frames would hide its plates, horn or fin. traits are the rounded ones. */
+ * whose armour, weapon or swim gene is at PART_FROM or above gets NULL too,
+ * unless the species' frames cover that part: they would hide its plates,
+ * horn or fin. traits are the rounded ones. */
 const ArtClip *art_clip(int species, int action, const BodyTraits *traits);
 /* How many grid pixels one art pixel becomes so that the art's standing pose
  * covers as much as a standing body of w by h grid pixels: the square root of

@@ -18,18 +18,21 @@ static const ArtSet *set_of(int species)
 }
 
 /* Whether the genes show a part the frames have no place for: plates, a tusk
- * or horn, a fin. Long legs are left out on purpose: they only lengthen the
- * legs the frames already have, and most hunters carry the gene (the lab's
- * hunter has legs 0.5, rounded to 2/3). */
-static bool shows_a_part(const BodyTraits *t)
+ * or horn, a fin, unless the frames cover it. Long legs are left out on
+ * purpose: they only lengthen the legs the frames already have, and most
+ * hunters carry the gene (the lab's hunter has legs 0.5, rounded to 2/3). */
+static bool shows_a_part(const BodyTraits *t, unsigned covers)
 {
-    return t->armour >= PART_FROM || t->weapon >= PART_FROM || t->swim >= PART_FROM;
+    return (t->armour >= PART_FROM && !(covers & ART_COVERS_ARMOUR)) ||
+           (t->weapon >= PART_FROM && !(covers & ART_COVERS_WEAPON)) ||
+           (t->swim >= PART_FROM && !(covers & ART_COVERS_SWIM));
 }
 
 const ArtClip *art_clip(int species, int action, const BodyTraits *traits)
 {
     const ArtSet *set = set_of(species);
-    if (set == NULL || action < 0 || action >= ACTION_COUNT || shows_a_part(traits)) {
+    if (set == NULL || action < 0 || action >= ACTION_COUNT ||
+        shows_a_part(traits, set->covers)) {
         return NULL;
     }
     const ArtClip *clip = &set->clip[action];

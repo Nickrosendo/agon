@@ -1246,6 +1246,6 @@ static const ArtClip wolf_clips[ACTION_COUNT] = {
 };
 
 const ArtSet ART_SETS[] = {
-    {SPECIES_WOLF, 48, 35, wolf_clips},
+    {SPECIES_WOLF, 0, 48, 35, wolf_clips},
 };
 const int ART_SET_COUNT = (int)(sizeof ART_SETS / sizeof ART_SETS[0]);

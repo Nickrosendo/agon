@@ -23,23 +23,35 @@ CANVAS = 84
 # skeleton.h's inks
 NONE, DEEP, SHADOW, BASE, LIGHT, HIGH, BELLY, OUTLINE, MOUTH = range(9)
 
-# species name -> SPECIES_ value name
-SPECIES = {"wolf": "SPECIES_WOLF"}
-# the game's actions, the clip each is cut from, and which frames: custom clips
-# start with the standing pose PixelLab keeps as frame 0, which is not part of
-# a loop. (first, last) inclusive; None means all.
+# species name -> its SPECIES_ value and the parts its frames already show
+# (art.h's ART_COVERS_ bits): a swimmer's body is its fin, an armoured one's
+# its plates (and the elephant's tusks its weapon), so their genes for those
+# do not send it back to the skeleton.
+SPECIES = {
+    "wolf": ("SPECIES_WOLF", "0"),
+    "fox": ("SPECIES_FOX", "0"),
+    "goat": ("SPECIES_GOAT", "0"),
+    "otter": ("SPECIES_OTTER", "ART_COVERS_SWIM"),
+    "armadillo": ("SPECIES_ARMADILLO", "ART_COVERS_ARMOUR"),
+    "elephant": ("SPECIES_ELEPHANT", "ART_COVERS_ARMOUR | ART_COVERS_WEAPON"),
+}
+# the game's actions and the clip each is cut from
 ACTIONS = [
-    ("ACTION_REST", "idle", None),
-    ("ACTION_WALK", "walk", None),
-    ("ACTION_RUN", "run", None),
-    ("ACTION_GRAZE", "graze", (1, None)),
-    ("ACTION_BITE", "bite", (1, None)),
-    ("ACTION_ATTACK", "attack", None),
-    ("ACTION_SLEEP", "sleep", None),
+    ("ACTION_REST", "idle"),
+    ("ACTION_WALK", "walk"),
+    ("ACTION_RUN", "run"),
+    ("ACTION_GRAZE", "graze"),
+    ("ACTION_BITE", "bite"),
+    ("ACTION_ATTACK", "attack"),
+    ("ACTION_SLEEP", "sleep"),
 ]
-# Which frames of the sleep clip are the wolf lying asleep: set per species
-# after looking at the clip (the clip lies down first).
-SLEEP_FRAMES = {"wolf": (5, None)}
+# Which frames of a clip to use, (first, last) inclusive, last None for the
+# end; a clip not listed uses all. Custom clips start with the standing pose
+# PixelLab keeps as frame 0, which is not part of a loop; a lying-down clip
+# is cut to the frames lying down. Set after looking at each clip.
+FRAMES = {
+    "wolf": {"graze": (1, None), "bite": (1, None), "sleep": (5, None)},
+}
 
 
 def lum(rgb):
@@ -173,7 +185,7 @@ def main():
     w('#include "art.h"')
     w("")
     sets = []
-    for name in sorted(SPECIES):
+    for name in sorted(n for n in SPECIES if os.path.isdir(os.path.join(root, n))):
         folder = os.path.join(root, name)
         stand = on_canvas(os.path.join(folder, "idle", "0.png"))
         x0, y0, x1, y1 = stand.getbbox()
@@ -189,9 +201,8 @@ def main():
             nx, ny = nose(sinks, sw, sh)
             offset = (eye[0] - nx, eye[1] - ny)
         clips = []
-        for action, clip, span in ACTIONS:
-            if clip == "sleep":
-                span = SLEEP_FRAMES.get(name)
+        for action, clip in ACTIONS:
+            span = FRAMES.get(name, {}).get(clip)
             path = os.path.join(folder, clip)
             if not os.path.isdir(path):
                 clips.append((action, None))
@@ -237,7 +248,8 @@ def main():
                 w("    [%s] = {%d, %s_frames}," % (c[0], c[2], c[1]))
         w("};")
         w("")
-        sets.append("    {%s, %d, %d, %s_clips}," % (SPECIES[name], x1 - x0, y1 - y0, name))
+        value, covers = SPECIES[name]
+        sets.append("    {%s, %s, %d, %d, %s_clips}," % (value, covers, x1 - x0, y1 - y0, name))
     w("const ArtSet ART_SETS[] = {")
     out.extend(sets)
     w("};")

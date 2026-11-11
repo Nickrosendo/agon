@@ -59,6 +59,14 @@ static void test_parts_step_aside(void)
     t = hunter();
     t.legs = 1.0f;
     CHECK(art_clip(SPECIES_WOLF, ACTION_REST, &t) != NULL);
+    /* A part the frames cover does not: every set's covered genes at 1. */
+    for (int s = 0; s < ART_SET_COUNT; s++) {
+        BodyTraits all = hunter();
+        all.armour = ART_SETS[s].covers & ART_COVERS_ARMOUR ? 1.0f : 0.0f;
+        all.weapon = ART_SETS[s].covers & ART_COVERS_WEAPON ? 1.0f : 0.0f;
+        all.swim = ART_SETS[s].covers & ART_COVERS_SWIM ? 1.0f : 0.0f;
+        CHECK(art_clip(ART_SETS[s].species, ACTION_REST, &all) != NULL);
+    }
 }
 
 /* Every frame of the generated data is in range: inks, sizes, eye. */
