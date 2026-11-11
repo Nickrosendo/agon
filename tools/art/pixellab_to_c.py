@@ -46,6 +46,10 @@ ACTIONS = [
     ("ACTION_ATTACK", "attack"),
     ("ACTION_SLEEP", "sleep"),
 ]
+# A clip drawn from another clip's frames, when PixelLab's own came out
+# broken: the armadillo's run had a blue blob and white chunks in it.
+CLIP_FROM = {"armadillo": {"run": "walk"}}
+
 # Species whose red-brown pixels are horn (drawn in the engine's fixed horn
 # colours), not the inside of a mouth.
 RED_IS_HORN = {"goat"}
@@ -61,6 +65,7 @@ FRAMES = {
     "otter": {"bite": (1, None), "attack": (0, 5), "sleep": (4, None)},
     # the bite's last two frames hold a box-like object on the ground
     "elephant": {"bite": (1, 2), "sleep": (6, None)},
+    "armadillo": {"bite": (1, None), "sleep": (5, None)},
 }
 
 
@@ -124,12 +129,25 @@ def body_level(im):
     return max(counts, key=counts.get)
 
 
-def ink_of(px, m, red_is_horn=False):
+def reddish(r, g, b):
+    return r > g + 40 and r > b + 25
+
+
+def red_body(im, m):
+    """Whether the fur itself is reddish (the armadillo is): then red pixels
+    are fur, not a mouth or a horn."""
+    near = [(r, g, b) for (r, g, b, a) in pixels(im) if a >= 128 and abs(lum((r, g, b)) - m) <= 10]
+    if not near:
+        return False
+    return reddish(*[sum(c[i] for c in near) / len(near) for i in range(3)])
+
+
+def ink_of(px, m, red_is_horn=False, red_fur=False):
     r, g, b, a = px
     if a < 128:
         return NONE
     v = lum((r, g, b))
-    if r > g + 40 and r > b + 25:
+    if reddish(r, g, b) and not red_fur:
         if red_is_horn:
             return HORN0 + min(4, int(v / 40))
         return MOUTH
@@ -242,7 +260,7 @@ def main():
         m = body_level(stand)
         sx0, sy0, sx1, sy1 = stand.getbbox()
         sw, sh = sx1 - sx0, sy1 - sy0
-        sinks = [ink_of(stand.getpixel((x, y)), m, name in RED_IS_HORN)
+        sinks = [ink_of(stand.getpixel((x, y)), m, name in RED_IS_HORN, red_body(stand, m))
                  for y in range(sy0, sy1) for x in range(sx0, sx1)]
         eye = find_eye(sinks, sw, sh)
         offset = None
@@ -252,7 +270,7 @@ def main():
         clips = []
         for action, clip in ACTIONS:
             span = FRAMES.get(name, {}).get(clip)
-            path = os.path.join(folder, clip)
+            path = os.path.join(folder, CLIP_FROM.get(name, {}).get(clip, clip))
             if not os.path.isdir(path):
                 clips.append((action, None))
                 continue
@@ -262,6 +280,7 @@ def main():
             # colour should be the family's base all the same.
             cm = body_level(frames[0])
             horn = name in RED_IS_HORN
+            red_fur = red_body(frames[0], cm)
             fnames = []
             # The game's eye for every frame of the clip or for none: an eye
             # that comes and goes would blink on its own.
@@ -269,7 +288,7 @@ def main():
             for im in frames:
                 bx0, by0, bx1, by1 = im.getbbox()
                 fw, fh = bx1 - bx0, by1 - by0
-                inks = [ink_of(im.getpixel((x, y)), cm, horn)
+                inks = [ink_of(im.getpixel((x, y)), cm, horn, red_fur)
                         for y in range(by0, by1) for x in range(bx0, bx1)]
                 plain = list(inks)
                 ex, ey = place_eye(inks, fw, fh, offset)

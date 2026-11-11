@@ -279,10 +279,10 @@ static void test_lab_pixels(void)
      * differ on another C library. Re-pinned the same day: resting animals
      * now breathe, swish and look about, each at its own point of a 6 s
      * cycle, and their eyes blink; looked at by eye. Re-pinned 2026-11-11:
-     * the wolf, goat, otter and elephant drawn from their PixelLab frames (art.h);
+     * the wolf, goat, otter, elephant and armadillo drawn from their PixelLab frames (art.h);
      * looked at by eye in the lab, Nicolas's approval of the new look still
      * to come. */
-    static const uint64_t EXPECTED = 0x23885bd45ee3dabau;
+    static const uint64_t EXPECTED = 0xd3e989a0c9fd3a29u;
     if (h != EXPECTED) {
         printf("lab: 0x%llxu\n", (unsigned long long)h);
     }
