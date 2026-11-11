@@ -59,6 +59,8 @@ FRAMES = {
     "goat": {"bite": (1, None), "sleep": (5, None)},
     # the attack's last three frames carry a cyan swirl stuck to the head
     "otter": {"bite": (1, None), "attack": (0, 5), "sleep": (4, None)},
+    # the bite's last two frames hold a box-like object on the ground
+    "elephant": {"bite": (1, 2), "sleep": (6, None)},
 }
 
 
@@ -133,15 +135,18 @@ def ink_of(px, m, red_is_horn=False):
         return MOUTH
     if v < 40:
         return OUTLINE
+    # Wide bands: PixelLab's fur is often mottled (the elephant's skin, the
+    # otter's coat), and narrow ones turned that texture into speckles of
+    # light and shadow. Only real shading leaves the base.
     if v > m + 50:
         return BELLY
-    if v < m - 20:
+    if v < m - 25:
         return DEEP
-    if v < m - 3:
+    if v < m - 10:
         return SHADOW
-    if v <= m + 4:
+    if v <= m + 10:
         return BASE
-    if v <= m + 25:
+    if v <= m + 30:
         return LIGHT
     return HIGH
 
