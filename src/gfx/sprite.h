@@ -111,6 +111,7 @@ typedef struct {
     SkeletonRaster *raster;  /* the scratch every picture is drawn in: 22 KB */
     uint64_t clock;          /* counts lookups, to tell which was used longest ago */
     long builds;  /* pictures drawn so far: the tests and slow_pictures read it */
+    bool art;     /* true: species with drawn frames (art.h) use them; on from init */
 } SpriteCache;
 
 /* All the memory, allocated once: entries trimmed small pictures, entries / 6
@@ -121,6 +122,9 @@ bool sprite_cache_init(SpriteCache *c, int entries, int detail_entries);
 void sprite_cache_free(SpriteCache *c);
 /* Forgets every picture: after r or a load. builds is kept. */
 void sprite_cache_reset(SpriteCache *c);
+/* Turns the drawn frames (art.h) on or off; the pictures kept are forgotten
+ * when that changes, since they were drawn the other way. */
+void sprite_cache_set_art(SpriteCache *c, bool on);
 /* Drawn the first time it is asked for; the picture stays good until the next
  * call, which may reuse its entry. action is an ACTION_ value; frame is cut to
  * the action's cycle; pose_at (pose.h) gives its pose. */

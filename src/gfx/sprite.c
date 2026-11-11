@@ -4,6 +4,7 @@
 #include <stdlib.h> /* free, malloc */
 #include <string.h> /* memcpy */
 
+#include "art.h"      /* art_clip, art_raster */
 #include "canvas.h"   /* canvas_rgb */
 #include "gfx_hash.h" /* gfx_mix */
 #include "palette.h"  /* render_display_hue, palette_mix */
@@ -315,6 +316,7 @@ static int store_take(SpriteStore *st)
 bool sprite_cache_init(SpriteCache *c, int entries, int detail_entries)
 {
     *c = (SpriteCache){0}; /* every pointer NULL: free is safe on a half-made cache */
+    c->art = true;
     c->raster = malloc(sizeof(SkeletonRaster));
     int whole = entries / 6 < 1 ? 1 : entries / 6;
     if (c->raster == NULL ||
@@ -350,6 +352,14 @@ void sprite_cache_reset(SpriteCache *c)
     }
 }
 
+void sprite_cache_set_art(SpriteCache *c, bool on)
+{
+    if (c->art != on) {
+        c->art = on;
+        sprite_cache_reset(c);
+    }
+}
+
 /* A float rounded into 0..255, for a shadow radius. */
 static uint8_t radius_byte(float v)
 {
@@ -365,10 +375,30 @@ static void draw_raster(SpriteCache *c, const SpriteBody *b, int action, int fra
                         Anatomy *a)
 {
     species_anatomy(a, b->species, &b->traits, sprite_k(b));
+    const ArtClip *clip = c->art ? art_clip(b->species, action, &b->traits) : NULL;
     SpritePose pose;
-    pose_at(&pose, b, action, frame);
+    /* With drawn frames, the skeleton still draws the body standing first:
+     * its width, middle, lowest row and shadow say how big and where the
+     * frames go, so the genes keep deciding the size. */
+    pose_at(&pose, b, clip != NULL ? ACTION_REST : action, clip != NULL ? 0 : frame);
     skeleton_raster(c->raster, a, &pose, b->base != SPRITE_BASE_FAR,
                     b->base == SPRITE_BASE_DETAIL);
+    if (clip == NULL) {
+        return;
+    }
+    SkeletonRaster *r = c->raster;
+    float scale = art_scale_for(b->species, r->x1 - r->x0, r->y1 - r->y0);
+    if (!(scale > 0.0f)) {
+        return;  /* nothing standing to measure: the skeleton's picture stays */
+    }
+    /* The middle pixel of the standing body, and its lowest row. */
+    float anchor_x = (float)(r->x0 + r->x1 - 1) * 0.5f;
+    float anchor_y = (float)(r->y1 - 1);
+    art_raster(r, clip, frame * clip->frames / SPRITE_FRAMES[action], scale, anchor_x,
+               anchor_y);
+    if (b->base == SPRITE_BASE_FAR) {
+        r->eye_x = r->eye_y = -1;  /* Far pictures have no eyes, drawn or art */
+    }
 }
 
 /* The store a picture of this many inks belongs in. */
