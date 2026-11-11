@@ -57,6 +57,8 @@ RED_IS_HORN = {"goat"}
 FRAMES = {
     "wolf": {"graze": (1, None), "bite": (1, None), "sleep": (5, None)},
     "goat": {"bite": (1, None), "sleep": (5, None)},
+    # the attack's last three frames carry a cyan swirl stuck to the head
+    "otter": {"bite": (1, None), "attack": (0, 5), "sleep": (4, None)},
 }
 
 
