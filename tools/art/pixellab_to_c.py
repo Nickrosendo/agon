@@ -66,6 +66,7 @@ FRAMES = {
     # the bite's last two frames hold a box-like object on the ground
     "elephant": {"bite": (1, 2), "sleep": (6, None)},
     "armadillo": {"bite": (1, None), "sleep": (5, None)},
+    "fox": {"graze": (1, None), "bite": (1, None), "sleep": (4, None)},
 }
 
 
