@@ -57,6 +57,8 @@ static const char WINDOW_USAGE[] =
     "  --frames N        stop after N frames, without waiting between them\n"
     "  --screenshot PATH write the last frame there as a PPM image\n"
     "  --paused          start paused, as if space were pressed first\n"
+    "  --no-art          start with the wolves drawn from the skeleton, not their\n"
+    "                    drawn frames (the a key switches)\n"
     "  --keys TEXT       with --frames: press these keys, one a frame, in the\n"
     "                    last frames (\"l\" shows the life story page, \"b\" the\n"
     "                    species lab)\n"
@@ -70,6 +72,7 @@ static const char WINDOW_USAGE[] =
     "      b opens the species lab, every animal side by side, and closes it\n"
     "      again; in it 1 to 6 choose the action shown (walk, run, rest,\n"
     "      graze, bite, sleep).\n"
+    "      a switches the wolves between their drawn frames and the skeleton.\n"
     "mouse: wheel zooms, dragging moves, clicking a creature follows it,\n"
     "       clicking bare ground lets go. On the panel, clicking \"top hunter\",\n"
     "       \"oldest\" or the largest family's body follows that creature.\n";
@@ -296,6 +299,13 @@ static void handle_key(App *a, int key)
     case 'b':
     case 'B':
         a->lab_open = !a->lab_open;
+        break;
+    case 'a':
+    case 'A':
+        /* The drawn frames (art.h) on or off: the pictures kept are
+         * forgotten, and the next frame draws them the other way. */
+        sprite_cache_set_art(&a->scene.sprites, !a->scene.sprites.art);
+        a->redraw = true;
         break;
     case '1': case '2': case '3': case '4': case '5': case '6':
         /* The action keys only mean something on the lab page. Characters are
@@ -823,6 +833,7 @@ int main(int argc, char **argv)
         platform_error("out of memory");
         return EXIT_FAILED;
     }
+    sprite_cache_set_art(&app.scene.sprites, !opt.no_art);
     scene_layout(&app.layout, WINDOW_W, WINDOW_H);
     camera_init(&app.camera, app.sim.world.w, app.sim.world.h,
                 app.layout.view_w, app.layout.view_h);

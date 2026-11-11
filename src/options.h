@@ -42,6 +42,7 @@ typedef struct {
     const char *screenshot_path; /* --screenshot: the last frame goes here */
     const char *zoom_name;   /* --zoom: the starting zoom step's name */
     bool paused;             /* --paused: start as if space were pressed */
+    bool no_art;             /* --no-art: start with the drawn frames off (a key) */
     /* --keys: keys pressed one a frame during the last frames of --frames, so
      * a test or a screenshot can open the L page. Points into argv. */
     const char *keys;

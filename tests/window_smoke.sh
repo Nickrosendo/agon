@@ -123,6 +123,8 @@ if [ $HAVE_AGON -eq 1 ]; then
     zero=$("$OUT/agon" --once --seed 3 --size 64x32 --ticks 0 --checksum | grep '^checksum')
     "$OUT/agon" --paused >/dev/null 2>&1
     [ $? -eq 2 ] || fail "agon accepted --paused"
+    "$OUT/agon" --no-art >/dev/null 2>&1
+    [ $? -eq 2 ] || fail "agon accepted --no-art"
 else
     zero=$("$OUT/agon-window" --seed 3 --size 64x32 --frames 1 --paused --checksum)
 fi

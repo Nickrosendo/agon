@@ -219,7 +219,10 @@ static void test_paused_option(void)
     CHECK(parse(none, &o, err, sizeof(err)) && !o.paused);
     char *given[] = {"agon", "--paused", NULL};
     CHECK(parse(given, &o, err, sizeof(err)) && o.paused);
-    /* The parser accepts it; the terminal program's main refuses it, like
+    CHECK(parse(none, &o, err, sizeof(err)) && !o.no_art);
+    char *no_art[] = {"agon", "--no-art", NULL};
+    CHECK(parse(no_art, &o, err, sizeof(err)) && o.no_art);
+    /* The parser accepts them; the terminal program's main refuses it, like
      * --frames (window_smoke.sh checks the exit code). */
 }
 

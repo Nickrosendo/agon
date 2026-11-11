@@ -307,9 +307,9 @@ int main(int argc, char **argv)
     }
     /* These only mean something with a window to draw in. */
     if (opt.frames > 0 || opt.screenshot_path != NULL || opt.zoom_name != NULL ||
-        opt.keys != NULL || opt.paused) {
-        fprintf(stderr, "agon: --frames, --screenshot, --zoom, --keys and --paused are "
-                        "for agon-window\n");
+        opt.keys != NULL || opt.paused || opt.no_art) {
+        fprintf(stderr, "agon: --frames, --screenshot, --zoom, --keys, --paused and "
+                        "--no-art are for agon-window\n");
         return EXIT_USAGE;
     }
     if (opt.once) {
