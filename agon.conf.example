@@ -504,7 +504,7 @@ place_memory_max = 150
 place_memory_upkeep = 0.01
 
 # years a new world evolves unseen before it opens (0 to 1000)
-ancestor_years = 20
+ancestor_years = 2
 
 # share of its sight a creature with full night eyes keeps at midnight (0 to 1)
 night_eye_power = 0.8

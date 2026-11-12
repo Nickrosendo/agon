@@ -288,9 +288,11 @@ Settings settings_default(void)
         .meal_place_share = 0.1f,
         .place_memory_max = 150,
         .place_memory_upkeep = 0.01f,
-        /* About two minutes of waiting on the machine it was measured on (20 years
-         * headless: 98 s, 2026-11-09); settled in the tactics tuning. */
-        .ancestor_years = 20,
+        /* Was 20 (98 s headless, 2026-11-09). With the foraging change worlds
+         * hold about twice as many creatures and 20 years took several minutes,
+         * too long to wait (Nicolas, 2026-11-12): 2 years, a few seconds. The
+         * founders' instinct means a young world already forages. */
+        .ancestor_years = 2,
         .night_eye_power = 0.8f,
         .night_glare = 0.4f,
         .night_eye_upkeep = 0.05f,
