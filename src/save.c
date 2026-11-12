@@ -36,7 +36,7 @@
  */
 #define SAVE_MAGIC "AGONSAVE"
 #define SAVE_MAGIC_LEN 8
-#define SAVE_VERSION 24u
+#define SAVE_VERSION 25u
 
 /* No value in a healthy world comes near this. Bounding them keeps sums
  * from reaching infinity, and float-to-int conversions defined. */
@@ -285,6 +285,10 @@ static void put_creature(Writer *w, const Creature *c)
     put_plant(w, &c->gut_seed);
     put_u16(w, c->gut_ticks);
     put_u16(w, c->since_meal);
+    put_u32(w, (uint32_t)c->meal_x);
+    put_u32(w, (uint32_t)c->meal_y);
+    put_u32(w, c->meal_at);
+    put_bytes(w, &c->meal_known, 1);
     put_u16(w, c->sleep_ticks);
     put_bytes(w, &c->hibernating, 1);
     put_bytes(w, &c->calling, 1);
@@ -705,6 +709,20 @@ static void get_creature(Reader *r, Creature *c, const Settings *set,
     get_plant(r, &c->gut_seed);
     c->gut_ticks = get_u16(r);
     c->since_meal = get_u16(r);
+    /* Converting a uint32_t above INT32_MAX to int32_t is up to the compiler
+     * in C, not defined by the standard; a file written by this program holds
+     * only map coordinates, small and not negative, and the check below
+     * refuses anything else. */
+    uint32_t meal_x = get_u32(r);
+    uint32_t meal_y = get_u32(r);
+    c->meal_at = get_u32(r);
+    c->meal_known = get_byte(r);
+    if (meal_x >= (uint32_t)w->w || meal_y >= (uint32_t)w->h || c->meal_known > 1) {
+        fail(r, "a creature in the file is impossible");
+        return;
+    }
+    c->meal_x = (int32_t)meal_x;
+    c->meal_y = (int32_t)meal_y;
     c->sleep_ticks = get_u16(r);
     c->hibernating = get_byte(r);
     c->calling = get_byte(r);

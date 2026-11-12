@@ -464,7 +464,7 @@ ticks_per_year = 600
 # ticks in a day, noon first; sight fails in the dark (2 to 1000000)
 ticks_per_day = 60
 
-# senses held at 0 for every brain: 1 day, 2 a fight seen, 4 a stray seen, 8 kin hit, 16 hearing, 32 plants seen (0 to 63)
+# senses held at 0 for every brain: 1 day, 2 a fight seen, 4 a stray seen, 8 kin hit, 16 hearing, 32 plants seen, 64 meal place (0 to 127)
 blind_senses = 0
 
 # energy a tick of calling costs (0 to 1e+06)
@@ -490,6 +490,15 @@ learn_limit = 2
 
 # upkeep of the full learning gene (0 to 1e+06)
 learn_upkeep = 0.05
+
+# share of mating's need a meal must give to be remembered (0 to 1e+06)
+meal_place_share = 0.1
+
+# ticks a meal's place is remembered at the full gene (0 to 65535)
+place_memory_max = 150
+
+# upkeep of the full place-memory gene (0 to 1e+06)
+place_memory_upkeep = 0.01
 
 # years a new world evolves unseen before it opens (0 to 1000)
 ancestor_years = 20

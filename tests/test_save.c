@@ -608,11 +608,15 @@ enum {
     AT_GUT_SEED = 125, /* seven floats: 28 bytes */
     AT_GUT_TICKS = 153,
     AT_SINCE_MEAL = 155,
-    AT_SLEEP_TICKS = 157,
-    AT_HIBERNATING = 159,
-    AT_CALLING = 160,
-    AT_MEMORY = 161,
-    AT_MIND = 173, /* adjust then trace, MIND_LEN floats each */
+    AT_MEAL_X = 157,
+    AT_MEAL_Y = 161,
+    AT_MEAL_AT = 165,
+    AT_MEAL_KNOWN = 169,
+    AT_SLEEP_TICKS = 170,
+    AT_HIBERNATING = 172,
+    AT_CALLING = 173,
+    AT_MEMORY = 174,
+    AT_MIND = 186, /* adjust then trace, MIND_LEN floats each */
     AT_GENOME = AT_MIND + 2 * 4 * MIND_LEN,
     /* The life story: ten u32 counts, max_size, flags, two region bytes and
      * region_ticks (49 bytes); then events_noted and 8 events of 13 bytes each
@@ -944,6 +948,10 @@ static void test_refuses_impossible_creature(void)
     refuses_u32(&t, c + AT_Y, 8, "creature");
     refuses_u32(&t, c + AT_Y, 0xFFFFFFFFu, "creature");
     refuses_byte(&t, c + AT_HEADING, HEADING_COUNT, "creature");
+    /* A remembered meal off the map, and a flag that is not 0 or 1. */
+    refuses_u32(&t, c + AT_MEAL_X, 8, "creature");
+    refuses_u32(&t, c + AT_MEAL_Y, 0xFFFFFFFFu, "creature");
+    refuses_byte(&t, c + AT_MEAL_KNOWN, 2, "creature");
     refuses_byte(&t, c + AT_KIND, ACT_COUNT, "creature");
     /* Ticks of a sleep for a creature that is awake (this one rests). */
     refuses_byte(&t, c + AT_SLEEP_TICKS, 1, "creature");

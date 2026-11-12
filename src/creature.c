@@ -242,7 +242,13 @@ float creature_upkeep_cost(const Creature *c, const Settings *s)
            s->weapon_upkeep * c->genome.g[GENE_WEAPON] +
            s->territory_upkeep * c->genome.g[GENE_TERRITORY] +
            s->night_eye_upkeep * c->genome.g[GENE_NIGHT_EYES] +
-           s->learn_upkeep * c->genome.g[GENE_LEARN];
+           s->learn_upkeep * c->genome.g[GENE_LEARN] +
+           s->place_memory_upkeep * c->genome.g[GENE_PLACE_MEMORY];
+}
+
+int creature_place_span(const Creature *c, const Settings *s)
+{
+    return (int)(c->genome.g[GENE_PLACE_MEMORY] * (float)s->place_memory_max + 0.5f);
 }
 
 float creature_region_cost(const World *w, const Creature *c, const Settings *s)
@@ -810,6 +816,45 @@ static void hear_calls(const World *w, const Pool *p, const Creature *c,
     out->v[SENSE_CALL_STRANGER] = h.stranger_loud;
 }
 
+/* The five SENSE_PLACE_ senses (brain.h). */
+static void sense_place(const World *w, const Pool *p, const Creature *c,
+                        const Settings *s, Senses *out)
+{
+    int span = creature_place_span(c, s);
+    if (!c->meal_known || span == 0) {
+        return;
+    }
+    /* Unsigned subtraction: the true age even across the wrap of the date. */
+    uint32_t age = p->now - c->meal_at;
+    if (age >= (uint32_t)span) {
+        return; /* faded */
+    }
+    int dx = wrapped_delta(c->x, c->meal_x, w->w);
+    int dy = wrapped_delta(c->y, c->meal_y, w->h);
+    if (dx == 0 && dy == 0) {
+        return; /* standing on it */
+    }
+    float fresh = 1.0f - (float)age / (float)span;
+    /* How far forward and how far to the right the place lies: the way there,
+     * dotted with the step ahead and with the step to the right. */
+    uint8_t right = turned(c->heading, 1);
+    int forward = dx * STEP_X[c->heading] + dy * STEP_Y[c->heading];
+    int side = dx * STEP_X[right] + dy * STEP_Y[right];
+    int side_size = side < 0 ? -side : side;
+    if (forward > 0 && forward >= side_size) {
+        out->v[SENSE_PLACE_AHEAD] = fresh;
+    } else if (side > 0) {
+        out->v[SENSE_PLACE_RIGHT] = fresh;
+    } else if (side < 0) {
+        out->v[SENSE_PLACE_LEFT] = fresh;
+    }
+    int ax = dx < 0 ? -dx : dx;
+    int ay = dy < 0 ? -dy : dy;
+    int cells = ax > ay ? ax : ay;
+    out->v[SENSE_PLACE_NEAR] = clamp01(1.0f - (float)cells / 32.0f);
+    out->v[SENSE_PLACE_FRESH] = fresh;
+}
+
 /* Holds at 0 the senses blind_senses names (BLIND_ bits, brain.h). */
 static void blind(int mask, Senses *out)
 {
@@ -831,6 +876,11 @@ static void blind(int mask, Senses *out)
     }
     if (mask & BLIND_KIN_HIT) {
         out->v[SENSE_KIN_HIT] = 0.0f;
+    }
+    if (mask & BLIND_PLACE) {
+        for (int k = SENSE_PLACE_LEFT; k <= SENSE_PLACE_FRESH; k++) {
+            out->v[k] = 0.0f;
+        }
     }
     if (mask & BLIND_HEARING) {
         out->v[SENSE_CALL_KIN] = 0.0f;
@@ -887,6 +937,7 @@ static void sense_all(const World *w, const Pool *p, int idx,
     for (int m = 0; m < MEMORY_VALUES; m++) {
         out->v[SENSE_MEMORY + m] = c->memory[m];
     }
+    sense_place(w, p, c, s, out);
 
     /* Asleep, it feels only its own body and the time of year: everything
      * outside it (the way ahead, who is beside it, the three views, food in
@@ -1315,6 +1366,20 @@ BiteChoice creature_bite_choice(const World *w, const Pool *p, int idx,
  * chose to bite. Without it, the brain had to link "stranger ahead" to a
  * separate attack output, and almost never did (2026-11-10 hunt probe: 89 %
  * of attacks struck an empty cell). */
+/* After a bite that gave gain energy from the food on cell: a meal worth at
+ * least meal_place_share of what mating needs is remembered, place and tick. */
+static void remember_meal(Creature *c, float gain, int cell, const World *w,
+                          uint32_t now, const Settings *s)
+{
+    if (cell < 0 || gain < s->meal_place_share * mate_needs(c, s)) {
+        return;
+    }
+    c->meal_x = cell % w->w;
+    c->meal_y = cell / w->w;
+    c->meal_at = now;
+    c->meal_known = 1;
+}
+
 static void act_bite(World *w, Pool *p, int idx, const Settings *s, Rng *r)
 {
     Creature *c = &p->items[idx];
@@ -1324,6 +1389,7 @@ static void act_bite(World *w, Pool *p, int idx, const Settings *s, Rng *r)
         return;
     }
     BiteChoice choice = creature_bite_choice(w, p, idx, s);
+    float before = c->energy;
     switch (choice.kind) {
     case BITE_CARRION:
         eat_carrion(w, c, choice.cell, s);
@@ -1340,6 +1406,7 @@ static void act_bite(World *w, Pool *p, int idx, const Settings *s, Rng *r)
         c->energy -= s->bite_empty_cost;
         break;
     }
+    remember_meal(c, c->energy - before, choice.cell, w, p->now, s);
 }
 
 void creature_start_family(Creature *c)

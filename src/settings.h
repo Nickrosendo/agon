@@ -437,6 +437,13 @@ typedef struct {
     float learn_trace_fade;
     float learn_limit;
     float learn_upkeep;
+    /* The remembered meal place (the foraging design, section 6). A meal of at
+     * least meal_place_share times what mating needs is remembered; the memory
+     * lasts up to place_memory_max ticks at the full gene, which costs
+     * place_memory_upkeep a tick. */
+    float meal_place_share;
+    int place_memory_max;
+    float place_memory_upkeep;
     /* Years a new world evolves unseen before it opens in either program
      * (app.h, the prelude). Not a rule of the world: the same seed gives the
      * same world either way, just further on. */

@@ -56,7 +56,7 @@ enum {
  * views: view k's value j is at SENSE_VIEWS + k * VIEW_VALUES + j. After the
  * views come the drives, then the memory values, the last ones between -1 and 1.
  * The neural network has one input per sense, so its NET_IN must equal
- * SENSE_COUNT (56). An enum value may be set from earlier ones, and the next
+ * SENSE_COUNT (61). An enum value may be set from earlier ones, and the next
  * goes on counting from there. */
 enum {
     SENSE_ENERGY,
@@ -100,6 +100,20 @@ enum {
      * (creature_bite_choice), 0 when it would eat nothing. The views show what
      * is around; only this says whether it is within a bite. */
     SENSE_REACH_FOOD,
+    /* Where it last ate well (the foraging design, section 6), while the memory
+     * lasts (creature_place_span). Which way the place lies, roughly: the one
+     * of left, ahead and right it lies most towards reads the memory's
+     * freshness, the other two 0 (ahead when it is at least as far forward as
+     * to the side; straight behind gives none of them). How near it is,
+     * 1 - cells / 32, stopping at 0. How fresh the memory is: 1 just after
+     * the meal, falling evenly to 0 over the span. All five are 0 with no
+     * memory, a faded one, or standing on the place. A memory, so felt
+     * asleep too. */
+    SENSE_PLACE_LEFT,
+    SENSE_PLACE_AHEAD,
+    SENSE_PLACE_RIGHT,
+    SENSE_PLACE_NEAR,
+    SENSE_PLACE_FRESH,
     SENSE_MEMORY,
     SENSE_COUNT = SENSE_MEMORY + MEMORY_VALUES
 };
@@ -140,7 +154,8 @@ enum {
     BLIND_KIN_HIT = 1 << 3,  /* SENSE_KIN_HIT */
     BLIND_HEARING = 1 << 4,  /* the three hearing senses */
     BLIND_PLANTS = 1 << 5,   /* VIEW_PLANT in every view */
-    BLIND_ALL = (1 << 6) - 1
+    BLIND_PLACE = 1 << 6,    /* the five SENSE_PLACE_ senses */
+    BLIND_ALL = (1 << 7) - 1
 };
 
 /* An answer from a brain: what to do (an ACT_ value), for how many ticks to

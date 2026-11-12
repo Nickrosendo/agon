@@ -1601,6 +1601,143 @@ static void test_senses_blocked(void)
     world_free(&w);
 }
 
+/* A creature that eats well remembers the food's cell and the tick; a meal
+ * smaller than meal_place_share of what mating needs is not worth it. */
+static void test_good_meal_remembered(void)
+{
+    World w;
+    make_world(&w, 16, 16);
+    Settings s = settings_default();
+    Pool p;
+    CHECK(pool_init(&p, 1));
+    Rng r;
+    rng_seed(&r, 3);
+    int i = spawn(&p, &w, 5, 5);
+    Creature *c = &p.items[i];
+    c->energy = 1.0f;
+    p.now = 40;
+    int cell = world_idx(&w, 5, 4);
+    w.veg[cell] = VEG_MAX;
+    w.plant[cell].energy = 5.0f;
+    CHECK(c->meal_known == 0);
+    creature_act(&w, &p, i, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
+    CHECK(c->energy > 1.0f);
+    CHECK(c->meal_known == 1 && c->meal_x == 5 && c->meal_y == 4 && c->meal_at == 40);
+    /* The same meal, made not worth remembering. */
+    s.meal_place_share = 1000.0f;
+    p.now = 50;
+    w.veg[cell] = VEG_MAX;
+    float before = c->energy;
+    creature_act(&w, &p, i, (Action){.kind = ACT_BITE, .hold = 1}, &s, &r);
+    CHECK(c->energy > before);
+    CHECK(c->meal_at == 40); /* still the first */
+    pool_free(&p);
+    world_free(&w);
+}
+
+/* The five place senses of a creature at (30, 30) facing north, with a full
+ * memory gene, whose good meal was at (30 + dx, 30 + dy) on tick 100, read
+ * age ticks later. */
+static void place_senses(int dx, int dy, uint32_t age, const Settings *s,
+                         float out[5])
+{
+    World w;
+    make_world(&w, 64, 64);
+    Pool p;
+    CHECK(pool_init(&p, 1));
+    int i = spawn(&p, &w, 30, 30);
+    Creature *c = &p.items[i];
+    c->genome.g[GENE_PLACE_MEMORY] = 1.0f;
+    c->meal_known = 1;
+    /* The coordinates are stored wrapped, as a meal's cell always is. */
+    c->meal_x = (30 + dx + 64) % 64;
+    c->meal_y = (30 + dy + 64) % 64;
+    c->meal_at = 100;
+    p.now = 100 + age;
+    Senses in;
+    creature_sense(&w, &p, i, s, &in);
+    for (int k = 0; k < 5; k++) {
+        out[k] = in.v[SENSE_PLACE_LEFT + k];
+    }
+    pool_free(&p);
+    world_free(&w);
+}
+
+static void test_place_sense_sides(void)
+{
+    Settings s = settings_default();
+    CHECK(SENSE_PLACE_AHEAD == SENSE_PLACE_LEFT + 1);
+    CHECK(SENSE_PLACE_RIGHT == SENSE_PLACE_LEFT + 2);
+    CHECK(SENSE_PLACE_NEAR == SENSE_PLACE_LEFT + 3);
+    CHECK(SENSE_PLACE_FRESH == SENSE_PLACE_LEFT + 4);
+    float v[5];
+    place_senses(0, -5, 0, &s, v); /* straight ahead (north) */
+    CHECK(v[0] == 0.0f && v[1] == 1.0f && v[2] == 0.0f);
+    CHECK(near(v[3], 1.0f - 5.0f / 32.0f) && v[4] == 1.0f);
+    place_senses(5, -2, 0, &s, v); /* ahead, but more to the right */
+    CHECK(v[0] == 0.0f && v[1] == 0.0f && v[2] == 1.0f);
+    place_senses(-5, 1, 0, &s, v); /* behind, to the left */
+    CHECK(v[0] == 1.0f && v[1] == 0.0f && v[2] == 0.0f);
+    place_senses(3, -3, 0, &s, v); /* a diagonal ahead counts as ahead */
+    CHECK(v[1] == 1.0f);
+    place_senses(0, 5, 0, &s, v); /* straight behind: no side, but known */
+    CHECK(v[0] == 0.0f && v[1] == 0.0f && v[2] == 0.0f && v[4] == 1.0f);
+    place_senses(40, 0, 0, &s, v); /* far: 24 cells the short way round */
+    CHECK(v[0] == 1.0f && near(v[3], 1.0f - 24.0f / 32.0f));
+    place_senses(0, -50, 0, &s, v); /* past 32 cells, NEAR stops at 0 */
+    CHECK(v[3] >= 0.0f);
+}
+
+static void test_place_on_it_and_fading(void)
+{
+    Settings s = settings_default();
+    float v[5];
+    place_senses(0, 0, 0, &s, v); /* standing on it: nothing */
+    for (int k = 0; k < 5; k++) {
+        CHECK(v[k] == 0.0f);
+    }
+    int span = (int)s.place_memory_max; /* the full gene */
+    place_senses(0, -5, (uint32_t)span / 2, &s, v);
+    CHECK(near(v[1], 0.5f) && near(v[4], 0.5f));
+    place_senses(0, -5, (uint32_t)span, &s, v); /* faded */
+    for (int k = 0; k < 5; k++) {
+        CHECK(v[k] == 0.0f);
+    }
+    /* Blinded, nothing either. */
+    s.blind_senses = BLIND_PLACE;
+    place_senses(0, -5, 0, &s, v);
+    for (int k = 0; k < 5; k++) {
+        CHECK(v[k] == 0.0f);
+    }
+}
+
+static void test_place_span_and_price(void)
+{
+    Settings s = settings_default();
+    Creature c = {0};
+    CHECK(creature_place_span(&c, &s) == 0);
+    float none = creature_upkeep_cost(&c, &s);
+    c.genome.g[GENE_PLACE_MEMORY] = 0.5f;
+    CHECK(creature_place_span(&c, &s) == s.place_memory_max / 2);
+    CHECK(near(creature_upkeep_cost(&c, &s) - none, 0.5f * s.place_memory_upkeep));
+    /* A gene of 0 remembers nothing, so a known place reads nothing. */
+    World w;
+    make_world(&w, 16, 16);
+    Pool p;
+    CHECK(pool_init(&p, 1));
+    int i = spawn(&p, &w, 8, 8);
+    p.items[i].meal_known = 1;
+    p.items[i].meal_x = 8;
+    p.items[i].meal_y = 3;
+    p.items[i].meal_at = 0;
+    p.now = 0;
+    Senses in;
+    creature_sense(&w, &p, i, &s, &in);
+    CHECK(in.v[SENSE_PLACE_FRESH] == 0.0f && in.v[SENSE_PLACE_AHEAD] == 0.0f);
+    pool_free(&p);
+    world_free(&w);
+}
+
 static void test_view_clarity_falls_smoothly(void)
 {
     /* Falls at every step, with no jump bigger than the one before it near
@@ -4368,6 +4505,10 @@ int main(void)
     test_view_rock_and_creatures_hide();
     test_view_wraps_at_edge();
     test_reach_food_sense();
+    test_good_meal_remembered();
+    test_place_sense_sides();
+    test_place_on_it_and_fading();
+    test_place_span_and_price();
     test_plant_view_sees_only_food();
     test_senses_how_recently_fed();
     test_empty_bite_costs();

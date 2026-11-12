@@ -142,6 +142,12 @@ typedef struct {
      * 65,535; creature_ate sets it back to 0, and a newborn starts at 0. What
      * SENSE_FED is made from. */
     uint16_t since_meal;
+    /* Where it last ate well (a meal of at least meal_place_share of what
+     * mating needs): the food's cell and the low 32 bits of the tick. Means
+     * nothing while meal_known is 0; a newborn starts knowing none. */
+    int32_t meal_x, meal_y;
+    uint32_t meal_at;
+    uint8_t meal_known;
     /* A seed from fruit it ate, and the ticks until it drops. While gut_ticks
      * is 0 there is none and gut_seed means nothing. Dying loses it: the slot's
      * next owner starts from zeroes. */
@@ -417,6 +423,10 @@ float view_clarity(float d, float sight);
  * the ground there. It still blocks the view behind it. */
 float sight_reach(const Creature *seen, int seen_cell, const World *w,
                   const Settings *s);
+
+/* How many ticks c remembers a good meal's place: its place-memory gene times
+ * place_memory_max, rounded. 0 means no memory at all. */
+int creature_place_span(const Creature *c, const Settings *s);
 
 /* True for a creature that digests meat better than plants. Says nothing
  * about who may attack whom: anyone may attack anyone. */

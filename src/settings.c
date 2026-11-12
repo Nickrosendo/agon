@@ -284,6 +284,9 @@ Settings settings_default(void)
         .learn_trace_fade = 0.9f,
         .learn_limit = 2.0f,
         .learn_upkeep = 0.05f,
+        .meal_place_share = 0.1f,
+        .place_memory_max = 150,
+        .place_memory_upkeep = 0.01f,
         /* About two minutes of waiting on the machine it was measured on (20 years
          * headless: 98 s, 2026-11-09); settled in the tactics tuning. */
         .ancestor_years = 20,
@@ -502,7 +505,7 @@ static const SettingInfo TABLE[] = {
             "ticks in a day, noon first; sight fails in the dark"),
     INT_ROW(blind_senses, 0, BLIND_ALL, "senses held at 0 for every brain: 1 day, 2 a "
                                  "fight seen, 4 a stray seen, 8 kin hit, 16 hearing, "
-                                 "32 plants seen"),
+                                 "32 plants seen, 64 meal place"),
     FLOAT_ROW(call_cost, 0, BIG, "energy a tick of calling costs"),
     INT_ROW(call_reach, 1, 32, "how many cells away a call is heard"),
     FLOAT_ROW(reward_meal, 0, BIG, "how much a unit of energy eaten teaches"),
@@ -511,6 +514,9 @@ static const SettingInfo TABLE[] = {
     FLOAT_ROW(learn_trace_fade, 0, 1, "share of the trace of a choice kept each tick"),
     FLOAT_ROW(learn_limit, 0, 1000, "largest learned weight"),
     FLOAT_ROW(learn_upkeep, 0, BIG, "upkeep of the full learning gene"),
+    FLOAT_ROW(meal_place_share, 0, BIG, "share of mating's need a meal must give to be remembered"),
+    INT_ROW(place_memory_max, 0, 65535, "ticks a meal's place is remembered at the full gene"),
+    FLOAT_ROW(place_memory_upkeep, 0, BIG, "upkeep of the full place-memory gene"),
     INT_ROW(ancestor_years, 0, 1000, "years a new world evolves unseen before "
                                      "it opens"),
     FLOAT_ROW(night_eye_power, 0, 1, "share of its sight a creature with full "

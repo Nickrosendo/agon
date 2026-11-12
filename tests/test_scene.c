@@ -494,10 +494,11 @@ static void test_known_world_pixels(void)
          * (2026-11-12): every random genome is re-rolled and choices draw,
          * creatures elsewhere at the three wider levels; drawing unchanged.
          * Re-pinned for the fading view (2026-11-12): brains re-rolled for the
-         * new senses, the same three levels. */
+         * new senses, the same three levels. Re-pinned for the remembered
+         * meal place, a gene and five senses: the two wider levels. */
         static const uint64_t EXPECTED[CAMERA_LEVELS] = {
             0xbe5f57fb7c7bdabdu, 0x5a015897532bfe08u,
-            0xc13032cfe8e942d3u, 0x1405559ba1189e65u,
+            0x9e79ee6f41ae2944u, 0xab4eb04c4b3edf45u,
         };
         if (hashes[level] != EXPECTED[level]) {
             printf("level %d: 0x%llxu\n", level,

@@ -36,6 +36,9 @@ enum {
      * low tries others more often (brain_net.c). No upkeep: a dithering
      * creature wastes ticks, and an over-sure one gets stuck. */
     GENE_SURE,
+    /* How long it remembers where it last ate well, from nothing to
+     * place_memory_max ticks (creature_place_span); costs upkeep. */
+    GENE_PLACE_MEMORY,
     GENE_TRAITS
 };
 
@@ -51,7 +54,7 @@ enum {
  * values, which plus a constant 1 feed NET_OUT outputs, one per action and
  * one per memory value. NET_IN must equal SENSE_COUNT and NET_OUT
  * ACT_COUNT + MEMORY_VALUES (brain.h); brain_net.c checks both when compiled. */
-#define NET_IN 56
+#define NET_IN 61
 #define NET_HIDDEN 6
 #define NET_OUT 12
 /* The parentheses matter: a macro is pasted as text, and without them
