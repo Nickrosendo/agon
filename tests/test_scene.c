@@ -1225,15 +1225,18 @@ static int place_body(Sim *s, int x, int y, float grown)
  * Draws the world with nobody in it and again with one body, into a canvas
  * with a border of `border` pixels round the view, and gives the box (in
  * canvas pixels) holding every pixel that changed. False when nothing did.
+ * art false draws every body from its skeleton, as the a key does.
  */
 typedef struct {
     int left, top, right, bottom; /* right and bottom are the last pixels */
 } Box;
 
-static bool changed_box(Sim *s, int slot, Camera *cam, int border, Box *out)
+static bool changed_box(Sim *s, int slot, Camera *cam, int border, bool art,
+                        Box *out)
 {
     Scene sc;
     CHECK(scene_init(&sc, s));
+    sprite_cache_set_art(&sc.sprites, art);
     Canvas a, b;
     CHECK(canvas_init(&a, cam->view_w + 2 * border, cam->view_h + 2 * border));
     CHECK(canvas_init(&b, cam->view_w + 2 * border, cam->view_h + 2 * border));
@@ -1265,7 +1268,11 @@ static bool changed_box(Sim *s, int slot, Camera *cam, int border, Box *out)
 }
 
 /* Any body may reach past its cell, by no more than the widest picture and its
- * shadow; a grown one covers more than a cell. Its feet stand on its own cell. */
+ * shadow; a grown one covers more than a cell. Its feet stand on its own cell.
+ * Drawn from its skeleton: this checks the scene's sizing, and drawn frames
+ * of a compact species are a little narrower and taller than the skeleton at
+ * the same area (this test's body, a zebra, two pixels narrower at two
+ * cells, so its width alone no longer passes the cell and its shadow). */
 static void test_large_body_drawn_large(void)
 {
     const float grown[3] = {0.0f, 2.5f, 1000000.0f};
@@ -1283,7 +1290,7 @@ static void test_large_body_drawn_large(void)
         camera_to_screen(&cam, 32.0f, 32.0f, &sx, &sy);
         int ppc = camera_ppc(&cam);
         Box box;
-        CHECK(changed_box(&s, slot, &cam, 0, &box));
+        CHECK(changed_box(&s, slot, &cam, 0, false, &box));
         CHECK(box.right - box.left + 1 <= SPRITE_MAX_W + 2);
         CHECK(box.bottom - box.top + 1 <= SPRITE_MAX_H + 2);
         if (tiles[k] > 1) {
@@ -1322,7 +1329,7 @@ static void test_giant_over_map_edge(void)
                     camera_centre_on(&cam, (float)x + 9.0f, (float)y + 5.0f);
                 }
                 Box box;
-                if (changed_box(&s, slot, &cam, border, &box)) {
+                if (changed_box(&s, slot, &cam, border, true, &box)) {
                     CHECK(box.left >= border && box.top >= border);
                     CHECK(box.right < border + VIEW_W);
                     CHECK(box.bottom < border + VIEW_H);
