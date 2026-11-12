@@ -69,6 +69,16 @@ static bool inked_at(const SkeletonRaster *r, int x, int y)
     return r->ink[y * r->w + x] != INK_NONE;
 }
 
+/* Whether a pixel of this ink turns into the outline at the silhouette's
+ * edge: the fur's shades and the mane's (a mane is as thick as fur), but not
+ * a horn or a tusk, which can be one or two pixels thin and would turn all
+ * outline. */
+static bool takes_outline(uint8_t ink)
+{
+    return (ink >= INK_DEEP && ink <= INK_BELLY) ||
+           (ink >= INK_MANE0 && ink < INK_MANE0 + 5);
+}
+
 void art_raster(SkeletonRaster *r, const ArtClip *clip, int frame, float scale,
                 float anchor_x, float anchor_y)
 {
@@ -141,15 +151,16 @@ void art_raster(SkeletonRaster *r, const ArtClip *clip, int frame, float scale,
     if (!any) {
         return;
     }
-    /* The silhouette's edge becomes the outline: only fur shades, so a horn
-     * one or two pixels thin keeps its colour instead of turning all outline.
+    /* The silhouette's edge becomes the outline: only fur and mane shades, so
+     * a horn one or two pixels thin keeps its colour instead of turning all
+     * outline.
      * Changing a pixel to the outline keeps it inked, so the test of a later
      * pixel's neighbours gives the same answer whichever order they are
      * visited in. */
     for (int gy = y0; gy < y1; gy++) {
         for (int gx = x0; gx < x1; gx++) {
             uint8_t here = r->ink[gy * r->w + gx];
-            if (here >= INK_DEEP && here <= INK_BELLY &&
+            if (takes_outline(here) &&
                 (!inked_at(r, gx - 1, gy) || !inked_at(r, gx + 1, gy) ||
                  !inked_at(r, gx, gy - 1) || !inked_at(r, gx, gy + 1))) {
                 r->ink[gy * r->w + gx] = INK_OUTLINE;
