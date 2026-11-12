@@ -13,6 +13,9 @@
 
 /* Room for a brain's name, the terminating '\0' included. */
 #define BRAIN_NAME_MAX 32
+/* The most fine lines a view may be walked along: the walk keeps one small
+ * array of this many per view, on the stack. */
+#define VIEW_LINES_MAX 15
 
 typedef struct {
     /* Terrain. Heights are spread over 0..1 for each world; below
@@ -265,6 +268,13 @@ typedef struct {
     float growth_cost;
     float speed_min;
     int sight_max;
+    /* The view (the foraging design, section 5). Each of the three views is
+     * walked along view_lines fine lines fanned across it, each stopping at rock
+     * or at a creature. A view's plant value is the clarity summed over the
+     * plants it sees, x, squashed to x / (x + view_half): 0.5 when the plants in
+     * sight add up to one plant seen perfectly clearly. */
+    int view_lines; /* 1 .. VIEW_LINES_MAX */
+    float view_half;
     float size_upkeep;
     float speed_upkeep;
     float sight_upkeep;      /* per cell of sight */
@@ -291,8 +301,9 @@ typedef struct {
     float digest_tradeoff;
 
     /* What regions ask of a body. A creature whose colour matches its region's
-     * ground is seen from only (1 - camouflage) of the distance, falling off to
-     * no effect at camouflage_width of the colour wheel away. Small bodies lose
+     * ground is seen only (1 - camouflage) as clearly as its distance alone
+     * would let it be, falling off to no effect at camouflage_width of the
+     * colour wheel away; it still hides what is behind it. Small bodies lose
      * heat: cold_upkeep / size per tick in a cold region. Big bodies overheat:
      * heat_upkeep * size per tick in a hot and dry one. A step onto marsh or sand
      * costs rough_step_cost * (1 - legs) extra, onto shallows the same times

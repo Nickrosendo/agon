@@ -5,6 +5,7 @@
 #include <stdlib.h> /* strtof */
 #include <string.h> /* strcmp, strlen, strchr, strerror, memchr */
 
+#include "brain.h"   /* BLIND_ALL */
 #include "options.h" /* parse_long */
 #include "years.h"   /* YEARS_MIN_LENGTH */
 
@@ -182,6 +183,8 @@ Settings settings_default(void)
         .growth_cost = 50.0f,
         .speed_min = 0.25f,
         .sight_max = 6,
+        .view_lines = 7,
+        .view_half = 1.0f,
         .size_upkeep = 0.1f,
         .speed_upkeep = 0.1f,
         .sight_upkeep = 0.01f,
@@ -437,7 +440,9 @@ static const SettingInfo TABLE[] = {
     FLOAT_ROW(growth_surplus, 0, BIG, "surplus begins at this share of mating's need"),
     FLOAT_ROW(growth_cost, 0.001, BIG, "energy per unit of size grown"),
     FLOAT_ROW(speed_min, 0, 1, "slowest speed, in move points per tick"),
-    INT_ROW(sight_max, 1, 64, "farthest sight, in cells"),
+    INT_ROW(sight_max, 1, 64, "sight gene's top: the distance seen about half as clearly as beside"),
+    INT_ROW(view_lines, 1, VIEW_LINES_MAX, "fine lines each of the three views is walked along"),
+    FLOAT_ROW(view_half, 0.01, BIG, "plants in view, summed by clarity, that read as half"),
     FLOAT_ROW(size_upkeep, 0, BIG, "upkeep per unit of size"),
     FLOAT_ROW(speed_upkeep, 0, BIG, "upkeep per unit of speed"),
     FLOAT_ROW(sight_upkeep, 0, BIG, "upkeep per cell of sight"),
@@ -445,7 +450,7 @@ static const SettingInfo TABLE[] = {
     FLOAT_ROW(digest_floor, 0, 1, "digestion with a gene of 0"),
     FLOAT_ROW(digest_upkeep, 0, BIG, "upkeep of digesting"),
     FLOAT_ROW(digest_tradeoff, 0, 1, "how much the strongest other digestion gene cuts a yield"),
-    FLOAT_ROW(camouflage, 0, 1, "how much of the sight distance a perfect colour match hides"),
+    FLOAT_ROW(camouflage, 0, 1, "how much less clearly a perfect colour match is seen"),
     FLOAT_ROW(camouflage_width, 0.01, 0.5, "colour distance at which camouflage stops helping"),
     FLOAT_ROW(cold_upkeep, 0, BIG, "energy per tick in the cold, divided by size"),
     FLOAT_ROW(heat_upkeep, 0, BIG, "energy per tick in hot dry ground, times size"),
@@ -495,8 +500,9 @@ static const SettingInfo TABLE[] = {
             "mating season"),
     INT_ROW(ticks_per_day, YEARS_MIN_DAY, 1000000,
             "ticks in a day, noon first; sight fails in the dark"),
-    INT_ROW(blind_senses, 0, 31, "senses held at 0 for every brain: 1 day, 2 a "
-                                 "fight seen, 4 a stray seen, 8 kin hit, 16 hearing"),
+    INT_ROW(blind_senses, 0, BLIND_ALL, "senses held at 0 for every brain: 1 day, 2 a "
+                                 "fight seen, 4 a stray seen, 8 kin hit, 16 hearing, "
+                                 "32 plants seen"),
     FLOAT_ROW(call_cost, 0, BIG, "energy a tick of calling costs"),
     INT_ROW(call_reach, 1, 32, "how many cells away a call is heard"),
     FLOAT_ROW(reward_meal, 0, BIG, "how much a unit of energy eaten teaches"),

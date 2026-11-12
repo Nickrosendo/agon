@@ -402,11 +402,19 @@ float creature_step_extra(const World *w, const Creature *c, int cell,
  * light, where eyes is its night-eye gene. Without night eyes it sees only as
  * far as the light lets it. */
 float creature_vision(const Creature *c, float light, const Settings *s);
-/* How many cells c's rays reach in this light: its sight times its vision,
- * rounded, and never under 1, since the cell beside is always seen. */
+/* c's sight in this light, in cells: its sight times its vision, rounded, and
+ * never under 1. */
 int creature_sight_now(const Creature *c, float light, const Settings *s);
-/* The share, 0 to 1, of a looker's sight at which this creature, standing on
- * seen_cell, can be seen: below 1 when its colour matches the ground there. */
+/* The same without the rounding, the distance the view sees about half as
+ * clearly as beside (view_clarity); never under 1. */
+float creature_view_sight(const Creature *c, float light, const Settings *s);
+/* How clearly something d cells away is seen by eyes whose sight is sight
+ * cells: 1 at d = 0, falling smoothly, about 0.42 at one sight, reaching 0
+ * exactly at 2.5 sights and 0 beyond. */
+float view_clarity(float d, float sight);
+/* How clearly, as a share 0 to 1 of the clarity its distance gives, this
+ * creature can be seen standing on seen_cell: below 1 when its colour matches
+ * the ground there. It still blocks the view behind it. */
 float sight_reach(const Creature *seen, int seen_cell, const World *w,
                   const Settings *s);
 

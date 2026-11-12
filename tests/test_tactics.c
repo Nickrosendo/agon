@@ -223,8 +223,8 @@ static bool alarm_confirmed(bool heeded)
     place(&sc.p, &sc.w, 12, 10, &g, 1);
     tactics_check(&sc.t, &sc.w, &sc.p, NULL, &sc.s); /* the family gets a row */
     Senses hunter = {0}, quiet = {0}, heard = {0};
-    hunter.v[SENSE_RAYS + RAY_AHEAD * RAY_VALUES + RAY_NEAR] = 0.5f;
-    hunter.v[SENSE_RAYS + RAY_AHEAD * RAY_VALUES + RAY_HUNTER] = 1.0f;
+    hunter.v[SENSE_VIEWS + VIEW_AHEAD * VIEW_VALUES + VIEW_SEEN] = 0.5f;
+    hunter.v[SENSE_VIEWS + VIEW_AHEAD * VIEW_VALUES + VIEW_HUNTER] = 0.5f;
     heard.v[SENSE_CALL_KIN] = 0.8f;
     const Creature *c = &sc.p.items[a];
     for (int round = 0; round < TACTIC_HOLD; round++) {

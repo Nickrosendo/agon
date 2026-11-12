@@ -77,9 +77,10 @@
  * adjustment to each brain; then bite strikes (a hunter's bite at a
  * stranger ahead is an attack) and hits of 15 instead of 6; then the
  * weighted-chance choice, a gene, one sense fewer (the random one) and a draw
- * per decision.
+ * per decision; then the fading view, three wide views in place of the three
+ * rays, and a sense of food within a bite.
  */
-#define SEED_7_AFTER_500 0x0d719f87b8d6ed6eULL
+#define SEED_7_AFTER_500 0xaa99f763dd38c5edULL
 
 /* One creature in a bare 16x16 world with the scripted brain, resting for a
  * tick, calling or not. Returns the energy it has left. */

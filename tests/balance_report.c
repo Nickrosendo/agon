@@ -336,23 +336,33 @@ static void watch_sight(const Sim *s, int idx, const Creature *c, Shadow *sh)
     static const int DX[4] = {0, 1, 0, -1}, DY[4] = {-1, 0, 1, 0};
     Senses in;
     creature_sense(&s->world, &s->pool, idx, &s->set, &in);
-    /* The rays' headings, in RAY_ order: ahead, then left and right. */
-    const int headings[RAY_COUNT] = {c->heading, (c->heading + 3) % 4,
-                                     (c->heading + 1) % 4};
-    int sight = creature_sight(c, &s->set);
-    for (int ray = 0; ray < RAY_COUNT; ray++) {
-        float near = in.v[SENSE_RAYS + ray * RAY_VALUES + RAY_NEAR];
-        if (near > 0.0f) {
-            /* The sense is 1 - (d - 1) / sight, undone here for d. + 0.5f rounds. */
-            int d = 1 + (int)((1.0f - near) * (float)sight + 0.5f);
-            sh->saw_someone = true;
-            sh->seen_x = c->x + d * DX[headings[ray]];
-            sh->seen_y = c->y + d * DY[headings[ray]];
-            sh->lost_for = 0;
-            return;
+    /* The views' headings, in VIEW_ order: ahead, then left and right. */
+    const int headings[VIEW_COUNT] = {c->heading, (c->heading + 3) % 4,
+                                      (c->heading + 1) % 4};
+    float sight = creature_view_sight(c, s->pool.light, &s->set);
+    int best = -1;
+    float best_seen = 0.0f;
+    for (int view = 0; view < VIEW_COUNT; view++) {
+        float seen = in.v[SENSE_VIEWS + view * VIEW_VALUES + VIEW_SEEN];
+        if (seen > best_seen) {
+            best = view;
+            best_seen = seen;
         }
     }
-    sh->lost_for++;
+    if (best < 0) {
+        sh->lost_for++;
+        return;
+    }
+    /* Roughly where: view_clarity undone for the distance, straight along the
+     * view (the view does not say how far to the side, nor allow for a match
+     * with the ground, which makes someone look farther than they are). */
+    const float edge = 1.0f / (1.0f + 2.5f * 2.5f);
+    float r2 = 1.0f / (best_seen * (1.0f - edge) + edge) - 1.0f;
+    int d = 1 + (int)(sight * sqrtf(r2 > 0.0f ? r2 : 0.0f));
+    sh->saw_someone = true;
+    sh->seen_x = c->x + d * DX[headings[best]];
+    sh->seen_y = c->y + d * DY[headings[best]];
+    sh->lost_for = 0;
 }
 
 /* Whether a hunter that has just lost sight of someone is walking towards where

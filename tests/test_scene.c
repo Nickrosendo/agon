@@ -492,10 +492,12 @@ static void test_known_world_pixels(void)
          * unchanged (the lab's pin holds).
          * Re-pinned for the weighted-chance choice and the sureness gene
          * (2026-11-12): every random genome is re-rolled and choices draw,
-         * creatures elsewhere at the three wider levels; drawing unchanged. */
+         * creatures elsewhere at the three wider levels; drawing unchanged.
+         * Re-pinned for the fading view (2026-11-12): brains re-rolled for the
+         * new senses, the same three levels. */
         static const uint64_t EXPECTED[CAMERA_LEVELS] = {
-            0xbe5f57fb7c7bdabdu, 0xa453254ff609fe77u,
-            0x58123ce5e0affd26u, 0xd7e288bb5a3b598du,
+            0xbe5f57fb7c7bdabdu, 0x5a015897532bfe08u,
+            0xc13032cfe8e942d3u, 0x1405559ba1189e65u,
         };
         if (hashes[level] != EXPECTED[level]) {
             printf("level %d: 0x%llxu\n", level,

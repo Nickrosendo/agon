@@ -1,6 +1,6 @@
 #include "creature.h"
 
-#include <math.h>   /* powf, floorf */
+#include <math.h>   /* powf, floorf, ceilf, lroundf, sqrtf */
 #include <stdlib.h> /* malloc, free */
 #include <string.h> /* memset */
 
@@ -447,12 +447,6 @@ static bool plant_has_food(const World *w, int i, const Settings *s, int season)
     return w->veg[i] > s->plant_leaf_root;
 }
 
-/* What one ray senses, written into its RAY_VALUES slots of out. The
- * first cell gives the vegetation and the scent of carrion. Then the ray
- * walks up to sight cells, stopping at rock, and reports the closeness of the
- * nearest plant with food on it now (plant_has_food) and the nearest creature: its closeness, relative size, kinship,
- * whether it hunts, whether it wishes to mate and how alike it looks. A creature
- * blocks the view of whatever is behind it. */
 /* Whether c was hit in the last gang_window ticks. Unsigned subtraction gives
  * the true distance even across the wrap of the 32-bit date. */
 static bool hit_lately(const Creature *c, uint32_t now, const Settings *s)
@@ -509,51 +503,172 @@ static bool kin_hit_near(const World *w, const Pool *p, const Creature *c,
     return false;
 }
 
-static void sense_ray(const World *w, const Pool *p, const Creature *c,
-                      uint8_t heading, const Settings *s, float *out)
+/* The clarity a view reaches 0 at, in sights: past 2.5 sights nothing is seen.
+ * VIEW_FLOOR is what 1 / (1 + r * r) is there, 1 / (1 + 2.5 * 2.5). */
+#define VIEW_REACH 2.5f
+#define VIEW_FLOOR (1.0f / (1.0f + VIEW_REACH * VIEW_REACH))
+
+float view_clarity(float d, float sight)
+{
+    float r = d / sight;
+    /* 1 / (1 + r^2) falls smoothly from 1 and is 0.5 at one sight. Taking
+     * VIEW_FLOOR off and stretching what is left back to 0..1 makes it end at
+     * exactly 0 at VIEW_REACH sights instead of trailing on for ever, without
+     * a step anywhere: the cut-off adds no edge. */
+    float c = (1.0f / (1.0f + r * r) - VIEW_FLOOR) / (1.0f - VIEW_FLOOR);
+    return c > 0.0f ? c : 0.0f;
+}
+
+float creature_view_sight(const Creature *c, float light, const Settings *s)
+{
+    float sight = (float)creature_sight(c, s) * creature_vision(c, light, s);
+    return sight > 1.0f ? sight : 1.0f;
+}
+
+/* v moved back onto a ring of n cells. Cheaper than world_idx's two % (each a
+ * division): one comparison, and an addition or subtraction. Right only for v
+ * within one lap of the ring, -n <= v < 2n, which sense_view checks before
+ * using it. */
+static int wrap_near(int v, int n)
+{
+    if (v < 0) {
+        return v + n;
+    }
+    return v >= n ? v - n : v;
+}
+
+/* The creature a view sees most clearly, while the view is walked. */
+typedef struct {
+    float clarity; /* 0 while none is seen */
+    int idx;       /* its pool slot */
+} Seen;
+
+/* Fills in the details of the creature a view saw, each times how clearly it
+ * is seen (VIEW_ in brain.h). */
+static void describe_seen(const World *w, const Pool *p, const Creature *c,
+                          const Settings *s, Seen seen, float *out)
+{
+    const Creature *o = &p->items[seen.idx];
+    float clear = seen.clarity;
+    float a = creature_size(c, s);
+    float t = creature_size(o, s);
+    out[VIEW_SEEN] = clear;
+    out[VIEW_RELSIZE] = clear * t / (a + t);
+    out[VIEW_KIN] = clear * genome_kinship(&c->genome, &o->genome);
+    /* A bool converted to float is exactly 0.0f or 1.0f. */
+    out[VIEW_HUNTER] = clear * (float)creature_is_hunter(o);
+    out[VIEW_READY] = o->mate_wish > 0 ? clear : 0.0f;
+    out[VIEW_ALIKE] = clear * genome_body_likeness(&c->genome, &o->genome);
+    out[VIEW_FIGHTING] = hit_lately(o, p->now, s) ? clear : 0.0f;
+    out[VIEW_ALONE] = clear * (1.0f - kin_share_around(w, p, o, s));
+    out[VIEW_HURT] = clear * clamp01(1.0f - o->health / creature_max_health(o, s));
+}
+
+/*
+ * One view, written into its VIEW_VALUES slots of out (brain.h says what each
+ * means). The view is the wedge of ground around heading, walked outward one
+ * step d at a time along view_lines fine lines fanned evenly from -0.75 to
+ * 0.75 cells sideways per step: line j at step d is the cell d steps ahead
+ * and round(slope_j * d) to the side, seen with the clarity of its true
+ * distance, the square root of d^2 + side^2. A line stops at rock (water hides
+ * nothing) and at a creature, which it sees. On a small map a line can come
+ * round the wrap to the looker's own cell: the looker is not seen there and
+ * hides nothing. Near the looker several lines
+ * pass through the same cell; a cell is counted once, for the first line still
+ * open that reaches it at that step. The lines are walked in order of slope, so
+ * their sideways offsets never fall as j rises, and a repeat can only be the
+ * same offset as the line before.
+ */
+static void sense_view(const World *w, const Pool *p, const Creature *c,
+                       uint8_t heading, const Settings *s, float *out)
 {
     int first = cell_towards(w, c->x, c->y, heading);
-    out[RAY_VEG] = (float)w->veg[first] / (float)VEG_MAX;
-    /* The scent on that first cell, squashed into 0..1: half at one
-     * bite's worth. The three rays together say which way it grows. */
+    /* The scent on that first cell, squashed into 0..1: half at one bite's
+     * worth. The three views together say which way it grows. */
     float scent = w->scent[first];
-    out[RAY_CARRION] = scent / (scent + s->bite_meat_energy);
+    out[VIEW_CARRION] = scent / (scent + s->bite_meat_energy);
 
-    /* In the dark the rays reach less far: as far as this light lets it see. */
-    int sight = creature_sight_now(c, p->light, s);
-    for (int d = 1; d <= sight; d++) {
-        int cell = world_idx(w, c->x + d * STEP_X[heading],
-                             c->y + d * STEP_Y[heading]);
-        if (w->terrain[cell] == TERRAIN_ROCK) {
-            return; /* rock blocks the view; water does not */
-        }
-        /* Still 0 means none seen yet, and a plant in sight always reads above
-         * 0: d - 1 is below sight. */
-        if (out[RAY_PLANT] == 0.0f && plant_has_food(w, cell, s, p->season)) {
-            out[RAY_PLANT] = 1.0f - (float)(d - 1) / (float)sight;
-        }
-        if (w->occupant[cell] >= 0) {
-            const Creature *seen = &p->items[w->occupant[cell]];
-            /* A match too far off goes unseen and hides nothing behind it. The
-             * cell beside the looker is always seen. */
-            if (d > 1 && (float)d > (float)sight * sight_reach(seen, cell, w, s)) {
+    float sight = creature_view_sight(c, p->light, s);
+    /* ceilf rounds up: the last step at which clarity can still be above 0. */
+    int reach = (int)ceilf(VIEW_REACH * sight);
+    uint8_t side = turned(heading, 1); /* the step to its right */
+    int lines = s->view_lines;
+    /* A variable-length array would work here too, but its size would be set
+     * only when the program runs, and nothing would stop a huge one from
+     * overflowing the stack: a fixed top is safer. */
+    bool open[VIEW_LINES_MAX];
+    float slope[VIEW_LINES_MAX];
+    for (int j = 0; j < lines; j++) {
+        open[j] = true;
+        slope[j] = lines == 1 ? 0.0f : -0.75f + 1.5f * (float)j / (float)(lines - 1);
+    }
+    /* The farthest a line goes from the looker along either axis is reach
+     * cells (ahead) or 0.75 reach rounded (to the side). On a map at least that
+     * wide either way, wrap_near is enough; on a smaller one world_idx does it. */
+    bool small_map = reach >= w->w || reach >= w->h;
+    float plants = 0.0f;
+    Seen seen = {0.0f, -1};
+    for (int d = 1; d <= reach; d++) {
+        bool any_open = false;
+        int last_offset = 0;
+        bool last_valid = false; /* whether last_offset is a line's, this step */
+        for (int j = 0; j < lines; j++) {
+            if (!open[j]) {
                 continue;
             }
-            float a = creature_size(c, s);
-            float t = creature_size(seen, s);
-            out[RAY_NEAR] = 1.0f - (float)(d - 1) / (float)sight;
-            out[RAY_RELSIZE] = t / (a + t);
-            out[RAY_KIN] = genome_kinship(&c->genome, &seen->genome);
-            /* A bool converted to float is exactly 0.0f or 1.0f. */
-            out[RAY_HUNTER] = (float)creature_is_hunter(seen);
-            out[RAY_READY] = seen->mate_wish > 0 ? 1.0f : 0.0f;
-            out[RAY_ALIKE] = genome_body_likeness(&c->genome, &seen->genome);
-            out[RAY_FIGHTING] = hit_lately(seen, p->now, s) ? 1.0f : 0.0f;
-            out[RAY_ALONE] = 1.0f - kin_share_around(w, p, seen, s);
-            out[RAY_HURT] =
-                clamp01(1.0f - seen->health / creature_max_health(seen, s));
-            return;
+            /* lroundf rounds half away from zero, the same on both sides, so
+             * the fan is symmetric; it returns a long, cast to int (a few cells). */
+            int offset = (int)lroundf(slope[j] * (float)d);
+            bool repeat = last_valid && offset == last_offset;
+            last_offset = offset;
+            last_valid = true;
+            int x = c->x + d * STEP_X[heading] + offset * STEP_X[side];
+            int y = c->y + d * STEP_Y[heading] + offset * STEP_Y[side];
+            int cell = small_map ? world_idx(w, x, y)
+                                 : wrap_near(y, w->h) * w->w + wrap_near(x, w->w);
+            if (w->terrain[cell] == TERRAIN_ROCK) {
+                open[j] = false;
+                continue;
+            }
+            int other = w->occupant[cell];
+            if (other >= 0 && &p->items[other] == c) {
+                other = -1; /* itself, come round the wrap */
+            }
+            if (other >= 0) {
+                open[j] = false; /* the creature blocks what is behind it */
+            } else {
+                any_open = true;
+            }
+            if (repeat) {
+                continue; /* counted already, by the line before */
+            }
+            bool food = plant_has_food(w, cell, s, p->season);
+            if (!food && other < 0) {
+                continue; /* nothing here to see: no need for its clarity */
+            }
+            /* sqrtf is the float square root; d and offset are ints, converted
+             * to float before multiplying. */
+            float distance = sqrtf((float)(d * d + offset * offset));
+            float clear = view_clarity(distance, sight);
+            if (food) {
+                plants += clear;
+            }
+            if (other >= 0) {
+                /* A creature matching the ground is seen less clearly, though
+                 * it still hides what is behind it. */
+                float how = clear * sight_reach(&p->items[other], cell, w, s);
+                if (how > seen.clarity) {
+                    seen = (Seen){how, other};
+                }
+            }
         }
+        if (!any_open) {
+            break; /* every line has stopped */
+        }
+    }
+    out[VIEW_PLANT] = plants / (plants + s->view_half);
+    if (seen.idx >= 0) {
+        describe_seen(w, p, c, s, seen, out);
     }
 }
 
@@ -702,13 +817,16 @@ static void blind(int mask, Senses *out)
         out->v[SENSE_DAY_SIN] = 0.0f;
         out->v[SENSE_DAY_COS] = 0.0f;
     }
-    for (int ray = 0; ray < RAY_COUNT; ray++) {
-        float *slots = &out->v[SENSE_RAYS + ray * RAY_VALUES];
+    for (int view = 0; view < VIEW_COUNT; view++) {
+        float *slots = &out->v[SENSE_VIEWS + view * VIEW_VALUES];
         if (mask & BLIND_FIGHTING) {
-            slots[RAY_FIGHTING] = 0.0f;
+            slots[VIEW_FIGHTING] = 0.0f;
         }
         if (mask & BLIND_ALONE) {
-            slots[RAY_ALONE] = 0.0f;
+            slots[VIEW_ALONE] = 0.0f;
+        }
+        if (mask & BLIND_PLANTS) {
+            slots[VIEW_PLANT] = 0.0f;
         }
     }
     if (mask & BLIND_KIN_HIT) {
@@ -771,8 +889,8 @@ static void sense_all(const World *w, const Pool *p, int idx,
     }
 
     /* Asleep, it feels only its own body and the time of year: everything
-     * outside it (the way ahead, who is beside it, the three rays) stays at the
-     * 0 it started from. */
+     * outside it (the way ahead, who is beside it, the three views, food in
+     * reach) stays at the 0 it started from. */
     if (creature_asleep(c)) {
         return;
     }
@@ -782,14 +900,17 @@ static void sense_all(const World *w, const Pool *p, int idx,
     sense_neighbours(w, p, c, s, out);
     hear_calls(w, p, c, s, out);
 
-    /* The directions of the three rays, in RAY_ order. */
-    const uint8_t ray_heading[RAY_COUNT] = {
+    BiteChoice bite = creature_bite_choice(w, p, idx, s);
+    out->v[SENSE_REACH_FOOD] = bite.kind != BITE_NOTHING ? 1.0f : 0.0f;
+
+    /* The directions of the three views, in VIEW_ order. */
+    const uint8_t view_heading[VIEW_COUNT] = {
         c->heading, turned(c->heading, 3), turned(c->heading, 1)};
-    for (int ray = 0; ray < RAY_COUNT; ray++) {
-        /* A pointer into the middle of the array: the ray's first slot.
-         * sense_ray writes out[0] .. out[RAY_VALUES - 1] from there. */
-        float *slots = &out->v[SENSE_RAYS + ray * RAY_VALUES];
-        sense_ray(w, p, c, ray_heading[ray], s, slots);
+    for (int view = 0; view < VIEW_COUNT; view++) {
+        /* A pointer into the middle of the array: the view's first slot.
+         * sense_view writes out[0] .. out[VIEW_VALUES - 1] from there. */
+        float *slots = &out->v[SENSE_VIEWS + view * VIEW_VALUES];
+        sense_view(w, p, c, view_heading[view], s, slots);
     }
 }
 

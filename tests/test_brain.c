@@ -230,10 +230,10 @@ static void test_net_sees_vegetation(void)
     Settings set = settings_default();
     Brain b;
     CHECK(brain_open(&b, "net", &set, 1));
-    /* One path only: the vegetation ahead into hidden value 0, and hidden
+    /* One path only: the plants in view ahead into hidden value 0, and hidden
      * value 0 into the bite output. */
     Genome g = zero_genome();
-    int veg_ahead = SENSE_RAYS + RAY_AHEAD * RAY_VALUES + RAY_VEG;
+    int veg_ahead = SENSE_VIEWS + VIEW_AHEAD * VIEW_VALUES + VIEW_PLANT;
     g.g[net_hidden_weight(0, veg_ahead)] = 2.0f;
     g.g[net_out_weight(ACT_BITE, 0)] = 2.0f;
 

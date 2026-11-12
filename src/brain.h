@@ -16,39 +16,47 @@
  * them nothing a creature senses can last longer than a tick. */
 #define MEMORY_VALUES 3
 
-/* The three directions a creature looks in, relative to its heading. */
-enum { RAY_AHEAD, RAY_LEFT, RAY_RIGHT, RAY_COUNT };
+/* The three wide directions a creature looks in, relative to its heading:
+ * each covers a wedge of the ground in front of or beside it (the foraging
+ * design, section 5). Behind it is seen only by turning. */
+enum { VIEW_AHEAD, VIEW_LEFT, VIEW_RIGHT, VIEW_COUNT };
 
-/* What each ray reports: the vegetation and the scent of carrion in the
- * first cell, the closeness of the nearest creature (1 next to the
- * viewer, falling with distance, 0 for none in sight), that creature's
- * size relative to the viewer's, its kinship, whether it is a hunter
- * (1) or not (0), whether it wishes to mate right now (1) or not (0), and
- * how alike its body looks (genome_body_likeness). */
+/* What each view reports. Nothing in a view has a hard edge: how clearly a
+ * cell is seen (view_clarity, creature.h) falls smoothly with distance.
+ *   VIEW_PLANT: how much food a bite could take is in sight that way, every
+ *     such cell counted by how clearly it is seen, the sum squashed into 0..1.
+ *     Many faint far plants read about as one fairly close one.
+ *   VIEW_CARRION: the scent of carrion on the first cell that way.
+ *   VIEW_SEEN: how clearly the most clearly seen creature that way is seen,
+ *     0 for none. Every value after it is about that creature, and each is
+ *     multiplied by VIEW_SEEN: a far creature gives only weak details, so a far
+ *     hunter reads as a faint hunter.
+ *   VIEW_RELSIZE its size relative to the viewer's, VIEW_KIN its kinship,
+ *   VIEW_HUNTER whether it hunts, VIEW_READY whether it wishes to mate,
+ *   VIEW_ALIKE how alike its body looks (genome_body_likeness),
+ *   VIEW_FIGHTING whether it was hit in the last gang_window ticks,
+ *   VIEW_ALONE 1 minus the share of the 8 cells around it holding its own
+ *     relatives, VIEW_HURT the share of its health it has lost. */
 enum {
-    RAY_VEG,
-    RAY_CARRION,
-    RAY_NEAR,
-    RAY_RELSIZE,
-    RAY_KIN,
-    RAY_HUNTER,
-    RAY_READY,
-    RAY_ALIKE,
-    RAY_PLANT, /* closeness of the nearest plant in sight: 1 beside, 0 for none */
-    /* Of the creature seen: 1 if it was hit in the last gang_window ticks; 1
-     * minus the share of the 8 cells around it holding its own relatives (1 for
-     * a stray); the share of its health it has lost. */
-    RAY_FIGHTING,
-    RAY_ALONE,
-    RAY_HURT,
-    RAY_VALUES
+    VIEW_PLANT,
+    VIEW_CARRION,
+    VIEW_SEEN,
+    VIEW_RELSIZE,
+    VIEW_KIN,
+    VIEW_HUNTER,
+    VIEW_READY,
+    VIEW_ALIKE,
+    VIEW_FIGHTING,
+    VIEW_ALONE,
+    VIEW_HURT,
+    VIEW_VALUES
 };
 
-/* The senses, as positions in Senses.v. After the six single values come
- * the rays: ray k's value j is at SENSE_RAYS + k * RAY_VALUES + j. After the
- * rays come the drives, then the memory values, the last ones between -1 and 1.
+/* The senses, as positions in Senses.v. After the single values come the
+ * views: view k's value j is at SENSE_VIEWS + k * VIEW_VALUES + j. After the
+ * views come the drives, then the memory values, the last ones between -1 and 1.
  * The neural network has one input per sense, so its NET_IN must equal
- * SENSE_COUNT (58). An enum value may be set from earlier ones, and the next
+ * SENSE_COUNT (56). An enum value may be set from earlier ones, and the next
  * goes on counting from there. */
 enum {
     SENSE_ENERGY,
@@ -68,8 +76,8 @@ enum {
     SENSE_DAY_SIN,
     SENSE_DAY_COS,
     SENSE_BLOCKED, /* 1 when a step ahead cannot succeed: water, rock or a creature */
-    SENSE_RAYS,
-    SENSE_HUNGER = SENSE_RAYS + RAY_COUNT * RAY_VALUES, /* 1 with no energy */
+    SENSE_VIEWS,
+    SENSE_HUNGER = SENSE_VIEWS + VIEW_COUNT * VIEW_VALUES, /* 1 with no energy */
     SENSE_PAIN, /* the share of its health it has lost */
     SENSE_KIN_NEAR, /* the share of the 8 cells around holding relatives */
     SENSE_STRANGERS_NEAR, /* the share holding anyone else */
@@ -88,6 +96,10 @@ enum {
     SENSE_CALL_KIN,
     SENSE_CALL_KIN_SIDE,
     SENSE_CALL_STRANGER,
+    /* 1 when a bite now would take food from somewhere it reaches
+     * (creature_bite_choice), 0 when it would eat nothing. The views show what
+     * is around; only this says whether it is within a bite. */
+    SENSE_REACH_FOOD,
     SENSE_MEMORY,
     SENSE_COUNT = SENSE_MEMORY + MEMORY_VALUES
 };
@@ -123,11 +135,12 @@ typedef struct {
  * whether a tactic really rests on them (the tactics design, section 11). */
 enum {
     BLIND_DAY = 1 << 0,      /* SENSE_DAY_SIN and SENSE_DAY_COS */
-    BLIND_FIGHTING = 1 << 1, /* RAY_FIGHTING on every ray */
-    BLIND_ALONE = 1 << 2,    /* RAY_ALONE on every ray */
+    BLIND_FIGHTING = 1 << 1, /* VIEW_FIGHTING in every view */
+    BLIND_ALONE = 1 << 2,    /* VIEW_ALONE in every view */
     BLIND_KIN_HIT = 1 << 3,  /* SENSE_KIN_HIT */
     BLIND_HEARING = 1 << 4,  /* the three hearing senses */
-    BLIND_ALL = (1 << 5) - 1
+    BLIND_PLANTS = 1 << 5,   /* VIEW_PLANT in every view */
+    BLIND_ALL = (1 << 6) - 1
 };
 
 /* An answer from a brain: what to do (an ACT_ value), for how many ticks to

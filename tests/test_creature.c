@@ -311,9 +311,9 @@ static void test_colour_match_hides_and_mismatch_shows(void)
     world_free(&w);
 }
 
-/* Along a ray: beyond its reach a matching creature is not seen at all, and what
- * stands behind it can be; right beside the looker it is always seen. */
-static void test_hidden_creature_on_the_ray(void)
+/* In the view: a creature matching the ground is seen less clearly, by the
+ * camouflage share, but it still hides what stands behind it. */
+static void test_hidden_creature_in_the_view(void)
 {
     World w;
     make_world(&w, 32, 16);
@@ -328,23 +328,29 @@ static void test_hidden_creature_on_the_ray(void)
     p.items[looker].genome.g[GENE_SIGHT] = 1.0f;
     CHECK(creature_sight(&p.items[looker], &s) == 10);
     p.items[looker].genome.g[GENE_HUE] = ground;
-    /* Sight 10 with the default camouflage reaches a match only 4 cells out. */
-    int hidden = spawn(&p, &w, 11, 8);
+    int hidden = spawn(&p, &w, 11, 8); /* six cells ahead */
     p.items[hidden].genome.g[GENE_HUE] = ground;
     Senses in;
     creature_sense(&w, &p, looker, &s, &in);
-    CHECK(in.v[SENSE_RAYS + RAY_AHEAD * RAY_VALUES + RAY_NEAR] == 0.0f);
-    /* A different colour behind it is seen through the place it stands. */
+    float dim = view_clarity(6.0f, 10.0f) * (1.0f - s.camouflage);
+    CHECK(fabsf(in.v[SENSE_VIEWS + VIEW_AHEAD * VIEW_VALUES + VIEW_SEEN] - dim) < 1e-5f);
+    /* A different colour two cells behind it would be seen more clearly than
+     * the match, but the match stands in the way: only the straight-ahead line
+     * reaches that cell, and it stops at the match. */
     int bright = spawn(&p, &w, 13, 8);
     p.items[bright].genome.g[GENE_HUE] = ground + 0.5f;
+    CHECK(view_clarity(8.0f, 10.0f) > dim);
     creature_sense(&w, &p, looker, &s, &in);
-    CHECK(fabsf(in.v[SENSE_RAYS + RAY_AHEAD * RAY_VALUES + RAY_NEAR] - 0.3f) < 1e-5f);
-    /* Right beside it, even a perfect match is seen. */
+    CHECK(fabsf(in.v[SENSE_VIEWS + VIEW_AHEAD * VIEW_VALUES + VIEW_SEEN] - dim) < 1e-5f);
+    /* With the match gone, the other is seen at its own clarity. */
     pool_kill(&p, &w, hidden, &s, DEATH_HUNGER);
+    creature_sense(&w, &p, looker, &s, &in);
+    CHECK(fabsf(in.v[SENSE_VIEWS + VIEW_AHEAD * VIEW_VALUES + VIEW_SEEN] - view_clarity(8.0f, 10.0f)) < 1e-5f);
+    /* Right beside it, a perfect match is still seen, dimly. */
     int beside = spawn(&p, &w, 6, 8);
     p.items[beside].genome.g[GENE_HUE] = ground;
     creature_sense(&w, &p, looker, &s, &in);
-    CHECK(in.v[SENSE_RAYS + RAY_AHEAD * RAY_VALUES + RAY_NEAR] == 1.0f);
+    CHECK(in.v[SENSE_VIEWS + VIEW_AHEAD * VIEW_VALUES + VIEW_SEEN] > 0.0f);
     pool_free(&p);
     world_free(&w);
 }
@@ -1086,20 +1092,25 @@ static void test_senses_ready_and_alike(void)
     rng_seed(&r, 7);
     adult_pair(&w, &p, &a, &b, &s, &r);
     p.items[a].heading = HEADING_EAST; /* looking straight at b */
+    /* Sight 1, so no view reaches round this small map's wrap to b. */
+    p.items[a].genome.g[GENE_SIGHT] = 0.0f;
     p.items[b].mate_wish = 3;
     Senses in;
     creature_sense(&w, &p, a, &s, &in);
-    const float *ahead = &in.v[SENSE_RAYS + RAY_AHEAD * RAY_VALUES];
-    CHECK(ahead[RAY_READY] == 1.0f);
-    CHECK(ahead[RAY_ALIKE] ==
-          genome_body_likeness(&p.items[a].genome, &p.items[b].genome));
+    /* Each detail comes scaled by how clearly the creature is seen. */
+    const float *ahead = &in.v[SENSE_VIEWS + VIEW_AHEAD * VIEW_VALUES];
+    float seen = ahead[VIEW_SEEN];
+    CHECK(seen > 0.0f);
+    CHECK(ahead[VIEW_READY] == seen);
+    CHECK(ahead[VIEW_ALIKE] ==
+          seen * genome_body_likeness(&p.items[a].genome, &p.items[b].genome));
     /* Not wishing: not ready, however alike. */
     p.items[b].mate_wish = 0;
     creature_sense(&w, &p, a, &s, &in);
-    CHECK(ahead[RAY_READY] == 0.0f);
-    /* No creature on that ray: both 0. */
-    const float *left = &in.v[SENSE_RAYS + RAY_LEFT * RAY_VALUES];
-    CHECK(left[RAY_READY] == 0.0f && left[RAY_ALIKE] == 0.0f);
+    CHECK(ahead[VIEW_READY] == 0.0f);
+    /* No creature in that view: both 0. */
+    const float *left = &in.v[SENSE_VIEWS + VIEW_LEFT * VIEW_VALUES];
+    CHECK(left[VIEW_READY] == 0.0f && left[VIEW_ALIKE] == 0.0f);
     pool_free(&p);
     world_free(&w);
 }
@@ -1259,10 +1270,11 @@ static void test_vision_in_the_dark(void)
     CHECK(creature_upkeep_cost(&c, &s) > creature_upkeep_cost(&plain, &s));
 }
 
-static void test_blind_ray_sees_beside(void)
+static void test_dark_view_sees_beside(void)
 {
-    /* At midnight with no night eyes, a creature beside is still seen and one
-     * three cells off is not. */
+    /* At midnight with no night eyes, sight falls to its floor of 1 cell: a
+     * creature beside is still seen, and one three cells off, past 2.5 sights,
+     * is not. */
     World w;
     make_world(&w, 12, 12);
     Pool p;
@@ -1274,22 +1286,23 @@ static void test_blind_ray_sees_beside(void)
     int b = spawn(&p, &w, 6, 5);
     Senses in;
     p.light = 0.0f;
+    CHECK(creature_view_sight(&p.items[a], p.light, &s) == 1.0f);
     creature_sense(&w, &p, a, &s, &in);
-    CHECK(in.v[SENSE_RAYS + RAY_AHEAD * RAY_VALUES + RAY_NEAR] == 1.0f);
+    CHECK(fabsf(in.v[SENSE_VIEWS + VIEW_AHEAD * VIEW_VALUES + VIEW_SEEN] - view_clarity(1.0f, 1.0f)) < 1e-6f);
     pool_kill(&p, &w, b, &s, DEATH_HUNGER);
     spawn(&p, &w, 8, 5);
     creature_sense(&w, &p, a, &s, &in);
-    CHECK(in.v[SENSE_RAYS + RAY_AHEAD * RAY_VALUES + RAY_NEAR] == 0.0f);
+    CHECK(in.v[SENSE_VIEWS + VIEW_AHEAD * VIEW_VALUES + VIEW_SEEN] == 0.0f);
     p.light = 1.0f; /* by day it is seen */
     creature_sense(&w, &p, a, &s, &in);
-    CHECK(in.v[SENSE_RAYS + RAY_AHEAD * RAY_VALUES + RAY_NEAR] > 0.0f);
+    CHECK(in.v[SENSE_VIEWS + VIEW_AHEAD * VIEW_VALUES + VIEW_SEEN] > 0.0f);
     pool_free(&p);
     world_free(&w);
 }
 
 /* A looker at (5, 5) facing east, and a stranger with a random genome two
  * cells ahead, in a pool whose date is 100. */
-static void ray_scene(World *w, Pool *p, int *looker, int *seen, Rng *r,
+static void view_scene(World *w, Pool *p, int *looker, int *seen, Rng *r,
                         const Settings *s)
 {
     make_world(w, 16, 16);
@@ -1305,15 +1318,20 @@ static void ray_scene(World *w, Pool *p, int *looker, int *seen, Rng *r,
     p->now = 100;
 }
 
+/* One detail of the creature seen ahead, divided by how clearly it is seen:
+ * the detail as it would read were it seen perfectly clearly. x / x is exactly
+ * 1 for any float x that is not 0, infinite or NaN, so a full detail reads 1. */
 static float ahead_value(const World *w, const Pool *p, int looker, int which,
                          const Settings *s)
 {
     Senses in;
     creature_sense(w, p, looker, s, &in);
-    return in.v[SENSE_RAYS + RAY_AHEAD * RAY_VALUES + which];
+    const float *ahead = &in.v[SENSE_VIEWS + VIEW_AHEAD * VIEW_VALUES];
+    CHECK(ahead[VIEW_SEEN] > 0.0f);
+    return ahead[which] / ahead[VIEW_SEEN];
 }
 
-static void test_ray_sees_a_fight(void)
+static void test_view_sees_a_fight(void)
 {
     Settings s = settings_default();
     Rng r;
@@ -1321,18 +1339,18 @@ static void test_ray_sees_a_fight(void)
     World w;
     Pool p;
     int a, b;
-    ray_scene(&w, &p, &a, &b, &r, &s);
-    CHECK(ahead_value(&w, &p, a, RAY_FIGHTING, &s) == 0.0f);
+    view_scene(&w, &p, &a, &b, &r, &s);
+    CHECK(ahead_value(&w, &p, a, VIEW_FIGHTING, &s) == 0.0f);
     p.items[b].recent_hits[0] = (Hit){99, 97}; /* 3 ticks ago */
     p.items[b].hits_taken = 1;
-    CHECK(ahead_value(&w, &p, a, RAY_FIGHTING, &s) == 1.0f);
+    CHECK(ahead_value(&w, &p, a, VIEW_FIGHTING, &s) == 1.0f);
     p.items[b].recent_hits[0].tick = 80; /* 20 ago, with gang_window 10 */
-    CHECK(ahead_value(&w, &p, a, RAY_FIGHTING, &s) == 0.0f);
+    CHECK(ahead_value(&w, &p, a, VIEW_FIGHTING, &s) == 0.0f);
     pool_free(&p);
     world_free(&w);
 }
 
-static void test_ray_alone_and_hurt(void)
+static void test_view_alone_and_hurt(void)
 {
     Settings s = settings_default();
     Rng r;
@@ -1340,18 +1358,18 @@ static void test_ray_alone_and_hurt(void)
     World w;
     Pool p;
     int a, b;
-    ray_scene(&w, &p, &a, &b, &r, &s);
-    CHECK(ahead_value(&w, &p, a, RAY_ALONE, &s) == 1.0f); /* a stray */
+    view_scene(&w, &p, &a, &b, &r, &s);
+    CHECK(ahead_value(&w, &p, a, VIEW_ALONE, &s) == 1.0f); /* a stray */
     /* Four relatives around it, copies of its genome: half its cells. */
     int around[4][2] = {{7, 4}, {7, 6}, {8, 4}, {8, 6}};
     for (int k = 0; k < 4; k++) {
         int kin = spawn(&p, &w, around[k][0], around[k][1]);
         p.items[kin].genome = p.items[b].genome;
     }
-    CHECK(fabsf(ahead_value(&w, &p, a, RAY_ALONE, &s) - 0.5f) < 1e-6f);
-    CHECK(ahead_value(&w, &p, a, RAY_HURT, &s) == 0.0f);
+    CHECK(fabsf(ahead_value(&w, &p, a, VIEW_ALONE, &s) - 0.5f) < 1e-6f);
+    CHECK(ahead_value(&w, &p, a, VIEW_HURT, &s) == 0.0f);
     p.items[b].health = 0.25f * creature_max_health(&p.items[b], &s);
-    CHECK(fabsf(ahead_value(&w, &p, a, RAY_HURT, &s) - 0.75f) < 1e-5f);
+    CHECK(fabsf(ahead_value(&w, &p, a, VIEW_HURT, &s) - 0.75f) < 1e-5f);
     pool_free(&p);
     world_free(&w);
 }
@@ -1364,7 +1382,7 @@ static void test_kin_hit_sense(void)
     World w;
     Pool p;
     int a, b;
-    ray_scene(&w, &p, &a, &b, &r, &s);
+    view_scene(&w, &p, &a, &b, &r, &s);
     Senses in;
     /* A relative three cells off, just hit. */
     int kin = spawn(&p, &w, 5, 8);
@@ -1393,7 +1411,7 @@ static void test_blind_mask_zeroes(void)
     World w;
     Pool p;
     int a, b;
-    ray_scene(&w, &p, &a, &b, &r, &s);
+    view_scene(&w, &p, &a, &b, &r, &s);
     p.items[b].recent_hits[0] = (Hit){99, 99};
     p.items[b].hits_taken = 1;
     p.day_phase = 0.25f;
@@ -1401,8 +1419,8 @@ static void test_blind_mask_zeroes(void)
     creature_sense(&w, &p, a, &s, &open);
     s.blind_senses = BLIND_FIGHTING;
     creature_sense(&w, &p, a, &s, &shut);
-    int ahead = SENSE_RAYS + RAY_AHEAD * RAY_VALUES;
-    CHECK(open.v[ahead + RAY_FIGHTING] == 1.0f && shut.v[ahead + RAY_FIGHTING] == 0.0f);
+    int ahead = SENSE_VIEWS + VIEW_AHEAD * VIEW_VALUES;
+    CHECK(open.v[ahead + VIEW_FIGHTING] > 0.0f && shut.v[ahead + VIEW_FIGHTING] == 0.0f);
     /* Nothing else moved. */
     int differ = 0;
     for (int i = 0; i < SENSE_COUNT; i++) {
@@ -1412,7 +1430,7 @@ static void test_blind_mask_zeroes(void)
     s.blind_senses = BLIND_DAY | BLIND_ALONE;
     creature_sense(&w, &p, a, &s, &shut);
     CHECK(shut.v[SENSE_DAY_SIN] == 0.0f && shut.v[SENSE_DAY_COS] == 0.0f);
-    CHECK(open.v[ahead + RAY_ALONE] == 1.0f && shut.v[ahead + RAY_ALONE] == 0.0f);
+    CHECK(open.v[ahead + VIEW_ALONE] > 0.0f && shut.v[ahead + VIEW_ALONE] == 0.0f);
     pool_free(&p);
     world_free(&w);
 }
@@ -1583,73 +1601,192 @@ static void test_senses_blocked(void)
     world_free(&w);
 }
 
-/* How far along a ray the nearest plant is, within sight. */
-static void test_senses_plant_along_ray(void)
+static void test_view_clarity_falls_smoothly(void)
+{
+    /* Falls at every step, with no jump bigger than the one before it near
+     * the start: no edge anywhere. */
+    float sight = 6.0f;
+    float last = view_clarity(0.0f, sight);
+    CHECK(last == 1.0f);
+    for (int k = 1; k < 150; k++) {
+        float d = 0.1f * (float)k; /* 0.1 .. 14.9 cells */
+        float c = view_clarity(d, sight);
+        CHECK(c < last); /* still falling: above 0 up to 2.5 sights */
+        CHECK(last - c < 0.05f); /* small steps only */
+        last = c;
+    }
+    CHECK(view_clarity(15.0f, sight) == 0.0f); /* exactly 0 at 2.5 sights */
+    CHECK(view_clarity(40.0f, sight) == 0.0f);
+    float at_sight = view_clarity(6.0f, sight);
+    CHECK(at_sight > 0.4f && at_sight < 0.45f); /* about 0.42 at one sight */
+}
+
+/* A looker at (16, 16) facing north, sight 6, on a 32 x 32 world of soil. */
+static int view_looker(World *w, Pool *p)
+{
+    make_world(w, 32, 32);
+    CHECK(pool_init(p, 4));
+    int i = spawn(p, w, 16, 16); /* heading north */
+    p->items[i].genome.g[GENE_SIGHT] = 1.0f;
+    return i;
+}
+
+/* The plant value of the view ahead. */
+static float plant_ahead(const World *w, const Pool *p, int i, const Settings *s)
+{
+    Senses in;
+    creature_sense(w, p, i, s, &in);
+    return in.v[SENSE_VIEWS + VIEW_AHEAD * VIEW_VALUES + VIEW_PLANT];
+}
+
+static void test_view_plant_nearer_is_stronger(void)
 {
     World w;
-    make_world(&w, 32, 32);
-    Settings s = settings_default();
     Pool p;
-    CHECK(pool_init(&p, 2));
-    int i = spawn(&p, &w, 16, 16); /* heading north */
-    p.items[i].genome.g[GENE_SIGHT] = 1.0f;
-    int sight = creature_sight(&p.items[i], &s);
-    CHECK(sight == s.sight_max);
-    Senses in;
-    const float *ahead = &in.v[SENSE_RAYS + RAY_AHEAD * RAY_VALUES];
-    const float *left = &in.v[SENSE_RAYS + RAY_LEFT * RAY_VALUES];
-
-    creature_sense(&w, &p, i, &s, &in);
-    CHECK(ahead[RAY_PLANT] == 0.0f); /* nothing to see */
-
-    /* Three cells ahead, a leaf plant with a step above its root: seen, closer reads higher, and the first-cell value
-     * stays 0, since it is not within a bite. */
-    w.veg[world_idx(&w, 16, 13)] = 2;
-    creature_sense(&w, &p, i, &s, &in);
-    CHECK(near(ahead[RAY_PLANT], 1.0f - 2.0f / (float)sight));
-    CHECK(ahead[RAY_VEG] == 0.0f);
-    CHECK(left[RAY_PLANT] == 0.0f); /* the other rays see nothing */
-
-    /* The nearest of two counts. */
-    w.veg[world_idx(&w, 16, 15)] = 2;
-    creature_sense(&w, &p, i, &s, &in);
-    CHECK(near(ahead[RAY_PLANT], 1.0f));
-    w.veg[world_idx(&w, 16, 15)] = 0;
-
-    /* Water does not block the view; rock does. */
-    w.terrain[world_idx(&w, 16, 14)] = TERRAIN_WATER;
-    creature_sense(&w, &p, i, &s, &in);
-    CHECK(ahead[RAY_PLANT] > 0.0f);
-    w.terrain[world_idx(&w, 16, 14)] = TERRAIN_ROCK;
-    creature_sense(&w, &p, i, &s, &in);
-    CHECK(ahead[RAY_PLANT] == 0.0f);
-    w.terrain[world_idx(&w, 16, 14)] = TERRAIN_SOIL;
-
-    /* Neither does it see past a creature, but it sees up to one. */
-    int other = spawn(&p, &w, 16, 14);
-    creature_sense(&w, &p, i, &s, &in);
-    CHECK(ahead[RAY_PLANT] == 0.0f);
-    CHECK(ahead[RAY_NEAR] > 0.0f);
-    pool_kill(&p, &w, other, &s, DEATH_WOUNDS);
-
-    /* Past its sight, and with poor sight: unseen. */
-    w.veg[world_idx(&w, 16, 13)] = 0;
-    w.veg[world_idx(&w, 16, 16 - sight - 1)] = 2;
-    creature_sense(&w, &p, i, &s, &in);
-    CHECK(ahead[RAY_PLANT] == 0.0f);
-    w.veg[world_idx(&w, 16, 16 - sight - 1)] = 0;
-    w.veg[world_idx(&w, 16, 13)] = 2;
-    p.items[i].genome.g[GENE_SIGHT] = 0.0f; /* sight 1 */
-    creature_sense(&w, &p, i, &s, &in);
-    CHECK(ahead[RAY_PLANT] == 0.0f);
+    Settings s = settings_default();
+    int i = view_looker(&w, &p);
+    CHECK(plant_ahead(&w, &p, i, &s) == 0.0f); /* nothing to see */
+    /* A leaf plant with a step above its root, ever nearer: ever stronger, so
+     * a brain has a slope to climb. */
+    float last = 0.0f;
+    for (int d = 14; d >= 1; d--) {
+        int cell = world_idx(&w, 16, 16 - d);
+        w.veg[cell] = 2;
+        float now = plant_ahead(&w, &p, i, &s);
+        CHECK(now > last);
+        last = now;
+        w.veg[cell] = 0;
+    }
+    /* Seen to the side as well, not only straight ahead: four cells up and two
+     * to the right, between where the old rays looked. */
+    w.veg[world_idx(&w, 18, 12)] = 2;
+    CHECK(plant_ahead(&w, &p, i, &s) > 0.0f);
+    w.veg[world_idx(&w, 18, 12)] = 0;
+    /* Past 2.5 sights (15 cells): nothing. */
+    w.veg[world_idx(&w, 16, 1)] = 2;
+    CHECK(plant_ahead(&w, &p, i, &s) == 0.0f);
     pool_free(&p);
     world_free(&w);
 }
 
-/* The plant ray sees only food a bite could take now: not a leaf plant grazed
+static void test_view_many_far_like_one_near(void)
+{
+    World w;
+    Pool p;
+    Settings s = settings_default();
+    int i = view_looker(&w, &p);
+    w.veg[world_idx(&w, 16, 14)] = 2; /* one plant two cells ahead */
+    float one_near = plant_ahead(&w, &p, i, &s);
+    w.veg[world_idx(&w, 16, 14)] = 0;
+    /* A row of plants across the view, nine cells out. */
+    for (int x = 10; x <= 22; x++) {
+        w.veg[world_idx(&w, x, 7)] = 2;
+    }
+    float many_far = plant_ahead(&w, &p, i, &s);
+    CHECK(many_far > 0.5f * one_near && many_far < 2.0f * one_near);
+    pool_free(&p);
+    world_free(&w);
+}
+
+static void test_view_rock_and_creatures_hide(void)
+{
+    World w;
+    Pool p;
+    Settings s = settings_default();
+    int i = view_looker(&w, &p);
+    w.veg[world_idx(&w, 16, 12)] = 2; /* four cells ahead */
+    float open = plant_ahead(&w, &p, i, &s);
+    CHECK(open > 0.0f);
+    /* Water in front hides nothing. */
+    w.terrain[world_idx(&w, 16, 15)] = TERRAIN_WATER;
+    CHECK(plant_ahead(&w, &p, i, &s) == open);
+    /* A wall of rock across the view, one cell ahead: nothing behind it. */
+    for (int x = 13; x <= 19; x++) {
+        w.terrain[world_idx(&w, x, 15)] = TERRAIN_ROCK;
+    }
+    CHECK(plant_ahead(&w, &p, i, &s) == 0.0f);
+    for (int x = 13; x <= 19; x++) {
+        w.terrain[world_idx(&w, x, 15)] = TERRAIN_SOIL;
+    }
+    /* A row of creatures there instead hides it too, and is seen. */
+    for (int x = 15; x <= 17; x++) {
+        spawn(&p, &w, x, 15);
+    }
+    Senses in;
+    creature_sense(&w, &p, i, &s, &in);
+    CHECK(in.v[SENSE_VIEWS + VIEW_AHEAD * VIEW_VALUES + VIEW_PLANT] == 0.0f);
+    CHECK(in.v[SENSE_VIEWS + VIEW_AHEAD * VIEW_VALUES + VIEW_SEEN] > 0.0f);
+    pool_free(&p);
+    world_free(&w);
+}
+
+static void test_view_wraps_at_edge(void)
+{
+    /* Near the top edge, a plant across it, at the bottom of the map, is seen
+     * three cells ahead as if the map went on. */
+    World w;
+    make_world(&w, 16, 16);
+    Settings s = settings_default();
+    Pool p;
+    CHECK(pool_init(&p, 1));
+    int i = spawn(&p, &w, 8, 1); /* heading north */
+    p.items[i].genome.g[GENE_SIGHT] = 1.0f;
+    w.veg[world_idx(&w, 8, 14)] = 2; /* y = 1 - 3, wrapped */
+    float across = plant_ahead(&w, &p, i, &s);
+    w.veg[world_idx(&w, 8, 14)] = 0;
+    pool_free(&p);
+    world_free(&w);
+    World w2;
+    Pool p2;
+    int j = view_looker(&w2, &p2);
+    w2.veg[world_idx(&w2, 16, 13)] = 2; /* three cells ahead, no edge */
+    CHECK(across > 0.0f && across == plant_ahead(&w2, &p2, j, &s));
+    pool_free(&p2);
+    world_free(&w2);
+
+    /* Alone on a map smaller than its view, it never sees itself round the
+     * wrap, in any view. */
+    World tiny;
+    make_world(&tiny, 4, 4);
+    Pool alone;
+    CHECK(pool_init(&alone, 1));
+    int k = spawn(&alone, &tiny, 1, 1);
+    alone.items[k].genome.g[GENE_SIGHT] = 1.0f;
+    Senses in;
+    creature_sense(&tiny, &alone, k, &s, &in);
+    for (int view = 0; view < VIEW_COUNT; view++) {
+        CHECK(in.v[SENSE_VIEWS + view * VIEW_VALUES + VIEW_SEEN] == 0.0f);
+    }
+    pool_free(&alone);
+    world_free(&tiny);
+}
+
+static void test_reach_food_sense(void)
+{
+    World w;
+    Pool p;
+    Settings s = settings_default();
+    int i = view_looker(&w, &p);
+    Senses in;
+    creature_sense(&w, &p, i, &s, &in);
+    CHECK(in.v[SENSE_REACH_FOOD] == 0.0f);
+    /* Behind it, out of every view, but within a bite. */
+    w.veg[world_idx(&w, 17, 17)] = 2;
+    creature_sense(&w, &p, i, &s, &in);
+    CHECK(in.v[SENSE_REACH_FOOD] == 1.0f);
+    /* Two cells off is out of reach. */
+    w.veg[world_idx(&w, 17, 17)] = 0;
+    w.veg[world_idx(&w, 18, 18)] = 2;
+    creature_sense(&w, &p, i, &s, &in);
+    CHECK(in.v[SENSE_REACH_FOOD] == 0.0f);
+    pool_free(&p);
+    world_free(&w);
+}
+
+/* The plant view sees only food a bite could take now: not a leaf plant grazed
  * to its root or standing bare for autumn and winter, not a fruit tree without
  * a whole fruit. A fruit tree bearing one is food in any season. */
-static void test_plant_ray_sees_only_food(void)
+static void test_plant_view_sees_only_food(void)
 {
     World w;
     make_world(&w, 32, 32);
@@ -1659,35 +1796,35 @@ static void test_plant_ray_sees_only_food(void)
     int i = spawn(&p, &w, 16, 16); /* heading north */
     p.items[i].genome.g[GENE_SIGHT] = 1.0f;
     Senses in;
-    const float *ahead = &in.v[SENSE_RAYS + RAY_AHEAD * RAY_VALUES];
+    const float *ahead = &in.v[SENSE_VIEWS + VIEW_AHEAD * VIEW_VALUES];
     int cell = world_idx(&w, 16, 13);
 
     /* A leaf plant: food above its root, nothing at it. */
     w.veg[cell] = (uint8_t)(s.plant_leaf_root + 1);
     p.season = SEASON_SPRING;
     creature_sense(&w, &p, i, &s, &in);
-    CHECK(ahead[RAY_PLANT] > 0.0f);
+    CHECK(ahead[VIEW_PLANT] > 0.0f);
     w.veg[cell] = (uint8_t)s.plant_leaf_root;
     creature_sense(&w, &p, i, &s, &in);
-    CHECK(ahead[RAY_PLANT] == 0.0f);
+    CHECK(ahead[VIEW_PLANT] == 0.0f);
 
     /* Bare in autumn and winter, however dense. */
     w.veg[cell] = VEG_MAX;
     p.season = SEASON_AUTUMN;
     creature_sense(&w, &p, i, &s, &in);
-    CHECK(ahead[RAY_PLANT] == 0.0f);
+    CHECK(ahead[VIEW_PLANT] == 0.0f);
     p.season = SEASON_WINTER;
     creature_sense(&w, &p, i, &s, &in);
-    CHECK(ahead[RAY_PLANT] == 0.0f);
+    CHECK(ahead[VIEW_PLANT] == 0.0f);
 
     /* A fruit tree: no leaves to eat, so food only with a whole fruit. */
     w.plant[cell].fruit_share = 1.0f;
     w.plant[cell].fruit = 0.9f;
     creature_sense(&w, &p, i, &s, &in);
-    CHECK(ahead[RAY_PLANT] == 0.0f);
+    CHECK(ahead[VIEW_PLANT] == 0.0f);
     w.plant[cell].fruit = 1.0f;
     creature_sense(&w, &p, i, &s, &in);
-    CHECK(ahead[RAY_PLANT] > 0.0f); /* winter does not strip a fruit tree */
+    CHECK(ahead[VIEW_PLANT] > 0.0f); /* winter does not strip a fruit tree */
     pool_free(&p);
     world_free(&w);
 }
@@ -2192,9 +2329,11 @@ static void test_sense(void)
     creature_sense(&w, &p, i, &s, &in);
     CHECK(fabsf(in.v[SENSE_ENERGY] - 0.5f) < 1e-6f);
     CHECK(fabsf(in.v[SENSE_AGE] - 0.5f) < 1e-6f);
-    CHECK(in.v[SENSE_RAYS + RAY_AHEAD * RAY_VALUES + RAY_VEG] == 1.0f);
-    CHECK(in.v[SENSE_RAYS + RAY_LEFT * RAY_VALUES + RAY_VEG] == 0.5f);
-    CHECK(in.v[SENSE_RAYS + RAY_RIGHT * RAY_VALUES + RAY_VEG] == 0.0f);
+    /* Food ahead and to the left, both a cell away; none to the right. */
+    CHECK(in.v[SENSE_VIEWS + VIEW_AHEAD * VIEW_VALUES + VIEW_PLANT] > 0.0f);
+    CHECK(in.v[SENSE_VIEWS + VIEW_LEFT * VIEW_VALUES + VIEW_PLANT] > 0.0f);
+    CHECK(in.v[SENSE_VIEWS + VIEW_RIGHT * VIEW_VALUES + VIEW_PLANT] == 0.0f);
+    CHECK(in.v[SENSE_REACH_FOOD] == 1.0f);
     CHECK(in.v[SENSE_SIZE] == 0.5f); /* the gene spawn set */
     CHECK(in.v[SENSE_DIET] == 0.0f);
     pool_free(&p);
@@ -2480,7 +2619,7 @@ static void test_slow_creature(void)
     world_free(&w);
 }
 
-static void test_ray_sees_creature(void)
+static void test_view_sees_creature(void)
 {
     World w;
     make_world(&w, 12, 12);
@@ -2494,33 +2633,34 @@ static void test_ray_sees_creature(void)
     p.items[j].genome.g[GENE_HUE] = 0.3f; /* not identical to the viewer */
     Senses in;
     creature_sense(&w, &p, i, &s, &in);
-    const float *ahead = &in.v[SENSE_RAYS + RAY_AHEAD * RAY_VALUES];
-    CHECK(near(ahead[RAY_NEAR], 0.75f));
-    CHECK(near(ahead[RAY_RELSIZE], 0.5f));
-    CHECK(ahead[RAY_KIN] ==
-          genome_kinship(&p.items[i].genome, &p.items[j].genome));
-    CHECK(ahead[RAY_HUNTER] == 0.0f); /* a plant-eater */
+    const float *ahead = &in.v[SENSE_VIEWS + VIEW_AHEAD * VIEW_VALUES];
+    float seen = view_clarity(2.0f, 4.0f);
+    CHECK(near(ahead[VIEW_SEEN], seen));
+    CHECK(near(ahead[VIEW_RELSIZE], 0.5f * seen));
+    CHECK(near(ahead[VIEW_KIN],
+               seen * genome_kinship(&p.items[i].genome, &p.items[j].genome)));
+    CHECK(ahead[VIEW_HUNTER] == 0.0f); /* a plant-eater */
     make_hunter(&p.items[j]);
     creature_sense(&w, &p, i, &s, &in);
-    CHECK(ahead[RAY_HUNTER] == 1.0f);
+    CHECK(near(ahead[VIEW_HUNTER], seen)); /* a hunter, as clearly as it is seen */
     /* Nothing to the sides. */
-    CHECK(in.v[SENSE_RAYS + RAY_LEFT * RAY_VALUES + RAY_NEAR] == 0.0f);
+    CHECK(in.v[SENSE_VIEWS + VIEW_LEFT * VIEW_VALUES + VIEW_SEEN] == 0.0f);
     /* Carrion three cells to the left (west). After its scent has
-     * spread for a while, the left ray smells more than the right. */
+     * spread for a while, the left view smells more than the right. */
     carrion_add(&w, world_idx(&w, 2, 8), 40.0f, 2.0f);
     for (int t = 0; t < 30; t++) {
         scent_step(&w, &s);
     }
     creature_sense(&w, &p, i, &s, &in);
-    float left = in.v[SENSE_RAYS + RAY_LEFT * RAY_VALUES + RAY_CARRION];
-    float right = in.v[SENSE_RAYS + RAY_RIGHT * RAY_VALUES + RAY_CARRION];
+    float left = in.v[SENSE_VIEWS + VIEW_LEFT * VIEW_VALUES + VIEW_CARRION];
+    float right = in.v[SENSE_VIEWS + VIEW_RIGHT * VIEW_VALUES + VIEW_CARRION];
     CHECK(left > 0.0f && left < 1.0f);
     CHECK(left > right);
     pool_free(&p);
     world_free(&w);
 }
 
-static void test_ray_limits(void)
+static void test_view_limits(void)
 {
     World w;
     make_world(&w, 16, 16);
@@ -2530,16 +2670,21 @@ static void test_ray_limits(void)
     CHECK(pool_init(&p, 3));
     int i = spawn(&p, &w, 5, 10);
     p.items[i].genome.g[GENE_SIGHT] = 1.0f; /* sight 4 */
-    spawn(&p, &w, 5, 5); /* five cells ahead: out of sight */
+    int far = spawn(&p, &w, 5, 0); /* ten cells ahead: 2.5 sights, unseen */
     Senses in;
     creature_sense(&w, &p, i, &s, &in);
-    CHECK(in.v[SENSE_RAYS + RAY_AHEAD * RAY_VALUES + RAY_NEAR] == 0.0f);
+    CHECK(in.v[SENSE_VIEWS + VIEW_AHEAD * VIEW_VALUES + VIEW_SEEN] == 0.0f);
+    pool_kill(&p, &w, far, &s, DEATH_HUNGER);
+    spawn(&p, &w, 5, 1); /* nine: faintly seen */
+    creature_sense(&w, &p, i, &s, &in);
+    CHECK(in.v[SENSE_VIEWS + VIEW_AHEAD * VIEW_VALUES + VIEW_SEEN] > 0.0f);
 
-    /* Rock between the viewer and a creature two cells ahead. */
+    /* Rock right ahead of the viewer, and a creature two cells ahead: the
+     * lines that would reach it pass through the rock or beside the creature. */
     spawn(&p, &w, 5, 8);
     w.terrain[world_idx(&w, 5, 9)] = TERRAIN_ROCK;
     creature_sense(&w, &p, i, &s, &in);
-    CHECK(in.v[SENSE_RAYS + RAY_AHEAD * RAY_VALUES + RAY_NEAR] == 0.0f);
+    CHECK(in.v[SENSE_VIEWS + VIEW_AHEAD * VIEW_VALUES + VIEW_SEEN] == 0.0f);
     pool_free(&p);
     world_free(&w);
 }
@@ -3398,7 +3543,7 @@ static void test_senses_handle_any_size(void)
         p.items[t].grown = 1e9f - sizes[k];
         creature_sense(&w, &p, a, &s, &in);
         float own = in.v[SENSE_SIZE];
-        float rel = in.v[SENSE_RAYS + RAY_AHEAD * RAY_VALUES + RAY_RELSIZE];
+        float rel = in.v[SENSE_VIEWS + VIEW_AHEAD * VIEW_VALUES + VIEW_RELSIZE];
         CHECK(own >= 0.0f && own <= 1.0f);
         CHECK(rel >= 0.0f && rel <= 1.0f);
     }
@@ -4073,13 +4218,15 @@ static void test_sleeper_senses_only_inside(void)
     /* Awake, the outside is there to sense: the test means something. */
     CHECK(awake.v[SENSE_BLOCKED] == 1.0f);
     CHECK(awake.v[SENSE_KIN_NEAR] > 0.0f && awake.v[SENSE_STRANGERS_NEAR] > 0.0f);
-    CHECK(awake.v[SENSE_RAYS + RAY_AHEAD * RAY_VALUES + RAY_NEAR] > 0.0f);
-    CHECK(awake.v[SENSE_RAYS + RAY_RIGHT * RAY_VALUES + RAY_VEG] > 0.0f);
-    CHECK(awake.v[SENSE_RAYS + RAY_LEFT * RAY_VALUES + RAY_CARRION] > 0.0f);
+    CHECK(awake.v[SENSE_VIEWS + VIEW_AHEAD * VIEW_VALUES + VIEW_SEEN] > 0.0f);
+    CHECK(awake.v[SENSE_VIEWS + VIEW_RIGHT * VIEW_VALUES + VIEW_PLANT] > 0.0f);
+    CHECK(awake.v[SENSE_VIEWS + VIEW_LEFT * VIEW_VALUES + VIEW_CARRION] > 0.0f);
+    CHECK(awake.v[SENSE_REACH_FOOD] == 1.0f);
 
-    for (int k = 0; k < RAY_COUNT * RAY_VALUES; k++) {
-        CHECK(asleep.v[SENSE_RAYS + k] == 0.0f);
+    for (int k = 0; k < VIEW_COUNT * VIEW_VALUES; k++) {
+        CHECK(asleep.v[SENSE_VIEWS + k] == 0.0f);
     }
+    CHECK(asleep.v[SENSE_REACH_FOOD] == 0.0f);
     CHECK(asleep.v[SENSE_BLOCKED] == 0.0f);
     CHECK(asleep.v[SENSE_KIN_NEAR] == 0.0f);
     CHECK(asleep.v[SENSE_STRANGERS_NEAR] == 0.0f);
@@ -4173,7 +4320,7 @@ int main(void)
     test_move_blocked_turns_aside();
     test_leaf_bite_leaves_the_root();
     test_colour_match_hides_and_mismatch_shows();
-    test_hidden_creature_on_the_ray();
+    test_hidden_creature_in_the_view();
     test_big_body_gains_in_cold_loses_in_heat();
     test_small_body_gains_where_poor();
     test_legs_cross_marsh_and_sand_cheaper_cost_elsewhere();
@@ -4205,9 +4352,9 @@ int main(void)
     test_senses_season();
     test_senses_day();
     test_vision_in_the_dark();
-    test_blind_ray_sees_beside();
-    test_ray_sees_a_fight();
-    test_ray_alone_and_hurt();
+    test_dark_view_sees_beside();
+    test_view_sees_a_fight();
+    test_view_alone_and_hurt();
     test_kin_hit_sense();
     test_blind_mask_zeroes();
     test_hears_kin_call();
@@ -4215,8 +4362,13 @@ int main(void)
     test_dead_caller_not_heard();
     test_child_starts_blank();
     test_senses_blocked();
-    test_senses_plant_along_ray();
-    test_plant_ray_sees_only_food();
+    test_view_clarity_falls_smoothly();
+    test_view_plant_nearer_is_stronger();
+    test_view_many_far_like_one_near();
+    test_view_rock_and_creatures_hide();
+    test_view_wraps_at_edge();
+    test_reach_food_sense();
+    test_plant_view_sees_only_food();
     test_senses_how_recently_fed();
     test_empty_bite_costs();
     test_plant_eater_cap();
@@ -4238,8 +4390,8 @@ int main(void)
     test_attacks_hit_half_the_time();
     test_food_under_a_creature();
     test_slow_creature();
-    test_ray_sees_creature();
-    test_ray_limits();
+    test_view_sees_creature();
+    test_view_limits();
     test_starved_creature_dies();
     test_killed_creature_leaves_carrion();
     test_digestion_costs();

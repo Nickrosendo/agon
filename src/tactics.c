@@ -322,9 +322,10 @@ void tactics_note_decision(TacticWatch *t, const Creature *c, const Senses *in,
         return;
     }
     bool hunter_seen = false;
-    for (int ray = 0; ray < RAY_COUNT; ray++) {
-        const float *v = &in->v[SENSE_RAYS + ray * RAY_VALUES];
-        hunter_seen = hunter_seen || (v[RAY_NEAR] > 0.0f && v[RAY_HUNTER] > 0.5f);
+    for (int view = 0; view < VIEW_COUNT; view++) {
+        const float *v = &in->v[SENSE_VIEWS + view * VIEW_VALUES];
+        /* VIEW_HUNTER is VIEW_SEEN for a hunter and 0 for anyone else. */
+        hunter_seen = hunter_seen || (v[VIEW_SEEN] > 0.0f && v[VIEW_HUNTER] > 0.0f);
     }
     float call = calling ? 1.0f : 0.0f;
     if (hunter_seen) {
