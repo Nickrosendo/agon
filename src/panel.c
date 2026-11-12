@@ -585,6 +585,7 @@ static void describe_creature(Lines *l, const Sim *s, const Creature *c)
     add_float(l, "swim gene", c->genome.g[GENE_SWIM], 2);
     add_float(l, "night eyes gene", c->genome.g[GENE_NIGHT_EYES], 2);
     add_float(l, "learning gene", c->genome.g[GENE_LEARN], 2);
+    add_float(l, "sureness gene", c->genome.g[GENE_SURE], 2);
     add_pair(l, "calling", c->calling ? "yes" : "no");
     add_float(l, "upkeep", creature_upkeep_cost(c, set), 2);
     /* kind comes from a brain; checked before indexing the array. */

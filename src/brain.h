@@ -48,7 +48,7 @@ enum {
  * the rays: ray k's value j is at SENSE_RAYS + k * RAY_VALUES + j. After the
  * rays come the drives, then the memory values, the last ones between -1 and 1.
  * The neural network has one input per sense, so its NET_IN must equal
- * SENSE_COUNT (59). An enum value may be set from earlier ones, and the next
+ * SENSE_COUNT (58). An enum value may be set from earlier ones, and the next
  * goes on counting from there. */
 enum {
     SENSE_ENERGY,
@@ -88,10 +88,6 @@ enum {
     SENSE_CALL_KIN,
     SENSE_CALL_KIN_SIDE,
     SENSE_CALL_STRANGER,
-    /* A fresh draw for each decision, written by the Sim and left 0 by
-     * creature_sense, which the drawing side calls too and which must not
-     * change the random generator. */
-    SENSE_RANDOM,
     SENSE_MEMORY,
     SENSE_COUNT = SENSE_MEMORY + MEMORY_VALUES
 };
@@ -113,9 +109,14 @@ enum {
     ACT_COUNT
 };
 
-/* Every sense is a number, mostly in 0..1. */
+/* Every sense is a number, mostly in 0..1. draw is not a sense: it is a fresh
+ * random number in 0..1 for each decision, written by the Sim and left 0 by
+ * creature_sense (which must not change the random generator), and the network
+ * uses it only to pick among its actions by their chances. It sits outside v, so
+ * it is not one of the network's inputs. */
 typedef struct {
     float v[SENSE_COUNT];
+    float draw;
 } Senses;
 
 /* Senses that can be held at 0 for every brain, as blind_senses' bits: to test
@@ -197,6 +198,14 @@ struct Brain {
     /* A creature died; per-creature state can go. */
     void (*on_death)(Brain *b, uint32_t id);
 };
+
+/* The neural network's chance of choosing each action, given these senses and
+ * what the mind learned (NULL for nothing): a softmax, each in proportion to
+ * exp(output * sharpness), with the sharpness from the GENE_SURE gene. The
+ * chances add up to 1. The network brain draws its action from these with
+ * Senses.draw; probes and tests read them directly. */
+void brain_net_chances(const Genome *g, const Mind *mind, const Senses *in,
+                       float chances[ACT_COUNT]);
 
 /* The built-in brains. Templates: name and functions filled in, state
  * NULL. brain_open copies one and creates it. The random walker is in

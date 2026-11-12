@@ -88,11 +88,114 @@ static void test_script_plays_back(void)
     brain_close(&b);
 }
 
-/* A genome with every value 0: no trait, no weight, so every output of
- * the network is 0. Built as a compound literal, which zeroes it all. */
+/* A genome with every value 0 but the sharpness gene: no weight, so every
+ * output of the network is 0. Built as a compound literal, which zeroes it all.
+ * The sharpness gene at its top makes the choice all but always the strongest
+ * output, which the tests below that expect one action rely on. */
 static Genome zero_genome(void)
 {
-    return (Genome){0};
+    Genome g = (Genome){0};
+    g.g[GENE_SURE] = 1.0f;
+    return g;
+}
+
+/* The sum of the chances, and whether each is a number in 0..1. */
+static bool chances_valid(const float chances[ACT_COUNT])
+{
+    float sum = 0.0f;
+    for (int o = 0; o < ACT_COUNT; o++) {
+        if (!(chances[o] >= 0.0f && chances[o] <= 1.0f)) {
+            return false; /* also false for NaN */
+        }
+        sum += chances[o];
+    }
+    return fabsf(sum - 1.0f) < 1e-4f;
+}
+
+static void test_chances_sum_to_one(void)
+{
+    Genome g;
+    Senses in;
+    Settings set = settings_default();
+    Rng r;
+    rng_seed(&r, 3);
+    for (int k = 0; k < 100; k++) {
+        genome_random(&g, &r, &set);
+        for (int i = 0; i < SENSE_COUNT; i++) {
+            in.v[i] = rng_unit(&r);
+        }
+        float chances[ACT_COUNT];
+        brain_net_chances(&g, NULL, &in, chances);
+        CHECK(chances_valid(chances));
+    }
+}
+
+static void test_chances_follow_outputs(void)
+{
+    /* Middling sharpness: every action keeps some chance, but the larger
+     * output always has the larger chance. */
+    Genome g = zero_genome();
+    g.g[GENE_SURE] = 0.2f;
+    g.g[net_out_weight(ACT_MOVE, NET_HIDDEN)] = 1.0f;
+    g.g[net_out_weight(ACT_BITE, NET_HIDDEN)] = 0.5f;
+    Senses in = {0};
+    float chances[ACT_COUNT];
+    brain_net_chances(&g, NULL, &in, chances);
+    CHECK(chances_valid(chances));
+    CHECK(chances[ACT_MOVE] > chances[ACT_BITE]);
+    CHECK(chances[ACT_BITE] > chances[ACT_REST]);
+    CHECK(chances[ACT_REST] > 0.0f); /* not never */
+    CHECK(chances[ACT_REST] == chances[ACT_SLEEP]); /* equal outputs, equal chances */
+    /* Blunter still: the gap between move and rest narrows. */
+    float sharp_gap = chances[ACT_MOVE] - chances[ACT_REST];
+    g.g[GENE_SURE] = 0.0f;
+    brain_net_chances(&g, NULL, &in, chances);
+    CHECK(chances[ACT_MOVE] - chances[ACT_REST] < sharp_gap);
+}
+
+static void test_sharp_end_is_strongest(void)
+{
+    Genome g = zero_genome(); /* sharpness gene at 1 */
+    g.g[net_out_weight(ACT_MOVE, NET_HIDDEN)] = 1.0f;
+    Senses in = {0};
+    float chances[ACT_COUNT];
+    brain_net_chances(&g, NULL, &in, chances);
+    CHECK(chances[ACT_MOVE] > 0.99f);
+}
+
+static void test_softmax_survives_huge_outputs(void)
+{
+    /* Outputs of about plus and minus a thousand: exp of them overflows a
+     * float unless the largest is taken off first. */
+    Genome g = zero_genome();
+    g.g[net_out_weight(ACT_MOVE, NET_HIDDEN)] = 1000.0f;
+    g.g[net_out_weight(ACT_BITE, NET_HIDDEN)] = 999.0f;
+    g.g[net_out_weight(ACT_REST, NET_HIDDEN)] = -1000.0f;
+    Senses in = {0};
+    float chances[ACT_COUNT];
+    brain_net_chances(&g, NULL, &in, chances);
+    CHECK(chances_valid(chances));
+    CHECK(chances[ACT_MOVE] > 0.99f);
+}
+
+static void test_draw_picks_action(void)
+{
+    /* Every output equal: each action has the same chance, and the draw alone
+     * decides. A draw of 0 falls in the first action's share, a draw just
+     * below 1 in the last one's. */
+    Settings set = settings_default();
+    Brain b;
+    CHECK(brain_open(&b, "net", &set, 1));
+    Genome g = zero_genome();
+    Senses in = {0};
+    Action a = {0};
+    in.draw = 0.0f;
+    CHECK(b.decide(&b, 1, &g, NULL, &in, &a) && a.kind == 0);
+    in.draw = 0.999f;
+    CHECK(b.decide(&b, 1, &g, NULL, &in, &a) && a.kind == ACT_COUNT - 1);
+    in.draw = 3.5f / (float)ACT_COUNT; /* inside the fourth share */
+    CHECK(b.decide(&b, 1, &g, NULL, &in, &a) && a.kind == 3);
+    brain_close(&b);
 }
 
 static void test_net_bias_decides(void)
@@ -111,6 +214,7 @@ static void test_net_bias_decides(void)
         for (int i = 0; i < SENSE_COUNT; i++) {
             in.v[i] = rng_unit(&r);
         }
+        in.draw = rng_unit(&r);
         Action a = {0};
         if (!b.decide(&b, 1, &g, NULL, &in, &a) || a.kind != ACT_MOVE ||
             a.hold < 1) {
@@ -133,7 +237,10 @@ static void test_net_sees_vegetation(void)
     g.g[net_hidden_weight(0, veg_ahead)] = 2.0f;
     g.g[net_out_weight(ACT_BITE, 0)] = 2.0f;
 
-    Senses in = {0};
+    /* A draw away from the ends: a draw of 0 falls in the first action's share
+     * however tiny that share is. With every output equal (no vegetation) a
+     * draw of 0.3 falls in the third action's share, a turn. */
+    Senses in = {.draw = 0.3f};
     Action a = {0};
     in.v[veg_ahead] = 1.0f;
     CHECK(b.decide(&b, 1, &g, NULL, &in, &a) && a.kind == ACT_BITE);
@@ -152,7 +259,7 @@ static void test_memory_changes_a_decision(void)
     g.g[net_hidden_weight(0, SENSE_MEMORY)] = 2.0f;
     g.g[net_out_weight(ACT_BITE, 0)] = 2.0f;
     /* The same world senses, all zero; only what it remembers differs. */
-    Senses in = {0};
+    Senses in = {.draw = 0.5f};
     Action a = {0};
     in.v[SENSE_MEMORY] = 1.0f;
     CHECK(b.decide(&b, 1, &g, NULL, &in, &a) && a.kind == ACT_BITE);
@@ -201,6 +308,7 @@ static void learning_setup(Genome *g, Senses *in, uint64_t seed)
     for (int i = 0; i < SENSE_COUNT; i++) {
         in->v[i] = rng_unit(&r);
     }
+    in->draw = rng_unit(&r);
 }
 
 static void test_learns_from_a_meal(void)
@@ -310,5 +418,10 @@ int main(void)
     test_memory_changes_a_decision();
     test_net_writes_memory_and_it_never_chooses();
     test_net_needs_a_genome();
+    test_chances_sum_to_one();
+    test_chances_follow_outputs();
+    test_sharp_end_is_strongest();
+    test_softmax_survives_huge_outputs();
+    test_draw_picks_action();
     TEST_SUMMARY();
 }

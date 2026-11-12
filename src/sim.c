@@ -375,7 +375,7 @@ static void take_turn(Sim *s, int idx)
         memcpy(a.memory, c->memory, sizeof(a.memory));
         creature_sense(&s->world, &s->pool, idx, &s->set, &in);
         /* Here and not in creature_sense, which must draw no random numbers. */
-        in.v[SENSE_RANDOM] = rng_unit(&s->rng);
+        in.draw = rng_unit(&s->rng);
         bool ready =
             s->brain.decide(&s->brain, c->id, &c->genome, &c->mind, &in, &a);
         /* The brain is not trusted: an unknown kind counts as resting,

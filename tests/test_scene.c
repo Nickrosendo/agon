@@ -489,10 +489,13 @@ static void test_known_world_pixels(void)
          * levels. Re-pinned for learning within a life: the two wider levels.
          * Re-pinned for bite strikes and hits of 15 (2026-11-10): fights end
          * sooner, creatures elsewhere at the two wider levels; drawing is
-         * unchanged (the lab's pin holds). */
+         * unchanged (the lab's pin holds).
+         * Re-pinned for the weighted-chance choice and the sureness gene
+         * (2026-11-12): every random genome is re-rolled and choices draw,
+         * creatures elsewhere at the three wider levels; drawing unchanged. */
         static const uint64_t EXPECTED[CAMERA_LEVELS] = {
-            0xbe5f57fb7c7bdabdu, 0x5a015897532bfe08u,
-            0x6f728fbe0a63465du, 0x3a1c1007d7e06455u,
+            0xbe5f57fb7c7bdabdu, 0xa453254ff609fe77u,
+            0x58123ce5e0affd26u, 0xd7e288bb5a3b598du,
         };
         if (hashes[level] != EXPECTED[level]) {
             printf("level %d: 0x%llxu\n", level,

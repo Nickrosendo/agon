@@ -75,9 +75,11 @@
  * inputs, re-rolled again; then calls, an output and three hearing senses,
  * re-rolled once more; then learning within a life, a gene and a learned
  * adjustment to each brain; then bite strikes (a hunter's bite at a
- * stranger ahead is an attack) and hits of 15 instead of 6.
+ * stranger ahead is an attack) and hits of 15 instead of 6; then the
+ * weighted-chance choice, a gene, one sense fewer (the random one) and a draw
+ * per decision.
  */
-#define SEED_7_AFTER_500 0x8865ad75cd6552f3ULL
+#define SEED_7_AFTER_500 0x0d719f87b8d6ed6eULL
 
 /* One creature in a bare 16x16 world with the scripted brain, resting for a
  * tick, calling or not. Returns the energy it has left. */

@@ -2,12 +2,14 @@
  * The neural-network brain: each creature's genome holds the weights of a
  * small network that turns its senses into an action. The brain itself
  * keeps nothing: everything it needs arrives with each call, so it has no
- * state to create or destroy. Nothing here rewards a good network; better
+ * state to create or destroy. Its choice has chance in it: each action is
+ * chosen with a chance that grows with its output (brain_net_chances, brain.h),
+ * using the random number the Sim puts in Senses.draw. Nothing here rewards a good network; better
  * networks become common only because their owners live long enough to
  * have more children.
  */
 #include <assert.h> /* static_assert */
-#include <math.h>   /* tanhf, isfinite */
+#include <math.h>   /* tanhf, expf, isfinite */
 #include <stddef.h> /* NULL: a macro from a header, not a keyword */
 
 #include "brain.h"
@@ -71,25 +73,72 @@ static float learned(const Mind *mind, const float hidden[NET_HIDDEN], int o)
     return sum;
 }
 
-/* Returns the action whose output is largest; on a tie, the first of them
- * (ACT_REST when every output is 0). The memory outputs, which come after the
- * actions', have no say in this. */
-static uint8_t strongest_output(const Genome *g, const Mind *mind,
-                                const float hidden[NET_HIDDEN])
+/* How sharp the choice is, from the sure gene: SURE_MIN at 0, SURE_MAX at 1. */
+static float sharpness(const Genome *g)
 {
-    int best = 0;
-    float best_sum = 0.0f;
+    return SURE_MIN + g->g[GENE_SURE] * (SURE_MAX - SURE_MIN);
+}
+
+/* Each action's chance, from the hidden values: a softmax. The memory outputs,
+ * which come after the actions', have no say in this.
+ *
+ * exp(x) for x above about 88 is larger than any float, and becomes infinity;
+ * infinity divided by infinity is NaN. Taking the largest output off every
+ * output first changes no chance (it divides top and bottom by the same
+ * exp(largest)), and leaves every exponent at 0 or below, so each exp is in
+ * 0..1 and the largest is exactly 1: the total is never 0. */
+static void chances_from_hidden(const Genome *g, const Mind *mind,
+                                const float hidden[NET_HIDDEN],
+                                float chances[ACT_COUNT])
+{
+    float outs[ACT_COUNT];
+    float largest = 0.0f;
     for (int o = 0; o < ACT_COUNT; o++) {
-        float sum = output(g, hidden, o);
+        outs[o] = output(g, hidden, o);
         if (mind != NULL) {
-            sum += learned(mind, hidden, o);
+            outs[o] += learned(mind, hidden, o);
         }
-        if (o == 0 || sum > best_sum) {
-            best = o;
-            best_sum = sum;
+        if (o == 0 || outs[o] > largest) {
+            largest = outs[o];
         }
     }
-    return (uint8_t)best;
+    float sharp = sharpness(g);
+    float total = 0.0f;
+    for (int o = 0; o < ACT_COUNT; o++) {
+        chances[o] = expf((outs[o] - largest) * sharp);
+        total += chances[o];
+    }
+    for (int o = 0; o < ACT_COUNT; o++) {
+        chances[o] /= total;
+    }
+}
+
+/* The action whose share of 0..1 the draw falls in, the shares laid end to end
+ * in ACT_ order. A draw at or past the last edge (rounding can leave the sum of
+ * the chances a hair below 1) gives the last action with any chance. */
+static uint8_t drawn_action(const float chances[ACT_COUNT], float draw)
+{
+    float edge = 0.0f;
+    int last = 0;
+    for (int o = 0; o < ACT_COUNT; o++) {
+        if (chances[o] <= 0.0f) {
+            continue;
+        }
+        edge += chances[o];
+        last = o;
+        if (draw < edge) {
+            return (uint8_t)o;
+        }
+    }
+    return (uint8_t)last;
+}
+
+void brain_net_chances(const Genome *g, const Mind *mind, const Senses *in,
+                       float chances[ACT_COUNT])
+{
+    float hidden[NET_HIDDEN];
+    hidden_layer(g, in, hidden);
+    chances_from_hidden(g, mind, hidden, chances);
 }
 
 /* Marks in the trace which hidden values were active when action o was
@@ -115,7 +164,9 @@ static bool net_decide(Brain *b, uint32_t id, const Genome *g, Mind *mind,
      * function returns. Passed below as a pointer to its first element. */
     float hidden[NET_HIDDEN];
     hidden_layer(g, in, hidden);
-    out->kind = strongest_output(g, mind, hidden);
+    float chances[ACT_COUNT];
+    chances_from_hidden(g, mind, hidden, chances);
+    out->kind = drawn_action(chances, in->draw);
     if (mind != NULL) {
         mark(mind, hidden, out->kind);
     }

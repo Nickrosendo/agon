@@ -3490,7 +3490,7 @@ static void test_senses_hunger_pain_near(void)
     CHECK(near(in.v[SENSE_HUNGER], 0.75f));
     CHECK(near(in.v[SENSE_PAIN], 0.25f));
     CHECK(in.v[SENSE_KIN_NEAR] == 0.0f && in.v[SENSE_STRANGERS_NEAR] == 0.0f);
-    CHECK(in.v[SENSE_RANDOM] == 0.0f); /* creature_sense never draws */
+    CHECK(in.draw == 0.0f); /* creature_sense never draws */
 
     /* A twin one way and two strangers the other, one of them diagonal. */
     int twin = spawn(&p, &w, 3, 2);
@@ -3539,7 +3539,7 @@ static void test_random_sense_is_seeded(void)
         brain_script_load(&sim.brain, script, 8);
         for (int k = 0; k < 8; k++) {
             sim_step(&sim);
-            seen[run][k] = brain_script_last_senses(&sim.brain).v[SENSE_RANDOM];
+            seen[run][k] = brain_script_last_senses(&sim.brain).draw;
         }
         sim_free(&sim);
     }

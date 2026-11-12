@@ -32,14 +32,26 @@ enum {
     GENE_SWIM, /* a swimming body: crosses shallows free, pays on land */
     GENE_NIGHT_EYES, /* sees in the dark, is dazzled in full light; costs upkeep */
     GENE_LEARN, /* how fast it learns in its life from meals and pain; costs upkeep */
+    /* How sure its choices are: high picks the strongest action nearly always,
+     * low tries others more often (brain_net.c). No upkeep: a dithering
+     * creature wastes ticks, and an over-sure one gets stuck. */
+    GENE_SURE,
     GENE_TRAITS
 };
+
+/* The sharpness of the choice at the sure gene's two ends: an action's chance
+ * is in proportion to exp(output * sharpness). At 20 an output ahead of the
+ * next by 0.25 already wins more than 99 times in 100, which is close to
+ * always taking the strongest; at 0.5 an output ahead by 1 wins only about
+ * 1.6 times as often. */
+#define SURE_MIN 0.5f
+#define SURE_MAX 20.0f
 
 /* The network: NET_IN senses plus a constant 1 feed NET_HIDDEN hidden
  * values, which plus a constant 1 feed NET_OUT outputs, one per action and
  * one per memory value. NET_IN must equal SENSE_COUNT and NET_OUT
  * ACT_COUNT + MEMORY_VALUES (brain.h); brain_net.c checks both when compiled. */
-#define NET_IN 59
+#define NET_IN 58
 #define NET_HIDDEN 6
 #define NET_OUT 12
 /* The parentheses matter: a macro is pasted as text, and without them
