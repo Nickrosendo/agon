@@ -28,19 +28,24 @@ static void small_grid(SkeletonRaster *r)
     r->oy = SKELETON_OY;
 }
 
-/* The wolf has frames for every action; a species without art has none. */
+/* Every species has frames for every action; a species number with no art
+ * set (there is none among the seventeen now, so one past them) has none. */
 static void test_clips(void)
 {
     BodyTraits t = hunter();
+    for (int sp = 0; sp < SPECIES_COUNT; sp++) {
+        for (int a = 0; a < ACTION_COUNT; a++) {
+            const ArtClip *clip = art_clip(sp, a, &t);
+            CHECK(clip != NULL && clip->frames > 0);
+        }
+        CHECK(art_scale_for(sp, 30, 20) > 0.0f);
+    }
     for (int a = 0; a < ACTION_COUNT; a++) {
-        const ArtClip *clip = art_clip(SPECIES_WOLF, a, &t);
-        CHECK(clip != NULL);
-        CHECK(clip != NULL && clip->frames > 0);
-        CHECK(art_clip(SPECIES_DEER, a, &t) == NULL);
+        CHECK(art_clip(SPECIES_COUNT, a, &t) == NULL);
     }
     CHECK(art_clip(SPECIES_WOLF, -1, &t) == NULL);
     CHECK(art_clip(SPECIES_WOLF, ACTION_COUNT, &t) == NULL);
-    CHECK(art_scale_for(SPECIES_DEER, 30, 20) == 0.0f);
+    CHECK(art_scale_for(SPECIES_COUNT, 30, 20) == 0.0f);
     CHECK(art_scale_for(SPECIES_WOLF, 0, 20) == 0.0f);
 }
 

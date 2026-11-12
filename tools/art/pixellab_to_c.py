@@ -23,11 +23,12 @@ CANVAS = 128  # larger than any PixelLab canvas (68 to 88 so far): only the marg
 # skeleton.h's inks
 NONE, DEEP, SHADOW, BASE, LIGHT, HIGH, BELLY, OUTLINE, MOUTH = range(9)
 HORN0 = 11  # INK_HORN0: five horn shades, dark to light, fixed colours
+MANE0 = 25  # INK_MANE0: five mane shades, dark to light, from the family's colour
 
 # species name -> its SPECIES_ value and the parts its frames already show
 # (art.h's ART_COVERS_ bits): a swimmer's body is its fin, an armoured one's
-# its plates (and the elephant's tusks its weapon), so their genes for those
-# do not send it back to the skeleton.
+# its plates (and the elephant's tusks and the rhino's horn its weapon), so
+# their genes for those do not send it back to the skeleton.
 SPECIES = {
     "wolf": ("SPECIES_WOLF", "0"),
     "fox": ("SPECIES_FOX", "0"),
@@ -35,6 +36,17 @@ SPECIES = {
     "otter": ("SPECIES_OTTER", "ART_COVERS_SWIM"),
     "armadillo": ("SPECIES_ARMADILLO", "ART_COVERS_ARMOUR"),
     "elephant": ("SPECIES_ELEPHANT", "ART_COVERS_ARMOUR | ART_COVERS_WEAPON"),
+    "lion": ("SPECIES_LION", "0"),
+    "tiger": ("SPECIES_TIGER", "0"),
+    "beaver": ("SPECIES_BEAVER", "ART_COVERS_SWIM"),
+    "hare": ("SPECIES_HARE", "0"),
+    "lemur": ("SPECIES_LEMUR", "0"),
+    "fennec": ("SPECIES_FENNEC", "0"),
+    "hippo": ("SPECIES_HIPPO", "ART_COVERS_SWIM"),
+    "rhino": ("SPECIES_RHINO", "ART_COVERS_ARMOUR | ART_COVERS_WEAPON"),
+    "gazelle": ("SPECIES_GAZELLE", "0"),
+    "deer": ("SPECIES_DEER", "0"),
+    "zebra": ("SPECIES_ZEBRA", "0"),
 }
 # the game's actions and the clip each is cut from
 ACTIONS = [
@@ -47,12 +59,43 @@ ACTIONS = [
     ("ACTION_SLEEP", "sleep"),
 ]
 # A clip drawn from another clip's frames, when PixelLab's own came out
-# broken: the armadillo's run had a blue blob and white chunks in it.
-CLIP_FROM = {"armadillo": {"run": "walk"}}
+# broken: the armadillo's run had a blue blob and white chunks in it, the
+# hippo's and the rhino's rest a skin so mottled it broke into specks (their
+# rest is the eating clip's standing first frame).
+CLIP_FROM = {"armadillo": {"run": "walk"}, "hippo": {"idle": "graze"},
+             "rhino": {"idle": "graze"}}
 
 # Species whose red-brown pixels are horn (drawn in the engine's fixed horn
 # colours), not the inside of a mouth.
 RED_IS_HORN = {"goat"}
+
+# Species whose reddish pixels are fur whatever the fur's own colour: the
+# hare's and the fennec's pink inner ears and the hippo's pink muzzle and
+# belly would otherwise be drawn as the inside of a mouth.
+RED_IS_FUR = {"hare", "fennec", "hippo"}
+
+# Rows at the top of the standing pose that are only ears, skipped when
+# looking for the eye: a gap in the fennec's big ear's outline looked like one.
+EAR_ROWS = {"fennec": 10}
+
+# Species the game draws no eye on, because the finder took something else
+# for it: a dark spot at the rhino's mouth, a nostril on the hippo's muzzle,
+# the base of the gazelle's ear, the deer's antlers, the zebra's mane (their
+# real eyes touch a fold, the outline or a stripe). PixelLab's own eye stays
+# in the frames; it just does not blink.
+NO_EYE = {"rhino", "hippo", "gazelle", "deer", "zebra"}
+
+# Species whose frames come mottled (the gazelle's head-butt, the deer's
+# eating): a lone
+# shadow or light pixel with the base shade on at least three of its four
+# sides becomes base, so the texture does not turn into specks.
+SMOOTH = {"gazelle", "deer"}
+
+# Species with a mane much darker than their fur (the lion's): pixels between
+# the outline and 60 below the fur's lightness are mane, drawn in the
+# engine's mane inks as the skeleton's lion is, instead of the fur's deepest
+# shade, which beside the outline read as a black blot.
+DARK_IS_MANE = {"lion"}
 
 # Which frames of a clip to use, (first, last) inclusive, last None for the
 # end; a clip not listed uses all. Custom clips start with the standing pose
@@ -67,6 +110,19 @@ FRAMES = {
     "elephant": {"bite": (1, 2), "sleep": (6, None)},
     "armadillo": {"bite": (1, None), "sleep": (5, None)},
     "fox": {"graze": (1, None), "bite": (1, None), "sleep": (4, None)},
+    "lion": {"bite": (1, None), "sleep": (6, None)},
+    "tiger": {"bite": (1, None), "sleep": (6, None)},
+    # the bite's frame 2 holds a white object at the mouth
+    "beaver": {"bite": (3, None), "sleep": (5, None)},
+    # the rest's frame 0 has a leaf at the mouth; the attack's last frame is smeared
+    "hare": {"idle": (1, None), "bite": (1, None), "attack": (1, 7), "sleep": (6, None)},
+    "lemur": {"bite": (1, None), "sleep": (5, None)},
+    "fennec": {"graze": (1, None), "bite": (1, None), "sleep": (4, None)},
+    "hippo": {"idle": (0, 0), "bite": (1, None), "sleep": (4, None)},
+    "rhino": {"idle": (0, 0), "bite": (1, None), "sleep": (5, None)},
+    "gazelle": {"bite": (1, None), "sleep": (5, None)},
+    "deer": {"bite": (1, None), "sleep": (6, None)},
+    "zebra": {"bite": (1, None), "sleep": (6, None)},
 }
 
 
@@ -107,8 +163,21 @@ def body_only(im):
     return out
 
 
+def no_green(im):
+    """The frame with clearly green pixels made transparent: grass a custom
+    graze drew at the mouth (the fennec's). No species has green fur."""
+    out = im.copy()
+    w, h = im.size
+    for y in range(h):
+        for x in range(w):
+            r, g, b, a = im.getpixel((x, y))
+            if a >= 128 and g > r + 30 and g > b + 20:
+                out.putpixel((x, y), (0, 0, 0, 0))
+    return out
+
+
 def on_canvas(path):
-    im = Image.open(path).convert("RGBA")
+    im = no_green(Image.open(path).convert("RGBA"))
     big = Image.new("RGBA", (CANVAS, CANVAS), (0, 0, 0, 0))
     big.alpha_composite(im, ((CANVAS - im.width) // 2, (CANVAS - im.height) // 2))
     return body_only(big)
@@ -143,11 +212,13 @@ def red_body(im, m):
     return reddish(*[sum(c[i] for c in near) / len(near) for i in range(3)])
 
 
-def ink_of(px, m, red_is_horn=False, red_fur=False):
+def ink_of(px, m, red_is_horn=False, red_fur=False, mane=False):
     r, g, b, a = px
     if a < 128:
         return NONE
     v = lum((r, g, b))
+    if mane and 40 <= v < m - 60:
+        return MANE0 + min(4, int((v - 40) * 5 / (m - 100)))
     if reddish(r, g, b) and not red_fur:
         if red_is_horn:
             return HORN0 + min(4, int(v / 40))
@@ -170,6 +241,47 @@ def ink_of(px, m, red_is_horn=False, red_fur=False):
     return HIGH
 
 
+def smooth(inks, w, h):
+    """Lone shadow or light pixels inside base fur become base. Decided on a
+    copy, so the order the pixels are visited in cannot matter."""
+    before = list(inks)
+    for y in range(1, h - 1):
+        for x in range(1, w - 1):
+            if before[y * w + x] not in (SHADOW, LIGHT):
+                continue
+            around = [before[y * w + x - 1], before[y * w + x + 1],
+                      before[(y - 1) * w + x], before[(y + 1) * w + x]]
+            if around.count(BASE) >= 3:
+                inks[y * w + x] = BASE
+
+
+def one_mane(inks, w, h):
+    """Keeps only the largest patch of touching mane pixels: dark shadow on a
+    leg or the belly can fall in the mane's band too, and specks of mane
+    there go back to the fur's deepest shade."""
+    seen, best = set(), []
+    for start in range(w * h):
+        if start in seen or not MANE0 <= inks[start] < MANE0 + 5:
+            continue
+        group, todo = [], [start]
+        seen.add(start)
+        while todo:
+            i = todo.pop()
+            group.append(i)
+            x, y = i % w, i // w
+            for nx, ny in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)):
+                j = ny * w + nx
+                if 0 <= nx < w and 0 <= ny < h and j not in seen and MANE0 <= inks[j] < MANE0 + 5:
+                    seen.add(j)
+                    todo.append(j)
+        if len(group) > len(best):
+            best = group
+    keep = set(best)
+    for i in range(w * h):
+        if MANE0 <= inks[i] < MANE0 + 5 and i not in keep:
+            inks[i] = DEEP
+
+
 def lone_dark(inks, w, h, x, y):
     """Whether (x, y) is outline-dark with fur all round it (one pixel, or
     two side by side): an eye, not an edge."""
@@ -186,10 +298,10 @@ def lone_dark(inks, w, h, x, y):
     return group if ring and all(v not in (NONE, OUTLINE) for v in ring) else None
 
 
-def find_eye(inks, w, h):
+def find_eye(inks, w, h, skip=0):
     """The standing frame's eye: the first lone dark pixel group in the front
     third and top half of the body. Returns its pixel, or None."""
-    for y in range(h // 2):
+    for y in range(skip, h // 2):
         for x in range(w - 1, w - 1 - w // 3, -1):
             group = lone_dark(inks, w, h, x, y)
             if group:
@@ -254,16 +366,22 @@ def main():
     sets = []
     for name in sorted(n for n in SPECIES if os.path.isdir(os.path.join(root, n))):
         folder = os.path.join(root, name)
-        stand = on_canvas(os.path.join(folder, "idle", "0.png"))
+        # the standing pose: the first rest frame used, from whichever clip
+        # the rest is drawn from
+        first = FRAMES.get(name, {}).get("idle", (0, None))[0]
+        rest = CLIP_FROM.get(name, {}).get("idle", "idle")
+        stand = on_canvas(os.path.join(folder, rest, "%d.png" % first))
         x0, y0, x1, y1 = stand.getbbox()
         anchor_x = (x0 + x1) / 2.0
         anchor_y = y1 - 1
         m = body_level(stand)
         sx0, sy0, sx1, sy1 = stand.getbbox()
         sw, sh = sx1 - sx0, sy1 - sy0
-        sinks = [ink_of(stand.getpixel((x, y)), m, name in RED_IS_HORN, red_body(stand, m))
+        sinks = [ink_of(stand.getpixel((x, y)), m, name in RED_IS_HORN,
+                        red_body(stand, m) or name in RED_IS_FUR,
+                        name in DARK_IS_MANE)
                  for y in range(sy0, sy1) for x in range(sx0, sx1)]
-        eye = find_eye(sinks, sw, sh)
+        eye = None if name in NO_EYE else find_eye(sinks, sw, sh, EAR_ROWS.get(name, 0))
         offset = None
         if eye is not None:
             nx, ny = nose(sinks, sw, sh)
@@ -281,7 +399,7 @@ def main():
             # colour should be the family's base all the same.
             cm = body_level(frames[0])
             horn = name in RED_IS_HORN
-            red_fur = red_body(frames[0], cm)
+            red_fur = red_body(frames[0], cm) or name in RED_IS_FUR
             fnames = []
             # The game's eye for every frame of the clip or for none: an eye
             # that comes and goes would blink on its own.
@@ -289,8 +407,11 @@ def main():
             for im in frames:
                 bx0, by0, bx1, by1 = im.getbbox()
                 fw, fh = bx1 - bx0, by1 - by0
-                inks = [ink_of(im.getpixel((x, y)), cm, horn, red_fur)
+                inks = [ink_of(im.getpixel((x, y)), cm, horn, red_fur, name in DARK_IS_MANE)
                         for y in range(by0, by1) for x in range(bx0, bx1)]
+                one_mane(inks, fw, fh)
+                if name in SMOOTH:
+                    smooth(inks, fw, fh)
                 plain = list(inks)
                 ex, ey = place_eye(inks, fw, fh, offset)
                 placed.append((inks, plain, ex, ey))

@@ -1,13 +1,14 @@
 # Creature art from PixelLab
 
 The window program draws a species from frames instead of its skeleton when
-`src/gfx/art_data.c` has frames for it (only the wolf so far). This folder
-holds the frames as PixelLab made them and the two scripts that turn them
-into that file.
+`src/gfx/art_data.c` has frames for it: all seventeen species since
+2026-11-12. This folder holds the frames as PixelLab made them and the
+scripts that turn them into that file.
 
 | Path | What it is |
 |---|---|
 | `pixellab/<species>/<clip>/N.png` | PixelLab's east-facing frames, as downloaded: clips `idle`, `walk`, `run`, `graze`, `bite`, `attack`, `sleep` |
+| `fetch_pixellab.py` | Downloads a character's east frames into `pixellab/<species>/` |
 | `pixellab_to_c.py` | Writes `src/gfx/art_data.c`: each frame cut to its inked box, every pixel one of the engine's inks, the anchor and the eye per frame |
 | `preview_art.py` | Draws `art_data.c` back as a picture, the eye in red, to check a conversion before building |
 
@@ -50,6 +51,51 @@ only. Template clips where the template had one, custom motions otherwise;
 | armadillo | `3ae0bad6-7d3f-4f39-be0e-83de9e0d54ac` | cat | covers armour; its run came out broken, so the run uses the walk's frames |
 | elephant | `677ccd73-aba5-4ab7-94b3-37a769ac5ca9` | bear | covers armour and weapon (tusks); bite cut at frame 2 (an object appears after) |
 
+## The last eleven (2026-11-12)
+
+Made the same way (standard mode, quadruped, side view, size 48, east only).
+
+| Species | PixelLab id | Template | Notes |
+|---|---|---|---|
+| lion | `f7ec282f-8354-489d-a44a-9da623ad1e37` | lion | its mane in the engine's mane inks (`DARK_IS_MANE`) |
+| tiger | `4133f3f1-f3d1-430b-b68a-38b02352cef6` | lion | stripes come through as dark interior pixels |
+| beaver | `16bb6c7b-83c0-4833-baaa-680975922f62` | cat | covers swim; bite from frame 3 (frame 2 holds a white object) |
+| hippo | `4d2715f2-fa72-49b7-b73b-d3188c1c5a28` | bear | covers swim; its rest is the eating clip's first frame (the rest clip's skin broke into specks); pink muzzle stays fur; no game eye |
+| rhino | `37b72934-2f64-4909-80f2-480cd02cc4d2` | bear | covers armour and weapon (its horn); rest from the eating clip's first frame; no game eye |
+| hare | `f7565960-2379-4d41-94f1-c470804116ad` | cat | pink ears stay fur; rest from frame 1 (frame 0 has a leaf); attack frames 1–7 |
+| gazelle | `d92d9d1b-1365-4700-8c9f-a8cc70065a75` | horse | run remade with the 6-frame template (the 4-frame one was blotchy); smoothed; no game eye |
+| fennec | `17267a27-e6fa-4d8c-af0d-3e752dd8babb` | dog | pink ears stay fur; grass at the mouth dropped; eye search skips its ears |
+| lemur | `641ea201-1442-4409-b9d1-23195cbd1cae` | cat | |
+| deer | `a59eed15-a845-46c5-8bd4-4e0ec70763a8` | horse | smoothed; no game eye |
+| zebra | `7be92e22-b780-4b8a-9113-0c1e8fad0e5f` | horse | stripes as the deepest fur shade; no game eye |
+
+Template clips used: `walk-4-frames`, `running-4-frames` (the gazelle's
+`running-6-frames`), the rest clip (`idle`; the bear's `idle-long`, the
+horse's `rest-idle`), `eating` for graze where the template has it, and the
+lion's `attack` and the horse's `running-headbutt` (the zebra's `attack`).
+Custom motions, written as `action_description`, 4 frames for a bite and 8
+otherwise (the dog's graze 6):
+
+| Clip | Prompt |
+|---|---|
+| bite (hunters, beaver, hippo, lemur, fennec) | "snaps its jaws forward in a quick bite, then pulls its head back" |
+| bite (hare) | "stretches its head forward and nips quickly, then pulls back" |
+| bite (rhino, horse template) | "stretches its neck forward and bites, then pulls back" |
+| graze (fennec) | "lowers head to the ground and nibbles grass, then lifts it a little" |
+| attack (beaver, lemur) | "crouches low, then lunges forward with its head and front paws" |
+| attack (fennec) | "crouches low, then pounces forward with front paws out" |
+| attack (hare) | "crouches, then leaps forward kicking out with its front paws" |
+| attack (hippo) | "opens its huge mouth wide and lunges forward, then closes it" |
+| attack (rhino) | "lowers its head and charges forward horn first, then lifts its head" |
+| sleep (lion, tiger) | "lies down on the ground on its belly, rests its head on its front paws and sleeps" |
+| sleep (beaver, lemur, hippo, rhino) | "lies down flat on its belly on the ground, rests its head and sleeps" |
+| sleep (hare) | "crouches down low on the ground, tucks its legs under its body, lays its ears back and sleeps" |
+| sleep (fennec) | "lies down on the ground, curls up with its tail around its body and sleeps" |
+| sleep (horse template) | "lies down on the ground with its legs folded under its body, lowers its head and sleeps" |
+
+PixelLab's custom canvases vary (68 to 88 here) but always share the
+template's centre, so the converter's 128 × 128 canvas still lines them up.
+
 ## Adding a species
 
 1. In PixelLab, `create_character` the same way (standard, quadruped, the
@@ -76,3 +122,24 @@ only. Template clips where the template had one, custom motions otherwise;
   horn for `RED_IS_HORN` species, unless the fur itself is reddish.
 - Finds the eye on the standing frame and places it on every frame of a clip
   from the nose, or on none.
+
+Rules set per species, each a set or table at the top of `pixellab_to_c.py`:
+
+- `CLIP_FROM`: a clip drawn from another clip's frames (the armadillo's run
+  from its walk, the hippo's and rhino's rest from their eating clip).
+- `FRAMES`: which frames of a clip are used. The standing pose (anchor,
+  size, eye) is the first rest frame used.
+- `RED_IS_HORN`: reddish pixels are horn (the goat). `RED_IS_FUR`: reddish
+  pixels stay fur (pink ears and muzzles).
+- `DARK_IS_MANE`: pixels between the outline and 60 below the fur's lightness
+  are mane, in the engine's five mane shades; only the largest patch of them
+  is kept, so shadow on a leg is not mane. The art drawer outlines mane like
+  fur.
+- `EAR_ROWS`: top rows the eye search skips. `NO_EYE`: the game draws no eye
+  (PixelLab's own stays, without blinking) where the finder took something
+  else for one.
+- `SMOOTH`: a lone shadow or light pixel with base on three of its four sides
+  becomes base, for mottled frames.
+
+And for every species: clearly green pixels (grass a motion drew) are dropped
+before the body is found.

@@ -57,7 +57,7 @@ static const char WINDOW_USAGE[] =
     "  --frames N        stop after N frames, without waiting between them\n"
     "  --screenshot PATH write the last frame there as a PPM image\n"
     "  --paused          start paused, as if space were pressed first\n"
-    "  --no-art          start with the wolves drawn from the skeleton, not their\n"
+    "  --no-art          start with the animals drawn from the skeleton, not their\n"
     "                    drawn frames (the a key switches)\n"
     "  --keys TEXT       with --frames: press these keys, one a frame, in the\n"
     "                    last frames (\"l\" shows the life story page, \"b\" the\n"
@@ -72,7 +72,7 @@ static const char WINDOW_USAGE[] =
     "      b opens the species lab, every animal side by side, and closes it\n"
     "      again; in it 1 to 6 choose the action shown (walk, run, rest,\n"
     "      graze, bite, sleep).\n"
-    "      a switches the wolves between their drawn frames and the skeleton.\n"
+    "      a switches the animals between their drawn frames and the skeleton.\n"
     "mouse: wheel zooms, dragging moves, clicking a creature follows it,\n"
     "       clicking bare ground lets go. On the panel, clicking \"top hunter\",\n"
     "       \"oldest\" or the largest family's body follows that creature.\n";

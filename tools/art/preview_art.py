@@ -15,11 +15,13 @@ from PIL import Image
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, "..", "..", "src", "gfx", "art_data.c")
 # a grey stand-in for each ink: none, deep, shadow, base, light, high, belly,
-# outline, mouth, and the five horn shades
+# outline, mouth, the five horn shades and the five mane shades (brown)
 COLOUR = {1: (40, 40, 50), 2: (80, 80, 95), 3: (120, 120, 135), 4: (160, 160, 175),
           5: (200, 200, 210), 6: (225, 220, 210), 7: (10, 10, 15), 8: (150, 30, 40),
           11: (70, 55, 40), 12: (105, 85, 60), 13: (140, 115, 85), 14: (175, 150, 115),
-          15: (210, 190, 155)}
+          15: (210, 190, 155),
+          25: (60, 30, 20), 26: (85, 45, 28), 27: (110, 60, 35), 28: (135, 80, 45),
+          29: (160, 100, 60)}
 GROUND = (40, 60, 40)
 
 
