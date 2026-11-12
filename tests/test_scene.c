@@ -495,10 +495,12 @@ static void test_known_world_pixels(void)
          * creatures elsewhere at the three wider levels; drawing unchanged.
          * Re-pinned for the fading view (2026-11-12): brains re-rolled for the
          * new senses, the same three levels. Re-pinned for the remembered
-         * meal place, a gene and five senses: the two wider levels. */
+         * meal place, a gene and five senses: the two wider levels.
+         * Re-pinned for the founder instinct, a hidden layer of 10 and a
+         * starting spread of 0.5: the three wider levels. */
         static const uint64_t EXPECTED[CAMERA_LEVELS] = {
-            0xbe5f57fb7c7bdabdu, 0x5a015897532bfe08u,
-            0x9e79ee6f41ae2944u, 0xab4eb04c4b3edf45u,
+            0xbe5f57fb7c7bdabdu, 0x657c29a2acd28cf0u,
+            0x9af4fc8b0b58066du, 0x98b4ac2b8979d875u,
         };
         if (hashes[level] != EXPECTED[level]) {
             printf("level %d: 0x%llxu\n", level,

@@ -55,7 +55,7 @@ enum {
  * one per memory value. NET_IN must equal SENSE_COUNT and NET_OUT
  * ACT_COUNT + MEMORY_VALUES (brain.h); brain_net.c checks both when compiled. */
 #define NET_IN 61
-#define NET_HIDDEN 6
+#define NET_HIDDEN 10
 #define NET_OUT 12
 /* The parentheses matter: a macro is pasted as text, and without them
  * "2 * NET_WEIGHTS" would multiply only the first term. */
@@ -93,6 +93,22 @@ float genome_kinship(const Genome *a, const Genome *b);
  * ones. Only the traits count, never the network weights. Hue is a distance
  * round the colour wheel. The same either way round. */
 float genome_body_likeness(const Genome *a, const Genome *b);
+
+/* The founder instinct (the foraging design, section 8): a fixed recipe of
+ * weights through the first four hidden values that makes a brain bite food in
+ * reach, step towards plants ahead, turn towards plants or a remembered meal to
+ * one side, and turn to look round when hungry with nothing in sight. Founders
+ * get it added to their random weights when instinct is on; children inherit
+ * and mutate it like any other genes, and no rule ever reads or restores it.
+ * INSTINCT_MAX is room enough for the whole recipe. */
+#define INSTINCT_MAX 48
+/* Adds the recipe to g's weights, each kept within plus or minus weight_limit.
+ * Draws no random numbers. */
+void genome_add_instinct(Genome *g, const Settings *s);
+/* Writes the recipe, at most max entries: where each weight sits in Genome.g
+ * and the value the recipe adds there. Returns how many. For tests and probes
+ * measuring how far evolution has moved from it. */
+int genome_instinct(int *index, float *value, int max);
 
 /* Where a weight sits in Genome.g. From input i (NET_IN for the constant
  * 1, the bias) into hidden value h; from hidden value j (NET_HIDDEN for

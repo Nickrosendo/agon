@@ -1738,6 +1738,36 @@ static void test_place_span_and_price(void)
     world_free(&w);
 }
 
+/* The kinship cache gives exactly genome_kinship, either way round, and
+ * clearing the pool forgets it (ids then start again and name others). */
+static void test_kinship_cache(void)
+{
+    Settings s = settings_default();
+    Rng r;
+    rng_seed(&r, 12);
+    World w;
+    make_world(&w, 8, 8);
+    Pool p;
+    CHECK(pool_init(&p, 4));
+    CHECK(pool_cache_kinship(&p));
+    int a = spawn(&p, &w, 1, 1);
+    int b = spawn(&p, &w, 2, 1);
+    genome_random(&p.items[a].genome, &r, &s);
+    genome_random(&p.items[b].genome, &r, &s);
+    float want = genome_kinship(&p.items[a].genome, &p.items[b].genome);
+    CHECK(pool_kinship(&p, &p.items[a], &p.items[b]) == want);
+    CHECK(pool_kinship(&p, &p.items[b], &p.items[a]) == want); /* remembered */
+    pool_clear(&p);
+    world_free(&w);
+    make_world(&w, 8, 8);
+    a = spawn(&p, &w, 1, 1); /* the same ids as before, other creatures */
+    b = spawn(&p, &w, 2, 1);
+    p.items[b].genome = p.items[a].genome;
+    CHECK(pool_kinship(&p, &p.items[a], &p.items[b]) == 1.0f);
+    pool_free(&p);
+    world_free(&w);
+}
+
 static void test_view_clarity_falls_smoothly(void)
 {
     /* Falls at every step, with no jump bigger than the one before it near
@@ -4500,6 +4530,7 @@ int main(void)
     test_child_starts_blank();
     test_senses_blocked();
     test_view_clarity_falls_smoothly();
+    test_kinship_cache();
     test_view_plant_nearer_is_stronger();
     test_view_many_far_like_one_near();
     test_view_rock_and_creatures_hide();

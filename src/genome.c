@@ -1,6 +1,10 @@
 #include "genome.h"
 
-#include <math.h> /* fabsf, floorf, isfinite */
+#include <assert.h> /* static_assert */
+#include <math.h>   /* fabsf, floorf, isfinite */
+#include <stdbool.h>
+
+#include "brain.h" /* the senses and actions the instinct is made of */
 
 /* Two values "nearly match" for genome_kinship when they differ by less
  * than this. Random genomes rarely match (about 1 value in 20); a child
@@ -38,6 +42,100 @@ void genome_random(Genome *g, Rng *r, const Settings *s)
     for (int i = GENE_TRAITS; i < GENOME_LEN; i++) {
         float w = rng_normal(r) * s->weight_start_spread;
         g->g[i] = clamp(w, -s->weight_limit, s->weight_limit);
+    }
+}
+
+/* The recipe, one row per weight: into hidden value h from sense i (NET_IN for
+ * the hidden value's bias), or from hidden value j (NET_HIDDEN for the output's
+ * bias) into output o. The four hidden values mean, roughly:
+ *   0 "food within a bite": +0.96 with it, -0.96 without;
+ *   1 "the way to turn": plants to the left minus the right, and less strongly
+ *     a remembered meal to the left minus the right;
+ *   2 "the way ahead is good": plants or a remembered meal ahead, not blocked;
+ *   3 "hungry, and nothing in sight or in mind": hunger, less everything seen,
+ *     in reach or remembered.
+ * Worked through by hand in the study doc of 2026-11-12; checked by
+ * test_instinct_habit (tests/test_brain.c). */
+typedef struct {
+    bool into_hidden; /* true: sense i into hidden h; false: hidden j into output o */
+    int to, from;     /* h and i, or o and j */
+    float value;
+} InstinctWeight;
+
+/* The plant value of view v, as a sense position (brain.h). */
+#define PLANT_IN(v) (SENSE_VIEWS + (v) * VIEW_VALUES + VIEW_PLANT)
+
+static const InstinctWeight INSTINCT[] = {
+    /* hidden 0: food within a bite */
+    {true, 0, SENSE_REACH_FOOD, 4.0f},
+    {true, 0, NET_IN, -2.0f},
+    /* hidden 1: the way to turn, + for left */
+    {true, 1, PLANT_IN(VIEW_LEFT), 4.0f},
+    {true, 1, PLANT_IN(VIEW_RIGHT), -4.0f},
+    {true, 1, SENSE_PLACE_LEFT, 2.0f},
+    {true, 1, SENSE_PLACE_RIGHT, -2.0f},
+    /* hidden 2: the way ahead is good */
+    {true, 2, PLANT_IN(VIEW_AHEAD), 4.0f},
+    {true, 2, SENSE_PLACE_AHEAD, 2.0f},
+    {true, 2, SENSE_BLOCKED, -4.0f},
+    {true, 2, NET_IN, -0.5f},
+    /* hidden 3: hungry with nothing in sight or in mind */
+    {true, 3, SENSE_HUNGER, 3.0f},
+    {true, 3, PLANT_IN(VIEW_AHEAD), -4.0f},
+    {true, 3, PLANT_IN(VIEW_LEFT), -4.0f},
+    {true, 3, PLANT_IN(VIEW_RIGHT), -4.0f},
+    {true, 3, SENSE_REACH_FOOD, -4.0f},
+    {true, 3, SENSE_PLACE_LEFT, -2.0f},
+    {true, 3, SENSE_PLACE_AHEAD, -2.0f},
+    {true, 3, SENSE_PLACE_RIGHT, -2.0f},
+    {true, 3, NET_IN, -1.5f},
+    /* the outputs */
+    {false, ACT_BITE, 0, 4.0f},
+    {false, ACT_BITE, NET_HIDDEN, 1.0f},
+    {false, ACT_MOVE, 0, -2.0f},
+    {false, ACT_MOVE, 2, 3.0f},
+    {false, ACT_MOVE, NET_HIDDEN, 1.0f},
+    {false, ACT_TURN_LEFT, 1, 3.0f},
+    {false, ACT_TURN_LEFT, NET_HIDDEN, -0.5f},
+    {false, ACT_TURN_RIGHT, 1, -3.0f},
+    /* 1.5 * hidden 3 + 1.5 is 0 when hidden 3 is at its floor of -1 and up to
+     * 3 when it is at +1: looking round only ever adds to turning right. With
+     * a plain 3 * hidden 3 it would also take away from it, and a creature
+     * seeing food to its right would turn away from it. */
+    {false, ACT_TURN_RIGHT, 3, 1.5f},
+    {false, ACT_TURN_RIGHT, NET_HIDDEN, 1.0f},
+};
+
+/* sizeof an array divided by the size of one element: how many it holds. It
+ * works only on the array itself, where the compiler knows its size; inside a
+ * function that was passed it, it would be a pointer, and the sum would be
+ * wrong without any warning. */
+#define INSTINCT_COUNT ((int)(sizeof(INSTINCT) / sizeof(INSTINCT[0])))
+static_assert(sizeof(INSTINCT) / sizeof(INSTINCT[0]) <= INSTINCT_MAX,
+              "INSTINCT_MAX holds the whole recipe");
+
+static int instinct_index(const InstinctWeight *w)
+{
+    return w->into_hidden ? net_hidden_weight(w->to, w->from)
+                          : net_out_weight(w->to, w->from);
+}
+
+int genome_instinct(int *index, float *value, int max)
+{
+    int n = INSTINCT_COUNT < max ? INSTINCT_COUNT : max;
+    for (int k = 0; k < n; k++) {
+        index[k] = instinct_index(&INSTINCT[k]);
+        value[k] = INSTINCT[k].value;
+    }
+    return n;
+}
+
+void genome_add_instinct(Genome *g, const Settings *s)
+{
+    for (int k = 0; k < INSTINCT_COUNT; k++) {
+        int at = instinct_index(&INSTINCT[k]);
+        g->g[at] = clamp(g->g[at] + INSTINCT[k].value, -s->weight_limit,
+                         s->weight_limit);
     }
 }
 

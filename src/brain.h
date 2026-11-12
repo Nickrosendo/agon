@@ -190,7 +190,7 @@ typedef struct Brain Brain;
  * NET_HIDDEN lives, is not included by this header (which only declares that a
  * Genome exists), and brain_net.c, which includes both, checks they agree.
  */
-#define MIND_HIDDEN 6
+#define MIND_HIDDEN 10
 #define MIND_LEN (ACT_COUNT * (MIND_HIDDEN + 1))
 typedef struct {
     float adjust[MIND_LEN];

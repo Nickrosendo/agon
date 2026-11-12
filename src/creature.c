@@ -47,6 +47,7 @@ void pool_clear(Pool *p)
     p->free_head = 0;
     p->count = 0;
     p->next_id = 0;
+    pool_forget_kinship(p); /* ids start again from 0 */
     /* A new pool starts at noon, in full light, until the Sim says otherwise:
      * a pool made by hand (a test, a tool) would otherwise be at light 0, and
      * every creature in it near blind. */
@@ -69,10 +70,68 @@ void pool_count_plant_eaters(Pool *p, const Settings *s)
     p->plant_eaters = n;
 }
 
+/* One remembered kinship: the pair of ids, the lower first, and the answer. */
+typedef struct {
+    uint32_t lo, hi;
+    float kin;
+    bool used;
+} KinEntry;
+
+/* A table of 2^16 entries, each pair of ids always in the same one (its hash),
+ * a newer pair overwriting an older: 1 MB, enough for every pair of
+ * neighbours in a crowded world. A struct with a name, so creature.h can hold
+ * a pointer to it without saying what is inside. */
+#define KIN_CACHE_BITS 16
+struct KinCache {
+    KinEntry entry[1 << KIN_CACHE_BITS];
+};
+
 void pool_free(Pool *p)
 {
     free(p->items);
+    free(p->kin_cache); /* free(NULL) does nothing */
     *p = (Pool){0};
+}
+
+bool pool_cache_kinship(Pool *p)
+{
+    if (p->kin_cache == NULL) {
+        /* calloc zeroes what it gives: every entry starts unused. */
+        p->kin_cache = calloc(1, sizeof(*p->kin_cache));
+    }
+    return p->kin_cache != NULL;
+}
+
+void pool_forget_kinship(Pool *p)
+{
+    if (p->kin_cache != NULL) {
+        memset(p->kin_cache, 0, sizeof(*p->kin_cache));
+    }
+}
+
+float pool_kinship(const Pool *p, const Creature *a, const Creature *b)
+{
+    /* p is const, but what kin_cache points to is not: a const struct holds a
+     * pointer it may not change, while the memory behind that pointer may
+     * change freely. The cache never changes an answer, only how fast it
+     * comes, so the pool still looks the same to every reader. */
+    struct KinCache *cache = p->kin_cache;
+    if (cache == NULL) {
+        return genome_kinship(&a->genome, &b->genome);
+    }
+    uint32_t lo = a->id < b->id ? a->id : b->id;
+    uint32_t hi = a->id < b->id ? b->id : a->id;
+    /* Multiplying by a large odd constant mixes the bits of the pair; the top
+     * KIN_CACHE_BITS bits of the product pick the entry. */
+    uint64_t key = ((uint64_t)hi << 32) | lo;
+    uint64_t mixed = key * 0x9E3779B97F4A7C15ull;
+    KinEntry *e = &cache->entry[mixed >> (64 - KIN_CACHE_BITS)];
+    if (e->used && e->lo == lo && e->hi == hi) {
+        return e->kin;
+    }
+    float kin = genome_kinship(&a->genome, &b->genome);
+    *e = (KinEntry){lo, hi, kin, true};
+    return kin;
 }
 
 int pool_spawn(Pool *p, World *w, int x, int y)
@@ -472,7 +531,7 @@ static float kin_share_around(const World *w, const Pool *p, const Creature *c,
     for (int dir = 0; dir < 8; dir++) {
         int other = w->occupant[world_idx(w, c->x + AROUND_X[dir], c->y + AROUND_Y[dir])];
         if (other >= 0 &&
-            genome_kinship(&c->genome, &p->items[other].genome) >= s->kin_sense) {
+            pool_kinship(p, c, &p->items[other]) >= s->kin_sense) {
             kin++;
         }
     }
@@ -501,7 +560,7 @@ static bool kin_hit_near(const World *w, const Pool *p, const Creature *c,
             }
             const Creature *o = &p->items[other];
             if (hit_lately(o, p->now, s) &&
-                genome_kinship(&c->genome, &o->genome) >= s->kin_sense) {
+                pool_kinship(p, c, o) >= s->kin_sense) {
                 return true;
             }
         }
@@ -560,7 +619,7 @@ static void describe_seen(const World *w, const Pool *p, const Creature *c,
     float t = creature_size(o, s);
     out[VIEW_SEEN] = clear;
     out[VIEW_RELSIZE] = clear * t / (a + t);
-    out[VIEW_KIN] = clear * genome_kinship(&c->genome, &o->genome);
+    out[VIEW_KIN] = clear * pool_kinship(p, c, o);
     /* A bool converted to float is exactly 0.0f or 1.0f. */
     out[VIEW_HUNTER] = clear * (float)creature_is_hunter(o);
     out[VIEW_READY] = o->mate_wish > 0 ? clear : 0.0f;
@@ -692,7 +751,7 @@ static void sense_neighbours(const World *w, const Pool *p, const Creature *c,
             continue;
         }
         const Creature *o = &p->items[other];
-        if (genome_kinship(&c->genome, &o->genome) >= s->kin_sense) {
+        if (pool_kinship(p, c, o) >= s->kin_sense) {
             kin++;
         } else {
             strangers++;
@@ -747,7 +806,7 @@ static void hear_one(const World *w, const Pool *p, const Creature *c,
     if (loud < h->kin_loud && loud <= h->stranger_loud) {
         return;
     }
-    if (genome_kinship(&c->genome, &who->genome) >= s->kin_sense) {
+    if (pool_kinship(p, c, who) >= s->kin_sense) {
         /* Of two equally loud, the lower id: the answer must not depend on the
          * order the calls are looked at in, or sorting them would change the
          * world. Only the side can differ between them. */
@@ -1474,7 +1533,7 @@ static bool weigh_partner(const Pool *p, const Creature *c, int other,
         *best = other;
         return true;
     }
-    float kin = genome_kinship(&c->genome, &p->items[other].genome);
+    float kin = pool_kinship(p, c, &p->items[other]);
     if (kin > *best_kin) {
         *best = other;
         *best_kin = kin;

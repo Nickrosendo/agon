@@ -268,6 +268,9 @@ typedef struct {
      * whose callers are then searched one by one. */
     const int32_t *call_start;
     int call_cols, call_rows;
+    /* Kinships already worked out, or NULL to work each one out afresh
+     * (pool_kinship). Owned by the pool; neither saved nor hashed. */
+    struct KinCache *kin_cache;
 } Pool;
 
 /* Allocates capacity empty slots. False for a capacity below 1 or when
@@ -286,6 +289,19 @@ void pool_count_plant_eaters(Pool *p, const Settings *s);
 bool creature_counts_as_plant_eater(const Creature *c, const Settings *s);
 /* Frees the slots and empties *p; safe to call twice. */
 void pool_free(Pool *p);
+/* From now on, remember kinships the pool has worked out (pool_kinship). For a
+ * pool whose genomes never change after birth, which is the Sim's: a test that
+ * edits the genome of a creature already compared would read the old kinship.
+ * False when out of memory; the pool then simply works each one out afresh. */
+bool pool_cache_kinship(Pool *p);
+/* Forgets every remembered kinship: for when ids may name other creatures than
+ * before (a pool cleared, a world loaded over it). */
+void pool_forget_kinship(Pool *p);
+/* genome_kinship of the two creatures' genomes, the same number exactly, from
+ * the cache when this pair was compared before. A creature's genome is fixed
+ * from its birth to its death and an id is never given twice in a run, so a
+ * pair of ids names one answer for the whole run. */
+float pool_kinship(const Pool *p, const Creature *a, const Creature *b);
 /* Places a new creature at (x, y), heading north, with energy 0, age 0,
  * health 1 and an all-zero genome. Returns its slot index, or -1 when the pool
  * is full or the cell is not free soil; nothing changes then. The caller sets

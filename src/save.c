@@ -36,7 +36,7 @@
  */
 #define SAVE_MAGIC "AGONSAVE"
 #define SAVE_MAGIC_LEN 8
-#define SAVE_VERSION 25u
+#define SAVE_VERSION 26u
 
 /* No value in a healthy world comes near this. Bounding them keeps sums
  * from reaching infinity, and float-to-int conversions defined. */
@@ -778,6 +778,7 @@ static void check_free_list(Reader *r, const Pool *p)
  * creatures say they stand. */
 static void get_pool(Reader *r, Pool *p, World *w, const Settings *set)
 {
+    pool_forget_kinship(p); /* the file's ids name its own creatures */
     p->free_head = get_i32(r);
     p->next_id = get_u32(r);
     p->births_refused = get_u32(r);

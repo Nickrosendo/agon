@@ -246,7 +246,9 @@ typedef struct {
      * mutation_spread times that value's range (1 for a trait, twice
      * weight_limit for a weight). Weights stay within plus or minus
      * weight_limit; a new random genome draws them with spread
-     * weight_start_spread. */
+     * weight_start_spread. At 1.0 the founders' random weights drowned the
+     * founder instinct (each output moved by about plus or minus 3 by chance);
+     * at 0.5 the instinct shows and founders still differ (2026-11-12). */
     float mutation_rate;
     float mutation_spread;
     float weight_limit;
@@ -441,6 +443,9 @@ typedef struct {
      * least meal_place_share times what mating needs is remembered; the memory
      * lasts up to place_memory_max ticks at the full gene, which costs
      * place_memory_upkeep a tick. */
+    /* 1: founders start with the instinct (genome_add_instinct) on top of
+     * their random weights; 0: random founders only. */
+    int instinct;
     float meal_place_share;
     int place_memory_max;
     float place_memory_upkeep;

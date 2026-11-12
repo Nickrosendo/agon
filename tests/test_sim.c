@@ -1,10 +1,13 @@
 #include "test.h"
+
+#include <string.h> /* memcmp */
 #include <math.h>  /* fabsf */
 #include <stdio.h> /* snprintf */
 #include "brain_script.h"
 #include "creature.h"
 
 #include "settings.h"
+#include "genome.h"
 #include "sim.h"
 #include "years.h"
 
@@ -78,9 +81,11 @@
  * stranger ahead is an attack) and hits of 15 instead of 6; then the
  * weighted-chance choice, a gene, one sense fewer (the random one) and a draw
  * per decision; then the fading view, three wide views in place of the three
- * rays, and a sense of food within a bite; then the remembered meal place.
+ * rays, and a sense of food within a bite; then the remembered meal place;
+ * then ten hidden values, founders with the food-finding instinct, and a
+ * starting spread of 0.5.
  */
-#define SEED_7_AFTER_500 0xc8c1257204c6583dULL
+#define SEED_7_AFTER_500 0x2706eae63000a290ULL
 
 /* One creature in a bare 16x16 world with the scripted brain, resting for a
  * tick, calling or not. Returns the energy it has left. */
@@ -519,8 +524,39 @@ static void test_floor_brings_a_world_back(void)
     sim_free(&s);
 }
 
+/* With the instinct on, founders are the same random founders as with it off,
+ * plus the recipe on their weights: the same draws, the same traits. */
+static void test_founders_get_the_instinct(void)
+{
+    Settings on = settings_default();
+    Settings off = on;
+    off.instinct = 0;
+    Sim a, b;
+    CHECK(sim_init(&a, &on, 7, 64, 32));
+    CHECK(sim_init(&b, &off, 7, 64, 32));
+    CHECK(a.pool.count == b.pool.count && a.pool.count > 0);
+    int index[INSTINCT_MAX];
+    float value[INSTINCT_MAX];
+    int n = genome_instinct(index, value, INSTINCT_MAX);
+    int wrong = 0;
+    for (int i = 0; i < a.pool.capacity; i++) {
+        if (!a.pool.items[i].alive) {
+            continue;
+        }
+        const Genome *x = &a.pool.items[i].genome;
+        Genome want = b.pool.items[i].genome;
+        genome_add_instinct(&want, &on);
+        wrong += memcmp(x, &want, sizeof(want)) != 0;
+    }
+    CHECK(wrong == 0);
+    CHECK(n > 0);
+    sim_free(&a);
+    sim_free(&b);
+}
+
 int main(void)
 {
+    test_founders_get_the_instinct();
     test_records_start_from_the_founders();
     test_records_follow_the_world();
     test_records_do_not_change_the_world();

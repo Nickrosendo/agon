@@ -88,6 +88,9 @@ static int place_creature(Sim *s)
             /* A placed creature has no parent: a random genome, and the
              * lineage pool_spawn gave it (its own id) starts a new line. */
             genome_random(&c->genome, &s->rng, &s->set);
+            if (s->set.instinct) {
+                genome_add_instinct(&c->genome, &s->set); /* draws nothing */
+            }
             c->health = creature_max_health(c, &s->set); /* needs the genes */
             creature_start_family(c);
             chronicle_note(recorder(s), c,
@@ -152,7 +155,8 @@ bool sim_alloc(Sim *s, const Settings *set, int w, int h)
     *s = (Sim){0};
     s->set = *set; /* copies the whole struct, brain_name's characters too */
     if (!world_init(&s->world, w, h) ||
-        !pool_init(&s->pool, set->pool_capacity)) {
+        !pool_init(&s->pool, set->pool_capacity) ||
+        !pool_cache_kinship(&s->pool)) {
         sim_free(s);
         return false;
     }
@@ -574,7 +578,7 @@ static void story_death(Sim *s, Creature *dead, DeathCause cause)
                 continue;
             }
             Creature *near = &s->pool.items[slot];
-            if (genome_kinship(&near->genome, &dead->genome) >= s->set.kin_sense) {
+            if (pool_kinship(&s->pool, near, dead) >= s->set.kin_sense) {
                 chronicle_note(ch, near,
                                (LifeEvent){.tick = now, .kind = LIFE_KIN_LOST,
                                            .other_id = dead->id});

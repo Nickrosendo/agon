@@ -178,6 +178,60 @@ static void test_softmax_survives_huge_outputs(void)
     CHECK(chances[ACT_MOVE] > 0.99f);
 }
 
+/* The most likely action of an instinct-only brain (every other weight 0, a
+ * sure gene of 1) in these senses. */
+static int instinct_choice(const Senses *in)
+{
+    Settings set = settings_default();
+    Genome g = zero_genome();
+    genome_add_instinct(&g, &set);
+    float chances[ACT_COUNT];
+    brain_net_chances(&g, NULL, in, chances);
+    int best = 0;
+    for (int o = 1; o < ACT_COUNT; o++) {
+        if (chances[o] > chances[best]) {
+            best = o;
+        }
+    }
+    return best;
+}
+
+static int view_plant(int view)
+{
+    return SENSE_VIEWS + view * VIEW_VALUES + VIEW_PLANT;
+}
+
+static void test_instinct_habit(void)
+{
+    Senses in = {0};
+    in.v[SENSE_HUNGER] = 0.8f;
+    in.v[SENSE_REACH_FOOD] = 1.0f;
+    CHECK(instinct_choice(&in) == ACT_BITE); /* food in reach: bite */
+    in.v[SENSE_REACH_FOOD] = 0.0f;
+    in.v[view_plant(VIEW_AHEAD)] = 0.5f;
+    CHECK(instinct_choice(&in) == ACT_MOVE); /* food ahead: go */
+    in.v[view_plant(VIEW_AHEAD)] = 0.0f;
+    in.v[view_plant(VIEW_LEFT)] = 0.5f;
+    CHECK(instinct_choice(&in) == ACT_TURN_LEFT); /* food to the left: turn */
+    in.v[view_plant(VIEW_LEFT)] = 0.0f;
+    in.v[view_plant(VIEW_RIGHT)] = 0.5f;
+    CHECK(instinct_choice(&in) == ACT_TURN_RIGHT);
+    in.v[view_plant(VIEW_RIGHT)] = 0.0f;
+    /* Hungry and nothing seen: look round, turning. */
+    CHECK(instinct_choice(&in) == ACT_TURN_RIGHT);
+    /* ... unless it remembers a meal to one side: that way. */
+    in.v[SENSE_PLACE_LEFT] = 0.8f;
+    in.v[SENSE_PLACE_FRESH] = 0.8f;
+    CHECK(instinct_choice(&in) == ACT_TURN_LEFT);
+    in.v[SENSE_PLACE_LEFT] = 0.0f;
+    in.v[SENSE_PLACE_AHEAD] = 0.8f;
+    CHECK(instinct_choice(&in) == ACT_MOVE);
+    /* Fed and nothing seen: it walks on. */
+    Senses fed = {0};
+    fed.v[SENSE_HUNGER] = 0.2f;
+    CHECK(instinct_choice(&fed) == ACT_MOVE);
+}
+
 static void test_draw_picks_action(void)
 {
     /* Every output equal: each action has the same chance, and the draw alone
@@ -423,5 +477,6 @@ int main(void)
     test_sharp_end_is_strongest();
     test_softmax_survives_huge_outputs();
     test_draw_picks_action();
+    test_instinct_habit();
     TEST_SUMMARY();
 }

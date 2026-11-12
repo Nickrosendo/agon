@@ -282,7 +282,7 @@ mutation_spread = 0.05
 weight_limit = 4
 
 # spread of random weights (0 to 1000)
-weight_start_spread = 1
+weight_start_spread = 0.5
 
 # smallest body (0.01 to 1000)
 size_min = 0.5
@@ -490,6 +490,9 @@ learn_limit = 2
 
 # upkeep of the full learning gene (0 to 1e+06)
 learn_upkeep = 0.05
+
+# 1: founders start with the food-finding instinct in their weights (0 to 1)
+instinct = 1
 
 # share of mating's need a meal must give to be remembered (0 to 1e+06)
 meal_place_share = 0.1

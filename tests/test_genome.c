@@ -123,6 +123,40 @@ static void test_hue_wraps(void)
     CHECK(wrapped > 200);
 }
 
+/* Adding the instinct sets exactly the recipe's weights, draws no random
+ * number, and keeps every value within its limits. */
+static void test_instinct_recipe(void)
+{
+    Settings set = settings_default();
+    int index[INSTINCT_MAX];
+    float value[INSTINCT_MAX];
+    int n = genome_instinct(index, value, INSTINCT_MAX);
+    CHECK(n > 10 && n <= INSTINCT_MAX);
+    Genome g = (Genome){0};
+    Rng r;
+    rng_seed(&r, 4);
+    Rng before = r;
+    genome_add_instinct(&g, &set);
+    CHECK(memcmp(&r, &before, sizeof(r)) == 0); /* nothing drawn */
+    int set_count = 0;
+    for (int i = 0; i < GENOME_LEN; i++) {
+        set_count += g.g[i] != 0.0f;
+    }
+    CHECK(set_count == n); /* each listed once, nothing else touched */
+    for (int k = 0; k < n; k++) {
+        CHECK(index[k] >= GENE_TRAITS && index[k] < GENOME_LEN); /* weights only */
+        CHECK(g.g[index[k]] == value[k]);
+    }
+    /* On top of weights already near the limit, it stays within it. */
+    for (int i = GENE_TRAITS; i < GENOME_LEN; i++) {
+        g.g[i] = set.weight_limit;
+    }
+    genome_add_instinct(&g, &set);
+    for (int i = GENE_TRAITS; i < GENOME_LEN; i++) {
+        CHECK(g.g[i] <= set.weight_limit && g.g[i] >= -set.weight_limit);
+    }
+}
+
 static void test_kinship(void)
 {
     Settings set = settings_default();
@@ -329,6 +363,7 @@ int main(void)
     test_rate_one_mutates_within_range();
     test_hue_wraps();
     test_kinship();
+    test_instinct_recipe();
     test_cross_takes_each_trait_from_a_parent();
     test_cross_keeps_hidden_groups_whole();
     test_cross_child_can_differ_from_both();
