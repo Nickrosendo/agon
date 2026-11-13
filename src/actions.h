@@ -63,6 +63,22 @@ void actions_free(ActionLog *log);
  * file's tick says which entries have already happened. */
 void actions_seek(ActionLog *log, uint64_t tick);
 
+/*
+ * The traits a player may give, as gene numbers (genome.h): size, armour,
+ * weapon, swim, long legs, night eyes and learning. Only body genes: the sure
+ * gene and the network weights shape decisions, and a tool never does.
+ * "extern" says the array exists and is defined in actions.c; the count is a
+ * separate constant because sizeof cannot see an array's length from here.
+ */
+extern const int ACTIONS_GIVABLE[];
+enum { ACTIONS_GIVABLE_COUNT = 7 };
+
+/* Records "give creature this gene at value", to happen at the start of the
+ * next tick the Sim runs (s->tick, which has not run yet). False, and nothing
+ * recorded, for a gene not in ACTIONS_GIVABLE, a value outside 0..1, no living
+ * creature with that id, or no memory. */
+bool actions_give_trait(struct Sim *s, uint32_t creature, int gene, float value);
+
 /* Applies every entry due at s->tick, in the order they were added. An entry
  * whose creature has died (or never lived) does nothing; it stays in the log,
  * so a replay meets it and does nothing too. Called first thing by sim_step. */

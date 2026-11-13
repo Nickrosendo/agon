@@ -5,6 +5,16 @@
 #include "genome.h"
 #include "sim.h"
 
+const int ACTIONS_GIVABLE[] = {
+    GENE_SIZE, GENE_ARMOUR, GENE_WEAPON, GENE_SWIM,
+    GENE_LEGS, GENE_NIGHT_EYES, GENE_LEARN,
+};
+/* A check made by the compiler, not at run time: if someone adds a trait to
+ * the list and forgets the count in actions.h, the build stops here. */
+_Static_assert(sizeof(ACTIONS_GIVABLE) / sizeof(ACTIONS_GIVABLE[0]) ==
+                   ACTIONS_GIVABLE_COUNT,
+               "ACTIONS_GIVABLE_COUNT must match the list");
+
 bool actions_add(ActionLog *log, PlayerAction a)
 {
     if (log->count > 0 && a.tick < log->items[log->count - 1].tick) {
@@ -80,6 +90,30 @@ static void apply_trait(Sim *s, const PlayerAction *a)
      * it remembers about this creature is now wrong. Forgetting all of it
      * costs some speed for a moment and changes no result. */
     pool_forget_kinship(&s->pool);
+}
+
+static bool givable(int gene)
+{
+    for (int i = 0; i < ACTIONS_GIVABLE_COUNT; i++) {
+        if (ACTIONS_GIVABLE[i] == gene) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool actions_give_trait(Sim *s, uint32_t creature, int gene, float value)
+{
+    /* Written as "not inside" so that NaN, for which every comparison is
+     * false, is refused too. */
+    if (!givable(gene) || !(value >= 0.0f && value <= 1.0f) ||
+        find_living(&s->pool, creature) < 0) {
+        return false;
+    }
+    PlayerAction a = {.tick = s->tick, .kind = ACTION_TRAIT,
+                      .gene = (uint8_t)gene, .creature = creature,
+                      .value = value};
+    return actions_add(&s->actions, a);
 }
 
 void actions_apply_due(Sim *s)
