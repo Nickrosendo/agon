@@ -37,14 +37,27 @@ typedef struct {
 enum { ART_COVERS_ARMOUR = 1u << 0, ART_COVERS_WEAPON = 1u << 1,
        ART_COVERS_SWIM = 1u << 2 };
 
+/* The parts painted over the frames as layers, in the order they are drawn:
+ * a horn goes on last so plates never cover it. */
+enum { ART_PART_ARMOUR, ART_PART_SWIM, ART_PART_WEAPON, ART_PART_COUNT };
+/* A part's two sizes: the game shows a part from a rounded gene of 2/3
+ * (medium) and draws it bigger at 1 (full). */
+enum { ART_SIZE_MEDIUM, ART_SIZE_FULL, ART_SIZE_COUNT };
+
 /* A species' clips, by ACTION_ value, and how wide and tall its standing
  * pose is in art pixels: its area is matched to the skeleton's standing body,
- * so the genes still decide how big it is drawn. */
+ * so the genes still decide how big it is drawn.
+ * layer[part][size] is that part's layer, ACTION_COUNT clips like clip, or
+ * NULL when none was painted. A layer clip has its base clip's frame count,
+ * frame N over frame N; each layer frame holds only the part's pixels, cut
+ * to their own box, with the base frame's anchor given in the layer's own
+ * pixels and no eye. */
 typedef struct {
     int species;
     unsigned covers;  /* ART_COVERS_ bits */
     int16_t stand_w, stand_h;
     const ArtClip *clip;  /* ACTION_COUNT of them */
+    const ArtClip *layer[ART_PART_COUNT][ART_SIZE_COUNT];
 } ArtSet;
 
 /* In art_data.c, generated. */
@@ -57,6 +70,13 @@ const ArtSet *art_set(int species);
  * (the rounded ones) do not change the answer now: every body is drawn from
  * its species' frames. They stay in the signature for the parts' layers. */
 const ArtClip *art_clip(int species, int action, const BodyTraits *traits);
+/* The layers this body shows for this action, one slot per ART_PART_ value
+ * (NULL where it shows none); returns how many slots are filled. A part shows
+ * when its rounded gene is at PART_FROM or above, the species' frames do not
+ * cover it, and a layer was painted: the full one at a gene of 1, the medium
+ * one below, or the full one when no medium layer was painted yet. */
+int art_layers(int species, int action, const BodyTraits *traits,
+               const ArtClip *out[ART_PART_COUNT]);
 /* How many grid pixels one art pixel becomes so that the art's standing pose
  * covers as much as a standing body of w by h grid pixels: the square root of
  * the two areas' ratio, so a long low drawing next to a tall drawn body is
@@ -71,11 +91,16 @@ float art_scale_for(int species, int w, int h);
  * art pixels have, or none when fewer than a third are inked; then every inked
  * fur pixel next to an empty one becomes the outline, so a shrunk body keeps one,
  * and a base pixel under the outline turns light, one over it shadow, for
- * the rim of light the skeleton's bodies have. Sets the ink, the part
- * (PART_BODY where inked), the inked box, and the eye (-1, -1 for none).
+ * the rim of light the skeleton's bodies have.
+ * Before the outline, each layer in layers (ART_PART_COUNT slots, NULL ones
+ * skipped; layers itself may be NULL) is drawn over the frame in slot order:
+ * a grid pixel takes the layer's ink when any of its samples is a layer
+ * pixel, so a horn one art pixel thin survives a shrink.
+ * Sets the ink, the part (PART_BODY where inked, PART_SHELL under armour,
+ * PART_HORN under a horn), the inked box, and the eye (-1, -1 for none).
  * frame is taken modulo the clip's frames.
  */
-void art_raster(SkeletonRaster *r, const ArtClip *clip, int frame, float scale,
-                float anchor_x, float anchor_y);
+void art_raster(SkeletonRaster *r, const ArtClip *clip, const ArtClip *const *layers,
+                int frame, float scale, float anchor_x, float anchor_y);
 
 #endif

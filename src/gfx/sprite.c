@@ -418,8 +418,11 @@ static void draw_raster(SpriteCache *c, const SpriteBody *b, int action, int fra
     /* The middle pixel of the standing body, and its lowest row. */
     float anchor_x = (float)(r->x0 + r->x1 - 1) * 0.5f;
     float anchor_y = (float)(r->y1 - 1);
-    art_raster(r, clip, frame * clip->frames / SPRITE_FRAMES[action], scale, anchor_x,
-               anchor_y);
+    /* The parts the body shows, painted over the frames: plates, a fin, a horn. */
+    const ArtClip *layers[ART_PART_COUNT];
+    art_layers(b->species, action, &b->traits, layers);
+    art_raster(r, clip, layers, frame * clip->frames / SPRITE_FRAMES[action], scale,
+               anchor_x, anchor_y);
     if (b->base == SPRITE_BASE_FAR) {
         r->eye_x = r->eye_y = -1;  /* Far pictures have no eyes, drawn or art */
     }

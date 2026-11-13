@@ -28,6 +28,54 @@ const ArtClip *art_clip(int species, int action, const BodyTraits *traits)
     return clip->frames > 0 ? clip : NULL;
 }
 
+/* One part's layer clip for this action, or NULL: the size the gene asks
+ * for, or the full one when that size was not painted. gene is the rounded
+ * one, so 1 means full and anything from PART_FROM below it medium. */
+static const ArtClip *layer_for(const ArtSet *set, int part, float gene, int action)
+{
+    if (gene < PART_FROM) {
+        return NULL;
+    }
+    int size = gene >= 1.0f ? ART_SIZE_FULL : ART_SIZE_MEDIUM;
+    const ArtClip *clips = set->layer[part][size];
+    if (clips == NULL) {
+        clips = set->layer[part][ART_SIZE_FULL];
+    }
+    if (clips == NULL || clips[action].frames <= 0) {
+        return NULL;
+    }
+    /* clips points at ACTION_COUNT clips in a row; + action steps to this
+     * action's, the same as &clips[action]. */
+    return clips + action;
+}
+
+int art_layers(int species, int action, const BodyTraits *traits,
+               const ArtClip *out[ART_PART_COUNT])
+{
+    for (int p = 0; p < ART_PART_COUNT; p++) {
+        out[p] = NULL;
+    }
+    const ArtSet *set = art_set(species);
+    if (set == NULL || action < 0 || action >= ACTION_COUNT) {
+        return 0;
+    }
+    /* A covered part is in the frames already: no layer over it. */
+    if (!(set->covers & ART_COVERS_ARMOUR)) {
+        out[ART_PART_ARMOUR] = layer_for(set, ART_PART_ARMOUR, traits->armour, action);
+    }
+    if (!(set->covers & ART_COVERS_SWIM)) {
+        out[ART_PART_SWIM] = layer_for(set, ART_PART_SWIM, traits->swim, action);
+    }
+    if (!(set->covers & ART_COVERS_WEAPON)) {
+        out[ART_PART_WEAPON] = layer_for(set, ART_PART_WEAPON, traits->weapon, action);
+    }
+    int filled = 0;
+    for (int p = 0; p < ART_PART_COUNT; p++) {
+        filled += out[p] != NULL;  /* a comparison is an int, 0 or 1, in C */
+    }
+    return filled;
+}
+
 float art_scale_for(int species, int w, int h)
 {
     const ArtSet *set = art_set(species);
@@ -68,8 +116,66 @@ static bool takes_outline(uint8_t ink)
            (ink >= INK_MANE0 && ink < INK_MANE0 + 5);
 }
 
-void art_raster(SkeletonRaster *r, const ArtClip *clip, int frame, float scale,
-                float anchor_x, float anchor_y)
+/* The grid pixel's sample (sx, sy) of `samples` each way, taken to frame f's
+ * art pixel: the anchor pixel's middle sits on the grid anchor's. */
+static uint8_t sample_ink(const ArtFrame *f, int gx, int gy, int sx, int sy, int samples,
+                          float scale, float anchor_x, float anchor_y)
+{
+    float px = (float)gx + ((float)sx + 0.5f) / (float)samples;
+    float py = (float)gy + ((float)sy + 0.5f) / (float)samples;
+    float ax = (float)f->ax + 0.5f + (px - anchor_x - 0.5f) / scale;
+    float ay = (float)f->ay + 0.5f + (py - anchor_y - 0.5f) / scale;
+    return art_ink(f, (int)floorf(ax), (int)floorf(ay));
+}
+
+/* The PART_ value a layer's pixels are given, by ART_PART_ slot. */
+static const uint8_t LAYER_PART[ART_PART_COUNT] = {
+    [ART_PART_ARMOUR] = PART_SHELL, [ART_PART_SWIM] = PART_BODY,
+    [ART_PART_WEAPON] = PART_HORN,
+};
+
+/* Draws one layer frame over the raster: every grid pixel any of whose
+ * samples lands on a layer pixel takes the layer ink most of those samples
+ * have. The inked box (*x0..*y1) grows to hold what is drawn. */
+static void draw_layer(SkeletonRaster *r, const ArtFrame *f, uint8_t part, int samples,
+                       float scale, float anchor_x, float anchor_y,
+                       int *x0, int *y0, int *x1, int *y1)
+{
+    for (int gy = 0; gy < r->h; gy++) {
+        for (int gx = 0; gx < r->w; gx++) {
+            int count[INK_COUNT] = {0};
+            int inked = 0;
+            for (int sy = 0; sy < samples; sy++) {
+                for (int sx = 0; sx < samples; sx++) {
+                    uint8_t ink = sample_ink(f, gx, gy, sx, sy, samples, scale,
+                                             anchor_x, anchor_y);
+                    if (ink != INK_NONE && ink < INK_COUNT) {
+                        count[ink]++;
+                        inked++;
+                    }
+                }
+            }
+            if (inked == 0) {
+                continue;
+            }
+            int best = INK_NONE;
+            for (int k = 1; k < INK_COUNT; k++) {
+                if (count[k] > count[best]) {
+                    best = k;
+                }
+            }
+            r->ink[gy * r->w + gx] = (uint8_t)best;
+            r->part[gy * r->w + gx] = part;
+            *x0 = gx < *x0 ? gx : *x0;
+            *y0 = gy < *y0 ? gy : *y0;
+            *x1 = gx + 1 > *x1 ? gx + 1 : *x1;
+            *y1 = gy + 1 > *y1 ? gy + 1 : *y1;
+        }
+    }
+}
+
+void art_raster(SkeletonRaster *r, const ArtClip *clip, const ArtClip *const *layers,
+                int frame, float scale, float anchor_x, float anchor_y)
 {
     size_t cells = (size_t)r->w * (size_t)r->h;
     memset(r->ink, INK_NONE, cells);
@@ -102,13 +208,8 @@ void art_raster(SkeletonRaster *r, const ArtClip *clip, int frame, float scale,
             int inked = 0;
             for (int sy = 0; sy < samples; sy++) {
                 for (int sx = 0; sx < samples; sx++) {
-                    /* The sample's place on the grid, then on the art: the
-                     * anchor pixel's middle sits on the grid anchor's. */
-                    float px = (float)gx + ((float)sx + 0.5f) / (float)samples;
-                    float py = (float)gy + ((float)sy + 0.5f) / (float)samples;
-                    float ax = (float)f->ax + 0.5f + (px - anchor_x - 0.5f) / scale;
-                    float ay = (float)f->ay + 0.5f + (py - anchor_y - 0.5f) / scale;
-                    uint8_t ink = art_ink(f, (int)floorf(ax), (int)floorf(ay));
+                    uint8_t ink = sample_ink(f, gx, gy, sx, sy, samples, scale,
+                                             anchor_x, anchor_y);
                     if (ink != INK_NONE && ink < INK_COUNT) {
                         count[ink]++;
                         inked++;
@@ -136,6 +237,17 @@ void art_raster(SkeletonRaster *r, const ArtClip *clip, int frame, float scale,
             x1 = gx + 1 > x1 ? gx + 1 : x1;
             y1 = gy + 1 > y1 ? gy + 1 : y1;
         }
+    }
+    /* The layers, in slot order, each its own frame of the same number. */
+    for (int p = 0; layers != NULL && p < ART_PART_COUNT; p++) {
+        const ArtClip *layer = layers[p];
+        if (layer == NULL || layer->frames <= 0) {
+            continue;
+        }
+        int ln = layer->frames;
+        draw_layer(r, &layer->frame[(frame % ln + ln) % ln], LAYER_PART[p], samples, scale,
+                   anchor_x, anchor_y, &x0, &y0, &x1, &y1);
+        any = any || x1 > x0;
     }
     if (!any) {
         return;

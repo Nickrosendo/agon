@@ -444,7 +444,9 @@ def main():
         w("};")
         w("")
         value, covers = SPECIES[name]
-        sets.append("    {%s, %s, %d, %d, %s_clips}," % (value, covers, x1 - x0, y1 - y0, name))
+        layers = "{{NULL, NULL}, {NULL, NULL}, {NULL, NULL}}"
+        sets.append("    {%s, %s, %d, %d, %s_clips, %s}," % (value, covers, x1 - x0, y1 - y0,
+                                                          name, layers))
     w("const ArtSet ART_SETS[] = {")
     out.extend(sets)
     w("};")

@@ -104,16 +104,16 @@ static void test_raster_scale(void)
     const ArtClip *clip = art_clip(SPECIES_WOLF, ACTION_REST, &t);
     const ArtFrame *f = &clip->frame[0];
     small_grid(&r);
-    art_raster(&r, clip, 0, 1.0f, 30.0f, 48.0f);
+    art_raster(&r, clip, NULL, 0, 1.0f, 30.0f, 48.0f);
     CHECK(r.x1 - r.x0 == f->w);
     CHECK(r.y1 - r.y0 == f->h);
     CHECK(r.y1 - 1 == 48);  /* the standing pose's lowest row is the anchor's */
     CHECK(r.eye_x >= r.x0 && r.eye_x < r.x1);  /* the standing wolf has an eye */
-    art_raster(&r, clip, 0, 0.5f, 30.0f, 48.0f);
+    art_raster(&r, clip, NULL, 0, 0.5f, 30.0f, 48.0f);
     int w = r.x1 - r.x0;
     CHECK(w >= f->w / 2 - 2 && w <= f->w / 2 + 2);
     /* Nothing at all for a scale of 0. */
-    art_raster(&r, clip, 0, 0.0f, 30.0f, 48.0f);
+    art_raster(&r, clip, NULL, 0, 0.0f, 30.0f, 48.0f);
     CHECK(r.x1 == r.x0);
 }
 
@@ -129,7 +129,7 @@ static void test_raster_outline_and_pure(void)
         const ArtClip *clip = art_clip(SPECIES_WOLF, a, &t);
         for (int s = 0; s < 4; s++) {
             small_grid(&r);
-            art_raster(&r, clip, 1, scales[s], 30.0f, 48.0f);
+            art_raster(&r, clip, NULL, 1, scales[s], 30.0f, 48.0f);
             bool edges_ok = true;
             for (int y = 0; y < r.h; y++) {
                 for (int x = 0; x < r.w; x++) {
@@ -147,8 +147,124 @@ static void test_raster_outline_and_pure(void)
             }
             CHECK(edges_ok);
             memcpy(first, r.ink, sizeof first);
-            art_raster(&r, clip, 1, scales[s], 30.0f, 48.0f);
+            art_raster(&r, clip, NULL, 1, scales[s], 30.0f, 48.0f);
             CHECK(memcmp(first, r.ink, sizeof first) == 0);
+        }
+    }
+}
+
+/* ---- Layers, on hand-made frames ---- */
+
+/* A 4 x 4 block of base fur, its anchor at the bottom row's third pixel. */
+static const uint8_t BLOCK_INK[16] = {
+    INK_BASE, INK_BASE, INK_BASE, INK_BASE, INK_BASE, INK_BASE, INK_BASE, INK_BASE,
+    INK_BASE, INK_BASE, INK_BASE, INK_BASE, INK_BASE, INK_BASE, INK_BASE, INK_BASE,
+};
+static const ArtFrame BLOCK_FRAME = {4, 4, 2, 3, -1, -1, BLOCK_INK};
+static const ArtClip BLOCK = {1, &BLOCK_FRAME};
+
+/* A horn one pixel wide and two tall, standing on the block's top row above
+ * the anchor's column: the layer's own pixel (0, 0) is the block's (2, -2),
+ * so the block's anchor (2, 3) is (0, 5) in the layer's pixels. */
+static const uint8_t HORN_INK[2] = {INK_HORN0 + 2, INK_HORN0 + 2};
+static const ArtFrame HORN_FRAME = {1, 2, 0, 5, -1, -1, HORN_INK};
+static const ArtClip HORN = {1, &HORN_FRAME};
+
+/* One plate on the block's pixel (2, 1), and a horn pixel on the same spot. */
+static const uint8_t PLATE_INK[1] = {INK_SHELL1 + 1};
+static const ArtFrame PLATE_FRAME = {1, 1, 0, 2, -1, -1, PLATE_INK};
+static const ArtClip PLATE = {1, &PLATE_FRAME};
+static const uint8_t SPOT_INK[1] = {INK_HORN0 + 4};
+static const ArtFrame SPOT_FRAME = {1, 1, 0, 2, -1, -1, SPOT_INK};
+static const ArtClip SPOT = {1, &SPOT_FRAME};
+
+/* A layer is drawn over the frame, sticks out above it, and the box grows. */
+static void test_layer_drawn_on_top(void)
+{
+    static SkeletonRaster r;
+    small_grid(&r);
+    const ArtClip *layers[ART_PART_COUNT] = {NULL, NULL, &HORN};
+    art_raster(&r, &BLOCK, layers, 0, 1.0f, 30.0f, 48.0f);
+    /* The block covers grid x 28..31, y 45..48; the horn x 30, y 43..44. */
+    CHECK(r.ink[43 * r.w + 30] == INK_HORN0 + 2);
+    CHECK(r.ink[44 * r.w + 30] == INK_HORN0 + 2);
+    CHECK(r.part[43 * r.w + 30] == PART_HORN);
+    CHECK(r.y0 == 43 && r.y1 == 49 && r.x0 == 28 && r.x1 == 32);
+    /* Without the layer the box starts at the block's top. */
+    art_raster(&r, &BLOCK, NULL, 0, 1.0f, 30.0f, 48.0f);
+    CHECK(r.y0 == 45);
+}
+
+/* Shrunk to a quarter, the horn is half a grid pixel tall: a frame pixel
+ * would be dropped (fewer than a third of the samples), a layer pixel is
+ * kept. */
+static void test_layer_any_sample(void)
+{
+    static SkeletonRaster r;
+    small_grid(&r);
+    const ArtClip *layers[ART_PART_COUNT] = {NULL, NULL, &HORN};
+    art_raster(&r, &BLOCK, layers, 0, 0.25f, 30.0f, 48.0f);
+    int horn = 0;
+    for (int i = 0; i < r.w * r.h; i++) {
+        horn += r.part[i] == PART_HORN;
+    }
+    CHECK(horn >= 1);
+}
+
+/* Armour and a horn on the same pixel: the horn, drawn last, wins; the plate
+ * alone is armour, marked as shell. */
+static void test_layer_order(void)
+{
+    static SkeletonRaster r;
+    small_grid(&r);
+    const ArtClip *plate_only[ART_PART_COUNT] = {&PLATE, NULL, NULL};
+    art_raster(&r, &BLOCK, plate_only, 0, 1.0f, 30.0f, 48.0f);
+    CHECK(r.ink[46 * r.w + 30] == INK_SHELL1 + 1);
+    CHECK(r.part[46 * r.w + 30] == PART_SHELL);
+    const ArtClip *both[ART_PART_COUNT] = {&PLATE, NULL, &SPOT};
+    art_raster(&r, &BLOCK, both, 0, 1.0f, 30.0f, 48.0f);
+    CHECK(r.ink[46 * r.w + 30] == INK_HORN0 + 4);
+    CHECK(r.part[46 * r.w + 30] == PART_HORN);
+}
+
+/* art_layers on the real sets: nothing under PART_FROM, nothing for a part
+ * the frames cover, nothing for a bad action; every slot NULL then. */
+static void test_art_layers_pick(void)
+{
+    const ArtClip *out[ART_PART_COUNT];
+    BodyTraits none = all_traits(0.0f);
+    CHECK(art_layers(SPECIES_OTTER, ACTION_REST, &none, out) == 0);
+    CHECK(out[0] == NULL && out[1] == NULL && out[2] == NULL);
+    BodyTraits all = all_traits(1.0f);
+    art_layers(SPECIES_ARMADILLO, ACTION_REST, &all, out);
+    CHECK(out[ART_PART_ARMOUR] == NULL);  /* its frames are all shell */
+    art_layers(SPECIES_OTTER, ACTION_REST, &all, out);
+    CHECK(out[ART_PART_SWIM] == NULL);    /* its frames are a swimmer's */
+    CHECK(art_layers(SPECIES_OTTER, ACTION_COUNT, &all, out) == 0);
+    CHECK(art_layers(SPECIES_COUNT, ACTION_REST, &all, out) == 0);
+}
+
+/* Every painted layer has its base clip's frame count, frame N over frame N,
+ * and its frames are in range like the base frames. */
+static void test_layers_match_clips(void)
+{
+    for (int s = 0; s < ART_SET_COUNT; s++) {
+        for (int p = 0; p < ART_PART_COUNT; p++) {
+            for (int z = 0; z < ART_SIZE_COUNT; z++) {
+                const ArtClip *clips = ART_SETS[s].layer[p][z];
+                for (int a = 0; clips != NULL && a < ACTION_COUNT; a++) {
+                    CHECK(clips[a].frames == ART_SETS[s].clip[a].frames);
+                    for (int i = 0; i < clips[a].frames; i++) {
+                        const ArtFrame *f = &clips[a].frame[i];
+                        CHECK(f->w > 0 && f->h > 0 && f->ex == -1 && f->ey == -1);
+                        bool inks_ok = true;
+                        for (int k = 0; k < f->w * f->h; k++) {
+                            inks_ok = inks_ok && f->ink[k] < INK_COUNT;
+                        }
+                        CHECK(inks_ok);
+                    }
+                }
+            }
         }
     }
 }
@@ -204,6 +320,11 @@ int main(void)
     test_data_in_range();
     test_raster_scale();
     test_raster_outline_and_pure();
+    test_layer_drawn_on_top();
+    test_layer_any_sample();
+    test_layer_order();
+    test_art_layers_pick();
+    test_layers_match_clips();
     test_cache_art_switch();
     TEST_SUMMARY();
 }
