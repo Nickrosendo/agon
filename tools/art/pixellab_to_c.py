@@ -357,7 +357,6 @@ def place_eye(inks, w, h, offset):
 PART_SLOTS = [("armour", "ART_PART_ARMOUR"), ("swim", "ART_PART_SWIM"),
               ("weapon", "ART_PART_WEAPON")]
 SIZE_SLOTS = [("medium", "ART_SIZE_MEDIUM"), ("full", "ART_SIZE_FULL")]
-SHELL_BAND, SHELL1 = 9, 21  # INK_SHELL_BAND, INK_SHELL1 (four shell shades)
 CHANGED = 48   # a painted pixel this far from the base's colour (channel sum) is new
 NEAR = 3       # changed pixels this close to the part's main group belong to it
 
@@ -409,20 +408,24 @@ def part_group(points):
     return kept, len(points) - len(kept)
 
 
+FUR_SHADES = [DEEP, SHADOW, BASE, LIGHT, HIGH]
+
+
 def part_ink(part, rgb, lo, hi, fur_level):
-    """A layer pixel's ink. Armour in the shell's four fixed shades by its own
-    lightness across the part's range (lo..hi), so plates read as plates on
-    any fur; a horn in the five horn shades the same way; a fin in fur shades
-    against the clip's fur, so a family recolours it. Outline-dark pixels are
-    the outline (the shell's dark band for armour)."""
+    """A layer pixel's ink. Armour in the fur's five shades by its own
+    lightness across the part's range (lo..hi): the family's colour stays
+    (the fixed shell colours turned a purple otter tan) and the bands between
+    plates stay darker lines, as on the armadillo's frames. A horn in the
+    five horn shades the same way. A fin in fur shades against the clip's
+    fur. Outline-dark pixels are the outline."""
     v = lum(rgb)
     if v < 40:
-        return SHELL_BAND if part == "armour" else OUTLINE
+        return OUTLINE
     if part == "swim":
         return ink_of(rgb + (255,), fur_level)
     t = 0.0 if hi <= lo else (v - lo) / (hi - lo)
     if part == "armour":
-        return SHELL1 + min(3, int(t * 4))
+        return FUR_SHADES[min(4, int(t * 5))]
     return HORN0 + min(4, int(t * 5))
 
 
@@ -465,6 +468,17 @@ def layer_clips(w, root, name, anchor_x, anchor_y, levels):
                     all_v.extend(lum(c) for c in px.values() if lum(c) >= 40)
                     frames.append(px)
                 per_action.append((action, clip, frames))
+            # A frame whose part is far bigger than the part's usual size is
+            # most likely one where PixelLab recoloured the whole animal:
+            # one big group, so the far-pixel count cannot catch it.
+            sizes = sorted(len(px) for _, _, frames in per_action for px in frames)
+            middle = sizes[len(sizes) // 2] if sizes else 0
+            for _, clip, frames in per_action:
+                for i, px in enumerate(frames):
+                    if middle and len(px) > 2.5 * middle:
+                        print("%s %s-%s %s frame %d: %d part pixels, the usual is %d"
+                              " (recoloured?)" % (name, part, size, clip, i, len(px), middle),
+                              file=sys.stderr)
             lo = min(all_v) if all_v else 0.0
             hi = max(all_v) if all_v else 0.0
             # pass 2: each frame cut to its own box, the base anchor kept

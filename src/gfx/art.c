@@ -134,11 +134,19 @@ static const uint8_t LAYER_PART[ART_PART_COUNT] = {
     [ART_PART_WEAPON] = PART_HORN,
 };
 
-/* Draws one layer frame over the raster: every grid pixel any of whose
- * samples lands on a layer pixel takes the layer ink most of those samples
- * have. The inked box (*x0..*y1) grows to hold what is drawn. */
-static void draw_layer(SkeletonRaster *r, const ArtFrame *f, uint8_t part, int samples,
-                       float scale, float anchor_x, float anchor_y,
+/* Whether a part is thin enough to vanish in a shrink: a horn or a fin can be
+ * one art pixel thick. Plates are as broad as the body under them. */
+static const bool LAYER_THIN[ART_PART_COUNT] = {
+    [ART_PART_ARMOUR] = false, [ART_PART_SWIM] = true, [ART_PART_WEAPON] = true,
+};
+
+/* Draws one layer frame over the raster: a grid pixel takes the layer ink
+ * most of its layer samples have, when any sample is a layer pixel (thin
+ * parts) or at least a third are (broad ones, like the frame itself: with
+ * "any", plates swallowed a small body whole). The inked box (*x0..*y1)
+ * grows to hold what is drawn. */
+static void draw_layer(SkeletonRaster *r, const ArtFrame *f, uint8_t part, bool thin,
+                       int samples, float scale, float anchor_x, float anchor_y,
                        int *x0, int *y0, int *x1, int *y1)
 {
     for (int gy = 0; gy < r->h; gy++) {
@@ -155,8 +163,14 @@ static void draw_layer(SkeletonRaster *r, const ArtFrame *f, uint8_t part, int s
                     }
                 }
             }
-            if (inked == 0) {
+            if (inked == 0 || (!thin && 3 * inked < samples * samples)) {
                 continue;
+            }
+            /* A thin part's outline loses to its fill when a picture shrinks:
+             * a horn two pixels of ivory wide inside a one-pixel outline
+             * otherwise came out as a dark spike. */
+            if (thin && inked > count[INK_OUTLINE]) {
+                count[INK_OUTLINE] = 0;
             }
             int best = INK_NONE;
             for (int k = 1; k < INK_COUNT; k++) {
@@ -245,8 +259,8 @@ void art_raster(SkeletonRaster *r, const ArtClip *clip, const ArtClip *const *la
             continue;
         }
         int ln = layer->frames;
-        draw_layer(r, &layer->frame[(frame % ln + ln) % ln], LAYER_PART[p], samples, scale,
-                   anchor_x, anchor_y, &x0, &y0, &x1, &y1);
+        draw_layer(r, &layer->frame[(frame % ln + ln) % ln], LAYER_PART[p], LAYER_THIN[p],
+                   samples, scale, anchor_x, anchor_y, &x0, &y0, &x1, &y1);
         any = any || x1 > x0;
     }
     if (!any) {

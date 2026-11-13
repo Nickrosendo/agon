@@ -4,6 +4,7 @@
 #include <stdio.h>  /* snprintf */
 #include <string.h> /* strlen */
 
+#include "art.h"      /* art_set, the painted parts */
 #include "font.h"
 #include "gfx_hash.h"
 #include "palette.h"
@@ -89,9 +90,24 @@ static float lab_size(int species)
     return species == SPECIES_ARMADILLO ? 1.5f : 2.0f;
 }
 
-static SpriteBody lab_body(int species)
+/* The body the lab shows for a species: its role's genes, and with parts on,
+ * a gene of 1 for every part painted over its frames (art.h's layers), so
+ * the painted plates, horns and fins can be looked at here. */
+static SpriteBody lab_body(int species, bool parts)
 {
     BodyTraits genes = role_genes(SPECIES[species].role);
+    const ArtSet *set = art_set(species);
+    if (parts && set != NULL) {
+        if (set->layer[ART_PART_ARMOUR][ART_SIZE_FULL] != NULL) {
+            genes.armour = 1.0f;
+        }
+        if (set->layer[ART_PART_SWIM][ART_SIZE_FULL] != NULL) {
+            genes.swim = 1.0f;
+        }
+        if (set->layer[ART_PART_WEAPON][ART_SIZE_FULL] != NULL) {
+            genes.weapon = 1.0f;
+        }
+    }
     return sprite_body_of(&genes, species, lab_size(species), SPRITE_BASE_DETAIL);
 }
 
@@ -104,11 +120,12 @@ typedef struct {
     int row_y[ROLE_COUNT], strip_h[ROLE_COUNT];
     int cells_x, cell_w;
     int scale;
+    bool parts;         /* every painted part shown (lab_draw's parts) */
 } LabLayout;
 
 /* The tallest picture of each role's row and the widest of all, in art pixels,
  * from the inked bounds of the pictures at this action and frame. */
-static void largest_pictures(SpriteCache *sprites, int action, int frame,
+static void largest_pictures(SpriteCache *sprites, int action, int frame, bool parts,
                              int row_h[ROLE_COUNT], int *max_w)
 {
     *max_w = 0;
@@ -116,7 +133,7 @@ static void largest_pictures(SpriteCache *sprites, int action, int frame,
         row_h[r] = 0;
     }
     for (int s = 0; s < SPECIES_COUNT; s++) {
-        SpriteBody b = lab_body(s);
+        SpriteBody b = lab_body(s, parts);
         SpritePicture p = sprite_picture(sprites, &b, action, frame);
         int role = SPECIES[s].role;
         if (p.x1 - p.x0 > *max_w) {
@@ -132,10 +149,11 @@ static void largest_pictures(SpriteCache *sprites, int action, int frame,
 #define MAX_SPARE_PER_SCALE 8
 #define MAX_SCALE 3
 
-static LabLayout make_layout(SpriteCache *sprites, int action, int frame, int x, int y,
-                             int w, int h)
+static LabLayout make_layout(SpriteCache *sprites, int action, int frame, bool parts,
+                             int x, int y, int w, int h)
 {
     LabLayout l = {0}; /* full false, everything else 0 */
+    l.parts = parts;
     l.area = (CanvasClip){x, y, w, h};
     l.cells_x = x + MARGIN + NAME_COLUMN + MARGIN;
     l.cell_w = (x + w - MARGIN - l.cells_x - (LAB_COLUMNS - 1) * MARGIN) / LAB_COLUMNS;
@@ -145,7 +163,7 @@ static LabLayout make_layout(SpriteCache *sprites, int action, int frame, int x,
         return l;
     }
     int row_h[ROLE_COUNT], max_w;
-    largest_pictures(sprites, action, frame, row_h, &max_w);
+    largest_pictures(sprites, action, frame, l.parts, row_h, &max_w);
     /* The largest scale at which every row fits: its animal, the ground under
      * it and two pixels of air, then the caption; and the widest fits a cell. */
     for (int s = MAX_SCALE; s >= 1; s--) {
@@ -178,7 +196,7 @@ static LabLayout make_layout(SpriteCache *sprites, int action, int frame, int x,
 int lab_cell_box(SpriteCache *sprites, int action, int w, int h, int role, int column,
                  int *bx, int *by, int *bw, int *bh)
 {
-    LabLayout l = make_layout(sprites, action, 0, 0, 0, w, h);
+    LabLayout l = make_layout(sprites, action, 0, false, 0, 0, w, h);
     if (!l.full || role < 0 || role >= ROLE_COUNT || column < 0 || column >= LAB_COLUMNS) {
         return 0;
     }
@@ -483,7 +501,7 @@ static void draw_animal(SpriteCache *sprites, Canvas *c, const LabLayout *l, int
 {
     int s = l->scale;
     int strip_h = l->strip_h[SPECIES[species].role];
-    SpriteBody body = lab_body(species);
+    SpriteBody body = lab_body(species, l->parts);
     /* Each animal at its own pace, the species number in place of an id so
      * the page is not in step. */
     uint32_t id = (uint32_t)species;
@@ -535,14 +553,14 @@ static void draw_attack(SpriteCache *sprites, Canvas *c, const LabLayout *l, int
     uint32_t id = (uint32_t)species;
     int attacker_x = sx + l->cell_w / 2 - ATTACKER_LEFT * s;
 
-    SpriteBody hunter = lab_body(species);
+    SpriteBody hunter = lab_body(species, l->parts);
     int frame = pose_frame(body_ms, id, ACTION_ATTACK, POSE_ATTACK_SECONDS);
     float share = (float)frame / (float)SPRITE_FRAMES[ACTION_ATTACK];
     float flash, knock, tremble;
     pose_hit(share, &flash, &knock, &tremble);
 
     /* The deer first, so the hunter's leap is drawn over it. */
-    SpriteBody deer = lab_body(SPECIES_DEER);
+    SpriteBody deer = lab_body(SPECIES_DEER, l->parts);
     int deer_frame = pose_frame(body_ms, id, ACTION_REST, POSE_REST_SECONDS);
     SpritePicture prey = sprite_picture(sprites, &deer, ACTION_REST, deer_frame);
     SpritePalette look;
@@ -572,8 +590,8 @@ static void draw_attack(SpriteCache *sprites, Canvas *c, const LabLayout *l, int
     paint_bite(c, frame, body_ms, look.ink[INK_LIGHT], foot_x, line_y + s, s, strip);
 }
 
-void lab_draw(SpriteCache *sprites, Canvas *c, int action, uint64_t body_ms, int x, int y,
-              int w, int h)
+void lab_draw(SpriteCache *sprites, Canvas *c, int action, bool parts, uint64_t body_ms,
+              int x, int y, int w, int h)
 {
     if (w <= 0 || h <= 0) {
         return;
@@ -584,7 +602,7 @@ void lab_draw(SpriteCache *sprites, Canvas *c, int action, uint64_t body_ms, int
     }
     /* The rows are sized by the action's first frame, so the page does not
      * jump about as the animals move. */
-    LabLayout l = make_layout(sprites, action, 0, x, y, w, h);
+    LabLayout l = make_layout(sprites, action, 0, parts, x, y, w, h);
     canvas_rect_clip(c, x, y, w, h, bg, l.area);
     if (!l.full) {
         return;

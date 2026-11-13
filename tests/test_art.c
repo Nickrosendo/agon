@@ -196,7 +196,7 @@ static void test_layer_drawn_on_top(void)
 }
 
 /* Shrunk to a quarter, the horn is half a grid pixel tall: a frame pixel
- * would be dropped (fewer than a third of the samples), a layer pixel is
+ * would be dropped (fewer than a third of the samples), a horn pixel is
  * kept. */
 static void test_layer_any_sample(void)
 {
@@ -209,6 +209,15 @@ static void test_layer_any_sample(void)
         horn += r.part[i] == PART_HORN;
     }
     CHECK(horn >= 1);
+    /* Armour is broad and keeps the frame's rule: one plate pixel shrunk to
+     * a quarter is gone. */
+    const ArtClip *plate[ART_PART_COUNT] = {&PLATE, NULL, NULL};
+    art_raster(&r, &BLOCK, plate, 0, 0.25f, 30.0f, 48.0f);
+    int shell = 0;
+    for (int i = 0; i < r.w * r.h; i++) {
+        shell += r.part[i] == PART_SHELL;
+    }
+    CHECK(shell == 0);
 }
 
 /* Armour and a horn on the same pixel: the horn, drawn last, wins; the plate
@@ -241,6 +250,26 @@ static void test_art_layers_pick(void)
     art_layers(SPECIES_OTTER, ACTION_REST, &all, out);
     CHECK(out[ART_PART_SWIM] == NULL);    /* its frames are a swimmer's */
     CHECK(art_layers(SPECIES_OTTER, ACTION_COUNT, &all, out) == 0);
+    /* An otter with plates and a horn gets both layers; with a medium gene
+     * (2/3) too, from the full layers, since no medium ones are painted yet. */
+    BodyTraits armed = all_traits(0.0f);
+    armed.armour = 1.0f;
+    armed.weapon = 1.0f;
+    CHECK(art_layers(SPECIES_OTTER, ACTION_WALK, &armed, out) == 2);
+    CHECK(out[ART_PART_ARMOUR] != NULL && out[ART_PART_WEAPON] != NULL);
+    const ArtClip *full_armour = out[ART_PART_ARMOUR];
+    armed.armour = 2.0f / 3.0f;
+    art_layers(SPECIES_OTTER, ACTION_WALK, &armed, out);
+    CHECK(out[ART_PART_ARMOUR] == full_armour);
+    /* A gene of 1/3 shows no part. */
+    armed.armour = 1.0f / 3.0f;
+    art_layers(SPECIES_OTTER, ACTION_WALK, &armed, out);
+    CHECK(out[ART_PART_ARMOUR] == NULL);
+    /* A finned wolf gets its fin. */
+    BodyTraits finned = all_traits(0.0f);
+    finned.swim = 1.0f;
+    CHECK(art_layers(SPECIES_WOLF, ACTION_RUN, &finned, out) == 1);
+    CHECK(out[ART_PART_SWIM] != NULL);
     CHECK(art_layers(SPECIES_COUNT, ACTION_REST, &all, out) == 0);
 }
 

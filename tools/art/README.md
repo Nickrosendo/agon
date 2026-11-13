@@ -121,11 +121,22 @@ where the base was empty or its colour moved by more than 48 (the three
 channels' differences added). Only the largest touching group and pixels
 within 3 of it are kept; any other changed pixel is printed as "body pixels
 changed far from the part", and such a frame is cleaned or repainted before
-it is kept. Inks: armour in the shell's four fixed shades by its own
-lightness (it reads as plates on any fur), a horn in the five horn shades
-the same way, a fin in the fur's shades so families recolour it; near-black
-is the outline (armour: the shell's dark band). A frame where the part is
+it is kept. Inks: armour in the fur's five shades by its own lightness
+across the part's range (the family colour stays, the bands between plates
+stay darker lines; the fixed shell colours were tried first and turned a
+purple otter tan), a horn in the five horn shades the same way, a fin in the
+fur's shades against the clip's fur; near-black is the outline. In the game
+a horn or fin pixel shows when any sample of a grid pixel hits it; armour,
+broad like the body, keeps the frame's one-third rule. A frame where the part is
 hidden gets an empty one-pixel layer.
+
+### Pairs painted
+
+| Pair | Prompt (`edit_animation` description) | Seed | Calls | Notes |
+|---|---|---|---|---|
+| otter, armour, full | "add hard grey armour plates over the otter's back and flanks, overlapping bands like an armadillo's shell, from the shoulders to the hips; keep the otter's head, legs, tail, outline and pose exactly as they are; change nothing else" | 1201 | 3 | |
+| otter, weapon, full | "add one curved ivory horn growing up and forward from the otter's forehead, between its eyes and ears, like a small rhino horn; keep the otter's head, body, legs, tail, outline and pose exactly as they are; change nothing else" | 1202 | 3 + 2 | the four walk frames came back recoloured (the walk is a lighter brown than the otter's other clips); repainted with "keep the otter's brown fur colour, …" and seed 1212 |
+| wolf, swim, full | "add a tall fin standing up along the middle of the wolf's back, like a fish's dorsal fin, in the wolf's own grey with a darker edge; keep the wolf's head, body, legs, tail, outline and pose exactly as they are; change nothing else" | 1203 | 5 | |
 
 ## Adding a species
 

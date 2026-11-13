@@ -43,7 +43,7 @@ static void test_lab_stays_in_its_area(void)
     CHECK(canvas_init(&c, 700, 520));
     canvas_fill(&c, GUARD);
     int ax = 30, ay = 20, aw = 600, ah = 480;
-    lab_draw(&sprites, &c, ACTION_WALK, 1234, ax, ay, aw, ah);
+    lab_draw(&sprites, &c, ACTION_WALK, false, 1234, ax, ay, aw, ah);
     int outside_changed = 0, inside_changed = 0;
     for (int y = 0; y < c.h; y++) {
         for (int x = 0; x < c.w; x++) {
@@ -74,7 +74,7 @@ static void check_cells_not_empty(int w, int h, int action, uint64_t body_ms)
 {
     Canvas c;
     CHECK(canvas_init(&c, w, h));
-    lab_draw(&sprites, &c, action, body_ms, 0, 0, w, h);
+    lab_draw(&sprites, &c, action, false, body_ms, 0, 0, w, h);
     for (int role = 0; role < ROLE_COUNT; role++) {
         for (int col = 0; col < LAB_COLUMNS; col++) {
             if (lab_species_at(role, col) < 0) {
@@ -145,8 +145,8 @@ static void test_hunters_attack_a_deer(void)
     Canvas rest, attack;
     CHECK(canvas_init(&rest, 1112, 688));
     CHECK(canvas_init(&attack, 1112, 688));
-    lab_draw(&sprites, &rest, ACTION_REST, 0, 0, 0, 1112, 688);
-    lab_draw(&sprites, &attack, bite, 0, 0, 0, 1112, 688);
+    lab_draw(&sprites, &rest, ACTION_REST, false, 0, 0, 0, 1112, 688);
+    lab_draw(&sprites, &attack, bite, false, 0, 0, 0, 1112, 688);
     for (int col = 0; col < LAB_COLUMNS; col++) {
         if (lab_species_at(ROLE_HUNTER, col) < 0) {
             continue;
@@ -188,13 +188,13 @@ static void test_lab_particles(void)
     CHECK(canvas_init(&c, 1112, 688));
     int zs = 0, leaves = 0, blood = 0, resting = 0;
     for (uint64_t ms = 0; ms < 3000u; ms += 50u) {
-        lab_draw(&sprites, &c, ACTION_SLEEP, ms, 0, 0, 1112, 688);
+        lab_draw(&sprites, &c, ACTION_SLEEP, false, ms, 0, 0, 1112, 688);
         zs += pixels_where(&c, is_z) > 0;
-        lab_draw(&sprites, &c, ACTION_GRAZE, ms, 0, 0, 1112, 688);
+        lab_draw(&sprites, &c, ACTION_GRAZE, false, ms, 0, 0, 1112, 688);
         leaves += pixels_where(&c, is_leaf) > 0;
-        lab_draw(&sprites, &c, ACTION_BITE, ms, 0, 0, 1112, 688);
+        lab_draw(&sprites, &c, ACTION_BITE, false, ms, 0, 0, 1112, 688);
         blood += pixels_where(&c, is_blood) > 0;
-        lab_draw(&sprites, &c, ACTION_REST, ms, 0, 0, 1112, 688);
+        lab_draw(&sprites, &c, ACTION_REST, false, ms, 0, 0, 1112, 688);
         resting += pixels_where(&c, is_z) + pixels_where(&c, is_leaf) + pixels_where(&c, is_blood);
     }
     CHECK(zs > 30);     /* a Z lives 1.6 s of every 1.2 s, offset per animal */
@@ -227,7 +227,7 @@ static void test_lab_tiny_area_is_safe(void)
     for (int w = 0; w <= 40; w += 5) {
         for (int h = 0; h <= 40; h += 5) {
             canvas_fill(&c, GUARD);
-            lab_draw(&sprites, &c, ACTION_SLEEP, 99, 40, 40, w, h);
+            lab_draw(&sprites, &c, ACTION_SLEEP, false, 99, 40, 40, w, h);
             int changed_outside = 0, changed_any = 0;
             for (int y = 0; y < c.h; y++) {
                 for (int x = 0; x < c.w; x++) {
@@ -247,8 +247,8 @@ static void test_lab_tiny_area_is_safe(void)
         }
     }
     /* An area hanging off the canvas's corner is clipped, not a crash. */
-    lab_draw(&sprites, &c, ACTION_REST, 0, -30, -30, 200, 200);
-    lab_draw(&sprites, &c, 99, 0, 100, 100, 200, 200);
+    lab_draw(&sprites, &c, ACTION_REST, false, 0, -30, -30, 200, 200);
+    lab_draw(&sprites, &c, 99, false, 0, 100, 100, 200, 200);
     canvas_free(&c);
 }
 
@@ -271,7 +271,7 @@ static void test_lab_pixels(void)
     Canvas c;
     CHECK(canvas_init(&c, 1112, 688));
     canvas_fill(&c, canvas_rgb(255, 0, 255));
-    lab_draw(&sprites, &c, ACTION_REST, 1234, 0, 0, 1112, 688);
+    lab_draw(&sprites, &c, ACTION_REST, false, 1234, 0, 0, 1112, 688);
     uint64_t h = hash_canvas(&c);
 #ifndef _WIN32
     /* Pinned after Nicolas approved the look on 2026-11-07; a change must be

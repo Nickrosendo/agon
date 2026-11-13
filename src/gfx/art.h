@@ -94,8 +94,9 @@ float art_scale_for(int species, int w, int h);
  * the rim of light the skeleton's bodies have.
  * Before the outline, each layer in layers (ART_PART_COUNT slots, NULL ones
  * skipped; layers itself may be NULL) is drawn over the frame in slot order:
- * a grid pixel takes the layer's ink when any of its samples is a layer
- * pixel, so a horn one art pixel thin survives a shrink.
+ * a grid pixel takes the layer's ink when any of its samples is a fin or horn
+ * pixel, so a part one art pixel thin survives a shrink, or when a third are
+ * armour pixels, the frame's own rule.
  * Sets the ink, the part (PART_BODY where inked, PART_SHELL under armour,
  * PART_HORN under a horn), the inked box, and the eye (-1, -1 for none).
  * frame is taken modulo the clip's frames.

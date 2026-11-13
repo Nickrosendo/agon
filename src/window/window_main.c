@@ -71,7 +71,8 @@ static const char WINDOW_USAGE[] =
     "      announced (or, with the story open, the creature it tells of).\n"
     "      b opens the species lab, every animal side by side, and closes it\n"
     "      again; in it 1 to 6 choose the action shown (walk, run, rest,\n"
-    "      graze, bite, sleep).\n"
+    "      graze, bite, sleep), and p puts every painted part (plates, a\n"
+    "      horn, a fin) on its species.\n"
     "      a switches the animals between their drawn frames and the skeleton.\n"
     "mouse: wheel zooms, dragging moves, clicking a creature follows it,\n"
     "       clicking bare ground lets go. On the panel, clicking \"top hunter\",\n"
@@ -89,6 +90,7 @@ typedef struct {
     LifePage page;     /* the L page, drawn over the world while open */
     bool lab_open;     /* the species lab (b), drawn over the world while open */
     int lab_action;    /* the ACTION_ value it shows */
+    bool lab_parts;    /* p: the lab shows every painted part on its species */
     Announce announce; /* which giants have been announced */
     const Options *opt;
     Rng seed_source;
@@ -299,6 +301,12 @@ static void handle_key(App *a, int key)
     case 'b':
     case 'B':
         a->lab_open = !a->lab_open;
+        break;
+    case 'p':
+    case 'P':
+        if (a->lab_open) {
+            a->lab_parts = !a->lab_parts;
+        }
         break;
     case 'a':
     case 'A':
@@ -568,8 +576,8 @@ static void draw_frame(App *a, float fraction)
                              l->view_x, l->view_y, l->view_w, l->view_h);
     }
     if (a->lab_open) {
-        lab_draw(&a->scene.sprites, &a->canvas, a->lab_action, a->body_ms, l->view_x,
-                 l->view_y, l->view_w, l->view_h);
+        lab_draw(&a->scene.sprites, &a->canvas, a->lab_action, a->lab_parts, a->body_ms,
+                 l->view_x, l->view_y, l->view_w, l->view_h);
     }
     if (a->page.open) {
         draw_page(a);

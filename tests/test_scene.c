@@ -504,10 +504,13 @@ static void test_known_world_pixels(void)
          * Re-pinned when every body was drawn from its frames, parts or not
          * (2026-11-12): small animals with a part gene, skeleton bodies
          * before, are frames now at the two middle levels; both pictures
-         * were written out and compared with the old ones. */
+         * were written out and compared with the old ones.
+         * Re-pinned for the first painted parts (2026-11-13): a small wolf
+         * with a fin and an otter with plates at the far middle level;
+         * written out and looked at. */
         static const uint64_t EXPECTED[CAMERA_LEVELS] = {
             0xbe5f57fb7c7bdabdu, 0xc46c0cff74609260u,
-            0x567085701250f3dbu, 0x98b4ac2b8979d875u,
+            0x109a0582f28144ceu, 0x98b4ac2b8979d875u,
         };
         if (hashes[level] != EXPECTED[level]) {
             printf("level %d: 0x%llxu\n", level,

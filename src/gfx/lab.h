@@ -33,9 +33,11 @@ int lab_species_at(int role, int column);
  * pictures (SPRITE_BASE_DETAIL, the mockup lab's scale) at scale 2, or scale 1
  * when the area is too small for two. action is an ACTION_ value; body_ms the
  * window's body clock, which picks each animal's frame of the action (each at
- * its own pace and out of step) and its blinks. Draws only inside
- * the area (x, y, w, h); an area too small for the page is just filled. */
-void lab_draw(SpriteCache *sprites, Canvas *c, int action, uint64_t body_ms,
+ * its own pace and out of step) and its blinks. parts true puts every part
+ * painted over a species' frames on it (plates, a horn, a fin), to look at
+ * them. Draws only inside the area (x, y, w, h); an area too small for the
+ * page is just filled. */
+void lab_draw(SpriteCache *sprites, Canvas *c, int action, bool parts, uint64_t body_ms,
               int x, int y, int w, int h);
 
 /* The sky's colour above a ground strip, as a canvas pixel. */
