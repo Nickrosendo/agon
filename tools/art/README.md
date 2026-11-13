@@ -138,6 +138,38 @@ hidden gets an empty one-pixel layer.
 | otter, weapon, full | "add one curved ivory horn growing up and forward from the otter's forehead, between its eyes and ears, like a small rhino horn; keep the otter's head, body, legs, tail, outline and pose exactly as they are; change nothing else" | 1202 | 3 + 2 | the four walk frames came back recoloured (the walk is a lighter brown than the otter's other clips); repainted with "keep the otter's brown fur colour, …" and seed 1212 |
 | ~~wolf, swim, full~~ | "add a tall fin standing up along the middle of the wolf's back, like a fish's dorsal fin, …" | 1203 | 5 | removed 2026-11-13: a fin promises life in open water, which no creature has; swimming bodies keep their own body, so no swim layers are painted |
 
+The painted otter pairs above are kept in `pixellab/otter/parts` but no
+longer used: since 2026-11-13 every species' parts are generated instead.
+
+### Parts generated from the frames (no credits)
+
+`gen_parts.py` makes each part from the frame's own pixels; the converter
+writes them as ordinary layers for every species (`GENERATED` in
+`pixellab_to_c.py`: a shell unless the frames are the species' armour, a horn
+where `gen_parts.HORN` places one, so not on the rhino or the elephant).
+
+- **The head, in every frame.** The standing frame's head (the pixels within
+  6 of a point halfway between the nose tip and the horn's base, each as
+  empty, dark, middle, light or other) is searched for in the front of each
+  frame, turned from 45 degrees up to 105 down: the best place and turn
+  where most pixels agree, less a cost when the head's middle strays more
+  than 3 pixels from its standing distance behind the frame's front edge (a
+  back's top edge looks like a head, but it is far from the front).
+- **Horn** (`HORN`, set by hand per species on its standing frame: the base
+  from the nose tip, and for goat, gazelle and deer a direction and length
+  along their own horns, which the new one covers and lengthens). In each
+  frame the base moves and turns with the found head, climbs straight up to
+  the head's top edge (at most 4 pixels), and the horn turns half as far as
+  the head (turned all the way, a grazing head's horn read as a beak).
+- **Shell** (`TRUNK`, set by hand per species as shares of the standing
+  frame's width): in each frame it keeps its length in pixels and its
+  distance behind the found head, so it stays on the trunk when the head
+  goes down or the tail swings out. A domed band of plates in the fur's own
+  shades, outlined, with a dark line every 4 columns.
+
+Known limits: on a rearing frame (the lion's, tiger's, zebra's and goat's
+attack) the shell runs along an upright back or misses it.
+
 ## Adding a species
 
 1. In PixelLab, `create_character` the same way (standard, quadruped, the
@@ -149,7 +181,9 @@ hidden gets an empty one-pixel layer.
    any of the character's jobs still runs).
 3. Add the name to `SPECIES` in `pixellab_to_c.py` with the parts its frames
    cover, look at the clips, set `FRAMES` (and `CLIP_FROM`, `RED_IS_HORN`)
-   as needed, regenerate, preview.
+   as needed; give it a `HORN` and a `TRUNK` entry in `gen_parts.py`;
+   regenerate, preview (`preview_art.py OUT.png NAME_weapon` shows its horn
+   over every frame).
 4. `make test`: the lab test's pinned picture changes; look at the lab (`b`)
    and re-pin it.
 

@@ -510,10 +510,15 @@ static void test_known_world_pixels(void)
          * small wolf's fin, pinned for an hour, was taken out the same day:
          * swimming bodies keep their own body). Re-pinned when the otter's
          * parts were generated from its frames instead of painted: the same
-         * otter, its shell a darker back; looked at. */
+         * otter, its shell a darker back; looked at. Re-pinned when every
+         * species got generated parts, the head found by its shape for the
+         * horn and the shell kept behind it (2026-11-13): a horn tip at the
+         * near middle level, shells and horns on several animals at the far
+         * middle level; both pictures written out and compared with the old
+         * ones. */
         static const uint64_t EXPECTED[CAMERA_LEVELS] = {
-            0xbe5f57fb7c7bdabdu, 0xc46c0cff74609260u,
-            0x965566356ef634e3u, 0x98b4ac2b8979d875u,
+            0xbe5f57fb7c7bdabdu, 0x46c292dd2e0d32ceu,
+            0x9a3a64834587b78au, 0x98b4ac2b8979d875u,
         };
         if (hashes[level] != EXPECTED[level]) {
             printf("level %d: 0x%llxu\n", level,

@@ -356,13 +356,19 @@ def place_eye(inks, w, h, offset):
 
 # ---- Layers: parts PixelLab painted into the frames, or made from them ----
 
-# Species whose parts are made from their own frames (gen_parts.py) instead
-# of painted by PixelLab: no credits spent. A generated part takes the place
-# of a painted one. AGON_GENERATED_TOO=otter,... adds species for one run,
-# to compare the two ways side by side.
-GENERATED = {"wolf": ("armour", "weapon"), "otter": ("armour", "weapon")}
-for extra in filter(None, os.environ.get("AGON_GENERATED_TOO", "").split(",")):
-    GENERATED[extra] = ("armour", "weapon")
+# The parts made from each species' own frames (gen_parts.py) instead of
+# painted by PixelLab: no credits spent, and a generated part takes the place
+# of a painted one. Every species gets a shell unless its frames are its
+# armour, and a horn where gen_parts.HORN places one (not the rhino or the
+# elephant, whose frames are their weapon).
+GENERATED = {}
+for _name, (_, _covers) in SPECIES.items():
+    _parts = []
+    if "ART_COVERS_ARMOUR" not in _covers:
+        _parts.append("armour")
+    if "ART_COVERS_WEAPON" not in _covers and _name in gen_parts.HORN:
+        _parts.append("weapon")
+    GENERATED[_name] = tuple(_parts)
 
 PART_SLOTS = [("armour", "ART_PART_ARMOUR"), ("swim", "ART_PART_SWIM"),
               ("weapon", "ART_PART_WEAPON")]
@@ -536,15 +542,18 @@ def write_layer(w, cname, actions, anchor_x, anchor_y):
     w("};")
 
 
-def generated_parts(inks, fw, fh, bx0, by0, name, eye_offset, stand_angle):
+def generated_parts(inks, fw, fh, bx0, by0, name, stand):
     """The parts gen_parts.py makes for this frame, {part: {(x, y): ink}} on
-    the canvas (the frame's box starts at bx0, by0)."""
+    the canvas (the frame's box starts at bx0, by0). stand is the standing
+    frame's (horn place, head template, trunk place)."""
+    place, template, trunk = stand
+    head = gen_parts.find_head(template, inks, fw, fh)
     out = {}
     for part in GENERATED.get(name, ()):
         if part == "armour":
-            px = gen_parts.shell(inks, fw, fh, name)
+            px = gen_parts.shell(inks, fw, fh, trunk, head[1])
         else:
-            px = gen_parts.horn(inks, fw, fh, eye_offset, stand_angle)
+            px = gen_parts.horn(inks, fw, fh, place, template, head)
         out[part] = {(x + bx0, y + by0): ink for (x, y), ink in px.items()}
     return out
 
@@ -600,6 +609,10 @@ def main():
         if eye is not None:
             nx, ny = nose(sinks, sw, sh)
             offset = (eye[0] - nx, eye[1] - ny)
+        # the standing frame's head, found again in every frame for its horn
+        place = gen_parts.horn_place(sinks, sw, sh, name)
+        template = gen_parts.head_template(sinks, sw, sh, place)
+        stand = (place, template, gen_parts.trunk_place(name, sw, template))
         clips = []
         levels = []
         made = {part: [] for part in GENERATED.get(name, ())}  # generated layers
@@ -641,8 +654,7 @@ def main():
                 if not eyes:
                     inks, ex, ey = plain, -1, -1
                 if made:
-                    parts = generated_parts(plain, fw, fh, bx0, by0, name, offset,
-                                            gen_parts.stand_angle(sinks, sw, sh))
+                    parts = generated_parts(plain, fw, fh, bx0, by0, name, stand)
                     for part, px in parts.items():
                         if i == 0:
                             made[part].append((action, clip, []))

@@ -6,7 +6,8 @@ building. A painted part's layer is drawn as its own row, over its base
 clip's frames.
 
 Run:  python3 tools/art/preview_art.py OUT.png [NAME_PREFIX]   (needs Pillow)
-      NAME_PREFIX keeps only rows whose name starts with it ("otter").
+      NAME_PREFIX keeps only rows whose name starts with it ("otter",
+      "wolf_weapon" for the horn rows, each over its base frames).
 """
 import os
 import re
@@ -38,8 +39,6 @@ def main():
         w, h, ax, ay, ex, ey = map(int, f[:6])
         rows.setdefault(f[6].rsplit("_", 1)[0], []).append((w, h, ax, ay, ex, ey, inks[f[6]]))
     parts = ("_armour_", "_swim_", "_weapon_")
-    if len(sys.argv) > 2:
-        rows = {k: v for k, v in rows.items() if k.startswith(sys.argv[2])}
     # A layer row (wolf_weapon_full_walk) is drawn over its base row (wolf_walk).
     drawn = {}
     for key, frames in rows.items():
@@ -52,6 +51,10 @@ def main():
         if base is None:
             continue
         drawn[key] = [[base[i], frames[i]] for i in range(len(frames))]
+    # filtered after the layers found their base rows, so "wolf_weapon" shows
+    # the horn rows over the wolf's frames
+    if len(sys.argv) > 2:
+        drawn = {k: v for k, v in drawn.items() if k.startswith(sys.argv[2])}
     cell_w, cell_h = 70, 46
     most = max(len(v) for v in drawn.values())
     sheet = Image.new("RGB", (cell_w * most, cell_h * len(drawn)), GROUND)

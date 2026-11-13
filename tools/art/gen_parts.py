@@ -39,23 +39,43 @@ def column_run(inks, w, h, x, top):
 
 # ---- Armour: a shell over the back ----
 
-# Where the trunk is, as shares of the frame's width from its back end
-# (animals face east: the tail is on the left, the head on the right).
-TRUNK = {"wolf": (0.30, 0.70), "otter": (0.25, 0.72)}
+# Where the trunk is on each species' standing frame, as shares of its width
+# from its back end (animals face east: the tail is on the left, the head on
+# the right), set by hand after looking at each one. In other frames the
+# trunk keeps its length in pixels and its distance behind the head, which
+# is found in each frame (find_head): a share of each frame's own width
+# slid onto the neck when the head went down or the tail swung out.
+TRUNK = {
+    "wolf": (0.30, 0.70), "otter": (0.25, 0.72), "fox": (0.35, 0.72),
+    "fennec": (0.33, 0.62), "hare": (0.20, 0.62), "lemur": (0.25, 0.72),
+    "lion": (0.22, 0.60), "tiger": (0.25, 0.70), "beaver": (0.30, 0.75),
+    "hippo": (0.12, 0.60), "zebra": (0.15, 0.58), "goat": (0.12, 0.65),
+    "gazelle": (0.15, 0.60), "deer": (0.12, 0.60),
+}
 BAND = 4         # a dark band line every this many columns
 DEPTH = 0.55     # the shell covers this share of the trunk's thickness
 RAISE = 1        # pixels the shell's middle stands above the back line
 
 
-def shell(inks, w, h, species):
-    """A domed shell over the trunk: in each trunk column, from one pixel
+def trunk_place(species, stand_w, template):
+    """The trunk from the standing frame: (how far its front end is behind
+    the head's middle, its length), in pixels."""
+    lo, hi = TRUNK.get(species, (0.30, 0.70))
+    x0, x1 = int(stand_w * lo), int(math.ceil(stand_w * hi))
+    return template[0] - x1, x1 - x0
+
+
+def shell(inks, w, h, trunk, head_x):
+    """A domed shell over the trunk, which ends trunk's distance behind the
+    head's middle (head_x, this frame's) and runs back its length: in each trunk column, from one pixel
     over the back (more in the middle, so the outline changes) down a share
     of the trunk's thickness. Its top row is the outline, then a light rim;
     a dark line every BAND columns splits it into plates; its lower edge is
     the outline again, so it stands apart from the fur under it. The inks
     are the fur's own shades, so the family's colour stays."""
-    lo, hi = TRUNK.get(species, (0.30, 0.70))
-    x0, x1 = int(w * lo), int(math.ceil(w * hi))
+    gap, length = trunk
+    x1 = min(w, head_x - gap)
+    x0 = max(0, x1 - length)
     out = {}
     span = max(1, x1 - x0 - 1)
     for x in range(x0, x1):
@@ -88,17 +108,12 @@ def shell(inks, w, h, species):
     return out
 
 
-# ---- Weapon: a horn on the forehead ----
+# ---- Weapon: a horn on the forehead (its shape; where it goes is below) ----
 
 HORN_LEN = 6     # pixels from base to tip, standing body
-HEAD_RADIUS = 6  # body pixels this close to the nose count as the head
-HORN_TURN = -55  # degrees from the snout's direction to the horn's (up is negative):
-                 # up and forward, like a rhino's
-FOREHEAD_STEPS = (2, 1, 3, 0)  # pixels in front of the eye, along the snout,
-                 # tried in turn for the horn's base: straight above the eye
-                 # are the ears
+HORN_ANGLE = -45  # the horn's direction on a standing body, in degrees (0 east,
+                 # -90 straight up): up and forward, like a rhino's
 ANGLE_STEP = 22.5  # the horn's direction is rounded to this, so it does not jitter
-HEAD_UP = 5      # the most pixels climbed from the brow to the head's top edge
 
 
 def nose(inks, w, h):
@@ -112,75 +127,193 @@ def nose(inks, w, h):
     return w - 1, 0
 
 
-def snout_angle(inks, w, h, nx, ny):
-    """The head's direction, in degrees (0 east, 90 straight down): from the
-    middle of the body pixels near the nose to the nose."""
-    sx = sy = n = 0
-    for y in range(max(0, ny - HEAD_RADIUS), min(h, ny + HEAD_RADIUS + 1)):
-        for x in range(max(0, nx - HEAD_RADIUS), min(w, nx + 1)):
-            if inks[y * w + x] != NONE and (x - nx) ** 2 + (y - ny) ** 2 <= HEAD_RADIUS ** 2:
-                sx, sy, n = sx + x, sy + y, n + 1
-    if n == 0:
-        return 0.0
-    return math.degrees(math.atan2(ny - sy / n, nx - sx / n))
+# ---- Finding the head in any frame ----
+
+MATCH_R = 6      # the head's picture: the standing frame's pixels this close to
+                 # the head's middle, body and empty alike (the outline matters)
+REFINE = 8       # coarse places looked at closely
+FRONT_PULL = 2.0  # points lost per pixel the head's middle strays from its
+                  # standing distance behind the front edge
+FRONT_FREE = 3.0  # pixels it may stray for free
+TURNS = range(-45, 106, 15)  # head turns tried, in degrees (positive is down,
+                 # as y grows downwards): from raised to grazing
 
 
-def horn(inks, w, h, eye_offset, stand_angle):
-    """A horn on the forehead. The eye is the nose plus eye_offset (the
-    standing frame's eye seen from its nose), turned by however far this
-    frame's snout has turned from the standing frame's (stand_angle), so it
-    stays on the head when the head goes down to graze. The base is the last
-    head pixel straight up from a few pixels in front of the eye, along the
-    snout (FOREHEAD_STEPS). The horn points HORN_TURN degrees from the snout, rounded to
-    ANGLE_STEP so it does not jitter, and is drawn as a line two pixels thick
-    for two thirds of its length and one at the tip, dark at the base and
-    light at the tip, so it reads at the game's sizes. Nothing when the
-    turned eye is not on the body."""
-    if eye_offset is None:
-        return {}
+def shade(ink):
+    """An ink's kind for matching: 0 empty, 1 dark, 2 middle, 3 light, 4
+    anything else (mouth, horn, mane). PixelLab's head keeps its light muzzle
+    and dark eye and outline from frame to frame, so these say more than the
+    outline alone."""
+    if ink == NONE:
+        return 0
+    if ink in (DEEP, OUTLINE):
+        return 1
+    if ink in (SHADOW, BASE):
+        return 2
+    if ink in (LIGHT, HIGH, BELLY):
+        return 3
+    return 4
+
+
+def head_template(inks, w, h, place):
+    """The standing frame's head: its middle, halfway between the nose and
+    the horn's base, every pixel within MATCH_R of it as (dx, dy, kind), and
+    how far the middle is behind the frame's front edge."""
     nx, ny = nose(inks, w, h)
-    snout = snout_angle(inks, w, h, nx, ny)
-    turn = math.radians(snout - stand_angle)
-    ox, oy = eye_offset
-    ex = nx + int(round(ox * math.cos(turn) - oy * math.sin(turn)))
-    ey = ny + int(round(ox * math.sin(turn) + oy * math.cos(turn)))
-    along = (math.cos(math.radians(snout)), math.sin(math.radians(snout)))
-    # the first of these steps forward along the snout that is still on the
-    # face; the eye's own column runs up into the ears, so it is the last try
-    for step in FOREHEAD_STEPS:
-        bx = ex + int(round(step * along[0]))
-        by = ey + int(round(step * along[1]))
-        if body(inks, w, h, bx, by):
-            break
+    if place is None:
+        cx, cy = nx - 3, ny
     else:
+        cx, cy = (nx + place[0]) // 2, (ny + place[1]) // 2
+
+    def kind(x, y):
+        return shade(inks[y * w + x]) if 0 <= x < w and 0 <= y < h else 0
+    pts = [(dx, dy, kind(cx + dx, cy + dy))
+           for dy in range(-MATCH_R, MATCH_R + 1) for dx in range(-MATCH_R, MATCH_R + 1)
+           if dx * dx + dy * dy <= MATCH_R * MATCH_R]
+    return cx, cy, pts, (w - 1) - cx
+
+
+def turned(pts, degrees):
+    """The template's offsets turned by degrees, rounded to whole pixels."""
+    a = math.radians(degrees)
+    c, s = math.cos(a), math.sin(a)
+    return [(int(round(dx * c - dy * s)), int(round(dx * s + dy * c)), k) for dx, dy, k in pts]
+
+
+def find_head(template, inks, w, h):
+    """Where the standing frame's head is in this frame: (turn in degrees, x,
+    y of its middle). Each template pixel scores 1 where the frame has the
+    same kind there (empty on empty too), -1 where one is body and the other
+    empty, 0 for two different body kinds; the place and turn with the best
+    sum, less a cost for straying from the front (FRONT_PULL), win. Only the front of the frame is searched, two pixels at a time
+    first, then one pixel around the REFINE best places and seven degrees
+    either side of their turns."""
+    _, _, pts, reach = template
+    kinds = [shade(v) for v in inks]
+
+    def score(offsets, x, y):
+        # The middle should be about as far behind the frame's front edge as
+        # on the standing frame: a back's top edge looks like a head's
+        # outline, but it is far from the front. Only across: a lowered head
+        # is lower, and its front edge may be an ear, so a few pixels either
+        # way cost nothing.
+        off = abs((w - 1 - x) - reach)
+        sc = -FRONT_PULL * max(0.0, off - FRONT_FREE)
+        for dx, dy, k in offsets:
+            px, py = x + dx, y + dy
+            f = kinds[py * w + px] if 0 <= px < w and 0 <= py < h else 0
+            if f == k:
+                sc += 1
+            elif f == 0 or k == 0:
+                sc -= 1
+        return sc
+
+    coarse = []
+    x_from = max(0, w - 4 * MATCH_R)
+    for turn in TURNS:
+        offsets = turned(pts, turn)
+        for y in range(0, h, 2):
+            for x in range(x_from, w, 2):
+                coarse.append((score(offsets, x, y), turn, x, y))
+    # The best few coarse places are each looked at closely: the true place
+    # can fall between two coarse ones and score less than a wrong one there.
+    coarse.sort(reverse=True)
+    best = coarse[0]
+    for _, t0, x0, y0 in coarse[:REFINE]:
+        for turn in (t0 - 7, t0, t0 + 7):
+            offsets = turned(pts, turn)
+            for y in range(y0 - 1, y0 + 2):
+                for x in range(x0 - 1, x0 + 2):
+                    sc = score(offsets, x, y)
+                    if sc > best[0]:
+                        best = (sc, turn, x, y)
+    return best[1], best[2], best[3]
+
+
+# ---- Weapon: a horn on the forehead ----
+
+# Where the horn stands on each species' standing frame, set by hand after
+# looking at each one: (x, y) of its base from the nose tip (nose()), and
+# optionally its direction in degrees (0 east, -90 straight up) and its
+# length; without them, HORN_ANGLE and HORN_LEN. Goat, gazelle and deer
+# already have horns:
+# theirs is drawn along their own and longer, so the old one sits inside the
+# new (layers cannot erase). The game's eye is no help here: it is missing
+# for most species. Rhino and elephant are not listed: their frames are
+# their weapon.
+HORN = {
+    "wolf": (-5, -4), "otter": (-5, -3), "fox": (-3, -3), "fennec": (-3, -3),
+    "hare": (-4, -3), "lemur": (-3, -4), "lion": (-3, -4), "tiger": (-5, -5),
+    "beaver": (-4, -4), "armadillo": (-7, -7), "hippo": (-8, -5),
+    "zebra": (-5, -6),
+    "goat": (-6, -7, -120, 9), "gazelle": (-7, -6, -100, 10),
+    "deer": (-8, -7, -95, 10),
+}
+CLIMB = 4        # the most pixels a moved base climbs to the head's top edge
+HORN_FOLLOWS = 0.5  # the share of the head's turn the horn's direction takes
+
+
+def horn_place(inks, w, h, species):
+    """The horn on the standing frame: (base x, base y, direction, length),
+    or None for a species with no HORN entry."""
+    if species not in HORN:
+        return None
+    entry = HORN[species]
+    nx, ny = nose(inks, w, h)
+    if len(entry) == 4:
+        angle, length = entry[2], entry[3]
+    else:
+        angle, length = HORN_ANGLE, HORN_LEN
+    return nx + entry[0], ny + entry[1], angle, length
+
+
+def horn(inks, w, h, place, template, head):
+    """A horn on the forehead of this frame. place is horn_place's answer on
+    the standing frame, template its head_template and head where find_head
+    found the head in this frame: the base and direction are moved and turned
+    with it, so the horn stays on the head when it goes down to graze. The
+    base then climbs to the head's edge ("up" as the head is tilted, at most
+    CLIMB steps), or steps down onto it when it landed just off it. The
+    direction is rounded to ANGLE_STEP so it does not jitter. Drawn as a line
+    two pixels thick for two thirds of its length and one at the tip, dark at
+    the base and light at the tip, so it reads at the game's sizes."""
+    if place is None:
         return {}
-    # up to the head's top edge, "up" as the head is tilted (at right angles
-    # to the snout), at most HEAD_UP steps: straight up from a lowered head
-    # climbed onto the neck
-    ux, uy = along[1], -along[0]
+    px, py, pangle, length = place
+    cx, cy, _, _ = template
+    turn, hx, hy = head
+    a = math.radians(turn)
+    dx0, dy0 = px - cx, py - cy
+    bx = int(round(hx + dx0 * math.cos(a) - dy0 * math.sin(a)))
+    by = int(round(hy + dx0 * math.sin(a) + dy0 * math.cos(a)))
+    # the horn turns half as far as the head: turned all the way, a grazing
+    # head's horn points straight ahead and reads as a beak
+    angle = round((pangle + turn * HORN_FOLLOWS) / ANGLE_STEP) * ANGLE_STEP
+    # the base climbs straight up to the head's top edge
+    ux, uy = 0.0, -1.0
+    if not body(inks, w, h, bx, by):
+        for i in range(1, 4):
+            q = (int(round(bx - ux * i)), int(round(by - uy * i)))
+            if body(inks, w, h, *q):
+                bx, by = q
+                break
+        else:
+            return {}
     top = (bx, by)
-    for i in range(1, HEAD_UP + 1):
-        nxt = (int(round(bx + ux * i)), int(round(by + uy * i)))
-        if not body(inks, w, h, *nxt):
+    for i in range(1, CLIMB + 1):
+        q = (int(round(bx + ux * i)), int(round(by + uy * i)))
+        if not body(inks, w, h, *q):
             break
-        top = nxt
+        top = q
     bx, by = top
-    angle = round((snout + HORN_TURN) / ANGLE_STEP) * ANGLE_STEP
     dx, dy = math.cos(math.radians(angle)), math.sin(math.radians(angle))
     out = {}
-    for i in range(HORN_LEN + 1):
+    for i in range(length + 1):
         x = int(round(bx + dx * i))
         y = int(round(by + dy * i))
-        out[(x, y)] = HORN0 + min(4, 1 + i * 4 // HORN_LEN)
-        if i < HORN_LEN * 2 // 3:
+        out[(x, y)] = HORN0 + min(4, 1 + i * 4 // length)
+        if i < length * 2 // 3:
             # the thick part: one more pixel on the back side of the line
-            out[(x + int(round(dy)), y - int(round(dx)))] = HORN0 + min(4, i * 4 // HORN_LEN)
+            out[(x + int(round(dy)), y - int(round(dx)))] = HORN0 + min(4, i * 4 // length)
     # the base sits on the head: only pixels off the body or on its top row
     return {p: ink for p, ink in out.items() if not body(inks, w, h, *p) or p[1] <= by}
-
-
-def stand_angle(inks, w, h):
-    """The standing frame's snout direction, in degrees: horn() turns the
-    eye's offset by how far each frame's snout has turned from it."""
-    nx, ny = nose(inks, w, h)
-    return snout_angle(inks, w, h, nx, ny)
