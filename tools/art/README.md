@@ -10,7 +10,7 @@ scripts that turn them into that file.
 | `pixellab/<species>/<clip>/N.png` | PixelLab's east-facing frames, as downloaded: clips `idle`, `walk`, `run`, `graze`, `bite`, `attack`, `sleep` |
 | `fetch_pixellab.py` | Downloads a character's east frames into `pixellab/<species>/` |
 | `pixellab_to_c.py` | Writes `src/gfx/art_data.c`: each frame cut to its inked box, every pixel one of the engine's inks, the anchor and the eye per frame |
-| `preview_art.py` | Draws `art_data.c` back as a picture, the eye in red, to check a conversion before building |
+| `preview_art.py` | Draws `art_data.c` back as a picture, the eye in red, layers over their frames, to check a conversion before building (`preview_art.py OUT.png otter` for one species) |
 
 Regenerate after changing frames (Pillow needed):
 
@@ -95,6 +95,37 @@ otherwise (the dog's graze 6):
 
 PixelLab's custom canvases vary (68 to 88 here) but always share the
 template's centre, so the converter's 128 × 128 canvas still lines them up.
+
+## Parts painted over the frames (2026-11-12)
+
+A body whose genes show plates, a horn or a fin its frames lack is drawn
+from its frames with the part on top, as a layer (`ArtSet.layer` in
+`src/gfx/art.h`). PixelLab paints the part into the frames themselves
+(`edit_animation`, the same instruction on every frame), and the converter
+keeps only the pixels that changed.
+
+| Path | What it is |
+|---|---|
+| `pixellab/<species>/parts/<part>-<size>/<clip>/N.png` | a painted frame on the converter's 128 × 128 canvas, N the base frame's own number; part `armour`, `weapon` or `swim`, size `full` or `medium` |
+| `paint_parts.py crop SPECIES DIR` | the frames the game uses, cropped to one 64 (or 80) px window, in batches of 16 (or 9) for one `edit_animation` call each, with `manifest.json` |
+| `paint_parts.py place SPECIES PART SIZE DIR` | PixelLab's results (`DIR/batchK/result/NN.png`) back on the canvas, into the parts folder |
+
+Steps for one pair: `crop`; upload each batch (`get_upload_url`, one curl per
+file); `edit_animation` per batch with the same description and seed;
+download each job's frames into `batchK/result/`; `place`; regenerate
+`art_data.c`, read what the converter prints on stderr, preview.
+
+What the converter does with a painted frame: compares it with the base
+frame as drawn (both without grass); a pixel is the part's when it is inked
+where the base was empty or its colour moved by more than 48 (the three
+channels' differences added). Only the largest touching group and pixels
+within 3 of it are kept; any other changed pixel is printed as "body pixels
+changed far from the part", and such a frame is cleaned or repainted before
+it is kept. Inks: armour in the shell's four fixed shades by its own
+lightness (it reads as plates on any fur), a horn in the five horn shades
+the same way, a fin in the fur's shades so families recolour it; near-black
+is the outline (armour: the shell's dark band). A frame where the part is
+hidden gets an empty one-pixel layer.
 
 ## Adding a species
 

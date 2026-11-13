@@ -176,6 +176,14 @@ def no_green(im):
     return out
 
 
+def raw_canvas(path):
+    """The frame as drawn, on the canvas, nothing removed."""
+    im = Image.open(path).convert("RGBA")
+    big = Image.new("RGBA", (CANVAS, CANVAS), (0, 0, 0, 0))
+    big.alpha_composite(im, ((CANVAS - im.width) // 2, (CANVAS - im.height) // 2))
+    return big
+
+
 def on_canvas(path):
     im = no_green(Image.open(path).convert("RGBA"))
     big = Image.new("RGBA", (CANVAS, CANVAS), (0, 0, 0, 0))
@@ -344,6 +352,163 @@ def place_eye(inks, w, h, offset):
     return ex, ey
 
 
+# ---- Layers: parts PixelLab painted into the frames ----
+
+PART_SLOTS = [("armour", "ART_PART_ARMOUR"), ("swim", "ART_PART_SWIM"),
+              ("weapon", "ART_PART_WEAPON")]
+SIZE_SLOTS = [("medium", "ART_SIZE_MEDIUM"), ("full", "ART_SIZE_FULL")]
+SHELL_BAND, SHELL1 = 9, 21  # INK_SHELL_BAND, INK_SHELL1 (four shell shades)
+CHANGED = 48   # a painted pixel this far from the base's colour (channel sum) is new
+NEAR = 3       # changed pixels this close to the part's main group belong to it
+
+
+def changed_pixels(base, painted):
+    """Where painted differs from base: inked where the base was empty, or a
+    clearly different colour. Both are 128 x 128 canvases."""
+    w, h = base.size
+    b, p = base.tobytes(), painted.tobytes()
+    out = set()
+    for i in range(w * h):
+        pa = p[4 * i + 3]
+        if pa < 128:
+            continue
+        if b[4 * i + 3] < 128 or sum(abs(p[4 * i + k] - b[4 * i + k]) for k in range(3)) > CHANGED:
+            out.add((i % w, i // w))
+    return out
+
+
+def part_group(points):
+    """The part's pixels among the changed ones: the largest group of touching
+    ones (corners count) and any within NEAR of it. Returns (kept, far): the
+    rest are body pixels PixelLab changed away from the part."""
+    seen, best = set(), []
+    for start in points:
+        if start in seen:
+            continue
+        group, todo = [], [start]
+        seen.add(start)
+        while todo:
+            x, y = todo.pop()
+            group.append((x, y))
+            for dy in (-1, 0, 1):
+                for dx in (-1, 0, 1):
+                    q = (x + dx, y + dy)
+                    if q in points and q not in seen:
+                        seen.add(q)
+                        todo.append(q)
+        if len(group) > len(best):
+            best = group
+    core = set(best)
+    kept = set(core)
+    for (x, y) in points:
+        if (x, y) in core:
+            continue
+        if any((x + dx, y + dy) in core for dy in range(-NEAR, NEAR + 1)
+               for dx in range(-NEAR, NEAR + 1)):
+            kept.add((x, y))
+    return kept, len(points) - len(kept)
+
+
+def part_ink(part, rgb, lo, hi, fur_level):
+    """A layer pixel's ink. Armour in the shell's four fixed shades by its own
+    lightness across the part's range (lo..hi), so plates read as plates on
+    any fur; a horn in the five horn shades the same way; a fin in fur shades
+    against the clip's fur, so a family recolours it. Outline-dark pixels are
+    the outline (the shell's dark band for armour)."""
+    v = lum(rgb)
+    if v < 40:
+        return SHELL_BAND if part == "armour" else OUTLINE
+    if part == "swim":
+        return ink_of(rgb + (255,), fur_level)
+    t = 0.0 if hi <= lo else (v - lo) / (hi - lo)
+    if part == "armour":
+        return SHELL1 + min(3, int(t * 4))
+    return HORN0 + min(4, int(t * 5))
+
+
+def layer_clips(w, root, name, anchor_x, anchor_y, levels):
+    """Writes every painted layer of species name and returns
+    {(part, size): C name of its clips} for the ones found. levels gives each
+    action's fur level, for fins."""
+    found = {}
+    for part, _ in PART_SLOTS:
+        for size, _ in SIZE_SLOTS:
+            top = os.path.join(root, name, "parts", "%s-%s" % (part, size))
+            if not os.path.isdir(top):
+                continue
+            # pass 1: each frame's part pixels, and the part's lightness range
+            per_action = []
+            all_v = []
+            for action, clip in ACTIONS:
+                source = CLIP_FROM.get(name, {}).get(clip, clip)
+                span = FRAMES.get(name, {}).get(clip)
+                base_dir = os.path.join(root, name, source)
+                names = sorted((n for n in os.listdir(base_dir) if n.endswith(".png")),
+                               key=lambda n: int(n.split(".")[0]))
+                if span is not None:
+                    names = names[span[0]:None if span[1] is None else span[1] + 1]
+                frames = []
+                for n in names:
+                    ppath = os.path.join(top, source, n)
+                    if not os.path.isfile(ppath):
+                        sys.exit("%s: no painted frame %s" % (top, os.path.join(source, n)))
+                    # Compared as drawn, both without grass: the base's
+                    # dust and loose dots are in the painted frame too, so
+                    # only what PixelLab added or changed differs.
+                    base = no_green(raw_canvas(os.path.join(base_dir, n)))
+                    painted = no_green(Image.open(ppath).convert("RGBA"))
+                    kept, far = part_group(changed_pixels(base, painted))
+                    if far:
+                        print("%s %s-%s %s/%s: %d body pixels changed far from the part"
+                              % (name, part, size, source, n, far), file=sys.stderr)
+                    px = {q: painted.getpixel(q)[:3] for q in kept}
+                    all_v.extend(lum(c) for c in px.values() if lum(c) >= 40)
+                    frames.append(px)
+                per_action.append((action, clip, frames))
+            lo = min(all_v) if all_v else 0.0
+            hi = max(all_v) if all_v else 0.0
+            # pass 2: each frame cut to its own box, the base anchor kept
+            cname = "%s_%s_%s" % (name, part, size)
+            for (action, clip, frames), level in zip(per_action, levels):
+                rows = []
+                for i, px in enumerate(frames):
+                    if px:
+                        bx0 = min(x for x, _ in px)
+                        by0 = min(y for _, y in px)
+                        fw = max(x for x, _ in px) - bx0 + 1
+                        fh = max(y for _, y in px) - by0 + 1
+                    else:  # the part is hidden in this frame: one empty pixel
+                        bx0, by0, fw, fh = int(anchor_x), anchor_y, 1, 1
+                    inks = [NONE] * (fw * fh)
+                    for (x, y), rgb in px.items():
+                        inks[(y - by0) * fw + (x - bx0)] = part_ink(part, rgb, lo, hi, level)
+                    fname = "%s_%s_%d" % (cname, clip, i)
+                    w("static const uint8_t %s_ink[%d] = {" % (fname, fw * fh))
+                    for row in range(fh):
+                        w("    " + ",".join(str(v) for v in inks[row * fw:(row + 1) * fw]) + ",")
+                    w("};")
+                    rows.append((fname, fw, fh, int(anchor_x - bx0), anchor_y - by0))
+                w("static const ArtFrame %s_%s_frames[%d] = {" % (cname, clip, len(rows)))
+                for fname, fw, fh, ax, ay in rows:
+                    w("    {%d, %d, %d, %d, -1, -1, %s_ink}," % (fw, fh, ax, ay, fname))
+                w("};")
+            w("static const ArtClip %s_clips[ACTION_COUNT] = {" % cname)
+            for action, clip, frames in per_action:
+                w("    [%s] = {%d, %s_%s_frames}," % (action, len(frames), cname, clip))
+            w("};")
+            found[(part, size)] = "%s_clips" % cname
+    return found
+
+
+def layer_table(found):
+    """The ArtSet's layer initializer, by ART_PART_ and ART_SIZE_ slot."""
+    parts = []
+    for part, _ in PART_SLOTS:
+        sizes = [found.get((part, size), "NULL") for size, _ in SIZE_SLOTS]
+        parts.append("{%s}" % ", ".join(sizes))
+    return "{%s}" % ", ".join(parts)
+
+
 def frames_of(folder, span):
     names = sorted((n for n in os.listdir(folder) if n.endswith(".png")),
                    key=lambda n: int(n.split(".")[0]))
@@ -387,17 +552,20 @@ def main():
             nx, ny = nose(sinks, sw, sh)
             offset = (eye[0] - nx, eye[1] - ny)
         clips = []
+        levels = []
         for action, clip in ACTIONS:
             span = FRAMES.get(name, {}).get(clip)
             path = os.path.join(folder, CLIP_FROM.get(name, {}).get(clip, clip))
             if not os.path.isdir(path):
                 clips.append((action, None))
+                levels.append(0)
                 continue
             frames = frames_of(path, span)
             # The fur's shade measured on the clip itself: PixelLab's colours
             # drift a little from clip to clip, and each clip's main fur
             # colour should be the family's base all the same.
             cm = body_level(frames[0])
+            levels.append(cm)
             horn = name in RED_IS_HORN
             red_fur = red_body(frames[0], cm) or name in RED_IS_FUR
             fnames = []
@@ -435,6 +603,7 @@ def main():
                 w("    {%d, %d, %d, %d, %d, %d, %s_ink}," % (fw, fh, ax, ay, ex, ey, fname))
             w("};")
             clips.append((action, "%s_%s" % (name, clip), len(fnames)))
+        found = layer_clips(w, root, name, anchor_x, anchor_y, levels)
         w("static const ArtClip %s_clips[ACTION_COUNT] = {" % name)
         for c in clips:
             if c[1] is None:
@@ -444,7 +613,7 @@ def main():
         w("};")
         w("")
         value, covers = SPECIES[name]
-        layers = "{{NULL, NULL}, {NULL, NULL}, {NULL, NULL}}"
+        layers = layer_table(found)
         sets.append("    {%s, %s, %d, %d, %s_clips, %s}," % (value, covers, x1 - x0, y1 - y0,
                                                           name, layers))
     w("const ArtSet ART_SETS[] = {")
