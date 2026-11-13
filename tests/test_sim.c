@@ -151,6 +151,11 @@ static void test_same_seed_same_checksum(void)
 #ifndef _WIN32
     CHECK(sim_checksum(&a) == SEED_7_AFTER_500);
 #endif
+    /* The rules version the pinned value belongs to. A change that moves the
+     * value above changes how worlds unfold, so old world codes would replay
+     * wrong: raise AGON_RULES (sim.h) in the same commit, and this number with
+     * it. Checked on every platform, since it is the rule, not the maths. */
+    CHECK(AGON_RULES == 1);
     sim_free(&a);
     sim_free(&b);
 }

@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "actions.h"
 #include "brain.h"
 #include "chronicle.h"
 #include "creature.h"
@@ -43,8 +44,12 @@ typedef struct {
  * inside the Sim (not behind pointers), and the memory they point to is
  * freed by sim_free. stats is the latest sample (see stats.h), taken every
  * stats_every ticks.
+ *
+ * "typedef struct Sim {...} Sim" gives the struct a name of its own (struct
+ * Sim) as well as the short one (Sim), so a header that must not include this
+ * one, like actions.h, can still say "struct Sim" and pass pointers to it.
  */
-typedef struct {
+typedef struct Sim {
     Settings set; /* a copy, so the caller's Settings can go away */
     World world;
     Pool pool;
@@ -71,7 +76,21 @@ typedef struct {
     /* The tactic watch: neither saved nor fingerprinted, for the same reason,
      * and after a load it starts counting again. */
     TacticWatch tactics;
+    /* What the player did and will do (actions.h): applied at the start of
+     * each entry's tick. Saved, so a world code can be made from a loaded world;
+     * not fingerprinted, because what an action changed is in the state itself,
+     * and a world built without a log must have the same fingerprint. */
+    ActionLog actions;
 } Sim;
+
+/*
+ * The rules version: raised by hand with any change that alters how a world
+ * unfolds from the same seed and settings (a default, a rule, a gene). A world
+ * code records it, and a code from other rules is refused, since replaying it
+ * here would grow a different world. tests/test_sim.c pins it beside the
+ * pinned checksum, so a change that moves the checksum fails until this rises.
+ */
+#define AGON_RULES 1
 
 /* Allocates a w by h world and a creature pool, opens the brain named in
  * set and builds the world from seed. False if the size or the pool

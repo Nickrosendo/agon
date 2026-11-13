@@ -275,6 +275,7 @@ bool sim_reseed(Sim *s, uint64_t seed)
     pool_clear(&s->pool);
     chronicle_clear(&s->chronicle);
     tactics_clear(&s->tactics);
+    actions_clear(&s->actions); /* a new world, so nothing done to it yet */
     /* The brain's random numbers start over too, so a reseeded Sim and a
      * fresh one make the same decisions. */
     brain_close(&s->brain);
@@ -701,6 +702,8 @@ void sim_step(Sim *s)
      * would point at the old place if the Sim were ever copied elsewhere. */
     s->pool.chronicle = recorder(s);
     s->pool.tactics = s->set.tactics ? &s->tactics : NULL;
+    /* The player's actions for this tick, before anything moves. */
+    actions_apply_due(s);
     climate_step(&s->world, &s->set, s->tick);
     flora_step(&s->world, &s->rng, &s->set,
                years_season_of(s->tick, s->set.ticks_per_year));
@@ -739,6 +742,7 @@ void sim_free(Sim *s)
     s->scratch = NULL;
     chronicle_free(&s->chronicle);
     tactics_free(&s->tactics);
+    actions_free(&s->actions);
     pool_free(&s->pool);
     world_free(&s->world);
 }
