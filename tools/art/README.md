@@ -167,6 +167,10 @@ where `gen_parts.HORN` places one, so not on the rhino or the elephant).
   goes down or the tail swings out. A domed band of plates in the fur's own
   shades, outlined, with a dark line every 4 columns.
 
+- **Two sizes** (`SIZES`): the full part for a gene of 1, a medium one for
+  a gene from 2/3: a shell over the middle three quarters of the trunk,
+  thinner and not raised; a horn 0.6 as long (at least 3 pixels).
+
 Known limits: on a rearing frame (the lion's, tiger's, zebra's and goat's
 attack) the shell runs along an upright back or misses it.
 

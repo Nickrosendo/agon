@@ -251,7 +251,7 @@ static void test_art_layers_pick(void)
     CHECK(out[ART_PART_SWIM] == NULL);    /* its frames are a swimmer's */
     CHECK(art_layers(SPECIES_OTTER, ACTION_COUNT, &all, out) == 0);
     /* An otter with plates and a horn gets both layers; with a medium gene
-     * (2/3) too, from the full layers, since no medium ones are painted yet. */
+     * (2/3) it gets the medium layer, a different, smaller one. */
     BodyTraits armed = all_traits(0.0f);
     armed.armour = 1.0f;
     armed.weapon = 1.0f;
@@ -260,7 +260,15 @@ static void test_art_layers_pick(void)
     const ArtClip *full_armour = out[ART_PART_ARMOUR];
     armed.armour = 2.0f / 3.0f;
     art_layers(SPECIES_OTTER, ACTION_WALK, &armed, out);
-    CHECK(out[ART_PART_ARMOUR] == full_armour);
+    CHECK(out[ART_PART_ARMOUR] != NULL && out[ART_PART_ARMOUR] != full_armour);
+    /* Generated parts come in both sizes: every species with a full layer
+     * has a medium one, so art.c's fall-back to the full layer is unused. */
+    for (int s = 0; s < ART_SET_COUNT; s++) {
+        for (int p = 0; p < ART_PART_COUNT; p++) {
+            CHECK((ART_SETS[s].layer[p][ART_SIZE_FULL] == NULL) ==
+                  (ART_SETS[s].layer[p][ART_SIZE_MEDIUM] == NULL));
+        }
+    }
     /* A gene of 1/3 shows no part. */
     armed.armour = 1.0f / 3.0f;
     art_layers(SPECIES_OTTER, ACTION_WALK, &armed, out);

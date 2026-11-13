@@ -543,18 +543,19 @@ def write_layer(w, cname, actions, anchor_x, anchor_y):
 
 
 def generated_parts(inks, fw, fh, bx0, by0, name, stand):
-    """The parts gen_parts.py makes for this frame, {part: {(x, y): ink}} on
-    the canvas (the frame's box starts at bx0, by0). stand is the standing
-    frame's (horn place, head template, trunk place)."""
+    """The parts gen_parts.py makes for this frame, {(part, size): {(x, y):
+    ink}} on the canvas (the frame's box starts at bx0, by0), both sizes.
+    stand is the standing frame's (horn place, head template, trunk place)."""
     place, template, trunk = stand
-    head = gen_parts.find_head(template, inks, fw, fh)
+    head = gen_parts.find_head(template, inks, fw, fh)  # once for every part
     out = {}
     for part in GENERATED.get(name, ()):
-        if part == "armour":
-            px = gen_parts.shell(inks, fw, fh, trunk, head[1])
-        else:
-            px = gen_parts.horn(inks, fw, fh, place, template, head)
-        out[part] = {(x + bx0, y + by0): ink for (x, y), ink in px.items()}
+        for size in gen_parts.SIZES:
+            if part == "armour":
+                px = gen_parts.shell(inks, fw, fh, trunk, head[1], size)
+            else:
+                px = gen_parts.horn(inks, fw, fh, place, template, head, size)
+            out[(part, size)] = {(x + bx0, y + by0): ink for (x, y), ink in px.items()}
     return out
 
 
@@ -615,7 +616,9 @@ def main():
         stand = (place, template, gen_parts.trunk_place(name, sw, template))
         clips = []
         levels = []
-        made = {part: [] for part in GENERATED.get(name, ())}  # generated layers
+        # generated layers, by (part, size)
+        made = {(part, size): [] for part in GENERATED.get(name, ())
+                for size in gen_parts.SIZES}
         for action, clip in ACTIONS:
             span = FRAMES.get(name, {}).get(clip)
             path = os.path.join(folder, CLIP_FROM.get(name, {}).get(clip, clip))
@@ -655,10 +658,10 @@ def main():
                     inks, ex, ey = plain, -1, -1
                 if made:
                     parts = generated_parts(plain, fw, fh, bx0, by0, name, stand)
-                    for part, px in parts.items():
+                    for key, px in parts.items():
                         if i == 0:
-                            made[part].append((action, clip, []))
-                        made[part][-1][2].append(px)
+                            made[key].append((action, clip, []))
+                        made[key][-1][2].append(px)
                 fname = "%s_%s_%d" % (name, clip, i)
                 w("static const uint8_t %s_ink[%d] = {" % (fname, fw * fh))
                 for row in range(fh):
@@ -673,10 +676,10 @@ def main():
             w("};")
             clips.append((action, "%s_%s" % (name, clip), len(fnames)))
         found = layer_clips(w, root, name, anchor_x, anchor_y, levels)
-        for part, actions in made.items():
-            cname = "%s_%s_full" % (name, part)
+        for (part, size), actions in made.items():
+            cname = "%s_%s_%s" % (name, part, size)
             write_layer(w, cname, actions, anchor_x, anchor_y)
-            found[(part, "full")] = "%s_clips" % cname
+            found[(part, size)] = "%s_clips" % cname
         w("static const ArtClip %s_clips[ACTION_COUNT] = {" % name)
         for c in clips:
             if c[1] is None:

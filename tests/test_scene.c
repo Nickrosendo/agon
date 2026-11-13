@@ -515,10 +515,12 @@ static void test_known_world_pixels(void)
          * horn and the shell kept behind it (2026-11-13): a horn tip at the
          * near middle level, shells and horns on several animals at the far
          * middle level; both pictures written out and compared with the old
-         * ones. */
+         * ones. Re-pinned for medium parts the same day: one animal with a
+         * medium gene at the far middle level wears a thinner shell; looked
+         * at. */
         static const uint64_t EXPECTED[CAMERA_LEVELS] = {
             0xbe5f57fb7c7bdabdu, 0x46c292dd2e0d32ceu,
-            0x9a3a64834587b78au, 0x98b4ac2b8979d875u,
+            0x78c979b143b36a7bu, 0x98b4ac2b8979d875u,
         };
         if (hashes[level] != EXPECTED[level]) {
             printf("level %d: 0x%llxu\n", level,

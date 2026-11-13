@@ -53,8 +53,15 @@ TRUNK = {
     "gazelle": (0.15, 0.60), "deer": (0.12, 0.60),
 }
 BAND = 4         # a dark band line every this many columns
-DEPTH = 0.55     # the shell covers this share of the trunk's thickness
-RAISE = 1        # pixels the shell's middle stands above the back line
+# Per size (the game's ART_SIZE_: a gene of 1 shows the full part, one from
+# PART_FROM below it the medium one): the share of the trunk's thickness the
+# shell covers, the pixels its middle stands above the back line, the share
+# of the trunk's length it covers (centred), and the share of the horn's
+# length.
+SIZES = {
+    "full": {"depth": 0.55, "raise": 1, "along": 1.0, "horn": 1.0},
+    "medium": {"depth": 0.38, "raise": 0, "along": 0.75, "horn": 0.6},
+}
 
 
 def trunk_place(species, stand_w, template):
@@ -65,17 +72,20 @@ def trunk_place(species, stand_w, template):
     return template[0] - x1, x1 - x0
 
 
-def shell(inks, w, h, trunk, head_x):
+def shell(inks, w, h, trunk, head_x, size="full"):
     """A domed shell over the trunk, which ends trunk's distance behind the
-    head's middle (head_x, this frame's) and runs back its length: in each trunk column, from one pixel
-    over the back (more in the middle, so the outline changes) down a share
-    of the trunk's thickness. Its top row is the outline, then a light rim;
+    head's middle (head_x, this frame's) and runs back its length (a medium
+    shell over the middle part of it): in each trunk column, from one pixel
+    over the back (more in the middle, so the outline changes; none for a
+    medium shell) down a share of the trunk's thickness. Its top row is the outline, then a light rim;
     a dark line every BAND columns splits it into plates; its lower edge is
     the outline again, so it stands apart from the fur under it. The inks
     are the fur's own shades, so the family's colour stays."""
+    sz = SIZES[size]
     gap, length = trunk
-    x1 = min(w, head_x - gap)
-    x0 = max(0, x1 - length)
+    cut = int(round(length * (1.0 - sz["along"]) / 2))
+    x1 = min(w, head_x - gap - cut)
+    x0 = max(0, head_x - gap - length + cut)
     out = {}
     span = max(1, x1 - x0 - 1)
     for x in range(x0, x1):
@@ -86,8 +96,8 @@ def shell(inks, w, h, trunk, head_x):
         # a dome: tallest in the middle of the trunk, nothing at its ends
         t = (x - x0) / span
         dome = math.sin(math.pi * t)
-        lift = int(round(RAISE * dome + 0.4))
-        depth = max(2, int(round(run * DEPTH * (0.6 + 0.4 * dome))))
+        lift = int(round(sz["raise"] * dome + 0.4)) if sz["raise"] else 0
+        depth = max(2, int(round(run * sz["depth"] * (0.6 + 0.4 * dome))))
         first, last = top - lift, top + depth - 1
         band = (x - x0) % BAND == 0 and 0 < x - x0 < x1 - x0 - 1
         for y in range(first, last + 1):
@@ -267,19 +277,22 @@ def horn_place(inks, w, h, species):
     return nx + entry[0], ny + entry[1], angle, length
 
 
-def horn(inks, w, h, place, template, head):
+def horn(inks, w, h, place, template, head, size="full"):
     """A horn on the forehead of this frame. place is horn_place's answer on
     the standing frame, template its head_template and head where find_head
-    found the head in this frame: the base and direction are moved and turned
-    with it, so the horn stays on the head when it goes down to graze. The
-    base then climbs to the head's edge ("up" as the head is tilted, at most
-    CLIMB steps), or steps down onto it when it landed just off it. The
-    direction is rounded to ANGLE_STEP so it does not jitter. Drawn as a line
-    two pixels thick for two thirds of its length and one at the tip, dark at
-    the base and light at the tip, so it reads at the game's sizes."""
+    found the head in this frame: the base is moved and turned with the
+    head, so the horn stays on it when it goes down to graze, and the
+    direction turns HORN_FOLLOWS as far. The base then climbs straight up to
+    the head's top edge (at most CLIMB steps), or steps down onto it when it
+    landed just off it. The direction is rounded to ANGLE_STEP so it does not
+    jitter. Drawn as a line two pixels thick for two thirds of its length
+    (the size's share of the standing length, at least 3) and one at the
+    tip, dark at the base and light at the tip, so it reads at the game's
+    sizes."""
     if place is None:
         return {}
     px, py, pangle, length = place
+    length = max(3, int(round(length * SIZES[size]["horn"])))
     cx, cy, _, _ = template
     turn, hx, hy = head
     a = math.radians(turn)

@@ -1512,6 +1512,311 @@ static const ArtClip armadillo_weapon_full_clips[ACTION_COUNT] = {
     [ACTION_ATTACK] = {9, armadillo_weapon_full_attack_frames},
     [ACTION_SLEEP] = {4, armadillo_weapon_full_sleep_frames},
 };
+static const uint8_t armadillo_weapon_medium_idle_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t armadillo_weapon_medium_idle_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t armadillo_weapon_medium_idle_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t armadillo_weapon_medium_idle_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t armadillo_weapon_medium_idle_4_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t armadillo_weapon_medium_idle_5_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t armadillo_weapon_medium_idle_6_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t armadillo_weapon_medium_idle_7_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame armadillo_weapon_medium_idle_frames[8] = {
+    {5, 4, -18, 27, -1, -1, armadillo_weapon_medium_idle_0_ink},
+    {5, 4, -18, 27, -1, -1, armadillo_weapon_medium_idle_1_ink},
+    {5, 4, -18, 28, -1, -1, armadillo_weapon_medium_idle_2_ink},
+    {5, 4, -18, 28, -1, -1, armadillo_weapon_medium_idle_3_ink},
+    {5, 4, -18, 28, -1, -1, armadillo_weapon_medium_idle_4_ink},
+    {5, 4, -18, 28, -1, -1, armadillo_weapon_medium_idle_5_ink},
+    {5, 4, -18, 28, -1, -1, armadillo_weapon_medium_idle_6_ink},
+    {5, 4, -18, 28, -1, -1, armadillo_weapon_medium_idle_7_ink},
+};
+static const uint8_t armadillo_weapon_medium_walk_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t armadillo_weapon_medium_walk_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t armadillo_weapon_medium_walk_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t armadillo_weapon_medium_walk_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame armadillo_weapon_medium_walk_frames[4] = {
+    {5, 4, -19, 29, -1, -1, armadillo_weapon_medium_walk_0_ink},
+    {5, 4, -19, 28, -1, -1, armadillo_weapon_medium_walk_1_ink},
+    {5, 4, -19, 29, -1, -1, armadillo_weapon_medium_walk_2_ink},
+    {5, 4, -18, 29, -1, -1, armadillo_weapon_medium_walk_3_ink},
+};
+static const uint8_t armadillo_weapon_medium_run_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t armadillo_weapon_medium_run_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t armadillo_weapon_medium_run_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t armadillo_weapon_medium_run_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame armadillo_weapon_medium_run_frames[4] = {
+    {5, 4, -19, 29, -1, -1, armadillo_weapon_medium_run_0_ink},
+    {5, 4, -19, 28, -1, -1, armadillo_weapon_medium_run_1_ink},
+    {5, 4, -19, 29, -1, -1, armadillo_weapon_medium_run_2_ink},
+    {5, 4, -18, 29, -1, -1, armadillo_weapon_medium_run_3_ink},
+};
+static const uint8_t armadillo_weapon_medium_graze_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t armadillo_weapon_medium_graze_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t armadillo_weapon_medium_graze_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t armadillo_weapon_medium_graze_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t armadillo_weapon_medium_graze_4_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t armadillo_weapon_medium_graze_5_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t armadillo_weapon_medium_graze_6_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame armadillo_weapon_medium_graze_frames[7] = {
+    {5, 4, -20, 19, -1, -1, armadillo_weapon_medium_graze_0_ink},
+    {5, 4, -20, 19, -1, -1, armadillo_weapon_medium_graze_1_ink},
+    {5, 4, -20, 18, -1, -1, armadillo_weapon_medium_graze_2_ink},
+    {5, 4, -19, 20, -1, -1, armadillo_weapon_medium_graze_3_ink},
+    {5, 4, -19, 18, -1, -1, armadillo_weapon_medium_graze_4_ink},
+    {5, 4, -20, 21, -1, -1, armadillo_weapon_medium_graze_5_ink},
+    {5, 4, -19, 24, -1, -1, armadillo_weapon_medium_graze_6_ink},
+};
+static const uint8_t armadillo_weapon_medium_bite_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t armadillo_weapon_medium_bite_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t armadillo_weapon_medium_bite_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t armadillo_weapon_medium_bite_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame armadillo_weapon_medium_bite_frames[4] = {
+    {5, 4, -21, 26, -1, -1, armadillo_weapon_medium_bite_0_ink},
+    {5, 4, -23, 26, -1, -1, armadillo_weapon_medium_bite_1_ink},
+    {5, 4, -26, 23, -1, -1, armadillo_weapon_medium_bite_2_ink},
+    {5, 4, -26, 23, -1, -1, armadillo_weapon_medium_bite_3_ink},
+};
+static const uint8_t armadillo_weapon_medium_attack_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t armadillo_weapon_medium_attack_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t armadillo_weapon_medium_attack_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t armadillo_weapon_medium_attack_3_ink[20] = {
+    0,0,0,15,
+    0,0,15,0,
+    0,0,14,0,
+    12,13,0,0,
+    11,12,0,0,
+};
+static const uint8_t armadillo_weapon_medium_attack_4_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t armadillo_weapon_medium_attack_5_ink[20] = {
+    0,0,0,15,
+    0,0,15,0,
+    0,0,14,0,
+    12,13,0,0,
+    11,12,0,0,
+};
+static const uint8_t armadillo_weapon_medium_attack_6_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t armadillo_weapon_medium_attack_7_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t armadillo_weapon_medium_attack_8_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame armadillo_weapon_medium_attack_frames[9] = {
+    {5, 4, -19, 27, -1, -1, armadillo_weapon_medium_attack_0_ink},
+    {5, 4, -19, 27, -1, -1, armadillo_weapon_medium_attack_1_ink},
+    {5, 4, -22, 22, -1, -1, armadillo_weapon_medium_attack_2_ink},
+    {4, 5, -25, 19, -1, -1, armadillo_weapon_medium_attack_3_ink},
+    {5, 4, -23, 19, -1, -1, armadillo_weapon_medium_attack_4_ink},
+    {4, 5, -26, 19, -1, -1, armadillo_weapon_medium_attack_5_ink},
+    {5, 4, -25, 20, -1, -1, armadillo_weapon_medium_attack_6_ink},
+    {5, 4, -24, 20, -1, -1, armadillo_weapon_medium_attack_7_ink},
+    {5, 4, -25, 21, -1, -1, armadillo_weapon_medium_attack_8_ink},
+};
+static const uint8_t armadillo_weapon_medium_sleep_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t armadillo_weapon_medium_sleep_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t armadillo_weapon_medium_sleep_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t armadillo_weapon_medium_sleep_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame armadillo_weapon_medium_sleep_frames[4] = {
+    {5, 4, -24, 15, -1, -1, armadillo_weapon_medium_sleep_0_ink},
+    {5, 4, -24, 14, -1, -1, armadillo_weapon_medium_sleep_1_ink},
+    {5, 4, -24, 15, -1, -1, armadillo_weapon_medium_sleep_2_ink},
+    {5, 4, -24, 15, -1, -1, armadillo_weapon_medium_sleep_3_ink},
+};
+static const ArtClip armadillo_weapon_medium_clips[ACTION_COUNT] = {
+    [ACTION_REST] = {8, armadillo_weapon_medium_idle_frames},
+    [ACTION_WALK] = {4, armadillo_weapon_medium_walk_frames},
+    [ACTION_RUN] = {4, armadillo_weapon_medium_run_frames},
+    [ACTION_GRAZE] = {7, armadillo_weapon_medium_graze_frames},
+    [ACTION_BITE] = {4, armadillo_weapon_medium_bite_frames},
+    [ACTION_ATTACK] = {9, armadillo_weapon_medium_attack_frames},
+    [ACTION_SLEEP] = {4, armadillo_weapon_medium_sleep_frames},
+};
 static const ArtClip armadillo_clips[ACTION_COUNT] = {
     [ACTION_REST] = {8, armadillo_idle_frames},
     [ACTION_WALK] = {4, armadillo_walk_frames},
@@ -3254,6 +3559,454 @@ static const ArtClip beaver_armour_full_clips[ACTION_COUNT] = {
     [ACTION_ATTACK] = {9, beaver_armour_full_attack_frames},
     [ACTION_SLEEP] = {4, beaver_armour_full_sleep_frames},
 };
+static const uint8_t beaver_armour_medium_idle_0_ink[162] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,7,7,0,
+    7,4,4,4,4,1,4,4,7,7,7,7,7,7,7,4,4,0,
+    0,2,2,2,2,1,2,2,4,1,4,4,4,1,4,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,7,7,0,
+    0,0,0,7,7,7,2,2,2,1,2,2,2,1,2,0,0,0,
+    0,0,0,0,0,0,7,7,2,1,2,7,7,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,7,0,0,0,0,0,0,0,
+};
+static const uint8_t beaver_armour_medium_idle_1_ink[162] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,7,7,0,
+    7,4,4,4,4,1,4,4,7,7,7,7,7,7,7,4,4,0,
+    0,2,2,2,2,1,2,2,4,1,4,4,4,1,4,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,7,7,0,
+    0,0,0,7,7,7,2,2,2,1,2,2,2,1,2,0,0,0,
+    0,0,0,0,0,0,7,7,2,1,2,7,7,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,7,0,0,0,0,0,0,0,
+};
+static const uint8_t beaver_armour_medium_idle_2_ink[162] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,7,7,0,
+    7,4,4,4,4,1,4,4,7,7,7,7,7,7,7,4,4,0,
+    0,2,2,2,2,1,2,2,4,1,4,4,4,1,4,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,7,7,0,
+    0,0,0,7,7,7,2,2,2,1,2,2,2,1,2,0,0,0,
+    0,0,0,0,0,0,7,7,2,1,2,7,7,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,7,0,0,0,0,0,0,0,
+};
+static const uint8_t beaver_armour_medium_idle_3_ink[162] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,7,7,0,
+    7,4,4,4,4,1,4,4,7,7,7,7,7,7,7,4,4,0,
+    0,2,2,2,2,1,2,2,4,1,4,4,4,1,4,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,7,7,0,
+    0,0,0,7,7,7,2,2,2,1,2,2,2,1,2,0,0,0,
+    0,0,0,0,0,0,7,7,2,1,2,7,7,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,7,0,0,0,0,0,0,0,
+};
+static const uint8_t beaver_armour_medium_idle_4_ink[162] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,7,7,0,
+    7,4,4,4,4,1,4,4,7,7,7,7,7,7,7,4,4,0,
+    0,2,2,2,2,1,2,2,4,1,4,4,4,1,4,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,7,7,0,
+    0,0,0,7,7,7,2,2,2,1,2,2,2,1,2,0,0,0,
+    0,0,0,0,0,0,7,7,2,1,2,7,7,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,7,0,0,0,0,0,0,0,
+};
+static const uint8_t beaver_armour_medium_idle_5_ink[162] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,7,7,0,
+    7,4,4,4,4,1,4,4,7,7,7,7,7,7,7,4,4,0,
+    0,2,2,2,2,1,2,2,4,1,4,4,4,1,4,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,7,7,0,
+    0,0,0,7,7,7,2,2,2,1,2,2,2,1,2,0,0,0,
+    0,0,0,0,0,0,7,7,2,1,2,7,7,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,7,0,0,0,0,0,0,0,
+};
+static const uint8_t beaver_armour_medium_idle_6_ink[162] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,7,7,0,
+    7,4,4,4,4,1,4,4,7,7,7,7,7,7,7,4,4,0,
+    0,2,2,2,2,1,2,2,4,1,4,4,4,1,4,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,7,7,0,
+    0,0,0,7,7,7,2,2,2,1,2,2,2,1,2,0,0,0,
+    0,0,0,0,0,0,7,7,2,1,2,7,7,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,7,0,0,0,0,0,0,0,
+};
+static const uint8_t beaver_armour_medium_idle_7_ink[162] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,7,7,0,
+    7,4,4,4,4,1,4,4,7,7,7,7,7,7,7,4,4,0,
+    0,2,2,2,2,1,2,2,4,1,4,4,4,1,4,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,7,7,0,
+    0,0,0,7,7,7,2,2,2,1,2,2,2,1,2,0,0,0,
+    0,0,0,0,0,0,7,7,2,1,2,7,7,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,7,0,0,0,0,0,0,0,
+};
+static const ArtFrame beaver_armour_medium_idle_frames[8] = {
+    {18, 9, 8, 23, -1, -1, beaver_armour_medium_idle_0_ink},
+    {18, 9, 8, 23, -1, -1, beaver_armour_medium_idle_1_ink},
+    {18, 9, 8, 23, -1, -1, beaver_armour_medium_idle_2_ink},
+    {18, 9, 8, 23, -1, -1, beaver_armour_medium_idle_3_ink},
+    {18, 9, 8, 23, -1, -1, beaver_armour_medium_idle_4_ink},
+    {18, 9, 8, 23, -1, -1, beaver_armour_medium_idle_5_ink},
+    {18, 9, 8, 23, -1, -1, beaver_armour_medium_idle_6_ink},
+    {18, 9, 8, 23, -1, -1, beaver_armour_medium_idle_7_ink},
+};
+static const uint8_t beaver_armour_medium_walk_0_ink[144] = {
+    0,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,7,
+    7,4,4,4,4,1,4,7,7,7,0,0,0,0,0,7,7,0,
+    0,2,2,2,2,1,2,4,4,1,7,7,7,7,7,4,4,0,
+    0,7,7,2,2,1,2,2,2,1,4,4,4,1,4,2,7,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,1,2,7,0,0,
+    0,0,0,0,0,7,7,2,2,1,2,2,2,1,2,0,0,0,
+    0,0,0,0,0,0,0,7,7,7,2,2,7,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,
+};
+static const uint8_t beaver_armour_medium_walk_1_ink[162] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,7,4,0,
+    0,4,4,4,4,1,4,7,7,7,7,7,7,7,7,4,2,0,
+    0,2,2,2,2,1,2,4,4,1,4,4,4,1,4,2,7,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,2,0,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,1,2,7,0,0,
+    0,0,0,0,0,7,7,2,2,1,2,2,7,7,7,0,0,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,0,0,0,0,0,0,
+};
+static const uint8_t beaver_armour_medium_walk_2_ink[144] = {
+    0,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,7,7,
+    7,4,4,4,4,1,4,4,4,7,7,7,7,7,7,7,4,0,
+    0,2,2,2,2,1,2,2,2,1,4,4,4,1,4,4,2,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,1,2,7,0,0,
+    0,0,0,0,0,7,7,7,7,1,2,2,2,1,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,2,7,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,
+};
+static const uint8_t beaver_armour_medium_walk_3_ink[144] = {
+    0,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,7,
+    7,4,4,4,4,1,4,7,7,0,0,0,0,0,0,7,7,0,
+    0,2,2,2,2,1,2,4,4,7,7,7,7,7,7,4,4,0,
+    0,2,2,2,2,1,2,2,2,1,4,4,4,1,4,2,2,0,
+    0,7,7,7,2,1,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,7,7,7,2,2,1,2,2,2,1,2,7,0,0,
+    0,0,0,0,0,0,0,7,7,1,2,2,7,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,0,0,0,0,0,0,
+};
+static const ArtFrame beaver_armour_medium_walk_frames[4] = {
+    {18, 8, 8, 20, -1, -1, beaver_armour_medium_walk_0_ink},
+    {18, 9, 8, 21, -1, -1, beaver_armour_medium_walk_1_ink},
+    {18, 8, 8, 20, -1, -1, beaver_armour_medium_walk_2_ink},
+    {18, 8, 8, 20, -1, -1, beaver_armour_medium_walk_3_ink},
+};
+static const uint8_t beaver_armour_medium_run_0_ink[144] = {
+    7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,7,7,0,0,0,0,0,0,0,0,0,7,
+    0,7,2,2,2,1,4,4,7,7,7,0,0,0,0,7,7,0,
+    0,0,7,2,2,1,2,2,4,1,4,7,7,7,7,4,4,0,
+    0,0,0,7,7,7,2,2,2,1,2,4,4,1,4,2,7,0,
+    0,0,0,0,0,0,7,2,2,1,2,2,2,1,2,7,0,0,
+    0,0,0,0,0,0,0,7,7,7,7,2,2,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,
+};
+static const uint8_t beaver_armour_medium_run_1_ink[144] = {
+    0,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    7,4,4,4,4,1,4,7,7,7,7,7,0,0,0,0,0,7,
+    0,2,2,2,2,1,2,4,4,1,4,4,7,7,7,7,7,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,4,1,4,4,4,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,1,2,2,2,0,
+    0,0,0,0,0,7,7,2,2,1,2,2,2,1,2,7,7,0,
+    0,0,0,0,0,0,0,7,2,1,2,7,2,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,7,0,7,0,0,0,0,0,
+};
+static const uint8_t beaver_armour_medium_run_2_ink[144] = {
+    0,0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,
+    7,7,4,4,4,1,4,4,4,7,7,0,0,0,0,0,7,7,
+    0,4,2,2,2,1,2,2,2,1,4,7,7,7,7,7,4,0,
+    0,2,2,2,2,1,2,2,2,1,2,4,4,1,4,4,7,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,2,0,0,
+    0,0,0,7,7,7,2,2,2,1,2,2,2,1,7,7,0,0,
+    0,0,0,0,0,0,7,7,7,1,7,7,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t beaver_armour_medium_run_3_ink[162] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,7,7,7,7,7,0,0,0,0,0,0,0,7,7,0,
+    7,7,7,4,4,1,4,4,7,7,7,7,7,7,7,4,4,0,
+    0,4,4,2,2,1,2,2,4,1,4,4,4,1,4,2,7,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,7,0,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,7,7,0,0,0,
+    0,7,7,7,7,7,2,2,2,1,2,7,7,0,0,0,0,0,
+    0,0,0,0,0,0,7,7,2,7,7,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,
+};
+static const ArtFrame beaver_armour_medium_run_frames[4] = {
+    {18, 8, 6, 21, -1, -1, beaver_armour_medium_run_0_ink},
+    {18, 8, 8, 21, -1, -1, beaver_armour_medium_run_1_ink},
+    {18, 8, 9, 18, -1, -1, beaver_armour_medium_run_2_ink},
+    {18, 9, 8, 22, -1, -1, beaver_armour_medium_run_3_ink},
+};
+static const uint8_t beaver_armour_medium_graze_0_ink[144] = {
+    0,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    7,4,4,4,4,1,4,7,7,7,0,0,0,0,0,0,0,0,
+    0,2,2,2,2,1,2,4,4,1,7,7,7,7,7,0,0,0,
+    0,7,2,2,2,1,2,2,2,1,4,4,4,1,4,7,7,0,
+    0,0,7,2,2,1,2,2,2,1,2,2,2,1,2,4,4,7,
+    0,0,0,7,7,7,7,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,0,0,7,7,7,2,2,7,7,7,7,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,
+};
+static const uint8_t beaver_armour_medium_graze_1_ink[144] = {
+    7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,7,7,7,0,0,0,0,0,0,0,0,0,
+    0,2,2,2,2,1,4,4,4,7,7,7,7,7,0,0,0,0,
+    0,7,2,2,2,1,2,2,2,1,4,4,4,1,7,7,0,0,
+    0,0,7,7,2,1,2,2,2,1,2,2,2,1,4,4,7,7,
+    0,0,0,0,7,7,2,2,2,1,2,2,2,1,2,2,4,0,
+    0,0,0,0,0,0,7,7,7,1,2,2,7,7,7,7,7,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,0,0,0,0,0,0,
+};
+static const uint8_t beaver_armour_medium_graze_2_ink[144] = {
+    7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,7,7,7,0,0,0,0,0,0,0,0,0,
+    0,2,2,2,2,1,4,4,4,7,7,7,7,7,0,0,0,0,
+    0,7,2,2,2,1,2,2,2,1,4,4,4,1,7,7,0,0,
+    0,0,7,7,2,1,2,2,2,1,2,2,2,1,4,4,7,7,
+    0,0,0,0,7,7,2,2,2,1,2,2,2,1,2,2,4,0,
+    0,0,0,0,0,0,7,7,7,1,2,2,7,7,7,7,7,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,0,0,0,0,0,0,
+};
+static const uint8_t beaver_armour_medium_graze_3_ink[144] = {
+    7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,7,7,7,0,0,0,0,0,0,0,0,0,
+    0,2,2,2,2,1,4,4,4,7,7,7,7,7,0,0,0,0,
+    0,7,2,2,2,1,2,2,2,1,4,4,4,1,7,7,0,0,
+    0,0,7,7,2,1,2,2,2,1,2,2,2,1,4,4,7,7,
+    0,0,0,0,7,7,2,2,2,1,2,2,2,1,2,2,4,0,
+    0,0,0,0,0,0,7,7,7,1,2,2,7,7,7,7,7,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,0,0,0,0,0,0,
+};
+static const uint8_t beaver_armour_medium_graze_4_ink[144] = {
+    7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,7,7,7,0,0,0,0,0,0,0,0,0,
+    0,2,2,2,2,1,4,4,4,7,7,7,7,7,0,0,0,0,
+    0,7,2,2,2,1,2,2,2,1,4,4,4,1,7,7,0,0,
+    0,0,7,7,2,1,2,2,2,1,2,2,2,1,4,4,7,7,
+    0,0,0,0,7,7,2,2,2,1,2,2,2,1,2,2,4,0,
+    0,0,0,0,0,0,7,7,7,1,2,2,7,7,7,7,7,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,0,0,0,0,0,0,
+};
+static const uint8_t beaver_armour_medium_graze_5_ink[144] = {
+    7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,7,7,7,0,0,0,0,0,0,0,0,0,
+    0,2,2,2,2,1,4,4,4,7,7,7,7,7,0,0,0,0,
+    0,7,2,2,2,1,2,2,2,1,4,4,4,1,7,7,0,0,
+    0,0,7,7,2,1,2,2,2,1,2,2,2,1,4,4,7,7,
+    0,0,0,0,7,7,2,2,2,1,2,2,2,1,2,2,4,0,
+    0,0,0,0,0,0,7,7,7,1,2,2,7,7,7,7,7,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,0,0,0,0,0,0,
+};
+static const uint8_t beaver_armour_medium_graze_6_ink[126] = {
+    0,0,0,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,
+    0,7,7,4,4,1,4,4,4,7,7,7,0,0,0,0,0,0,
+    7,4,4,2,2,1,2,2,2,1,4,4,7,7,7,7,7,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,4,1,4,4,4,7,
+    0,7,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,0,
+    0,0,7,7,7,7,7,2,2,1,2,2,2,1,2,7,7,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,7,7,7,0,0,0,
+};
+static const ArtFrame beaver_armour_medium_graze_frames[7] = {
+    {18, 8, 8, 21, -1, -1, beaver_armour_medium_graze_0_ink},
+    {18, 8, 7, 21, -1, -1, beaver_armour_medium_graze_1_ink},
+    {18, 8, 7, 21, -1, -1, beaver_armour_medium_graze_2_ink},
+    {18, 8, 7, 21, -1, -1, beaver_armour_medium_graze_3_ink},
+    {18, 8, 7, 21, -1, -1, beaver_armour_medium_graze_4_ink},
+    {18, 8, 7, 21, -1, -1, beaver_armour_medium_graze_5_ink},
+    {18, 7, 10, 21, -1, -1, beaver_armour_medium_graze_6_ink},
+};
+static const uint8_t beaver_armour_medium_bite_0_ink[144] = {
+    7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,4,7,7,7,7,0,0,0,0,0,7,7,
+    0,2,2,2,2,1,2,4,4,1,4,7,7,7,7,7,4,0,
+    0,7,7,2,2,1,2,2,2,1,2,4,4,1,4,4,2,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,7,7,2,2,1,2,2,2,1,2,2,0,0,
+    0,0,0,0,0,0,0,7,7,7,7,2,2,1,7,7,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,7,7,0,0,0,0,
+};
+static const uint8_t beaver_armour_medium_bite_1_ink[144] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,7,7,0,
+    0,4,4,4,4,7,7,7,7,7,7,7,7,7,7,4,4,0,
+    0,2,2,2,2,1,4,4,4,1,4,4,4,1,4,2,2,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,2,2,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,1,2,7,7,0,
+    0,0,0,0,0,7,2,2,2,1,2,2,2,1,2,0,0,0,
+    0,0,0,0,0,0,7,7,7,7,7,7,7,7,7,0,0,0,
+};
+static const ArtFrame beaver_armour_medium_bite_frames[2] = {
+    {18, 8, 4, 20, -1, -1, beaver_armour_medium_bite_0_ink},
+    {18, 8, 5, 21, -1, -1, beaver_armour_medium_bite_1_ink},
+};
+static const uint8_t beaver_armour_medium_attack_0_ink[144] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,7,7,7,7,7,7,0,0,0,0,0,0,0,7,7,0,
+    7,7,4,4,4,1,4,4,7,7,7,7,7,7,7,4,4,0,
+    0,4,2,2,2,1,2,2,4,1,4,4,4,1,4,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,7,7,7,7,1,2,2,2,1,2,2,2,1,2,7,0,0,
+    0,0,0,0,0,7,7,7,2,1,2,2,7,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,0,0,0,0,0,0,
+};
+static const uint8_t beaver_armour_medium_attack_1_ink[144] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,
+    0,7,7,7,7,7,7,0,0,0,0,0,0,0,0,7,4,0,
+    7,4,4,4,4,1,4,7,7,7,7,7,7,7,7,4,2,0,
+    0,2,2,2,2,1,2,4,4,1,4,4,4,1,4,2,2,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,1,2,7,0,0,
+    0,0,0,0,0,7,7,2,2,1,2,2,7,7,7,0,0,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,0,0,0,0,0,0,
+};
+static const uint8_t beaver_armour_medium_attack_2_ink[162] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,7,7,7,7,0,0,0,0,0,0,0,0,0,0,7,7,0,
+    7,4,4,4,4,7,7,0,0,0,0,0,0,0,7,4,4,0,
+    0,2,2,2,2,1,4,7,7,7,7,7,7,7,4,2,2,0,
+    0,7,7,2,2,1,2,4,4,1,4,4,4,1,2,2,7,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,1,2,7,0,0,
+    0,0,0,0,0,7,2,2,2,1,2,2,2,1,2,0,0,0,
+    0,0,0,0,0,0,7,2,2,1,2,2,2,1,7,0,0,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,7,7,0,0,0,0,
+};
+static const uint8_t beaver_armour_medium_attack_3_ink[162] = {
+    7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,7,7,0,0,0,0,0,0,0,0,0,7,
+    0,2,2,2,2,1,4,4,7,7,7,7,7,7,7,7,7,0,
+    0,7,7,2,2,1,2,2,4,1,4,4,4,1,4,4,4,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,7,2,2,2,1,2,2,2,1,7,7,0,0,
+    0,0,0,0,0,0,7,7,2,1,2,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,1,2,7,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,0,
+};
+static const uint8_t beaver_armour_medium_attack_4_ink[162] = {
+    7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,7,7,0,0,0,0,0,0,0,0,0,0,
+    0,2,2,2,2,1,4,4,7,7,7,7,7,7,7,7,0,0,
+    0,2,7,2,2,1,2,2,4,1,4,4,4,1,4,4,7,7,
+    0,7,0,7,7,1,2,2,2,1,2,2,2,1,2,2,4,0,
+    0,0,0,0,0,1,2,2,2,1,2,2,2,1,2,7,7,0,
+    0,0,0,0,0,7,2,2,2,1,2,2,7,7,7,0,0,0,
+    0,0,0,0,0,0,7,7,2,7,7,7,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t beaver_armour_medium_attack_5_ink[162] = {
+    7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,7,7,0,0,0,0,0,0,0,0,0,0,
+    0,2,2,2,2,1,4,4,7,7,7,7,7,7,7,7,0,0,
+    0,7,7,2,2,1,2,2,4,1,4,4,4,1,4,4,7,7,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,1,2,2,4,0,
+    0,0,0,0,0,7,2,2,2,1,2,2,2,1,2,7,7,0,
+    0,0,0,0,0,0,7,2,2,1,2,2,7,7,7,0,0,0,
+    0,0,0,0,0,0,0,7,2,1,7,7,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t beaver_armour_medium_attack_6_ink[144] = {
+    7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,4,7,7,0,0,0,0,0,0,0,0,0,
+    0,2,2,2,2,1,2,4,4,7,7,7,7,7,7,7,0,0,
+    0,7,7,2,2,1,2,2,2,1,4,4,4,1,4,4,7,7,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,1,2,2,4,0,
+    0,0,0,0,0,7,7,2,2,1,2,2,2,1,2,2,2,0,
+    0,0,0,0,0,0,0,7,7,1,2,2,2,1,7,7,7,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,7,7,0,0,0,0,
+};
+static const uint8_t beaver_armour_medium_attack_7_ink[144] = {
+    7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,7,7,0,0,0,0,0,0,0,0,0,0,
+    0,2,2,2,2,1,4,4,7,7,7,7,7,7,7,7,7,0,
+    0,7,7,2,2,1,2,2,4,1,4,4,4,1,4,4,4,7,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,7,2,2,2,1,2,2,2,1,7,7,0,0,
+    0,0,0,0,0,0,7,7,2,1,2,7,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,7,0,0,0,0,0,0,0,
+};
+static const uint8_t beaver_armour_medium_attack_8_ink[108] = {
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,1,4,4,4,7,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,7,7,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,7,7,0,0,0,
+    0,0,0,7,7,7,2,2,2,1,2,7,7,0,0,0,0,0,
+    0,0,0,0,0,0,7,7,7,7,7,0,0,0,0,0,0,0,
+};
+static const ArtFrame beaver_armour_medium_attack_frames[9] = {
+    {18, 8, 8, 21, -1, -1, beaver_armour_medium_attack_0_ink},
+    {18, 8, 7, 21, -1, -1, beaver_armour_medium_attack_1_ink},
+    {18, 9, 6, 21, -1, -1, beaver_armour_medium_attack_2_ink},
+    {18, 9, 5, 20, -1, -1, beaver_armour_medium_attack_3_ink},
+    {18, 9, 4, 20, -1, -1, beaver_armour_medium_attack_4_ink},
+    {18, 9, 4, 20, -1, -1, beaver_armour_medium_attack_5_ink},
+    {18, 8, 5, 20, -1, -1, beaver_armour_medium_attack_6_ink},
+    {18, 8, 1, 20, -1, -1, beaver_armour_medium_attack_7_ink},
+    {18, 6, -2, 19, -1, -1, beaver_armour_medium_attack_8_ink},
+};
+static const uint8_t beaver_armour_medium_sleep_0_ink[126] = {
+    0,0,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    7,7,4,4,7,7,7,0,0,0,0,0,7,7,7,7,7,7,
+    0,4,2,2,4,1,4,7,7,7,7,7,4,1,4,4,4,0,
+    0,7,7,7,2,1,2,4,4,1,4,4,2,1,2,2,2,0,
+    0,0,0,0,7,1,2,2,2,1,2,2,2,7,7,7,7,0,
+    0,0,0,0,0,7,7,2,2,1,2,2,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,0,0,0,0,0,0,
+};
+static const uint8_t beaver_armour_medium_sleep_1_ink[126] = {
+    0,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    7,4,4,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,2,4,4,1,7,7,7,7,7,7,7,7,7,7,7,7,
+    0,0,7,2,2,1,4,4,4,1,4,4,4,1,4,4,4,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,7,2,2,2,1,2,2,7,7,7,7,0,0,
+    0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,0,
+};
+static const uint8_t beaver_armour_medium_sleep_2_ink[126] = {
+    0,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    7,4,4,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,2,4,4,1,7,7,7,7,7,7,7,7,7,7,7,7,
+    0,0,7,2,2,1,4,4,4,1,4,4,4,1,4,4,4,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,7,2,2,2,1,2,2,7,7,7,7,0,0,
+    0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,0,
+};
+static const uint8_t beaver_armour_medium_sleep_3_ink[126] = {
+    7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,7,7,7,0,0,0,0,0,0,7,7,7,7,7,0,0,
+    0,7,4,4,4,7,7,7,7,7,7,4,4,1,4,4,7,7,
+    0,0,2,2,2,1,4,4,4,1,4,2,2,1,2,2,4,0,
+    0,0,7,7,7,1,2,2,2,1,2,2,2,1,2,7,7,0,
+    0,0,0,0,0,7,2,2,2,1,2,7,7,7,7,0,0,0,
+    0,0,0,0,0,0,7,7,7,7,7,0,0,0,0,0,0,0,
+};
+static const ArtFrame beaver_armour_medium_sleep_frames[4] = {
+    {18, 7, 0, 16, -1, -1, beaver_armour_medium_sleep_0_ink},
+    {18, 7, -1, 16, -1, -1, beaver_armour_medium_sleep_1_ink},
+    {18, 7, -1, 16, -1, -1, beaver_armour_medium_sleep_2_ink},
+    {18, 7, -1, 16, -1, -1, beaver_armour_medium_sleep_3_ink},
+};
+static const ArtClip beaver_armour_medium_clips[ACTION_COUNT] = {
+    [ACTION_REST] = {8, beaver_armour_medium_idle_frames},
+    [ACTION_WALK] = {4, beaver_armour_medium_walk_frames},
+    [ACTION_RUN] = {4, beaver_armour_medium_run_frames},
+    [ACTION_GRAZE] = {7, beaver_armour_medium_graze_frames},
+    [ACTION_BITE] = {2, beaver_armour_medium_bite_frames},
+    [ACTION_ATTACK] = {9, beaver_armour_medium_attack_frames},
+    [ACTION_SLEEP] = {4, beaver_armour_medium_sleep_frames},
+};
 static const uint8_t beaver_weapon_full_idle_0_ink[30] = {
     0,0,0,0,0,15,
     0,0,13,0,14,0,
@@ -3580,6 +4333,295 @@ static const ArtClip beaver_weapon_full_clips[ACTION_COUNT] = {
     [ACTION_BITE] = {2, beaver_weapon_full_bite_frames},
     [ACTION_ATTACK] = {9, beaver_weapon_full_attack_frames},
     [ACTION_SLEEP] = {4, beaver_weapon_full_sleep_frames},
+};
+static const uint8_t beaver_weapon_medium_idle_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t beaver_weapon_medium_idle_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t beaver_weapon_medium_idle_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t beaver_weapon_medium_idle_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t beaver_weapon_medium_idle_4_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t beaver_weapon_medium_idle_5_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t beaver_weapon_medium_idle_6_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t beaver_weapon_medium_idle_7_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame beaver_weapon_medium_idle_frames[8] = {
+    {5, 4, -18, 29, -1, -1, beaver_weapon_medium_idle_0_ink},
+    {5, 4, -18, 29, -1, -1, beaver_weapon_medium_idle_1_ink},
+    {5, 4, -18, 29, -1, -1, beaver_weapon_medium_idle_2_ink},
+    {5, 4, -18, 29, -1, -1, beaver_weapon_medium_idle_3_ink},
+    {5, 4, -18, 29, -1, -1, beaver_weapon_medium_idle_4_ink},
+    {5, 4, -18, 29, -1, -1, beaver_weapon_medium_idle_5_ink},
+    {5, 4, -18, 29, -1, -1, beaver_weapon_medium_idle_6_ink},
+    {5, 4, -18, 29, -1, -1, beaver_weapon_medium_idle_7_ink},
+};
+static const uint8_t beaver_weapon_medium_walk_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t beaver_weapon_medium_walk_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t beaver_weapon_medium_walk_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t beaver_weapon_medium_walk_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame beaver_weapon_medium_walk_frames[4] = {
+    {5, 4, -18, 27, -1, -1, beaver_weapon_medium_walk_0_ink},
+    {5, 4, -18, 27, -1, -1, beaver_weapon_medium_walk_1_ink},
+    {5, 4, -18, 27, -1, -1, beaver_weapon_medium_walk_2_ink},
+    {5, 4, -18, 27, -1, -1, beaver_weapon_medium_walk_3_ink},
+};
+static const uint8_t beaver_weapon_medium_run_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t beaver_weapon_medium_run_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t beaver_weapon_medium_run_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t beaver_weapon_medium_run_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame beaver_weapon_medium_run_frames[4] = {
+    {5, 4, -20, 26, -1, -1, beaver_weapon_medium_run_0_ink},
+    {5, 4, -18, 26, -1, -1, beaver_weapon_medium_run_1_ink},
+    {5, 4, -17, 25, -1, -1, beaver_weapon_medium_run_2_ink},
+    {5, 4, -18, 29, -1, -1, beaver_weapon_medium_run_3_ink},
+};
+static const uint8_t beaver_weapon_medium_graze_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t beaver_weapon_medium_graze_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t beaver_weapon_medium_graze_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t beaver_weapon_medium_graze_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t beaver_weapon_medium_graze_4_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t beaver_weapon_medium_graze_5_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t beaver_weapon_medium_graze_6_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame beaver_weapon_medium_graze_frames[7] = {
+    {5, 4, -18, 17, -1, -1, beaver_weapon_medium_graze_0_ink},
+    {5, 4, -20, 17, -1, -1, beaver_weapon_medium_graze_1_ink},
+    {5, 4, -20, 16, -1, -1, beaver_weapon_medium_graze_2_ink},
+    {5, 4, -20, 17, -1, -1, beaver_weapon_medium_graze_3_ink},
+    {5, 4, -20, 16, -1, -1, beaver_weapon_medium_graze_4_ink},
+    {5, 4, -20, 19, -1, -1, beaver_weapon_medium_graze_5_ink},
+    {5, 4, -16, 22, -1, -1, beaver_weapon_medium_graze_6_ink},
+};
+static const uint8_t beaver_weapon_medium_bite_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t beaver_weapon_medium_bite_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame beaver_weapon_medium_bite_frames[2] = {
+    {5, 4, -22, 23, -1, -1, beaver_weapon_medium_bite_0_ink},
+    {5, 4, -21, 24, -1, -1, beaver_weapon_medium_bite_1_ink},
+};
+static const uint8_t beaver_weapon_medium_attack_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t beaver_weapon_medium_attack_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t beaver_weapon_medium_attack_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t beaver_weapon_medium_attack_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t beaver_weapon_medium_attack_4_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t beaver_weapon_medium_attack_5_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t beaver_weapon_medium_attack_6_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t beaver_weapon_medium_attack_7_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t beaver_weapon_medium_attack_8_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame beaver_weapon_medium_attack_frames[9] = {
+    {5, 4, -18, 28, -1, -1, beaver_weapon_medium_attack_0_ink},
+    {5, 4, -19, 29, -1, -1, beaver_weapon_medium_attack_1_ink},
+    {5, 4, -20, 26, -1, -1, beaver_weapon_medium_attack_2_ink},
+    {5, 4, -21, 25, -1, -1, beaver_weapon_medium_attack_3_ink},
+    {5, 4, -22, 22, -1, -1, beaver_weapon_medium_attack_4_ink},
+    {5, 4, -22, 21, -1, -1, beaver_weapon_medium_attack_5_ink},
+    {5, 4, -21, 20, -1, -1, beaver_weapon_medium_attack_6_ink},
+    {5, 4, -25, 21, -1, -1, beaver_weapon_medium_attack_7_ink},
+    {5, 4, -28, 22, -1, -1, beaver_weapon_medium_attack_8_ink},
+};
+static const uint8_t beaver_weapon_medium_sleep_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t beaver_weapon_medium_sleep_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t beaver_weapon_medium_sleep_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t beaver_weapon_medium_sleep_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame beaver_weapon_medium_sleep_frames[4] = {
+    {5, 4, -26, 14, -1, -1, beaver_weapon_medium_sleep_0_ink},
+    {5, 4, -27, 13, -1, -1, beaver_weapon_medium_sleep_1_ink},
+    {5, 4, -27, 13, -1, -1, beaver_weapon_medium_sleep_2_ink},
+    {5, 4, -27, 14, -1, -1, beaver_weapon_medium_sleep_3_ink},
+};
+static const ArtClip beaver_weapon_medium_clips[ACTION_COUNT] = {
+    [ACTION_REST] = {8, beaver_weapon_medium_idle_frames},
+    [ACTION_WALK] = {4, beaver_weapon_medium_walk_frames},
+    [ACTION_RUN] = {4, beaver_weapon_medium_run_frames},
+    [ACTION_GRAZE] = {7, beaver_weapon_medium_graze_frames},
+    [ACTION_BITE] = {2, beaver_weapon_medium_bite_frames},
+    [ACTION_ATTACK] = {9, beaver_weapon_medium_attack_frames},
+    [ACTION_SLEEP] = {4, beaver_weapon_medium_sleep_frames},
 };
 static const ArtClip beaver_clips[ACTION_COUNT] = {
     [ACTION_REST] = {8, beaver_idle_frames},
@@ -5587,6 +6629,409 @@ static const ArtClip deer_armour_full_clips[ACTION_COUNT] = {
     [ACTION_ATTACK] = {8, deer_armour_full_attack_frames},
     [ACTION_SLEEP] = {3, deer_armour_full_sleep_frames},
 };
+static const uint8_t deer_armour_medium_idle_0_ink[114] = {
+    7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,7,7,
+    0,4,4,4,4,7,7,7,7,7,7,7,7,7,7,7,7,4,0,
+    0,7,7,7,2,1,4,4,4,1,4,4,4,1,4,4,4,2,0,
+    0,0,0,0,7,1,2,2,2,1,2,2,2,1,2,2,7,2,0,
+    0,0,0,0,0,7,7,2,2,1,2,2,2,7,7,7,0,7,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,0,
+};
+static const uint8_t deer_armour_medium_idle_1_ink[114] = {
+    7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,7,7,
+    0,4,4,4,4,7,7,7,7,7,7,7,7,7,7,7,7,4,0,
+    0,7,7,7,2,1,4,4,4,1,4,4,4,1,4,4,4,2,0,
+    0,0,0,0,7,1,2,2,2,1,2,2,2,1,2,2,7,2,0,
+    0,0,0,0,0,7,7,2,2,1,2,2,2,7,7,7,0,7,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,0,
+};
+static const uint8_t deer_armour_medium_idle_2_ink[114] = {
+    7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,7,7,
+    0,4,4,4,4,7,7,7,7,7,7,7,7,7,7,7,7,4,0,
+    0,7,7,7,2,1,4,4,4,1,4,4,4,1,4,4,4,2,0,
+    0,0,0,0,7,1,2,2,2,1,2,2,2,1,2,2,7,2,0,
+    0,0,0,0,0,7,7,2,2,1,2,2,2,7,7,7,0,7,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,0,
+};
+static const uint8_t deer_armour_medium_idle_3_ink[114] = {
+    7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,7,7,
+    0,4,4,4,4,7,7,7,7,7,7,7,7,7,7,7,7,4,0,
+    0,7,7,7,2,1,4,4,4,1,4,4,4,1,4,4,4,2,0,
+    0,0,0,0,7,1,2,2,2,1,2,2,2,1,2,2,7,2,0,
+    0,0,0,0,0,7,7,2,2,1,2,2,2,7,7,7,0,7,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,0,
+};
+static const uint8_t deer_armour_medium_idle_4_ink[114] = {
+    7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,7,7,
+    0,4,4,4,4,7,7,7,7,7,7,7,7,7,7,7,7,4,0,
+    0,7,7,7,2,1,4,4,4,1,4,4,4,1,4,4,4,2,0,
+    0,0,0,0,7,1,2,2,2,1,2,2,2,1,2,2,7,2,0,
+    0,0,0,0,0,7,7,2,2,1,2,2,2,7,7,7,0,7,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,0,
+};
+static const uint8_t deer_armour_medium_idle_5_ink[114] = {
+    7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,7,7,
+    0,4,4,4,4,7,7,7,7,7,7,7,7,7,7,7,7,4,0,
+    0,7,7,7,2,1,4,4,4,1,4,4,4,1,4,4,4,2,0,
+    0,0,0,0,7,1,2,2,2,1,2,2,2,1,2,2,7,2,0,
+    0,0,0,0,0,7,7,2,2,1,2,2,2,7,7,7,0,7,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,0,
+};
+static const uint8_t deer_armour_medium_idle_6_ink[114] = {
+    7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,7,7,
+    0,4,4,4,4,7,7,7,7,7,7,7,7,7,7,7,7,4,0,
+    0,7,7,7,2,1,4,4,4,1,4,4,4,1,4,4,4,2,0,
+    0,0,0,0,7,1,2,2,2,1,2,2,2,1,2,2,7,2,0,
+    0,0,0,0,0,7,7,2,2,1,2,2,2,7,7,7,0,7,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,0,
+};
+static const uint8_t deer_armour_medium_idle_7_ink[114] = {
+    7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,7,7,
+    0,4,4,4,4,7,7,7,7,7,7,7,7,7,7,7,7,4,0,
+    0,7,7,7,2,1,4,4,4,1,4,4,4,1,4,4,4,2,0,
+    0,0,0,0,7,1,2,2,2,1,2,2,2,1,2,2,7,2,0,
+    0,0,0,0,0,7,7,2,2,1,2,2,2,7,7,7,0,7,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,0,
+};
+static const uint8_t deer_armour_medium_idle_8_ink[114] = {
+    7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,7,7,
+    0,4,4,4,4,7,7,7,7,7,7,7,7,7,7,7,7,4,0,
+    0,7,7,7,2,1,4,4,4,1,4,4,4,1,4,4,4,2,0,
+    0,0,0,0,7,1,2,2,2,1,2,2,2,1,2,2,7,2,0,
+    0,0,0,0,0,7,7,2,2,1,2,2,2,7,7,7,0,7,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,0,
+};
+static const ArtFrame deer_armour_medium_idle_frames[9] = {
+    {19, 6, 16, 24, -1, -1, deer_armour_medium_idle_0_ink},
+    {19, 6, 16, 24, -1, -1, deer_armour_medium_idle_1_ink},
+    {19, 6, 16, 24, -1, -1, deer_armour_medium_idle_2_ink},
+    {19, 6, 16, 24, -1, -1, deer_armour_medium_idle_3_ink},
+    {19, 6, 16, 24, -1, -1, deer_armour_medium_idle_4_ink},
+    {19, 6, 16, 24, -1, -1, deer_armour_medium_idle_5_ink},
+    {19, 6, 16, 24, -1, -1, deer_armour_medium_idle_6_ink},
+    {19, 6, 16, 24, -1, -1, deer_armour_medium_idle_7_ink},
+    {19, 6, 16, 24, -1, -1, deer_armour_medium_idle_8_ink},
+};
+static const uint8_t deer_armour_medium_walk_0_ink[171] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,7,
+    7,7,7,7,7,7,7,7,7,7,7,7,4,1,4,4,4,4,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,2,1,2,2,2,7,0,
+    0,7,2,2,2,1,2,2,2,1,2,2,2,1,2,7,7,0,0,
+    0,0,7,7,7,1,2,2,2,1,2,2,2,1,7,0,0,0,0,
+    0,0,0,0,0,7,7,7,7,1,2,2,7,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,1,2,2,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,1,7,7,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t deer_armour_medium_walk_1_ink[190] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,
+    7,7,7,7,7,7,7,7,7,7,7,7,7,1,4,4,4,4,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,1,2,2,2,2,0,
+    0,2,7,2,2,1,2,2,2,1,2,2,2,1,2,2,2,7,0,
+    0,2,0,7,7,1,2,2,2,1,2,2,2,1,2,7,7,0,0,
+    0,7,0,0,0,7,7,7,7,7,7,2,2,1,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,2,2,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,2,7,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,
+};
+static const uint8_t deer_armour_medium_walk_2_ink[171] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,
+    7,7,7,7,7,7,7,7,7,7,7,7,7,1,4,4,4,4,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,1,2,2,2,2,0,
+    0,7,2,2,2,1,2,2,2,1,2,2,2,1,2,7,7,7,0,
+    0,0,7,7,2,1,2,2,2,1,2,2,2,7,7,0,0,0,0,
+    0,0,0,0,7,7,7,2,2,1,2,2,2,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,7,2,1,2,7,7,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,2,7,7,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t deer_armour_medium_walk_3_ink[171] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,7,
+    7,7,7,7,7,7,7,7,7,7,7,7,4,1,4,4,4,4,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,2,1,2,2,2,2,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,2,7,7,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,1,7,7,0,0,0,
+    0,0,0,0,0,7,7,7,7,7,2,2,2,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,2,2,7,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,2,7,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,
+};
+static const ArtFrame deer_armour_medium_walk_frames[4] = {
+    {19, 9, 14, 25, -1, -1, deer_armour_medium_walk_0_ink},
+    {19, 10, 14, 25, -1, -1, deer_armour_medium_walk_1_ink},
+    {19, 9, 13, 26, -1, -1, deer_armour_medium_walk_2_ink},
+    {19, 9, 14, 25, -1, -1, deer_armour_medium_walk_3_ink},
+};
+static const uint8_t deer_armour_medium_run_0_ink[171] = {
+    7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,
+    0,4,4,7,7,7,7,7,7,7,7,7,7,7,7,4,4,4,0,
+    0,2,2,4,4,1,4,4,4,1,4,4,4,1,4,2,2,2,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,2,2,7,0,
+    0,0,0,2,2,1,2,2,2,1,2,2,2,1,2,2,7,0,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,1,2,7,0,0,0,
+    0,0,0,0,0,7,7,2,2,7,2,2,2,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,7,7,0,2,7,7,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t deer_armour_medium_run_1_ink[171] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,
+    0,0,0,0,0,0,0,0,0,0,7,7,7,7,7,4,4,4,0,
+    7,7,7,7,7,7,7,7,7,7,4,4,4,1,4,2,2,7,0,
+    0,4,4,4,4,1,4,4,4,1,2,2,2,1,2,7,7,0,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,7,0,0,0,0,
+    0,0,0,7,7,1,2,2,2,1,7,7,7,7,0,0,0,0,0,
+    0,0,0,0,0,7,2,2,2,1,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,7,7,7,1,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t deer_armour_medium_run_2_ink[114] = {
+    7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,
+    0,4,4,7,7,7,7,7,7,7,7,7,7,7,7,7,7,4,0,
+    0,7,7,4,4,1,4,4,4,1,4,4,4,1,4,4,4,7,0,
+    0,0,0,7,2,1,2,2,2,1,2,2,2,1,2,2,2,0,0,
+    0,0,0,0,7,7,2,2,2,1,2,2,2,1,7,7,7,0,0,
+    0,0,0,0,0,0,7,7,7,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t deer_armour_medium_run_3_ink[152] = {
+    7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,1,4,4,4,4,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,2,2,7,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,1,2,2,7,0,0,
+    0,0,0,0,0,7,7,7,7,7,2,2,2,1,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,2,2,7,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,0,
+};
+static const ArtFrame deer_armour_medium_run_frames[4] = {
+    {19, 9, 16, 22, -1, -1, deer_armour_medium_run_0_ink},
+    {19, 9, 17, 21, -1, -1, deer_armour_medium_run_1_ink},
+    {19, 6, 17, 22, -1, -1, deer_armour_medium_run_2_ink},
+    {19, 8, 16, 23, -1, -1, deer_armour_medium_run_3_ink},
+};
+static const uint8_t deer_armour_medium_graze_0_ink[133] = {
+    7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,7,4,4,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+    0,0,0,7,2,1,4,4,4,1,4,4,4,1,4,4,4,4,0,
+    0,0,0,0,7,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,0,0,0,0,7,2,2,2,1,2,2,2,1,7,7,7,7,0,
+    0,0,0,0,0,0,7,7,7,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t deer_armour_medium_graze_1_ink[133] = {
+    7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,7,4,4,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+    0,0,0,7,2,1,4,4,4,1,4,4,4,1,4,4,4,4,0,
+    0,0,0,0,7,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,0,0,0,0,7,2,2,2,1,2,2,2,1,7,7,7,7,0,
+    0,0,0,0,0,0,7,7,7,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t deer_armour_medium_graze_2_ink[133] = {
+    7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,7,4,4,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+    0,0,0,7,2,1,4,4,4,1,4,4,4,1,4,4,4,4,0,
+    0,0,0,0,7,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,0,0,0,0,7,2,2,2,1,2,2,2,1,7,7,7,7,0,
+    0,0,0,0,0,0,7,7,7,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t deer_armour_medium_graze_3_ink[133] = {
+    7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,7,4,4,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+    0,0,0,7,2,1,4,4,4,1,4,4,4,1,4,4,4,4,0,
+    0,0,0,0,7,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,0,0,0,0,7,2,2,2,1,2,2,2,1,7,7,7,7,0,
+    0,0,0,0,0,0,7,7,7,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t deer_armour_medium_graze_4_ink[133] = {
+    7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,7,4,4,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+    0,0,0,7,2,1,4,4,4,1,4,4,4,1,4,4,4,4,0,
+    0,0,0,0,7,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,0,0,0,0,7,2,2,2,1,2,2,2,1,7,7,7,7,0,
+    0,0,0,0,0,0,7,7,7,7,7,7,7,7,0,0,0,0,0,
+};
+static const ArtFrame deer_armour_medium_graze_frames[5] = {
+    {19, 7, 16, 26, -1, -1, deer_armour_medium_graze_0_ink},
+    {19, 7, 16, 26, -1, -1, deer_armour_medium_graze_1_ink},
+    {19, 7, 16, 26, -1, -1, deer_armour_medium_graze_2_ink},
+    {19, 7, 16, 26, -1, -1, deer_armour_medium_graze_3_ink},
+    {19, 7, 16, 26, -1, -1, deer_armour_medium_graze_4_ink},
+};
+static const uint8_t deer_armour_medium_bite_0_ink[133] = {
+    7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,
+    0,4,7,7,7,7,7,7,7,7,7,7,7,7,7,4,4,4,0,
+    0,7,4,4,4,1,4,4,4,1,4,4,4,1,4,2,2,2,0,
+    0,0,7,7,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,0,0,0,7,7,2,2,2,1,2,2,2,1,7,2,2,2,0,
+    0,0,0,0,0,0,7,7,7,7,7,7,7,7,0,2,7,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,
+};
+static const uint8_t deer_armour_medium_bite_1_ink[133] = {
+    7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,
+    0,4,7,7,7,7,7,7,7,7,7,7,7,7,7,4,4,4,0,
+    0,7,4,4,4,1,4,4,4,1,4,4,4,1,4,2,2,2,0,
+    0,0,7,7,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,0,0,0,7,7,2,2,2,1,2,2,2,1,7,2,2,2,0,
+    0,0,0,0,0,0,7,7,7,7,7,7,7,7,0,2,7,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,
+};
+static const uint8_t deer_armour_medium_bite_2_ink[133] = {
+    7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,
+    0,4,7,7,7,7,7,7,7,7,7,7,7,7,7,4,4,4,0,
+    0,7,4,4,4,1,4,4,4,1,4,4,4,1,4,2,2,2,0,
+    0,0,7,7,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,0,0,0,7,7,2,2,2,1,2,2,2,1,7,2,2,2,0,
+    0,0,0,0,0,0,7,7,7,7,7,7,7,7,0,2,7,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,
+};
+static const uint8_t deer_armour_medium_bite_3_ink[133] = {
+    7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,
+    0,4,7,7,7,7,7,7,7,7,7,7,7,7,7,4,4,4,0,
+    0,7,4,4,4,1,4,4,4,1,4,4,4,1,4,2,2,2,0,
+    0,0,7,7,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,0,0,0,7,7,2,2,2,1,2,2,2,1,7,2,2,2,0,
+    0,0,0,0,0,0,7,7,7,7,7,7,7,7,0,2,7,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,
+};
+static const ArtFrame deer_armour_medium_bite_frames[4] = {
+    {19, 7, 14, 24, -1, -1, deer_armour_medium_bite_0_ink},
+    {19, 7, 14, 24, -1, -1, deer_armour_medium_bite_1_ink},
+    {19, 7, 14, 24, -1, -1, deer_armour_medium_bite_2_ink},
+    {19, 7, 14, 24, -1, -1, deer_armour_medium_bite_3_ink},
+};
+static const uint8_t deer_armour_medium_attack_0_ink[171] = {
+    7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,7,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,
+    0,2,4,7,7,7,7,7,7,7,7,7,7,7,7,4,4,4,0,
+    0,7,2,4,4,1,4,4,4,1,4,4,4,1,4,2,2,2,0,
+    0,0,2,2,2,1,2,2,2,1,2,2,2,1,2,2,7,7,0,
+    0,0,7,2,2,1,2,2,2,1,2,2,2,1,2,7,0,0,0,
+    0,0,0,7,7,7,7,7,7,7,7,2,2,1,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,2,2,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,
+};
+static const uint8_t deer_armour_medium_attack_1_ink[171] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,
+    7,7,0,0,0,0,0,0,0,0,0,0,0,0,7,7,4,4,0,
+    0,4,7,7,7,7,7,7,7,7,7,7,7,7,4,4,2,7,0,
+    0,2,4,4,4,1,4,4,4,1,4,4,4,1,2,7,7,0,0,
+    0,7,2,2,2,7,2,2,2,1,2,2,2,1,7,0,0,0,0,
+    0,0,7,2,2,0,7,2,2,1,2,2,2,7,0,0,0,0,0,
+    0,0,0,7,2,0,0,2,2,7,2,2,2,0,0,0,0,0,0,
+    0,0,0,0,7,0,0,2,2,0,2,2,7,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,7,7,0,7,7,0,0,0,0,0,0,0,
+};
+static const uint8_t deer_armour_medium_attack_2_ink[152] = {
+    7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,
+    0,4,7,7,7,7,7,7,7,7,7,7,7,7,7,4,4,4,0,
+    0,7,4,4,4,1,4,4,4,1,4,4,4,1,4,2,2,2,0,
+    0,0,2,2,2,1,2,2,2,1,2,2,2,1,2,2,7,7,0,
+    0,0,7,7,2,1,2,2,2,1,2,2,2,1,2,7,0,0,0,
+    0,0,0,0,7,7,2,2,2,7,7,7,7,7,7,0,0,0,0,
+    0,0,0,0,0,0,7,2,2,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t deer_armour_medium_attack_3_ink[133] = {
+    7,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,
+    0,7,7,7,7,7,7,7,7,7,7,7,7,1,4,4,4,4,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,1,2,2,2,7,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,7,7,7,0,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,7,0,0,0,0,0,
+    0,0,0,0,0,7,2,2,2,7,7,7,7,0,0,0,0,0,0,
+    0,0,0,0,0,0,7,7,7,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t deer_armour_medium_attack_4_ink[114] = {
+    7,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,
+    0,7,7,7,7,7,7,7,7,7,7,7,7,1,4,4,4,4,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,1,2,2,2,2,0,
+    0,7,7,7,2,1,2,2,2,1,2,2,2,1,7,7,7,7,0,
+    0,0,0,0,7,7,2,2,2,1,2,2,2,7,0,0,0,0,0,
+    0,0,0,0,0,0,7,7,7,7,7,7,7,0,0,0,0,0,0,
+};
+static const uint8_t deer_armour_medium_attack_5_ink[152] = {
+    7,7,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,7,
+    0,4,7,7,7,7,7,7,7,7,7,7,7,7,4,4,4,4,0,
+    0,7,4,4,4,1,4,4,4,1,4,4,4,1,2,2,2,7,0,
+    0,0,7,7,2,1,2,2,2,1,2,2,2,1,2,7,7,0,0,
+    0,0,0,0,7,7,2,2,2,1,2,2,2,1,7,0,0,0,0,
+    0,0,0,0,0,0,7,7,7,7,2,2,2,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,2,2,7,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,0,
+};
+static const uint8_t deer_armour_medium_attack_6_ink[171] = {
+    7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,7,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,
+    0,7,4,7,7,7,7,7,7,7,7,7,7,7,7,4,4,4,0,
+    0,0,7,4,4,1,4,4,4,1,4,4,4,1,4,2,2,2,0,
+    0,0,0,7,2,1,2,2,2,1,2,2,2,1,2,2,7,7,0,
+    0,0,0,0,7,7,2,2,2,1,2,2,2,1,2,7,0,0,0,
+    0,0,0,0,0,0,7,7,7,7,7,7,2,1,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,2,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,
+};
+static const uint8_t deer_armour_medium_attack_7_ink[171] = {
+    7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,7,
+    0,4,7,7,7,7,7,7,7,7,7,7,7,7,4,4,4,4,0,
+    0,7,4,4,4,1,4,4,4,1,4,4,4,1,2,2,2,7,0,
+    0,0,7,7,2,1,2,2,2,1,2,2,2,1,2,2,7,0,0,
+    0,0,0,0,7,7,2,2,2,1,2,2,2,1,7,7,0,0,0,
+    0,0,0,0,0,0,7,7,7,7,7,2,2,1,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,2,2,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,
+};
+static const ArtFrame deer_armour_medium_attack_frames[8] = {
+    {19, 9, 16, 24, -1, -1, deer_armour_medium_attack_0_ink},
+    {19, 9, 15, 24, -1, -1, deer_armour_medium_attack_1_ink},
+    {19, 8, 14, 22, -1, -1, deer_armour_medium_attack_2_ink},
+    {19, 7, 13, 21, -1, -1, deer_armour_medium_attack_3_ink},
+    {19, 6, 14, 22, -1, -1, deer_armour_medium_attack_4_ink},
+    {19, 8, 15, 22, -1, -1, deer_armour_medium_attack_5_ink},
+    {19, 9, 17, 24, -1, -1, deer_armour_medium_attack_6_ink},
+    {19, 9, 16, 24, -1, -1, deer_armour_medium_attack_7_ink},
+};
+static const uint8_t deer_armour_medium_sleep_0_ink[114] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,1,4,4,4,4,0,
+    0,7,7,7,7,1,2,2,2,1,2,2,2,1,2,7,7,7,0,
+    0,0,0,0,0,7,7,7,2,1,2,7,7,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t deer_armour_medium_sleep_1_ink[114] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,1,4,4,4,4,0,
+    0,7,7,7,7,7,2,2,2,1,2,2,2,1,2,7,7,7,0,
+    0,0,0,0,0,0,7,7,2,1,2,7,7,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t deer_armour_medium_sleep_2_ink[114] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,1,4,4,4,4,0,
+    0,7,7,7,7,7,2,2,2,1,2,2,2,1,2,7,7,7,0,
+    0,0,0,0,0,0,7,7,2,1,2,7,7,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,7,0,0,0,0,0,0,0,0,
+};
+static const ArtFrame deer_armour_medium_sleep_frames[3] = {
+    {19, 6, 12, 12, -1, -1, deer_armour_medium_sleep_0_ink},
+    {19, 6, 12, 12, -1, -1, deer_armour_medium_sleep_1_ink},
+    {19, 6, 12, 12, -1, -1, deer_armour_medium_sleep_2_ink},
+};
+static const ArtClip deer_armour_medium_clips[ACTION_COUNT] = {
+    [ACTION_REST] = {9, deer_armour_medium_idle_frames},
+    [ACTION_WALK] = {4, deer_armour_medium_walk_frames},
+    [ACTION_RUN] = {4, deer_armour_medium_run_frames},
+    [ACTION_GRAZE] = {5, deer_armour_medium_graze_frames},
+    [ACTION_BITE] = {4, deer_armour_medium_bite_frames},
+    [ACTION_ATTACK] = {8, deer_armour_medium_attack_frames},
+    [ACTION_SLEEP] = {3, deer_armour_medium_sleep_frames},
+};
 static const uint8_t deer_weapon_full_idle_0_ink[22] = {
     0,15,
     0,15,
@@ -6127,6 +7572,399 @@ static const ArtClip deer_weapon_full_clips[ACTION_COUNT] = {
     [ACTION_BITE] = {4, deer_weapon_full_bite_frames},
     [ACTION_ATTACK] = {8, deer_weapon_full_attack_frames},
     [ACTION_SLEEP] = {3, deer_weapon_full_sleep_frames},
+};
+static const uint8_t deer_weapon_medium_idle_0_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t deer_weapon_medium_idle_1_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t deer_weapon_medium_idle_2_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t deer_weapon_medium_idle_3_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t deer_weapon_medium_idle_4_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t deer_weapon_medium_idle_5_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t deer_weapon_medium_idle_6_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t deer_weapon_medium_idle_7_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t deer_weapon_medium_idle_8_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const ArtFrame deer_weapon_medium_idle_frames[9] = {
+    {2, 7, -13, 43, -1, -1, deer_weapon_medium_idle_0_ink},
+    {2, 7, -13, 43, -1, -1, deer_weapon_medium_idle_1_ink},
+    {2, 7, -13, 43, -1, -1, deer_weapon_medium_idle_2_ink},
+    {2, 7, -13, 43, -1, -1, deer_weapon_medium_idle_3_ink},
+    {2, 7, -13, 43, -1, -1, deer_weapon_medium_idle_4_ink},
+    {2, 7, -13, 43, -1, -1, deer_weapon_medium_idle_5_ink},
+    {2, 7, -13, 43, -1, -1, deer_weapon_medium_idle_6_ink},
+    {2, 7, -13, 43, -1, -1, deer_weapon_medium_idle_7_ink},
+    {2, 7, -13, 43, -1, -1, deer_weapon_medium_idle_8_ink},
+};
+static const uint8_t deer_weapon_medium_walk_0_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t deer_weapon_medium_walk_1_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t deer_weapon_medium_walk_2_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t deer_weapon_medium_walk_3_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const ArtFrame deer_weapon_medium_walk_frames[4] = {
+    {2, 7, -15, 40, -1, -1, deer_weapon_medium_walk_0_ink},
+    {2, 7, -15, 41, -1, -1, deer_weapon_medium_walk_1_ink},
+    {2, 7, -16, 41, -1, -1, deer_weapon_medium_walk_2_ink},
+    {2, 7, -15, 39, -1, -1, deer_weapon_medium_walk_3_ink},
+};
+static const uint8_t deer_weapon_medium_run_0_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t deer_weapon_medium_run_1_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t deer_weapon_medium_run_2_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t deer_weapon_medium_run_3_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const ArtFrame deer_weapon_medium_run_frames[4] = {
+    {2, 7, -13, 41, -1, -1, deer_weapon_medium_run_0_ink},
+    {2, 7, -12, 41, -1, -1, deer_weapon_medium_run_1_ink},
+    {2, 7, -12, 41, -1, -1, deer_weapon_medium_run_2_ink},
+    {2, 7, -13, 41, -1, -1, deer_weapon_medium_run_3_ink},
+};
+static const uint8_t deer_weapon_medium_graze_0_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t deer_weapon_medium_graze_1_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t deer_weapon_medium_graze_2_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t deer_weapon_medium_graze_3_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t deer_weapon_medium_graze_4_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const ArtFrame deer_weapon_medium_graze_frames[5] = {
+    {2, 7, -14, 30, -1, -1, deer_weapon_medium_graze_0_ink},
+    {2, 7, -14, 30, -1, -1, deer_weapon_medium_graze_1_ink},
+    {2, 7, -14, 30, -1, -1, deer_weapon_medium_graze_2_ink},
+    {2, 7, -14, 30, -1, -1, deer_weapon_medium_graze_3_ink},
+    {2, 7, -14, 30, -1, -1, deer_weapon_medium_graze_4_ink},
+};
+static const uint8_t deer_weapon_medium_bite_0_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t deer_weapon_medium_bite_1_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t deer_weapon_medium_bite_2_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t deer_weapon_medium_bite_3_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const ArtFrame deer_weapon_medium_bite_frames[4] = {
+    {2, 7, -15, 40, -1, -1, deer_weapon_medium_bite_0_ink},
+    {2, 7, -15, 38, -1, -1, deer_weapon_medium_bite_1_ink},
+    {2, 7, -15, 39, -1, -1, deer_weapon_medium_bite_2_ink},
+    {2, 7, -15, 40, -1, -1, deer_weapon_medium_bite_3_ink},
+};
+static const uint8_t deer_weapon_medium_attack_0_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t deer_weapon_medium_attack_1_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t deer_weapon_medium_attack_2_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t deer_weapon_medium_attack_3_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t deer_weapon_medium_attack_4_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t deer_weapon_medium_attack_5_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t deer_weapon_medium_attack_6_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t deer_weapon_medium_attack_7_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const ArtFrame deer_weapon_medium_attack_frames[8] = {
+    {2, 7, -13, 40, -1, -1, deer_weapon_medium_attack_0_ink},
+    {2, 7, -14, 39, -1, -1, deer_weapon_medium_attack_1_ink},
+    {2, 7, -15, 34, -1, -1, deer_weapon_medium_attack_2_ink},
+    {2, 7, -17, 31, -1, -1, deer_weapon_medium_attack_3_ink},
+    {2, 7, -15, 33, -1, -1, deer_weapon_medium_attack_4_ink},
+    {2, 7, -14, 39, -1, -1, deer_weapon_medium_attack_5_ink},
+    {2, 7, -12, 42, -1, -1, deer_weapon_medium_attack_6_ink},
+    {2, 7, -13, 40, -1, -1, deer_weapon_medium_attack_7_ink},
+};
+static const uint8_t deer_weapon_medium_sleep_0_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t deer_weapon_medium_sleep_1_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t deer_weapon_medium_sleep_2_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const ArtFrame deer_weapon_medium_sleep_frames[3] = {
+    {2, 7, -17, 19, -1, -1, deer_weapon_medium_sleep_0_ink},
+    {2, 7, -17, 19, -1, -1, deer_weapon_medium_sleep_1_ink},
+    {2, 7, -17, 18, -1, -1, deer_weapon_medium_sleep_2_ink},
+};
+static const ArtClip deer_weapon_medium_clips[ACTION_COUNT] = {
+    [ACTION_REST] = {9, deer_weapon_medium_idle_frames},
+    [ACTION_WALK] = {4, deer_weapon_medium_walk_frames},
+    [ACTION_RUN] = {4, deer_weapon_medium_run_frames},
+    [ACTION_GRAZE] = {5, deer_weapon_medium_graze_frames},
+    [ACTION_BITE] = {4, deer_weapon_medium_bite_frames},
+    [ACTION_ATTACK] = {8, deer_weapon_medium_attack_frames},
+    [ACTION_SLEEP] = {3, deer_weapon_medium_sleep_frames},
 };
 static const ArtClip deer_clips[ACTION_COUNT] = {
     [ACTION_REST] = {9, deer_idle_frames},
@@ -10223,6 +12061,447 @@ static const ArtClip fennec_armour_full_clips[ACTION_COUNT] = {
     [ACTION_ATTACK] = {9, fennec_armour_full_attack_frames},
     [ACTION_SLEEP] = {5, fennec_armour_full_sleep_frames},
 };
+static const uint8_t fennec_armour_medium_idle_0_ink[84] = {
+    0,7,7,7,7,7,7,0,0,0,0,0,0,0,
+    7,4,4,4,4,1,4,7,7,7,7,7,7,7,
+    0,2,2,2,2,1,2,4,4,1,4,4,4,0,
+    0,7,7,7,7,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,7,7,2,2,1,7,7,0,0,
+    0,0,0,0,0,0,0,7,7,7,0,0,0,0,
+};
+static const uint8_t fennec_armour_medium_idle_1_ink[84] = {
+    0,7,7,7,7,7,7,0,0,0,0,0,0,0,
+    7,4,4,4,4,1,4,7,7,7,7,7,7,7,
+    0,2,2,2,2,1,2,4,4,1,4,4,4,0,
+    0,7,7,7,7,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,7,7,2,2,1,7,7,0,0,
+    0,0,0,0,0,0,0,7,7,7,0,0,0,0,
+};
+static const uint8_t fennec_armour_medium_idle_2_ink[84] = {
+    0,7,7,7,7,7,7,0,0,0,0,0,0,0,
+    7,4,4,4,4,1,4,7,7,7,7,7,7,7,
+    0,2,2,2,2,1,2,4,4,1,4,4,4,0,
+    0,7,7,7,7,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,7,7,2,2,1,7,7,0,0,
+    0,0,0,0,0,0,0,7,7,7,0,0,0,0,
+};
+static const uint8_t fennec_armour_medium_idle_3_ink[84] = {
+    0,7,7,7,7,7,7,0,0,0,0,0,0,0,
+    7,4,4,4,4,1,4,7,7,7,7,7,7,7,
+    0,2,2,2,2,1,2,4,4,1,4,4,4,0,
+    0,7,7,7,7,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,7,7,2,2,1,7,7,0,0,
+    0,0,0,0,0,0,0,7,7,7,0,0,0,0,
+};
+static const uint8_t fennec_armour_medium_idle_4_ink[84] = {
+    0,7,7,7,7,7,7,0,0,0,0,0,0,0,
+    7,4,4,4,4,1,4,7,7,7,7,7,7,7,
+    0,2,2,2,2,1,2,4,4,1,4,4,4,0,
+    0,7,7,7,7,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,7,7,2,2,1,7,7,0,0,
+    0,0,0,0,0,0,0,7,7,7,0,0,0,0,
+};
+static const uint8_t fennec_armour_medium_idle_5_ink[84] = {
+    0,7,7,7,7,7,7,0,0,0,0,0,0,0,
+    7,4,4,4,4,1,4,7,7,7,7,7,7,7,
+    0,2,2,2,2,1,2,4,4,1,4,4,4,0,
+    0,7,7,7,7,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,7,7,2,2,1,7,7,0,0,
+    0,0,0,0,0,0,0,7,7,7,0,0,0,0,
+};
+static const uint8_t fennec_armour_medium_idle_6_ink[84] = {
+    0,7,7,7,7,7,7,0,0,0,0,0,0,0,
+    7,4,4,4,4,1,4,7,7,7,7,7,7,7,
+    0,2,2,2,2,1,2,4,4,1,4,4,4,0,
+    0,7,7,7,7,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,7,7,2,2,1,7,7,0,0,
+    0,0,0,0,0,0,0,7,7,7,0,0,0,0,
+};
+static const uint8_t fennec_armour_medium_idle_7_ink[84] = {
+    0,7,7,7,7,7,7,0,0,0,0,0,0,0,
+    7,4,4,4,4,1,4,7,7,7,7,7,7,7,
+    0,2,2,2,2,1,2,4,4,1,4,4,4,0,
+    0,7,7,7,7,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,7,7,2,2,1,7,7,0,0,
+    0,0,0,0,0,0,0,7,7,7,0,0,0,0,
+};
+static const ArtFrame fennec_armour_medium_idle_frames[8] = {
+    {14, 6, 8, 22, -1, -1, fennec_armour_medium_idle_0_ink},
+    {14, 6, 8, 22, -1, -1, fennec_armour_medium_idle_1_ink},
+    {14, 6, 8, 22, -1, -1, fennec_armour_medium_idle_2_ink},
+    {14, 6, 8, 22, -1, -1, fennec_armour_medium_idle_3_ink},
+    {14, 6, 8, 22, -1, -1, fennec_armour_medium_idle_4_ink},
+    {14, 6, 8, 22, -1, -1, fennec_armour_medium_idle_5_ink},
+    {14, 6, 8, 22, -1, -1, fennec_armour_medium_idle_6_ink},
+    {14, 6, 8, 22, -1, -1, fennec_armour_medium_idle_7_ink},
+};
+static const uint8_t fennec_armour_medium_walk_0_ink[112] = {
+    7,7,7,7,7,7,7,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,4,7,7,7,7,7,7,7,
+    0,7,2,2,2,1,2,4,4,1,4,4,4,0,
+    0,0,7,7,7,7,7,2,2,1,2,2,7,0,
+    0,0,0,0,0,0,0,2,2,1,2,7,0,0,
+    0,0,0,0,0,0,0,2,2,1,2,0,0,0,
+    0,0,0,0,0,0,0,2,2,1,7,0,0,0,
+    0,0,0,0,0,0,0,7,7,7,0,0,0,0,
+};
+static const uint8_t fennec_armour_medium_walk_1_ink[98] = {
+    7,7,7,7,7,7,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,7,7,7,7,7,7,7,7,
+    0,2,2,2,2,1,4,4,4,1,4,4,4,0,
+    0,2,2,2,7,7,2,2,2,1,2,2,7,0,
+    0,7,2,2,0,0,2,2,7,7,7,7,0,0,
+    0,0,7,2,0,0,7,7,0,0,0,0,0,0,
+    0,0,0,7,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t fennec_armour_medium_walk_2_ink[126] = {
+    7,7,7,7,7,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,7,7,7,7,7,7,7,7,7,
+    0,7,7,7,2,1,4,4,4,1,4,4,4,0,
+    0,0,0,0,7,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,7,7,2,2,1,2,7,0,0,
+    0,0,0,0,0,0,0,2,2,1,7,0,0,0,
+    0,0,0,0,0,0,0,2,2,1,0,0,0,0,
+    0,0,0,0,0,0,0,2,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,7,0,0,0,0,0,0,
+};
+static const uint8_t fennec_armour_medium_walk_3_ink[98] = {
+    7,7,7,7,7,7,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,7,7,7,7,7,7,7,7,
+    0,2,2,2,2,1,4,4,4,1,4,4,4,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,7,2,2,7,7,2,2,2,7,7,7,0,0,
+    0,0,7,2,0,0,7,7,7,0,0,0,0,0,
+    0,0,0,7,0,0,0,0,0,0,0,0,0,0,
+};
+static const ArtFrame fennec_armour_medium_walk_frames[4] = {
+    {14, 8, 8, 19, -1, -1, fennec_armour_medium_walk_0_ink},
+    {14, 7, 7, 19, -1, -1, fennec_armour_medium_walk_1_ink},
+    {14, 9, 7, 19, -1, -1, fennec_armour_medium_walk_2_ink},
+    {14, 7, 7, 19, -1, -1, fennec_armour_medium_walk_3_ink},
+};
+static const uint8_t fennec_armour_medium_run_0_ink[294] = {
+    7,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,7,7,0,0,0,0,0,0,0,0,0,0,
+    0,7,7,7,7,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,4,7,0,0,0,0,0,0,0,0,
+    0,0,0,0,7,1,7,0,0,0,0,0,0,0,
+    0,0,0,0,0,7,4,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,7,7,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,7,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,7,7,7,7,7,0,
+    0,0,0,0,0,0,0,0,4,1,4,4,4,0,
+    0,0,0,0,0,0,0,0,2,1,2,2,7,0,
+    0,0,0,0,0,0,0,0,2,1,2,2,0,0,
+    0,0,0,0,0,0,0,0,2,1,2,7,0,0,
+    0,0,0,0,0,0,0,0,2,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,7,0,0,0,0,0,
+};
+static const uint8_t fennec_armour_medium_run_1_ink[126] = {
+    7,7,7,7,7,7,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,7,7,0,0,0,0,0,0,
+    0,7,2,2,2,1,4,4,7,7,7,7,7,7,
+    0,0,7,7,7,1,2,2,4,1,4,4,4,0,
+    0,0,0,0,0,7,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,0,2,2,2,1,2,7,0,0,
+    0,0,0,0,0,0,2,2,2,1,7,0,0,0,
+    0,0,0,0,0,0,2,2,2,1,0,0,0,0,
+    0,0,0,0,0,0,7,7,7,7,0,0,0,0,
+};
+static const uint8_t fennec_armour_medium_run_2_ink[182] = {
+    7,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,7,7,7,7,0,0,0,0,0,0,0,7,
+    0,0,4,4,4,1,7,7,7,7,7,7,7,0,
+    0,0,2,2,2,1,4,4,4,1,4,4,4,0,
+    0,0,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,7,2,2,7,7,7,7,7,7,7,0,0,
+    0,0,0,7,2,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,7,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t fennec_armour_medium_run_3_ink[252] = {
+    7,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,7,7,7,7,7,7,0,0,0,0,0,0,
+    0,4,4,4,4,1,4,4,7,7,7,7,7,7,
+    0,7,7,7,2,1,2,2,4,1,4,4,4,0,
+    0,0,0,0,7,7,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,0,7,7,7,7,7,7,0,0,
+};
+static const ArtFrame fennec_armour_medium_run_frames[4] = {
+    {14, 21, 7, 32, -1, -1, fennec_armour_medium_run_0_ink},
+    {14, 9, 6, 20, -1, -1, fennec_armour_medium_run_1_ink},
+    {14, 13, 5, 24, -1, -1, fennec_armour_medium_run_2_ink},
+    {14, 18, 7, 31, -1, -1, fennec_armour_medium_run_3_ink},
+};
+static const uint8_t fennec_armour_medium_graze_0_ink[70] = {
+    7,7,7,7,7,7,0,0,0,0,0,0,0,7,
+    0,4,4,4,4,1,7,7,7,7,7,7,7,0,
+    0,7,7,7,2,1,4,4,4,1,4,4,4,0,
+    0,0,0,0,7,7,2,2,2,1,2,7,7,0,
+    0,0,0,0,0,0,7,7,7,7,7,0,0,0,
+};
+static const uint8_t fennec_armour_medium_graze_1_ink[98] = {
+    7,7,0,0,0,0,0,0,0,0,0,7,7,7,
+    0,4,7,7,7,0,0,0,0,7,7,4,4,0,
+    0,7,4,4,4,7,7,7,7,1,4,2,2,0,
+    0,0,7,7,2,1,4,4,4,1,2,7,7,0,
+    0,0,0,0,7,1,2,2,2,7,7,0,0,0,
+    0,0,0,0,0,7,7,2,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,7,0,0,0,0,0,0,
+};
+static const uint8_t fennec_armour_medium_graze_2_ink[98] = {
+    0,0,0,0,0,0,0,0,0,0,0,7,7,7,
+    7,7,0,0,0,0,0,0,7,7,7,4,4,0,
+    0,4,7,7,7,7,7,7,4,1,4,2,2,0,
+    0,7,4,4,4,1,4,4,2,1,2,2,2,0,
+    0,0,7,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,7,7,7,2,2,2,1,2,7,0,0,
+    0,0,0,0,0,0,7,7,7,7,7,0,0,0,
+};
+static const uint8_t fennec_armour_medium_graze_3_ink[98] = {
+    7,7,0,0,0,0,0,0,0,0,0,7,7,7,
+    0,4,7,7,7,7,7,7,7,7,7,4,4,0,
+    0,7,4,4,4,1,4,4,4,1,4,2,2,0,
+    0,0,7,2,2,1,2,2,2,1,2,2,2,0,
+    0,0,0,7,7,7,2,2,2,1,2,7,7,0,
+    0,0,0,0,0,0,7,7,7,1,2,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,0,0,0,
+};
+static const uint8_t fennec_armour_medium_graze_4_ink[98] = {
+    7,0,0,0,0,0,0,0,0,0,0,7,7,7,
+    0,7,7,0,0,0,0,0,7,7,7,4,4,0,
+    0,4,4,7,7,7,7,7,4,1,4,2,2,0,
+    0,7,7,4,4,1,4,4,2,1,2,2,2,0,
+    0,0,0,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,7,7,7,2,2,7,7,2,7,0,0,
+    0,0,0,0,0,0,7,7,0,0,7,0,0,0,
+};
+static const uint8_t fennec_armour_medium_graze_5_ink[70] = {
+    7,7,7,7,7,7,0,0,0,0,0,0,0,7,
+    0,4,4,4,4,1,7,7,7,7,7,7,7,0,
+    0,7,7,7,2,1,4,4,4,1,4,4,4,0,
+    0,0,0,0,7,7,2,2,2,1,2,7,7,0,
+    0,0,0,0,0,0,7,7,7,7,7,0,0,0,
+};
+static const ArtFrame fennec_armour_medium_graze_frames[6] = {
+    {14, 5, 7, 20, -1, -1, fennec_armour_medium_graze_0_ink},
+    {14, 7, 4, 20, -1, -1, fennec_armour_medium_graze_1_ink},
+    {14, 7, 1, 20, -1, -1, fennec_armour_medium_graze_2_ink},
+    {14, 7, 1, 19, -1, -1, fennec_armour_medium_graze_3_ink},
+    {14, 7, 2, 20, -1, -1, fennec_armour_medium_graze_4_ink},
+    {14, 5, 7, 20, -1, -1, fennec_armour_medium_graze_5_ink},
+};
+static const uint8_t fennec_armour_medium_bite_0_ink[84] = {
+    7,7,7,7,0,0,0,0,0,0,0,0,0,7,
+    0,4,4,4,7,7,7,7,7,7,7,7,7,0,
+    0,7,7,2,4,1,4,4,4,1,4,4,4,0,
+    0,0,0,7,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,7,7,2,2,2,7,7,7,0,0,
+    0,0,0,0,0,0,7,7,7,0,0,0,0,0,
+};
+static const uint8_t fennec_armour_medium_bite_1_ink[84] = {
+    7,7,7,7,0,0,0,0,0,0,0,0,0,7,
+    0,4,4,4,7,7,7,7,7,7,7,7,7,0,
+    0,7,7,2,4,1,4,4,4,1,4,4,4,0,
+    0,0,0,7,2,1,2,2,2,1,2,2,2,0,
+    0,0,0,0,7,7,2,2,2,7,7,7,7,0,
+    0,0,0,0,0,0,7,7,7,0,0,0,0,0,
+};
+static const uint8_t fennec_armour_medium_bite_2_ink[84] = {
+    7,7,7,7,7,0,0,0,0,0,0,0,0,7,
+    0,4,4,4,4,7,7,7,7,7,7,7,7,0,
+    0,7,7,2,2,1,4,4,4,1,4,4,4,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,0,
+    0,0,0,0,0,7,2,2,2,7,7,7,7,0,
+    0,0,0,0,0,0,7,7,7,0,0,0,0,0,
+};
+static const uint8_t fennec_armour_medium_bite_3_ink[84] = {
+    7,7,7,7,7,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,7,7,7,7,7,7,7,7,7,
+    0,7,7,2,2,1,4,4,4,1,4,4,4,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,7,2,2,2,7,7,7,0,0,
+    0,0,0,0,0,0,7,7,7,0,0,0,0,0,
+};
+static const ArtFrame fennec_armour_medium_bite_frames[4] = {
+    {14, 6, 5, 20, -1, -1, fennec_armour_medium_bite_0_ink},
+    {14, 6, 4, 20, -1, -1, fennec_armour_medium_bite_1_ink},
+    {14, 6, 4, 20, -1, -1, fennec_armour_medium_bite_2_ink},
+    {14, 6, 5, 20, -1, -1, fennec_armour_medium_bite_3_ink},
+};
+static const uint8_t fennec_armour_medium_attack_0_ink[70] = {
+    0,0,7,7,7,7,7,7,0,0,0,0,0,0,
+    7,7,4,4,4,1,4,4,7,7,7,7,7,7,
+    0,4,2,2,2,1,2,2,4,1,4,4,4,0,
+    0,7,7,7,7,7,7,2,2,1,2,7,7,0,
+    0,0,0,0,0,0,0,7,7,7,7,0,0,0,
+};
+static const uint8_t fennec_armour_medium_attack_1_ink[84] = {
+    0,0,7,7,7,7,7,0,0,0,0,0,0,0,
+    7,7,4,4,4,1,4,7,7,0,0,0,0,0,
+    0,4,2,2,2,1,2,4,4,7,7,7,7,7,
+    0,7,7,7,7,7,2,2,2,1,4,4,4,0,
+    0,0,0,0,0,0,7,2,7,1,2,7,7,0,
+    0,0,0,0,0,0,0,7,0,7,7,0,0,0,
+};
+static const uint8_t fennec_armour_medium_attack_2_ink[84] = {
+    7,7,7,7,7,7,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,7,7,0,0,0,0,7,7,
+    0,7,2,2,2,1,4,4,7,7,7,7,4,0,
+    0,0,7,7,7,7,2,2,4,1,4,4,2,0,
+    0,0,0,0,0,0,2,2,2,1,2,7,7,0,
+    0,0,0,0,0,0,7,7,7,7,7,0,0,0,
+};
+static const uint8_t fennec_armour_medium_attack_3_ink[126] = {
+    7,7,7,7,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,7,7,7,0,0,0,0,0,0,0,
+    0,7,2,2,4,1,4,7,7,7,7,7,7,7,
+    0,0,7,7,2,1,2,4,4,1,4,4,4,0,
+    0,0,0,0,7,7,2,2,2,1,2,2,2,0,
+    0,0,0,0,0,0,7,2,2,1,2,2,7,0,
+    0,0,0,0,0,0,0,7,2,1,2,7,0,0,
+    0,0,0,0,0,0,0,0,2,1,7,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,0,0,0,0,
+};
+static const uint8_t fennec_armour_medium_attack_4_ink[126] = {
+    7,7,7,7,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,7,7,0,0,0,0,0,0,0,0,
+    0,2,2,2,4,1,7,7,7,0,0,0,0,0,
+    0,2,2,2,2,1,4,4,4,7,7,7,7,7,
+    0,7,2,7,7,1,2,2,2,1,4,4,4,0,
+    0,0,7,0,0,7,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,0,7,2,2,1,2,7,0,0,
+    0,0,0,0,0,0,0,2,2,7,7,0,0,0,
+    0,0,0,0,0,0,0,7,7,0,0,0,0,0,
+};
+static const uint8_t fennec_armour_medium_attack_5_ink[112] = {
+    7,7,7,7,7,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,7,7,7,7,0,0,0,0,0,
+    0,2,2,2,2,1,4,4,4,7,7,7,7,7,
+    0,2,2,2,2,1,2,2,2,1,4,4,4,0,
+    0,7,2,2,7,1,2,2,2,1,2,2,2,0,
+    0,0,7,2,0,7,7,7,7,7,2,2,2,0,
+    0,0,0,7,0,0,0,0,0,0,2,7,7,0,
+    0,0,0,0,0,0,0,0,0,0,7,0,0,0,
+};
+static const uint8_t fennec_armour_medium_attack_6_ink[70] = {
+    7,7,7,7,7,7,7,0,0,0,0,7,7,7,
+    0,4,4,4,4,1,4,7,7,7,7,4,4,0,
+    0,7,2,2,2,1,2,4,4,1,4,2,7,0,
+    0,0,7,7,7,7,2,2,2,1,2,7,0,0,
+    0,0,0,0,0,0,7,7,7,7,7,0,0,0,
+};
+static const uint8_t fennec_armour_medium_attack_7_ink[98] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    7,7,7,7,7,0,0,0,0,0,7,7,7,0,
+    0,4,4,4,4,7,7,7,7,7,4,4,4,0,
+    0,7,2,2,2,1,4,4,4,1,2,2,7,0,
+    0,0,7,7,7,1,2,2,2,1,7,7,0,0,
+    0,0,0,0,0,7,7,2,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,7,0,0,0,0,0,0,
+};
+static const uint8_t fennec_armour_medium_attack_8_ink[112] = {
+    7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,7,7,7,0,0,0,0,0,0,0,0,
+    0,7,2,4,4,1,7,0,0,0,0,0,7,7,
+    0,0,7,2,2,1,4,7,7,7,7,7,4,0,
+    0,0,0,7,7,1,2,4,4,1,4,4,7,0,
+    0,0,0,0,0,7,2,2,2,1,2,7,0,0,
+    0,0,0,0,0,0,7,2,7,7,7,0,0,0,
+    0,0,0,0,0,0,0,7,0,0,0,0,0,0,
+};
+static const ArtFrame fennec_armour_medium_attack_frames[9] = {
+    {14, 5, 9, 20, -1, -1, fennec_armour_medium_attack_0_ink},
+    {14, 6, 9, 20, -1, -1, fennec_armour_medium_attack_1_ink},
+    {14, 6, 7, 20, -1, -1, fennec_armour_medium_attack_2_ink},
+    {14, 9, 6, 21, -1, -1, fennec_armour_medium_attack_3_ink},
+    {14, 9, 7, 21, -1, -1, fennec_armour_medium_attack_4_ink},
+    {14, 8, 7, 21, -1, -1, fennec_armour_medium_attack_5_ink},
+    {14, 5, 5, 21, -1, -1, fennec_armour_medium_attack_6_ink},
+    {14, 7, 2, 22, -1, -1, fennec_armour_medium_attack_7_ink},
+    {14, 8, -1, 21, -1, -1, fennec_armour_medium_attack_8_ink},
+};
+static const uint8_t fennec_armour_medium_sleep_0_ink[84] = {
+    7,0,0,0,0,0,0,0,0,0,0,7,7,7,
+    0,7,7,7,7,7,7,7,7,7,7,4,4,0,
+    0,4,4,4,4,1,4,4,4,1,4,2,7,0,
+    0,7,7,2,2,1,2,2,2,1,2,7,0,0,
+    0,0,0,7,7,7,2,2,7,7,7,0,0,0,
+    0,0,0,0,0,0,7,7,0,0,0,0,0,0,
+};
+static const uint8_t fennec_armour_medium_sleep_1_ink[84] = {
+    0,0,0,0,0,0,0,0,0,0,7,7,7,7,
+    7,7,7,7,7,7,7,7,7,7,4,4,4,0,
+    0,4,4,4,4,1,4,4,4,1,2,2,7,0,
+    0,7,7,2,2,1,2,2,2,1,7,7,0,0,
+    0,0,0,7,7,7,2,2,7,7,0,0,0,0,
+    0,0,0,0,0,0,7,7,0,0,0,0,0,0,
+};
+static const uint8_t fennec_armour_medium_sleep_2_ink[126] = {
+    7,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,7,7,
+    0,0,7,7,7,7,7,7,7,7,4,4,4,0,
+    0,0,4,4,4,1,4,4,4,1,2,2,7,0,
+    0,0,7,2,2,1,2,2,2,1,7,7,0,0,
+    0,0,0,7,7,7,2,2,7,7,0,0,0,0,
+    0,0,0,0,0,0,7,7,0,0,0,0,0,0,
+};
+static const uint8_t fennec_armour_medium_sleep_3_ink[84] = {
+    0,0,0,0,0,0,0,0,0,0,7,7,7,7,
+    7,7,7,7,7,7,7,7,7,7,4,4,4,0,
+    0,4,4,4,4,1,4,4,4,1,2,2,7,0,
+    0,7,7,2,2,1,2,2,2,1,7,7,0,0,
+    0,0,0,7,7,7,2,2,7,7,0,0,0,0,
+    0,0,0,0,0,0,7,7,0,0,0,0,0,0,
+};
+static const uint8_t fennec_armour_medium_sleep_4_ink[84] = {
+    0,0,0,0,0,0,0,0,0,0,7,7,7,7,
+    7,7,7,7,7,7,7,7,7,7,4,4,4,0,
+    0,4,4,4,4,1,4,4,4,1,2,2,7,0,
+    0,7,7,2,2,1,2,2,2,1,7,7,0,0,
+    0,0,0,7,7,7,2,2,7,7,0,0,0,0,
+    0,0,0,0,0,0,7,7,0,0,0,0,0,0,
+};
+static const ArtFrame fennec_armour_medium_sleep_frames[5] = {
+    {14, 6, -1, 12, -1, -1, fennec_armour_medium_sleep_0_ink},
+    {14, 6, -2, 12, -1, -1, fennec_armour_medium_sleep_1_ink},
+    {14, 9, -2, 15, -1, -1, fennec_armour_medium_sleep_2_ink},
+    {14, 6, -2, 12, -1, -1, fennec_armour_medium_sleep_3_ink},
+    {14, 6, -2, 12, -1, -1, fennec_armour_medium_sleep_4_ink},
+};
+static const ArtClip fennec_armour_medium_clips[ACTION_COUNT] = {
+    [ACTION_REST] = {8, fennec_armour_medium_idle_frames},
+    [ACTION_WALK] = {4, fennec_armour_medium_walk_frames},
+    [ACTION_RUN] = {4, fennec_armour_medium_run_frames},
+    [ACTION_GRAZE] = {6, fennec_armour_medium_graze_frames},
+    [ACTION_BITE] = {4, fennec_armour_medium_bite_frames},
+    [ACTION_ATTACK] = {9, fennec_armour_medium_attack_frames},
+    [ACTION_SLEEP] = {5, fennec_armour_medium_sleep_frames},
+};
 static const uint8_t fennec_weapon_full_idle_0_ink[30] = {
     0,0,0,0,0,15,
     0,0,13,0,14,0,
@@ -10563,6 +12842,308 @@ static const ArtClip fennec_weapon_full_clips[ACTION_COUNT] = {
     [ACTION_BITE] = {4, fennec_weapon_full_bite_frames},
     [ACTION_ATTACK] = {9, fennec_weapon_full_attack_frames},
     [ACTION_SLEEP] = {5, fennec_weapon_full_sleep_frames},
+};
+static const uint8_t fennec_weapon_medium_idle_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fennec_weapon_medium_idle_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fennec_weapon_medium_idle_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fennec_weapon_medium_idle_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fennec_weapon_medium_idle_4_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fennec_weapon_medium_idle_5_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fennec_weapon_medium_idle_6_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fennec_weapon_medium_idle_7_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame fennec_weapon_medium_idle_frames[8] = {
+    {5, 4, -21, 32, -1, -1, fennec_weapon_medium_idle_0_ink},
+    {5, 4, -21, 32, -1, -1, fennec_weapon_medium_idle_1_ink},
+    {5, 4, -21, 32, -1, -1, fennec_weapon_medium_idle_2_ink},
+    {5, 4, -21, 32, -1, -1, fennec_weapon_medium_idle_3_ink},
+    {5, 4, -21, 32, -1, -1, fennec_weapon_medium_idle_4_ink},
+    {5, 4, -21, 32, -1, -1, fennec_weapon_medium_idle_5_ink},
+    {5, 4, -21, 32, -1, -1, fennec_weapon_medium_idle_6_ink},
+    {5, 4, -21, 32, -1, -1, fennec_weapon_medium_idle_7_ink},
+};
+static const uint8_t fennec_weapon_medium_walk_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fennec_weapon_medium_walk_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fennec_weapon_medium_walk_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fennec_weapon_medium_walk_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame fennec_weapon_medium_walk_frames[4] = {
+    {5, 4, -21, 28, -1, -1, fennec_weapon_medium_walk_0_ink},
+    {5, 4, -22, 30, -1, -1, fennec_weapon_medium_walk_1_ink},
+    {5, 4, -22, 28, -1, -1, fennec_weapon_medium_walk_2_ink},
+    {5, 4, -22, 28, -1, -1, fennec_weapon_medium_walk_3_ink},
+};
+static const uint8_t fennec_weapon_medium_run_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fennec_weapon_medium_run_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fennec_weapon_medium_run_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fennec_weapon_medium_run_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame fennec_weapon_medium_run_frames[4] = {
+    {5, 4, -22, 28, -1, -1, fennec_weapon_medium_run_0_ink},
+    {5, 4, -23, 26, -1, -1, fennec_weapon_medium_run_1_ink},
+    {5, 4, -24, 24, -1, -1, fennec_weapon_medium_run_2_ink},
+    {5, 4, -22, 27, -1, -1, fennec_weapon_medium_run_3_ink},
+};
+static const uint8_t fennec_weapon_medium_graze_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fennec_weapon_medium_graze_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fennec_weapon_medium_graze_2_ink[15] = {
+    0,0,0,0,15,
+    11,12,14,15,0,
+    12,13,0,0,0,
+};
+static const uint8_t fennec_weapon_medium_graze_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fennec_weapon_medium_graze_4_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fennec_weapon_medium_graze_5_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame fennec_weapon_medium_graze_frames[6] = {
+    {5, 4, -22, 30, -1, -1, fennec_weapon_medium_graze_0_ink},
+    {5, 4, -25, 27, -1, -1, fennec_weapon_medium_graze_1_ink},
+    {5, 3, -30, 13, -1, -1, fennec_weapon_medium_graze_2_ink},
+    {5, 4, -28, 17, -1, -1, fennec_weapon_medium_graze_3_ink},
+    {5, 4, -27, 20, -1, -1, fennec_weapon_medium_graze_4_ink},
+    {5, 4, -22, 31, -1, -1, fennec_weapon_medium_graze_5_ink},
+};
+static const uint8_t fennec_weapon_medium_bite_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fennec_weapon_medium_bite_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fennec_weapon_medium_bite_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fennec_weapon_medium_bite_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame fennec_weapon_medium_bite_frames[4] = {
+    {5, 4, -24, 30, -1, -1, fennec_weapon_medium_bite_0_ink},
+    {5, 4, -25, 30, -1, -1, fennec_weapon_medium_bite_1_ink},
+    {5, 4, -25, 29, -1, -1, fennec_weapon_medium_bite_2_ink},
+    {5, 4, -24, 30, -1, -1, fennec_weapon_medium_bite_3_ink},
+};
+static const uint8_t fennec_weapon_medium_attack_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fennec_weapon_medium_attack_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fennec_weapon_medium_attack_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fennec_weapon_medium_attack_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fennec_weapon_medium_attack_4_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fennec_weapon_medium_attack_5_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fennec_weapon_medium_attack_6_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fennec_weapon_medium_attack_7_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fennec_weapon_medium_attack_8_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame fennec_weapon_medium_attack_frames[9] = {
+    {5, 4, -20, 32, -1, -1, fennec_weapon_medium_attack_0_ink},
+    {5, 4, -20, 33, -1, -1, fennec_weapon_medium_attack_1_ink},
+    {5, 4, -22, 29, -1, -1, fennec_weapon_medium_attack_2_ink},
+    {5, 4, -23, 24, -1, -1, fennec_weapon_medium_attack_3_ink},
+    {5, 4, -22, 20, -1, -1, fennec_weapon_medium_attack_4_ink},
+    {5, 4, -22, 22, -1, -1, fennec_weapon_medium_attack_5_ink},
+    {5, 4, -24, 26, -1, -1, fennec_weapon_medium_attack_6_ink},
+    {5, 4, -27, 28, -1, -1, fennec_weapon_medium_attack_7_ink},
+    {5, 4, -30, 23, -1, -1, fennec_weapon_medium_attack_8_ink},
+};
+static const uint8_t fennec_weapon_medium_sleep_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fennec_weapon_medium_sleep_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fennec_weapon_medium_sleep_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fennec_weapon_medium_sleep_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fennec_weapon_medium_sleep_4_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame fennec_weapon_medium_sleep_frames[5] = {
+    {5, 4, -30, 14, -1, -1, fennec_weapon_medium_sleep_0_ink},
+    {5, 4, -31, 12, -1, -1, fennec_weapon_medium_sleep_1_ink},
+    {5, 4, -31, 12, -1, -1, fennec_weapon_medium_sleep_2_ink},
+    {5, 4, -31, 12, -1, -1, fennec_weapon_medium_sleep_3_ink},
+    {5, 4, -31, 12, -1, -1, fennec_weapon_medium_sleep_4_ink},
+};
+static const ArtClip fennec_weapon_medium_clips[ACTION_COUNT] = {
+    [ACTION_REST] = {8, fennec_weapon_medium_idle_frames},
+    [ACTION_WALK] = {4, fennec_weapon_medium_walk_frames},
+    [ACTION_RUN] = {4, fennec_weapon_medium_run_frames},
+    [ACTION_GRAZE] = {6, fennec_weapon_medium_graze_frames},
+    [ACTION_BITE] = {4, fennec_weapon_medium_bite_frames},
+    [ACTION_ATTACK] = {9, fennec_weapon_medium_attack_frames},
+    [ACTION_SLEEP] = {5, fennec_weapon_medium_sleep_frames},
 };
 static const ArtClip fennec_clips[ACTION_COUNT] = {
     [ACTION_REST] = {8, fennec_idle_frames},
@@ -12737,6 +15318,539 @@ static const ArtClip fox_armour_full_clips[ACTION_COUNT] = {
     [ACTION_ATTACK] = {9, fox_armour_full_attack_frames},
     [ACTION_SLEEP] = {5, fox_armour_full_sleep_frames},
 };
+static const uint8_t fox_armour_medium_idle_0_ink[170] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,7,4,2,0,
+    7,7,7,7,7,7,7,7,7,7,7,7,4,1,2,2,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,2,1,2,2,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,7,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,7,7,7,0,0,
+    0,0,0,0,0,7,7,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t fox_armour_medium_idle_1_ink[170] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,7,4,2,0,
+    7,7,7,7,7,7,7,7,7,7,7,7,4,1,2,2,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,2,1,2,2,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,7,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,7,7,7,0,0,
+    0,0,0,0,0,7,7,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t fox_armour_medium_idle_2_ink[170] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,7,4,2,0,
+    7,7,7,7,7,7,7,7,7,7,7,7,4,1,2,2,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,2,1,2,2,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,7,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,7,7,7,0,0,
+    0,0,0,0,0,7,7,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t fox_armour_medium_idle_3_ink[170] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,7,4,2,0,
+    7,7,7,7,7,7,7,7,7,7,7,7,4,1,2,2,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,2,1,2,2,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,7,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,7,7,7,0,0,
+    0,0,0,0,0,7,7,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t fox_armour_medium_idle_4_ink[170] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,7,4,2,0,
+    7,7,7,7,7,7,7,7,7,7,7,7,4,1,2,2,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,2,1,2,2,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,7,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,7,7,7,0,0,
+    0,0,0,0,0,7,7,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t fox_armour_medium_idle_5_ink[170] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,7,4,2,0,
+    7,7,7,7,7,7,7,7,7,7,7,7,4,1,2,2,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,2,1,2,2,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,7,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,7,7,7,0,0,
+    0,0,0,0,0,7,7,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t fox_armour_medium_idle_6_ink[170] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,7,4,2,0,
+    7,7,7,7,7,7,7,7,7,7,7,7,4,1,2,2,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,2,1,2,2,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,7,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,7,7,7,0,0,
+    0,0,0,0,0,7,7,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t fox_armour_medium_idle_7_ink[170] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,7,4,2,0,
+    7,7,7,7,7,7,7,7,7,7,7,7,4,1,2,2,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,2,1,2,2,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,7,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,7,7,7,0,0,
+    0,0,0,0,0,7,7,7,7,7,7,7,0,0,0,0,0,
+};
+static const ArtFrame fox_armour_medium_idle_frames[8] = {
+    {17, 10, 7, 26, -1, -1, fox_armour_medium_idle_0_ink},
+    {17, 10, 7, 26, -1, -1, fox_armour_medium_idle_1_ink},
+    {17, 10, 7, 26, -1, -1, fox_armour_medium_idle_2_ink},
+    {17, 10, 7, 26, -1, -1, fox_armour_medium_idle_3_ink},
+    {17, 10, 7, 26, -1, -1, fox_armour_medium_idle_4_ink},
+    {17, 10, 7, 26, -1, -1, fox_armour_medium_idle_5_ink},
+    {17, 10, 7, 26, -1, -1, fox_armour_medium_idle_6_ink},
+    {17, 10, 7, 26, -1, -1, fox_armour_medium_idle_7_ink},
+};
+static const uint8_t fox_armour_medium_walk_0_ink[204] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,7,0,
+    7,7,7,0,0,0,0,0,0,0,0,0,7,1,2,0,0,
+    0,4,4,7,7,7,7,7,7,7,7,7,4,1,7,0,0,
+    0,7,2,4,4,1,4,4,4,1,4,4,2,7,0,0,0,
+    0,0,2,2,2,1,2,2,2,1,2,2,7,0,0,0,0,
+    0,0,7,2,2,1,2,2,2,1,7,7,0,0,0,0,0,
+    0,0,0,2,2,1,7,7,7,7,0,0,0,0,0,0,0,
+    0,0,0,7,7,1,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t fox_armour_medium_walk_1_ink[204] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,1,4,2,0,
+    7,7,7,7,7,7,7,7,7,7,7,7,4,1,2,2,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,2,1,2,7,0,
+    0,2,7,2,2,1,2,2,2,1,2,2,2,1,2,0,0,
+    0,2,0,7,2,1,2,2,2,1,2,2,2,1,7,0,0,
+    0,7,0,0,7,7,7,2,2,1,2,2,2,7,0,0,0,
+    0,0,0,0,0,0,0,7,7,7,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,
+};
+static const uint8_t fox_armour_medium_walk_2_ink[238] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,2,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,1,2,7,0,
+    7,7,7,7,7,7,7,7,7,7,7,7,4,1,7,0,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,2,1,0,0,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,7,0,0,0,
+    0,0,0,2,2,1,2,2,2,1,2,2,7,0,0,0,0,
+    0,0,0,2,2,1,2,2,2,1,7,7,0,0,0,0,0,
+    0,0,0,7,2,1,2,7,7,7,0,0,0,0,0,0,0,
+    0,0,0,0,7,7,2,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t fox_armour_medium_walk_3_ink[187] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,2,0,
+    7,7,7,0,0,0,0,0,0,0,0,7,7,1,2,2,0,
+    0,4,4,7,7,7,7,7,7,7,7,4,4,1,2,2,0,
+    0,2,7,4,4,1,4,4,4,1,4,2,2,1,2,7,0,
+    0,7,0,2,2,1,2,2,2,1,2,2,2,1,7,0,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,1,0,0,0,
+    0,0,0,0,0,7,7,7,2,1,2,2,2,7,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,7,0,0,0,0,
+};
+static const ArtFrame fox_armour_medium_walk_frames[4] = {
+    {17, 12, 5, 25, -1, -1, fox_armour_medium_walk_0_ink},
+    {17, 12, 5, 27, -1, -1, fox_armour_medium_walk_1_ink},
+    {17, 14, 5, 28, -1, -1, fox_armour_medium_walk_2_ink},
+    {17, 11, 5, 27, -1, -1, fox_armour_medium_walk_3_ink},
+};
+static const uint8_t fox_armour_medium_run_0_ink[204] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,2,0,
+    7,7,7,0,0,0,0,0,0,0,0,0,7,7,2,7,0,
+    0,4,4,7,7,7,7,7,7,7,7,7,4,1,7,0,0,
+    0,7,7,4,4,1,4,4,4,1,4,4,2,1,0,0,0,
+    0,0,0,7,2,1,2,2,2,1,2,2,7,7,0,0,0,
+    0,0,0,0,2,1,2,2,2,1,7,7,0,0,0,0,0,
+    0,0,0,0,7,1,2,2,7,7,0,0,0,0,0,0,0,
+    0,0,0,0,0,7,7,7,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t fox_armour_medium_run_1_ink[187] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,0,
+    7,0,0,0,0,0,0,0,0,0,0,7,7,7,4,4,0,
+    0,7,7,7,7,7,7,7,7,7,7,4,4,1,2,7,0,
+    0,4,4,4,4,1,4,4,4,1,4,2,2,1,7,0,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,7,0,0,0,
+    0,0,0,7,2,1,2,2,2,1,2,7,7,0,0,0,0,
+    0,0,0,0,2,1,2,2,2,7,7,0,0,0,0,0,0,
+    0,0,0,0,2,1,2,2,7,0,0,0,0,0,0,0,0,
+    0,0,0,0,7,7,2,2,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,7,7,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t fox_armour_medium_run_2_ink[153] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,7,4,2,0,
+    7,7,7,0,0,0,0,0,0,0,7,7,4,1,2,7,0,
+    0,4,4,7,7,7,7,7,7,7,4,4,2,1,7,0,0,
+    0,2,2,4,4,1,4,4,4,1,2,2,2,7,0,0,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,7,0,0,0,0,
+    0,7,7,7,7,7,7,2,2,1,7,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,7,7,7,0,0,0,0,0,0,0,
+};
+static const uint8_t fox_armour_medium_run_3_ink[153] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,4,0,
+    7,7,7,7,7,7,7,7,7,7,7,7,4,1,4,2,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,2,1,2,7,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,7,7,0,0,
+    0,0,0,7,7,7,2,2,2,1,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,
+};
+static const ArtFrame fox_armour_medium_run_frames[4] = {
+    {17, 12, 6, 25, -1, -1, fox_armour_medium_run_0_ink},
+    {17, 11, 5, 24, -1, -1, fox_armour_medium_run_1_ink},
+    {17, 9, 4, 23, -1, -1, fox_armour_medium_run_2_ink},
+    {17, 9, 5, 24, -1, -1, fox_armour_medium_run_3_ink},
+};
+static const uint8_t fox_armour_medium_graze_0_ink[153] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,1,4,2,0,
+    7,7,7,7,7,7,7,7,7,7,7,7,4,1,2,2,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,2,1,2,2,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,7,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,1,7,0,0,
+    0,0,0,0,0,7,7,7,7,7,7,7,7,7,0,0,0,
+};
+static const uint8_t fox_armour_medium_graze_1_ink[153] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,4,0,
+    7,7,7,7,7,7,7,7,7,7,7,7,7,1,4,2,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,1,2,2,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,7,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,1,2,0,0,
+    0,0,0,0,0,7,7,7,7,7,7,2,2,1,7,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,2,2,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,7,0,0,0,0,
+};
+static const uint8_t fox_armour_medium_graze_2_ink[136] = {
+    0,0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,7,
+    7,7,7,7,7,7,7,7,7,7,4,4,4,1,4,4,0,
+    0,4,4,4,4,1,4,4,4,1,2,2,2,1,2,7,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,0,0,
+    0,0,0,7,2,1,2,2,2,1,2,2,2,1,2,0,0,
+    0,0,0,0,7,7,7,2,2,1,2,2,2,7,7,0,0,
+    0,0,0,0,0,0,0,7,2,1,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t fox_armour_medium_graze_3_ink[153] = {
+    0,0,0,0,0,0,0,0,0,0,0,7,7,7,0,0,0,
+    7,7,7,7,7,7,7,7,7,7,7,4,4,1,7,7,7,
+    0,4,4,4,4,1,4,4,4,1,4,2,2,1,4,4,0,
+    0,7,2,2,2,1,2,2,2,1,2,2,2,1,2,7,0,
+    0,0,7,7,2,1,2,2,2,1,2,2,2,1,7,0,0,
+    0,0,0,0,7,7,2,2,2,1,2,2,2,7,0,0,0,
+    0,0,0,0,0,0,7,2,2,1,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,0,7,7,1,2,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,
+};
+static const uint8_t fox_armour_medium_graze_4_ink[153] = {
+    0,0,0,0,0,0,0,0,0,7,7,7,0,0,0,0,0,
+    7,7,7,7,7,7,7,7,7,1,4,4,7,7,7,0,0,
+    0,4,4,4,4,1,4,4,4,1,2,2,4,1,4,7,7,
+    0,7,2,2,2,1,2,2,2,1,2,2,2,1,7,4,0,
+    0,0,7,7,2,1,2,2,2,1,2,2,2,7,0,7,0,
+    0,0,0,0,7,1,2,2,2,1,2,2,7,0,0,0,0,
+    0,0,0,0,0,7,2,2,2,1,2,2,0,0,0,0,0,
+    0,0,0,0,0,0,7,2,2,7,7,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t fox_armour_medium_graze_5_ink[153] = {
+    0,0,0,0,0,0,0,0,0,7,7,7,7,7,0,0,0,
+    7,7,7,7,7,7,7,7,7,1,4,4,4,1,7,7,7,
+    0,4,4,4,4,1,4,4,4,1,2,2,2,1,4,4,0,
+    0,7,2,2,2,1,2,2,2,1,2,2,2,7,7,7,0,
+    0,0,7,7,7,1,2,2,2,1,2,2,2,0,0,0,0,
+    0,0,0,0,0,1,2,2,2,1,2,2,2,0,0,0,0,
+    0,0,0,0,0,7,2,2,2,1,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,7,7,2,7,7,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,
+};
+static const ArtFrame fox_armour_medium_graze_frames[6] = {
+    {17, 9, 5, 25, -1, -1, fox_armour_medium_graze_0_ink},
+    {17, 9, 4, 23, -1, -1, fox_armour_medium_graze_1_ink},
+    {17, 8, 2, 21, -1, -1, fox_armour_medium_graze_2_ink},
+    {17, 9, 1, 21, -1, -1, fox_armour_medium_graze_3_ink},
+    {17, 9, -1, 21, -1, -1, fox_armour_medium_graze_4_ink},
+    {17, 9, 0, 21, -1, -1, fox_armour_medium_graze_5_ink},
+};
+static const uint8_t fox_armour_medium_bite_0_ink[187] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,7,7,4,2,0,
+    7,7,7,7,7,7,7,7,7,7,4,4,4,1,2,7,0,
+    0,4,4,4,4,1,4,4,4,1,2,2,2,1,2,0,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,0,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,1,7,0,0,
+    0,0,0,0,0,7,7,7,7,1,2,2,2,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,2,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,
+};
+static const uint8_t fox_armour_medium_bite_1_ink[170] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,7,7,4,4,0,
+    7,0,0,0,0,0,7,7,7,7,4,4,4,1,2,7,0,
+    0,7,7,7,7,7,4,4,4,1,2,2,2,1,7,0,0,
+    0,4,4,4,4,1,2,2,2,1,2,2,2,1,0,0,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,0,0,0,
+    0,0,0,7,7,1,7,2,2,1,2,2,2,7,0,0,0,
+    0,0,0,0,0,7,0,7,7,1,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,0,0,0,0,0,
+};
+static const uint8_t fox_armour_medium_bite_2_ink[187] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,7,1,4,2,0,
+    0,0,0,0,0,0,0,7,7,7,4,4,4,1,2,7,0,
+    7,7,7,7,7,7,7,4,4,1,2,2,2,1,7,0,0,
+    0,4,4,4,4,1,4,2,2,1,2,2,2,7,0,0,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,0,0,0,0,
+    0,0,0,7,2,1,2,2,2,1,2,2,2,0,0,0,0,
+    0,0,0,0,7,7,7,2,2,1,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,0,7,7,1,7,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,
+};
+static const uint8_t fox_armour_medium_bite_3_ink[170] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,
+    0,0,0,0,0,0,0,0,0,0,7,7,7,7,7,4,0,
+    0,0,0,0,0,0,0,7,7,7,4,4,4,1,4,7,0,
+    7,7,7,7,7,7,7,4,4,1,2,2,2,1,2,0,0,
+    0,4,4,4,4,1,4,2,2,1,2,2,2,1,7,0,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,7,0,0,0,
+    0,0,0,7,2,1,2,2,2,1,2,2,2,0,0,0,0,
+    0,0,0,0,7,7,7,2,2,1,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,0,7,7,1,7,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,
+};
+static const ArtFrame fox_armour_medium_bite_frames[4] = {
+    {17, 11, 3, 24, -1, -1, fox_armour_medium_bite_0_ink},
+    {17, 10, 2, 23, -1, -1, fox_armour_medium_bite_1_ink},
+    {17, 11, 1, 23, -1, -1, fox_armour_medium_bite_2_ink},
+    {17, 10, 1, 22, -1, -1, fox_armour_medium_bite_3_ink},
+};
+static const uint8_t fox_armour_medium_attack_0_ink[170] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,7,4,2,0,
+    7,7,7,7,7,7,7,7,7,7,7,7,4,1,2,2,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,2,1,2,2,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,7,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,7,7,7,0,0,
+    0,0,0,0,0,7,7,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t fox_armour_medium_attack_1_ink[187] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,7,7,4,4,0,
+    7,7,7,7,7,7,7,7,7,7,7,4,4,1,2,2,0,
+    0,4,4,4,4,1,4,4,4,1,4,2,2,1,2,7,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,0,0,
+    0,0,0,7,2,1,2,2,2,1,2,2,2,1,7,0,0,
+    0,0,0,0,7,7,7,2,2,1,2,2,2,1,0,0,0,
+    0,0,0,0,0,0,0,7,7,7,2,2,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,
+};
+static const uint8_t fox_armour_medium_attack_2_ink[153] = {
+    7,0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,7,
+    0,7,7,7,7,7,7,7,7,7,4,4,4,1,4,4,0,
+    0,4,4,4,4,1,4,4,4,1,2,2,2,1,2,7,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,7,0,0,
+    0,0,0,7,2,1,2,2,2,1,2,2,2,7,0,0,0,
+    0,0,0,0,7,7,2,2,2,1,2,2,2,0,0,0,0,
+    0,0,0,0,0,0,7,7,2,1,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,1,7,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,
+};
+static const uint8_t fox_armour_medium_attack_3_ink[187] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,7,1,4,2,0,
+    7,7,7,7,7,7,7,7,7,7,4,4,4,1,2,2,0,
+    0,4,4,4,4,1,4,4,4,1,2,2,2,1,2,7,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,0,0,
+    0,0,0,7,2,1,2,2,2,1,2,2,2,1,7,0,0,
+    0,0,0,0,7,7,7,7,7,1,2,2,2,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,1,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,0,0,0,0,0,
+};
+static const uint8_t fox_armour_medium_attack_4_ink[187] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,2,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,7,1,2,2,0,
+    7,7,7,7,7,7,7,7,7,7,7,4,4,1,2,2,0,
+    0,4,4,4,4,1,4,4,4,1,4,2,2,1,2,7,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,0,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,1,7,0,0,
+    0,0,0,0,0,7,7,7,7,7,2,2,2,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,7,0,0,0,0,
+};
+static const uint8_t fox_armour_medium_attack_5_ink[153] = {
+    7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,7,7,7,7,7,7,7,7,7,7,0,0,0,
+    0,7,2,2,4,1,4,4,4,1,4,4,4,1,7,7,7,
+    0,0,7,7,2,1,2,2,2,1,2,2,2,1,4,4,0,
+    0,0,0,0,2,1,2,2,2,1,2,2,2,1,7,7,0,
+    0,0,0,0,7,1,2,2,2,1,2,2,2,1,0,0,0,
+    0,0,0,0,0,7,7,2,2,1,2,2,7,7,0,0,0,
+    0,0,0,0,0,0,0,7,2,1,7,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,0,
+};
+static const uint8_t fox_armour_medium_attack_6_ink[153] = {
+    7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,7,7,7,7,7,7,7,0,0,0,0,0,0,0,
+    0,7,2,4,4,1,4,4,4,1,7,7,7,0,0,0,0,
+    0,0,7,2,2,1,2,2,2,1,4,4,4,7,0,0,0,
+    0,0,0,7,2,1,2,2,2,1,2,2,2,1,7,7,0,
+    0,0,0,0,7,1,2,2,2,1,2,2,2,1,4,4,7,
+    0,0,0,0,0,7,2,2,2,1,2,2,7,7,7,7,0,
+    0,0,0,0,0,0,7,7,7,7,2,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,
+};
+static const uint8_t fox_armour_medium_attack_7_ink[170] = {
+    7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,7,7,7,7,7,7,7,7,7,7,0,0,0,0,
+    0,7,2,4,4,1,4,4,4,1,4,4,4,7,0,0,0,
+    0,0,7,2,2,1,2,2,2,1,2,2,2,1,7,7,0,
+    0,0,0,7,2,1,2,2,2,1,2,2,2,1,4,4,7,
+    0,0,0,0,7,1,2,2,2,1,2,2,2,7,7,7,0,
+    0,0,0,0,0,7,2,2,2,1,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,7,2,2,1,7,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,7,7,7,0,0,0,0,0,0,0,
+};
+static const uint8_t fox_armour_medium_attack_8_ink[170] = {
+    7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,7,7,7,7,7,7,7,7,7,7,0,0,0,0,
+    0,7,2,4,4,1,4,4,4,1,4,4,4,7,7,7,0,
+    0,0,7,2,2,1,2,2,2,1,2,2,2,1,4,4,7,
+    0,0,0,7,2,1,2,2,2,1,2,2,2,1,7,7,0,
+    0,0,0,0,7,1,2,2,2,1,2,2,2,7,0,0,0,
+    0,0,0,0,0,7,2,2,2,1,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,7,2,2,1,7,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,7,7,7,0,0,0,0,0,0,0,
+};
+static const ArtFrame fox_armour_medium_attack_frames[9] = {
+    {17, 10, 7, 26, -1, -1, fox_armour_medium_attack_0_ink},
+    {17, 11, 3, 25, -1, -1, fox_armour_medium_attack_1_ink},
+    {17, 9, 1, 21, -1, -1, fox_armour_medium_attack_2_ink},
+    {17, 11, 2, 25, -1, -1, fox_armour_medium_attack_3_ink},
+    {17, 11, 3, 26, -1, -1, fox_armour_medium_attack_4_ink},
+    {17, 9, -1, 20, -1, -1, fox_armour_medium_attack_5_ink},
+    {17, 9, -2, 19, -1, -1, fox_armour_medium_attack_6_ink},
+    {17, 10, -2, 21, -1, -1, fox_armour_medium_attack_7_ink},
+    {17, 10, -2, 21, -1, -1, fox_armour_medium_attack_8_ink},
+};
+static const uint8_t fox_armour_medium_sleep_0_ink[119] = {
+    7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,7,7,7,7,0,0,0,0,0,0,7,7,7,0,
+    0,7,2,4,4,1,4,7,7,7,7,7,7,1,4,4,7,
+    0,0,7,2,2,1,2,4,4,1,4,4,4,1,2,7,0,
+    0,0,0,7,2,1,2,2,2,1,2,2,2,7,7,0,0,
+    0,0,0,0,7,7,7,2,2,1,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t fox_armour_medium_sleep_1_ink[119] = {
+    7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,7,7,7,7,0,0,0,0,0,0,7,7,7,0,0,
+    0,7,4,4,4,1,7,7,7,7,7,7,4,1,4,7,7,
+    0,0,2,2,2,1,4,4,4,1,4,4,2,1,2,4,0,
+    0,0,7,7,2,1,2,2,2,1,2,2,2,7,7,7,0,
+    0,0,0,0,7,7,2,2,2,1,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t fox_armour_medium_sleep_2_ink[119] = {
+    7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,7,7,7,7,0,0,0,0,0,0,7,7,7,0,
+    0,7,2,4,4,1,4,7,7,7,7,7,7,1,4,4,7,
+    0,0,7,2,2,1,2,4,4,1,4,4,4,1,2,7,0,
+    0,0,0,7,2,1,2,2,2,1,2,2,2,7,7,0,0,
+    0,0,0,0,7,7,7,2,2,1,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t fox_armour_medium_sleep_3_ink[119] = {
+    7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,7,7,7,7,0,0,0,0,0,0,7,7,7,0,
+    0,7,2,4,4,1,4,7,7,7,7,7,7,1,4,4,7,
+    0,0,7,2,2,1,2,4,4,1,4,4,4,1,2,7,0,
+    0,0,0,7,2,1,2,2,2,1,2,2,2,7,7,0,0,
+    0,0,0,0,7,7,7,2,2,1,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t fox_armour_medium_sleep_4_ink[119] = {
+    7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,7,7,7,7,0,0,0,0,0,0,7,7,7,0,
+    0,7,2,4,4,1,4,7,7,7,7,7,7,1,4,4,7,
+    0,0,7,2,2,1,2,4,4,1,4,4,4,1,2,7,0,
+    0,0,0,7,2,1,2,2,2,1,2,2,2,7,7,0,0,
+    0,0,0,0,7,7,7,2,2,1,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,0,0,0,0,0,
+};
+static const ArtFrame fox_armour_medium_sleep_frames[5] = {
+    {17, 7, -2, 14, -1, -1, fox_armour_medium_sleep_0_ink},
+    {17, 7, -3, 14, -1, -1, fox_armour_medium_sleep_1_ink},
+    {17, 7, -2, 14, -1, -1, fox_armour_medium_sleep_2_ink},
+    {17, 7, -2, 14, -1, -1, fox_armour_medium_sleep_3_ink},
+    {17, 7, -2, 14, -1, -1, fox_armour_medium_sleep_4_ink},
+};
+static const ArtClip fox_armour_medium_clips[ACTION_COUNT] = {
+    [ACTION_REST] = {8, fox_armour_medium_idle_frames},
+    [ACTION_WALK] = {4, fox_armour_medium_walk_frames},
+    [ACTION_RUN] = {4, fox_armour_medium_run_frames},
+    [ACTION_GRAZE] = {6, fox_armour_medium_graze_frames},
+    [ACTION_BITE] = {4, fox_armour_medium_bite_frames},
+    [ACTION_ATTACK] = {9, fox_armour_medium_attack_frames},
+    [ACTION_SLEEP] = {5, fox_armour_medium_sleep_frames},
+};
 static const uint8_t fox_weapon_full_idle_0_ink[30] = {
     0,0,0,0,0,15,
     0,0,13,0,14,0,
@@ -13077,6 +16191,308 @@ static const ArtClip fox_weapon_full_clips[ACTION_COUNT] = {
     [ACTION_BITE] = {4, fox_weapon_full_bite_frames},
     [ACTION_ATTACK] = {9, fox_weapon_full_attack_frames},
     [ACTION_SLEEP] = {5, fox_weapon_full_sleep_frames},
+};
+static const uint8_t fox_weapon_medium_idle_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fox_weapon_medium_idle_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fox_weapon_medium_idle_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fox_weapon_medium_idle_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fox_weapon_medium_idle_4_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fox_weapon_medium_idle_5_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fox_weapon_medium_idle_6_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fox_weapon_medium_idle_7_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame fox_weapon_medium_idle_frames[8] = {
+    {5, 4, -19, 30, -1, -1, fox_weapon_medium_idle_0_ink},
+    {5, 4, -19, 30, -1, -1, fox_weapon_medium_idle_1_ink},
+    {5, 4, -19, 30, -1, -1, fox_weapon_medium_idle_2_ink},
+    {5, 4, -19, 30, -1, -1, fox_weapon_medium_idle_3_ink},
+    {5, 4, -19, 30, -1, -1, fox_weapon_medium_idle_4_ink},
+    {5, 4, -19, 30, -1, -1, fox_weapon_medium_idle_5_ink},
+    {5, 4, -19, 30, -1, -1, fox_weapon_medium_idle_6_ink},
+    {5, 4, -19, 30, -1, -1, fox_weapon_medium_idle_7_ink},
+};
+static const uint8_t fox_weapon_medium_walk_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fox_weapon_medium_walk_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fox_weapon_medium_walk_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fox_weapon_medium_walk_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame fox_weapon_medium_walk_frames[4] = {
+    {5, 4, -21, 28, -1, -1, fox_weapon_medium_walk_0_ink},
+    {5, 4, -21, 29, -1, -1, fox_weapon_medium_walk_1_ink},
+    {5, 4, -21, 27, -1, -1, fox_weapon_medium_walk_2_ink},
+    {5, 4, -21, 28, -1, -1, fox_weapon_medium_walk_3_ink},
+};
+static const uint8_t fox_weapon_medium_run_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fox_weapon_medium_run_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fox_weapon_medium_run_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fox_weapon_medium_run_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame fox_weapon_medium_run_frames[4] = {
+    {5, 4, -20, 28, -1, -1, fox_weapon_medium_run_0_ink},
+    {5, 4, -21, 26, -1, -1, fox_weapon_medium_run_1_ink},
+    {5, 4, -22, 25, -1, -1, fox_weapon_medium_run_2_ink},
+    {5, 4, -21, 27, -1, -1, fox_weapon_medium_run_3_ink},
+};
+static const uint8_t fox_weapon_medium_graze_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fox_weapon_medium_graze_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fox_weapon_medium_graze_2_ink[15] = {
+    0,0,0,0,15,
+    11,12,14,15,0,
+    12,13,0,0,0,
+};
+static const uint8_t fox_weapon_medium_graze_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fox_weapon_medium_graze_4_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fox_weapon_medium_graze_5_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame fox_weapon_medium_graze_frames[6] = {
+    {5, 4, -21, 26, -1, -1, fox_weapon_medium_graze_0_ink},
+    {5, 4, -22, 25, -1, -1, fox_weapon_medium_graze_1_ink},
+    {5, 3, -26, 16, -1, -1, fox_weapon_medium_graze_2_ink},
+    {5, 4, -25, 14, -1, -1, fox_weapon_medium_graze_3_ink},
+    {5, 4, -27, 14, -1, -1, fox_weapon_medium_graze_4_ink},
+    {5, 4, -26, 17, -1, -1, fox_weapon_medium_graze_5_ink},
+};
+static const uint8_t fox_weapon_medium_bite_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fox_weapon_medium_bite_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fox_weapon_medium_bite_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fox_weapon_medium_bite_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame fox_weapon_medium_bite_frames[4] = {
+    {5, 4, -23, 26, -1, -1, fox_weapon_medium_bite_0_ink},
+    {5, 4, -24, 25, -1, -1, fox_weapon_medium_bite_1_ink},
+    {5, 4, -25, 25, -1, -1, fox_weapon_medium_bite_2_ink},
+    {5, 4, -25, 25, -1, -1, fox_weapon_medium_bite_3_ink},
+};
+static const uint8_t fox_weapon_medium_attack_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fox_weapon_medium_attack_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fox_weapon_medium_attack_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fox_weapon_medium_attack_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fox_weapon_medium_attack_4_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fox_weapon_medium_attack_5_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fox_weapon_medium_attack_6_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fox_weapon_medium_attack_7_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fox_weapon_medium_attack_8_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame fox_weapon_medium_attack_frames[9] = {
+    {5, 4, -19, 29, -1, -1, fox_weapon_medium_attack_0_ink},
+    {5, 4, -23, 25, -1, -1, fox_weapon_medium_attack_1_ink},
+    {5, 4, -25, 20, -1, -1, fox_weapon_medium_attack_2_ink},
+    {5, 4, -24, 24, -1, -1, fox_weapon_medium_attack_3_ink},
+    {5, 4, -23, 27, -1, -1, fox_weapon_medium_attack_4_ink},
+    {5, 4, -27, 17, -1, -1, fox_weapon_medium_attack_5_ink},
+    {5, 4, -28, 13, -1, -1, fox_weapon_medium_attack_6_ink},
+    {5, 4, -28, 15, -1, -1, fox_weapon_medium_attack_7_ink},
+    {5, 4, -28, 15, -1, -1, fox_weapon_medium_attack_8_ink},
+};
+static const uint8_t fox_weapon_medium_sleep_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fox_weapon_medium_sleep_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fox_weapon_medium_sleep_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fox_weapon_medium_sleep_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t fox_weapon_medium_sleep_4_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame fox_weapon_medium_sleep_frames[5] = {
+    {5, 4, -28, 9, -1, -1, fox_weapon_medium_sleep_0_ink},
+    {5, 4, -29, 8, -1, -1, fox_weapon_medium_sleep_1_ink},
+    {5, 4, -28, 10, -1, -1, fox_weapon_medium_sleep_2_ink},
+    {5, 4, -28, 10, -1, -1, fox_weapon_medium_sleep_3_ink},
+    {5, 4, -28, 10, -1, -1, fox_weapon_medium_sleep_4_ink},
+};
+static const ArtClip fox_weapon_medium_clips[ACTION_COUNT] = {
+    [ACTION_REST] = {8, fox_weapon_medium_idle_frames},
+    [ACTION_WALK] = {4, fox_weapon_medium_walk_frames},
+    [ACTION_RUN] = {4, fox_weapon_medium_run_frames},
+    [ACTION_GRAZE] = {6, fox_weapon_medium_graze_frames},
+    [ACTION_BITE] = {4, fox_weapon_medium_bite_frames},
+    [ACTION_ATTACK] = {9, fox_weapon_medium_attack_frames},
+    [ACTION_SLEEP] = {5, fox_weapon_medium_sleep_frames},
 };
 static const ArtClip fox_clips[ACTION_COUNT] = {
     [ACTION_REST] = {8, fox_idle_frames},
@@ -15248,6 +18664,461 @@ static const ArtClip gazelle_armour_full_clips[ACTION_COUNT] = {
     [ACTION_ATTACK] = {8, gazelle_armour_full_attack_frames},
     [ACTION_SLEEP] = {4, gazelle_armour_full_sleep_frames},
 };
+static const uint8_t gazelle_armour_medium_idle_0_ink[108] = {
+    7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,4,7,7,7,7,7,7,7,7,7,7,7,
+    0,2,2,2,2,1,2,4,4,1,4,4,4,1,4,4,4,0,
+    0,7,7,7,7,7,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,0,7,2,2,1,2,2,2,7,7,7,0,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t gazelle_armour_medium_idle_1_ink[108] = {
+    7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,4,7,7,7,7,7,7,7,7,7,7,7,
+    0,2,2,2,2,1,2,4,4,1,4,4,4,1,4,4,4,0,
+    0,7,7,7,7,7,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,0,7,2,2,1,2,2,2,7,7,7,0,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t gazelle_armour_medium_idle_2_ink[108] = {
+    7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,4,7,7,7,7,7,7,7,7,7,7,7,
+    0,2,2,2,2,1,2,4,4,1,4,4,4,1,4,4,4,0,
+    0,7,7,7,7,7,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,0,7,2,2,1,2,2,2,7,7,7,0,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t gazelle_armour_medium_idle_3_ink[108] = {
+    7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,4,7,7,7,7,7,7,7,7,7,7,7,
+    0,2,2,2,2,1,2,4,4,1,4,4,4,1,4,4,4,0,
+    0,7,7,7,7,7,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,0,7,2,2,1,2,2,2,7,7,7,0,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t gazelle_armour_medium_idle_4_ink[108] = {
+    7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,4,7,7,7,7,7,7,7,7,7,7,7,
+    0,2,2,2,2,1,2,4,4,1,4,4,4,1,4,4,4,0,
+    0,7,7,7,7,7,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,0,7,2,2,1,2,2,2,7,7,7,0,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t gazelle_armour_medium_idle_5_ink[108] = {
+    7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,4,7,7,7,7,7,7,7,7,7,7,7,
+    0,2,2,2,2,1,2,4,4,1,4,4,4,1,4,4,4,0,
+    0,7,7,7,7,7,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,0,7,2,2,1,2,2,2,7,7,7,0,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t gazelle_armour_medium_idle_6_ink[108] = {
+    7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,4,7,7,7,7,7,7,7,7,7,7,7,
+    0,2,2,2,2,1,2,4,4,1,4,4,4,1,4,4,4,0,
+    0,7,7,7,7,7,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,0,7,2,2,1,2,2,2,7,7,7,0,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t gazelle_armour_medium_idle_7_ink[108] = {
+    7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,4,7,7,7,7,7,7,7,7,7,7,7,
+    0,2,2,2,2,1,2,4,4,1,4,4,4,1,4,4,4,0,
+    0,7,7,7,7,7,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,0,7,2,2,1,2,2,2,7,7,7,0,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t gazelle_armour_medium_idle_8_ink[108] = {
+    7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,4,7,7,7,7,7,7,7,7,7,7,7,
+    0,2,2,2,2,1,2,4,4,1,4,4,4,1,4,4,4,0,
+    0,7,7,7,7,7,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,0,7,2,2,1,2,2,2,7,7,7,0,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,
+};
+static const ArtFrame gazelle_armour_medium_idle_frames[9] = {
+    {18, 6, 15, 25, -1, -1, gazelle_armour_medium_idle_0_ink},
+    {18, 6, 15, 25, -1, -1, gazelle_armour_medium_idle_1_ink},
+    {18, 6, 15, 25, -1, -1, gazelle_armour_medium_idle_2_ink},
+    {18, 6, 15, 25, -1, -1, gazelle_armour_medium_idle_3_ink},
+    {18, 6, 15, 25, -1, -1, gazelle_armour_medium_idle_4_ink},
+    {18, 6, 15, 25, -1, -1, gazelle_armour_medium_idle_5_ink},
+    {18, 6, 15, 25, -1, -1, gazelle_armour_medium_idle_6_ink},
+    {18, 6, 15, 25, -1, -1, gazelle_armour_medium_idle_7_ink},
+    {18, 6, 15, 25, -1, -1, gazelle_armour_medium_idle_8_ink},
+};
+static const uint8_t gazelle_armour_medium_walk_0_ink[162] = {
+    7,7,7,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,
+    0,4,4,7,7,7,7,7,7,7,7,7,7,7,4,4,4,0,
+    0,7,7,4,4,1,4,4,4,1,4,4,4,1,2,2,7,0,
+    0,0,0,7,2,1,2,2,2,1,2,2,2,1,7,7,0,0,
+    0,0,0,0,7,7,2,2,2,1,2,2,2,1,0,0,0,0,
+    0,0,0,0,0,0,7,7,7,1,2,2,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,1,2,7,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,1,7,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t gazelle_armour_medium_walk_1_ink[180] = {
+    7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,
+    0,4,4,7,7,7,7,7,7,7,7,7,7,7,7,4,4,0,
+    0,2,2,4,4,1,4,4,4,1,4,4,4,1,4,2,2,0,
+    0,2,7,2,2,1,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,2,0,7,7,7,2,2,2,1,2,2,2,1,2,7,0,0,
+    0,7,0,0,0,0,7,7,7,7,7,2,2,1,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,2,2,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,2,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,
+};
+static const uint8_t gazelle_armour_medium_walk_2_ink[162] = {
+    7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,
+    0,4,4,7,7,7,7,7,7,7,7,7,7,7,7,4,4,0,
+    0,7,7,4,4,1,4,4,4,1,4,4,4,1,4,2,2,0,
+    0,0,0,7,2,1,2,2,2,1,2,2,2,1,2,7,7,0,
+    0,0,0,0,7,7,2,2,2,1,2,2,2,1,7,0,0,0,
+    0,0,0,0,0,0,7,7,7,1,2,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,1,2,7,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,1,7,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t gazelle_armour_medium_walk_3_ink[162] = {
+    7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,7,7,7,
+    0,4,4,4,7,7,7,7,7,7,7,7,7,7,7,4,4,0,
+    0,7,7,2,4,1,4,4,4,1,4,4,4,1,4,2,7,0,
+    0,0,0,7,2,1,2,2,2,1,2,2,2,1,2,7,0,0,
+    0,0,0,0,7,7,2,2,2,1,2,2,2,1,7,0,0,0,
+    0,0,0,0,0,0,7,7,7,7,2,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,2,2,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,2,7,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,
+};
+static const ArtFrame gazelle_armour_medium_walk_frames[4] = {
+    {18, 9, 13, 24, -1, -1, gazelle_armour_medium_walk_0_ink},
+    {18, 10, 13, 26, -1, -1, gazelle_armour_medium_walk_1_ink},
+    {18, 9, 12, 26, -1, -1, gazelle_armour_medium_walk_2_ink},
+    {18, 9, 13, 25, -1, -1, gazelle_armour_medium_walk_3_ink},
+};
+static const uint8_t gazelle_armour_medium_run_0_ink[162] = {
+    7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,7,7,
+    0,4,4,4,7,7,7,7,7,7,7,7,7,7,7,7,4,0,
+    0,2,2,2,4,1,4,4,4,1,4,4,4,1,4,4,2,0,
+    0,7,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,0,
+    0,0,7,2,2,1,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,7,2,1,2,2,2,1,2,2,2,1,7,7,0,0,
+    0,0,0,0,7,7,7,7,2,7,2,2,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,2,0,2,7,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,0,7,0,0,0,0,0,0,0,
+};
+static const uint8_t gazelle_armour_medium_run_1_ink[144] = {
+    7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,7,7,
+    0,4,4,4,4,7,7,7,7,7,7,7,7,7,7,7,4,0,
+    0,2,2,2,2,1,4,4,4,1,4,4,4,1,4,4,2,0,
+    0,7,2,2,2,1,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,7,2,2,1,2,2,2,1,2,2,2,1,2,7,0,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,1,7,0,0,0,
+    0,0,0,0,0,7,7,7,7,1,2,2,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,0,0,0,0,0,0,
+};
+static const uint8_t gazelle_armour_medium_run_2_ink[126] = {
+    7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,4,4,4,4,7,7,7,7,7,7,7,7,7,7,7,7,0,
+    0,2,2,2,2,1,4,4,4,1,4,4,4,1,4,4,4,0,
+    0,2,2,2,7,1,2,2,2,1,2,2,2,1,2,2,2,0,
+    0,7,2,7,0,7,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,7,0,0,0,7,7,7,1,2,2,7,7,7,7,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,0,0,0,0,0,0,
+};
+static const uint8_t gazelle_armour_medium_run_3_ink[126] = {
+    7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,7,7,
+    0,4,4,4,7,7,7,7,7,7,7,7,7,7,7,7,4,0,
+    0,7,2,2,4,1,4,4,4,1,4,4,4,1,4,4,2,0,
+    0,0,7,7,2,1,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,7,1,2,2,2,1,2,2,2,1,7,7,0,0,
+    0,0,0,0,0,7,7,2,2,1,2,7,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,7,7,7,7,0,0,0,0,0,0,0,
+};
+static const uint8_t gazelle_armour_medium_run_4_ink[162] = {
+    7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,7,0,0,0,0,0,0,0,0,0,0,0,7,7,
+    0,7,2,2,4,7,7,7,7,7,7,7,7,7,7,7,4,0,
+    0,0,7,7,2,1,4,4,4,1,4,4,4,1,4,4,2,0,
+    0,0,0,0,7,1,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,7,2,2,2,1,2,2,2,1,2,7,0,0,
+    0,0,0,0,0,0,7,7,7,7,7,7,2,1,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,2,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,
+};
+static const uint8_t gazelle_armour_medium_run_5_ink[162] = {
+    7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,7,7,
+    0,4,4,4,7,7,7,7,7,7,7,7,7,7,7,7,4,0,
+    0,7,7,2,4,1,4,4,4,1,4,4,4,1,4,4,2,0,
+    0,0,0,7,2,1,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,7,7,2,2,2,1,2,2,2,1,2,2,0,0,
+    0,0,0,0,0,0,7,7,7,7,7,2,2,1,2,7,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,2,2,1,2,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,2,2,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,
+};
+static const ArtFrame gazelle_armour_medium_run_frames[6] = {
+    {18, 9, 14, 23, -1, -1, gazelle_armour_medium_run_0_ink},
+    {18, 8, 14, 23, -1, -1, gazelle_armour_medium_run_1_ink},
+    {18, 7, 15, 23, -1, -1, gazelle_armour_medium_run_2_ink},
+    {18, 7, 14, 23, -1, -1, gazelle_armour_medium_run_3_ink},
+    {18, 9, 14, 24, -1, -1, gazelle_armour_medium_run_4_ink},
+    {18, 9, 14, 24, -1, -1, gazelle_armour_medium_run_5_ink},
+};
+static const uint8_t gazelle_armour_medium_graze_0_ink[144] = {
+    7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,2,4,4,1,7,7,7,0,0,0,0,0,0,0,0,0,
+    0,0,7,2,2,1,4,4,4,7,7,7,7,7,7,7,7,7,
+    0,0,0,7,2,1,2,2,2,1,4,4,4,1,4,4,4,0,
+    0,0,0,0,7,7,2,2,2,1,2,2,2,1,2,2,2,0,
+    0,0,0,0,0,0,7,2,2,1,2,2,2,1,2,7,7,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,7,7,7,0,0,0,
+};
+static const uint8_t gazelle_armour_medium_graze_1_ink[144] = {
+    7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,2,4,4,1,7,7,7,0,0,0,0,0,0,0,0,0,
+    0,0,7,2,2,1,4,4,4,7,7,7,7,7,7,7,7,7,
+    0,0,0,7,2,1,2,2,2,1,4,4,4,1,4,4,4,0,
+    0,0,0,0,7,7,2,2,2,1,2,2,2,1,2,2,2,0,
+    0,0,0,0,0,0,7,2,2,1,2,2,2,1,2,7,7,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,7,7,7,0,0,0,
+};
+static const uint8_t gazelle_armour_medium_graze_2_ink[144] = {
+    7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,2,4,4,1,7,7,7,0,0,0,0,0,0,0,0,0,
+    0,0,7,2,2,1,4,4,4,7,7,7,7,7,7,7,7,7,
+    0,0,0,7,2,1,2,2,2,1,4,4,4,1,4,4,4,0,
+    0,0,0,0,7,7,2,2,2,1,2,2,2,1,2,2,2,0,
+    0,0,0,0,0,0,7,2,2,1,2,2,2,1,2,7,7,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,7,7,7,0,0,0,
+};
+static const uint8_t gazelle_armour_medium_graze_3_ink[144] = {
+    7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,2,4,4,1,7,7,7,0,0,0,0,0,0,0,0,0,
+    0,0,7,2,2,1,4,4,4,7,7,7,7,7,7,7,7,7,
+    0,0,0,7,2,1,2,2,2,1,4,4,4,1,4,4,4,0,
+    0,0,0,0,7,7,2,2,2,1,2,2,2,1,2,2,2,0,
+    0,0,0,0,0,0,7,2,2,1,2,2,2,1,2,7,7,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,7,7,7,0,0,0,
+};
+static const uint8_t gazelle_armour_medium_graze_4_ink[144] = {
+    7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,2,4,4,1,7,7,7,0,0,0,0,0,0,0,0,0,
+    0,0,7,2,2,1,4,4,4,7,7,7,7,7,7,7,7,7,
+    0,0,0,7,2,1,2,2,2,1,4,4,4,1,4,4,4,0,
+    0,0,0,0,7,7,2,2,2,1,2,2,2,1,2,2,2,0,
+    0,0,0,0,0,0,7,2,2,1,2,2,2,1,2,7,7,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,7,7,7,0,0,0,
+};
+static const ArtFrame gazelle_armour_medium_graze_frames[5] = {
+    {18, 8, 12, 27, -1, -1, gazelle_armour_medium_graze_0_ink},
+    {18, 8, 12, 27, -1, -1, gazelle_armour_medium_graze_1_ink},
+    {18, 8, 12, 27, -1, -1, gazelle_armour_medium_graze_2_ink},
+    {18, 8, 12, 27, -1, -1, gazelle_armour_medium_graze_3_ink},
+    {18, 8, 12, 27, -1, -1, gazelle_armour_medium_graze_4_ink},
+};
+static const uint8_t gazelle_armour_medium_bite_0_ink[144] = {
+    7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,
+    0,4,4,7,7,7,7,7,7,7,7,7,7,7,7,4,4,0,
+    0,7,7,4,4,1,4,4,4,1,4,4,4,1,4,2,2,0,
+    0,0,0,2,2,1,2,2,2,1,2,2,2,1,2,2,2,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,1,2,2,2,0,
+    0,0,0,0,0,7,7,7,7,7,7,7,7,1,2,2,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,1,2,7,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,0,0,0,
+};
+static const uint8_t gazelle_armour_medium_bite_1_ink[144] = {
+    7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+    0,7,7,4,4,1,4,4,4,1,4,4,4,1,4,4,4,0,
+    0,0,0,7,2,1,2,2,2,1,2,2,2,1,2,2,2,0,
+    0,0,0,0,7,7,2,2,2,1,2,2,2,1,2,2,2,0,
+    0,0,0,0,0,0,7,7,7,7,7,7,7,1,2,2,2,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,1,2,7,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,0,0,0,
+};
+static const uint8_t gazelle_armour_medium_bite_2_ink[162] = {
+    7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+    0,7,4,4,4,1,4,4,4,1,4,4,4,1,4,4,4,0,
+    0,0,7,2,2,1,2,2,2,1,2,2,2,1,2,2,2,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,7,7,7,7,7,7,7,2,1,2,2,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,2,1,2,7,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,2,1,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,7,0,0,0,0,
+};
+static const uint8_t gazelle_armour_medium_bite_3_ink[126] = {
+    7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,7,7,7,7,7,7,7,7,7,7,7,7,7,
+    0,7,7,7,2,1,4,4,4,1,4,4,4,1,4,4,4,0,
+    0,0,0,0,7,1,2,2,2,1,2,2,2,1,2,2,2,0,
+    0,0,0,0,0,7,2,2,2,1,2,2,2,7,7,2,2,0,
+    0,0,0,0,0,0,7,7,7,7,7,7,7,0,0,2,2,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,0,
+};
+static const ArtFrame gazelle_armour_medium_bite_frames[4] = {
+    {18, 8, 11, 25, -1, -1, gazelle_armour_medium_bite_0_ink},
+    {18, 8, 11, 25, -1, -1, gazelle_armour_medium_bite_1_ink},
+    {18, 9, 10, 25, -1, -1, gazelle_armour_medium_bite_2_ink},
+    {18, 7, 13, 25, -1, -1, gazelle_armour_medium_bite_3_ink},
+};
+static const uint8_t gazelle_armour_medium_attack_0_ink[162] = {
+    7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,7,
+    0,4,4,4,4,1,4,7,7,7,7,7,7,7,7,7,7,0,
+    0,2,2,2,2,1,2,4,4,1,4,4,4,1,4,4,4,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,7,7,1,2,2,2,7,7,7,7,1,2,7,0,0,
+    0,0,0,0,0,7,7,2,7,0,0,0,0,1,7,0,0,0,
+    0,0,0,0,0,0,0,7,0,0,0,0,0,1,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,
+};
+static const uint8_t gazelle_armour_medium_attack_1_ink[180] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,4,4,0,
+    7,7,7,7,7,0,0,0,0,7,7,7,7,1,4,2,2,0,
+    0,4,4,4,4,7,7,7,7,1,4,4,4,1,2,2,7,0,
+    0,2,2,2,2,1,4,4,4,1,2,2,2,1,2,7,0,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,7,0,0,0,
+    0,7,7,7,2,1,2,2,2,1,2,2,2,7,0,0,0,0,
+    0,0,0,0,7,1,2,2,2,1,2,2,7,0,0,0,0,0,
+    0,0,0,0,0,7,2,2,2,7,7,7,0,0,0,0,0,0,
+    0,0,0,0,0,0,7,7,7,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t gazelle_armour_medium_attack_2_ink[180] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,0,
+    7,4,4,4,4,1,4,4,4,1,4,4,4,1,4,4,4,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,1,7,7,0,0,
+    0,0,0,0,0,7,7,2,2,1,2,7,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,7,2,1,2,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,2,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,
+};
+static const uint8_t gazelle_armour_medium_attack_3_ink[162] = {
+    7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,7,7,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,2,2,2,4,1,7,7,7,7,7,7,7,7,7,7,7,0,
+    0,7,7,2,2,1,4,4,4,1,4,4,4,1,4,4,4,0,
+    0,0,0,7,2,1,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,7,7,2,2,2,1,2,2,2,1,7,7,0,0,
+    0,0,0,0,0,0,2,2,2,1,2,2,2,1,0,0,0,0,
+    0,0,0,0,0,0,7,7,7,7,2,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,7,0,0,0,0,0,
+};
+static const uint8_t gazelle_armour_medium_attack_4_ink[144] = {
+    7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,4,4,7,7,0,0,0,0,0,0,0,0,0,0,7,7,
+    0,0,7,2,4,1,7,7,7,7,7,7,7,7,7,7,4,0,
+    0,0,0,7,2,1,4,4,4,1,4,4,4,1,4,4,2,0,
+    0,0,0,0,7,1,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,7,2,2,2,1,2,2,2,7,7,7,0,0,
+    0,0,0,0,0,0,7,7,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t gazelle_armour_medium_attack_5_ink[180] = {
+    7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,7,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,
+    0,7,4,7,7,7,7,7,7,7,7,7,7,7,4,4,4,0,
+    0,0,7,4,4,1,4,4,4,1,4,4,4,1,2,2,7,0,
+    0,0,0,2,2,1,2,2,2,1,2,2,2,1,2,7,0,0,
+    0,0,0,7,7,7,2,2,2,1,2,2,2,1,7,0,0,0,
+    0,0,0,0,0,0,7,7,7,7,2,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,2,2,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,2,2,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,
+};
+static const uint8_t gazelle_armour_medium_attack_6_ink[180] = {
+    7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,7,7,0,0,0,0,0,0,0,0,0,0,0,7,7,
+    0,7,2,4,4,7,7,7,7,7,7,7,7,7,7,7,4,0,
+    0,0,7,2,2,1,4,4,4,1,4,4,4,1,4,4,2,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,1,2,2,2,0,
+    0,0,0,0,0,7,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,0,7,7,7,7,7,2,2,1,7,7,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,2,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,
+};
+static const uint8_t gazelle_armour_medium_attack_7_ink[162] = {
+    7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,7,7,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,2,2,2,4,1,7,7,7,7,7,7,7,7,7,7,7,0,
+    0,2,2,2,2,1,4,4,4,1,4,4,4,1,4,4,4,0,
+    0,7,7,7,2,1,2,2,2,1,2,2,2,1,2,2,2,0,
+    0,0,0,0,7,7,2,2,2,1,2,2,2,7,2,2,7,0,
+    0,0,0,0,0,0,7,7,7,7,7,7,7,0,2,7,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,
+};
+static const ArtFrame gazelle_armour_medium_attack_frames[8] = {
+    {18, 9, 16, 25, -1, -1, gazelle_armour_medium_attack_0_ink},
+    {18, 10, 13, 26, -1, -1, gazelle_armour_medium_attack_1_ink},
+    {18, 10, 15, 25, -1, -1, gazelle_armour_medium_attack_2_ink},
+    {18, 9, 15, 23, -1, -1, gazelle_armour_medium_attack_3_ink},
+    {18, 8, 14, 25, -1, -1, gazelle_armour_medium_attack_4_ink},
+    {18, 10, 14, 25, -1, -1, gazelle_armour_medium_attack_5_ink},
+    {18, 10, 15, 26, -1, -1, gazelle_armour_medium_attack_6_ink},
+    {18, 9, 17, 26, -1, -1, gazelle_armour_medium_attack_7_ink},
+};
+static const uint8_t gazelle_armour_medium_sleep_0_ink[126] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,4,4,0,
+    7,7,7,7,7,7,7,7,7,7,7,7,7,1,4,2,7,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,1,2,7,0,0,
+    0,7,7,7,2,1,2,2,2,1,2,2,2,7,7,0,0,0,
+    0,0,0,0,7,7,7,7,2,1,7,7,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t gazelle_armour_medium_sleep_1_ink[108] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7,4,4,4,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,1,2,7,7,0,
+    0,7,7,7,2,1,2,2,2,1,2,2,2,1,7,0,0,0,
+    0,0,0,0,7,7,7,7,2,1,7,7,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t gazelle_armour_medium_sleep_2_ink[108] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7,4,4,4,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,1,2,7,7,0,
+    0,7,7,7,2,1,2,2,2,1,2,2,2,1,7,0,0,0,
+    0,0,0,0,7,7,7,7,2,1,7,7,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t gazelle_armour_medium_sleep_3_ink[108] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7,4,4,4,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,1,2,7,7,0,
+    0,7,7,7,2,1,2,2,2,1,2,2,2,1,7,0,0,0,
+    0,0,0,0,7,7,7,7,2,1,7,7,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,0,0,
+};
+static const ArtFrame gazelle_armour_medium_sleep_frames[4] = {
+    {18, 7, 9, 13, -1, -1, gazelle_armour_medium_sleep_0_ink},
+    {18, 6, 9, 12, -1, -1, gazelle_armour_medium_sleep_1_ink},
+    {18, 6, 9, 12, -1, -1, gazelle_armour_medium_sleep_2_ink},
+    {18, 6, 9, 12, -1, -1, gazelle_armour_medium_sleep_3_ink},
+};
+static const ArtClip gazelle_armour_medium_clips[ACTION_COUNT] = {
+    [ACTION_REST] = {9, gazelle_armour_medium_idle_frames},
+    [ACTION_WALK] = {4, gazelle_armour_medium_walk_frames},
+    [ACTION_RUN] = {6, gazelle_armour_medium_run_frames},
+    [ACTION_GRAZE] = {5, gazelle_armour_medium_graze_frames},
+    [ACTION_BITE] = {4, gazelle_armour_medium_bite_frames},
+    [ACTION_ATTACK] = {8, gazelle_armour_medium_attack_frames},
+    [ACTION_SLEEP] = {4, gazelle_armour_medium_sleep_frames},
+};
 static const uint8_t gazelle_weapon_full_idle_0_ink[22] = {
     0,15,
     0,15,
@@ -15826,6 +19697,429 @@ static const ArtClip gazelle_weapon_full_clips[ACTION_COUNT] = {
     [ACTION_BITE] = {4, gazelle_weapon_full_bite_frames},
     [ACTION_ATTACK] = {8, gazelle_weapon_full_attack_frames},
     [ACTION_SLEEP] = {4, gazelle_weapon_full_sleep_frames},
+};
+static const uint8_t gazelle_weapon_medium_idle_0_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t gazelle_weapon_medium_idle_1_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t gazelle_weapon_medium_idle_2_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t gazelle_weapon_medium_idle_3_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t gazelle_weapon_medium_idle_4_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t gazelle_weapon_medium_idle_5_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t gazelle_weapon_medium_idle_6_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t gazelle_weapon_medium_idle_7_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t gazelle_weapon_medium_idle_8_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const ArtFrame gazelle_weapon_medium_idle_frames[9] = {
+    {2, 7, -15, 42, -1, -1, gazelle_weapon_medium_idle_0_ink},
+    {2, 7, -15, 42, -1, -1, gazelle_weapon_medium_idle_1_ink},
+    {2, 7, -15, 42, -1, -1, gazelle_weapon_medium_idle_2_ink},
+    {2, 7, -15, 42, -1, -1, gazelle_weapon_medium_idle_3_ink},
+    {2, 7, -15, 42, -1, -1, gazelle_weapon_medium_idle_4_ink},
+    {2, 7, -15, 42, -1, -1, gazelle_weapon_medium_idle_5_ink},
+    {2, 7, -15, 42, -1, -1, gazelle_weapon_medium_idle_6_ink},
+    {2, 7, -15, 42, -1, -1, gazelle_weapon_medium_idle_7_ink},
+    {2, 7, -15, 42, -1, -1, gazelle_weapon_medium_idle_8_ink},
+};
+static const uint8_t gazelle_weapon_medium_walk_0_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t gazelle_weapon_medium_walk_1_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t gazelle_weapon_medium_walk_2_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t gazelle_weapon_medium_walk_3_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const ArtFrame gazelle_weapon_medium_walk_frames[4] = {
+    {2, 7, -17, 38, -1, -1, gazelle_weapon_medium_walk_0_ink},
+    {2, 7, -17, 39, -1, -1, gazelle_weapon_medium_walk_1_ink},
+    {2, 7, -18, 39, -1, -1, gazelle_weapon_medium_walk_2_ink},
+    {2, 7, -17, 38, -1, -1, gazelle_weapon_medium_walk_3_ink},
+};
+static const uint8_t gazelle_weapon_medium_run_0_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t gazelle_weapon_medium_run_1_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t gazelle_weapon_medium_run_2_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t gazelle_weapon_medium_run_3_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t gazelle_weapon_medium_run_4_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t gazelle_weapon_medium_run_5_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const ArtFrame gazelle_weapon_medium_run_frames[6] = {
+    {2, 7, -16, 40, -1, -1, gazelle_weapon_medium_run_0_ink},
+    {2, 7, -16, 40, -1, -1, gazelle_weapon_medium_run_1_ink},
+    {2, 7, -15, 40, -1, -1, gazelle_weapon_medium_run_2_ink},
+    {2, 7, -16, 40, -1, -1, gazelle_weapon_medium_run_3_ink},
+    {2, 7, -16, 40, -1, -1, gazelle_weapon_medium_run_4_ink},
+    {2, 7, -16, 41, -1, -1, gazelle_weapon_medium_run_5_ink},
+};
+static const uint8_t gazelle_weapon_medium_graze_0_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t gazelle_weapon_medium_graze_1_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t gazelle_weapon_medium_graze_2_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t gazelle_weapon_medium_graze_3_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t gazelle_weapon_medium_graze_4_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const ArtFrame gazelle_weapon_medium_graze_frames[5] = {
+    {2, 7, -19, 22, -1, -1, gazelle_weapon_medium_graze_0_ink},
+    {2, 7, -19, 22, -1, -1, gazelle_weapon_medium_graze_1_ink},
+    {2, 7, -19, 22, -1, -1, gazelle_weapon_medium_graze_2_ink},
+    {2, 7, -19, 22, -1, -1, gazelle_weapon_medium_graze_3_ink},
+    {2, 7, -19, 22, -1, -1, gazelle_weapon_medium_graze_4_ink},
+};
+static const uint8_t gazelle_weapon_medium_bite_0_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t gazelle_weapon_medium_bite_1_ink[21] = {
+    15,0,0,
+    15,0,0,
+    14,0,0,
+    13,14,0,
+    12,13,0,
+    0,11,12,
+    0,11,12,
+};
+static const uint8_t gazelle_weapon_medium_bite_2_ink[21] = {
+    15,0,0,
+    15,0,0,
+    14,0,0,
+    13,14,0,
+    12,13,0,
+    0,11,12,
+    0,11,12,
+};
+static const uint8_t gazelle_weapon_medium_bite_3_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const ArtFrame gazelle_weapon_medium_bite_frames[4] = {
+    {2, 7, -19, 39, -1, -1, gazelle_weapon_medium_bite_0_ink},
+    {3, 7, -17, 39, -1, -1, gazelle_weapon_medium_bite_1_ink},
+    {3, 7, -18, 39, -1, -1, gazelle_weapon_medium_bite_2_ink},
+    {2, 7, -17, 40, -1, -1, gazelle_weapon_medium_bite_3_ink},
+};
+static const uint8_t gazelle_weapon_medium_attack_0_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t gazelle_weapon_medium_attack_1_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t gazelle_weapon_medium_attack_2_ink[28] = {
+    0,0,0,15,
+    0,0,0,15,
+    0,0,0,14,
+    0,13,14,0,
+    0,12,13,0,
+    11,12,0,0,
+    11,12,0,0,
+};
+static const uint8_t gazelle_weapon_medium_attack_3_ink[28] = {
+    0,0,0,15,
+    0,0,0,15,
+    0,0,0,14,
+    0,13,14,0,
+    0,12,13,0,
+    11,12,0,0,
+    11,12,0,0,
+};
+static const uint8_t gazelle_weapon_medium_attack_4_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t gazelle_weapon_medium_attack_5_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t gazelle_weapon_medium_attack_6_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t gazelle_weapon_medium_attack_7_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const ArtFrame gazelle_weapon_medium_attack_frames[8] = {
+    {2, 7, -14, 42, -1, -1, gazelle_weapon_medium_attack_0_ink},
+    {2, 7, -18, 39, -1, -1, gazelle_weapon_medium_attack_1_ink},
+    {4, 7, -18, 32, -1, -1, gazelle_weapon_medium_attack_2_ink},
+    {4, 7, -19, 27, -1, -1, gazelle_weapon_medium_attack_3_ink},
+    {2, 7, -17, 32, -1, -1, gazelle_weapon_medium_attack_4_ink},
+    {2, 7, -16, 38, -1, -1, gazelle_weapon_medium_attack_5_ink},
+    {2, 7, -15, 40, -1, -1, gazelle_weapon_medium_attack_6_ink},
+    {2, 7, -13, 42, -1, -1, gazelle_weapon_medium_attack_7_ink},
+};
+static const uint8_t gazelle_weapon_medium_sleep_0_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t gazelle_weapon_medium_sleep_1_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t gazelle_weapon_medium_sleep_2_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t gazelle_weapon_medium_sleep_3_ink[14] = {
+    0,15,
+    0,15,
+    0,14,
+    13,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const ArtFrame gazelle_weapon_medium_sleep_frames[4] = {
+    {2, 7, -21, 19, -1, -1, gazelle_weapon_medium_sleep_0_ink},
+    {2, 7, -21, 18, -1, -1, gazelle_weapon_medium_sleep_1_ink},
+    {2, 7, -21, 18, -1, -1, gazelle_weapon_medium_sleep_2_ink},
+    {2, 7, -21, 18, -1, -1, gazelle_weapon_medium_sleep_3_ink},
+};
+static const ArtClip gazelle_weapon_medium_clips[ACTION_COUNT] = {
+    [ACTION_REST] = {9, gazelle_weapon_medium_idle_frames},
+    [ACTION_WALK] = {4, gazelle_weapon_medium_walk_frames},
+    [ACTION_RUN] = {6, gazelle_weapon_medium_run_frames},
+    [ACTION_GRAZE] = {5, gazelle_weapon_medium_graze_frames},
+    [ACTION_BITE] = {4, gazelle_weapon_medium_bite_frames},
+    [ACTION_ATTACK] = {8, gazelle_weapon_medium_attack_frames},
+    [ACTION_SLEEP] = {4, gazelle_weapon_medium_sleep_frames},
 };
 static const ArtClip gazelle_clips[ACTION_COUNT] = {
     [ACTION_REST] = {9, gazelle_idle_frames},
@@ -18063,6 +22357,506 @@ static const ArtClip goat_armour_full_clips[ACTION_COUNT] = {
     [ACTION_ATTACK] = {8, goat_armour_full_attack_frames},
     [ACTION_SLEEP] = {4, goat_armour_full_sleep_frames},
 };
+static const uint8_t goat_armour_medium_idle_0_ink[207] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,0,
+    0,0,7,7,7,7,7,7,7,7,0,0,0,0,0,0,7,7,7,4,4,4,0,
+    7,7,4,4,4,1,4,4,4,1,7,7,7,7,7,7,4,1,4,2,2,2,0,
+    0,4,2,2,2,1,2,2,2,1,4,4,4,1,4,4,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,7,7,7,7,7,7,2,1,2,2,2,1,2,2,2,7,7,7,2,2,0,
+    0,2,0,0,0,0,0,0,7,7,2,2,2,1,2,2,7,0,0,0,7,7,0,
+    0,7,0,0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,0,0,
+};
+static const uint8_t goat_armour_medium_idle_1_ink[207] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,0,
+    0,0,7,7,7,7,7,7,7,7,0,0,0,0,0,0,7,7,7,4,4,4,0,
+    7,7,4,4,4,1,4,4,4,1,7,7,7,7,7,7,4,1,4,2,2,2,0,
+    0,4,2,2,2,1,2,2,2,1,4,4,4,1,4,4,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,7,7,7,7,7,7,2,1,2,2,2,1,2,2,2,7,7,7,2,2,0,
+    0,2,0,0,0,0,0,0,7,7,2,2,2,1,2,2,7,0,0,0,7,7,0,
+    0,7,0,0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,0,0,
+};
+static const uint8_t goat_armour_medium_idle_2_ink[207] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,0,
+    0,0,7,7,7,7,7,7,7,7,0,0,0,0,0,0,7,7,7,4,4,4,0,
+    7,7,4,4,4,1,4,4,4,1,7,7,7,7,7,7,4,1,4,2,2,2,0,
+    0,4,2,2,2,1,2,2,2,1,4,4,4,1,4,4,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,7,7,7,7,7,2,2,1,2,2,2,1,2,2,2,1,7,7,2,2,0,
+    0,2,0,0,0,0,0,7,7,7,2,2,2,1,2,2,7,7,0,0,7,7,0,
+    0,7,0,0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,0,0,
+};
+static const uint8_t goat_armour_medium_idle_3_ink[207] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,0,
+    0,0,7,7,7,7,7,7,7,7,0,0,0,0,0,0,7,7,7,4,4,4,0,
+    7,7,4,4,4,1,4,4,4,1,7,7,7,7,7,7,4,1,4,2,2,2,0,
+    0,4,2,2,2,1,2,2,2,1,4,4,4,1,4,4,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,7,7,7,7,7,2,2,1,2,2,2,1,2,2,2,1,7,7,2,2,0,
+    0,2,0,0,0,0,0,7,7,7,2,2,2,1,2,2,7,7,0,0,7,7,0,
+    0,7,0,0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,0,0,
+};
+static const uint8_t goat_armour_medium_idle_4_ink[207] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,0,
+    0,0,7,7,7,7,7,7,7,7,0,0,0,0,0,0,7,7,7,4,4,4,0,
+    7,7,4,4,4,1,4,4,4,1,7,7,7,7,7,7,4,1,4,2,2,2,0,
+    0,4,2,2,2,1,2,2,2,1,4,4,4,1,4,4,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,7,7,7,7,7,2,2,1,2,2,2,1,2,2,2,1,7,7,2,2,0,
+    0,2,0,0,0,0,0,7,7,7,2,2,2,1,2,2,7,7,0,0,7,7,0,
+    0,7,0,0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,0,0,
+};
+static const uint8_t goat_armour_medium_idle_5_ink[207] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,0,
+    0,0,7,7,7,7,7,7,7,7,0,0,0,0,0,0,7,7,7,4,4,4,0,
+    7,7,4,4,4,1,4,4,4,1,7,7,7,7,7,7,4,1,4,2,2,2,0,
+    0,4,2,2,2,1,2,2,2,1,4,4,4,1,4,4,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,7,7,7,7,7,2,2,1,2,2,2,1,2,2,2,1,7,7,2,2,0,
+    0,2,0,0,0,0,0,7,7,7,2,2,2,1,2,2,7,7,0,0,7,7,0,
+    0,7,0,0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,0,0,
+};
+static const uint8_t goat_armour_medium_idle_6_ink[207] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,0,
+    0,0,7,7,7,7,7,7,7,7,0,0,0,0,0,0,7,7,7,4,4,4,0,
+    7,7,4,4,4,1,4,4,4,1,7,7,7,7,7,7,4,1,4,2,2,2,0,
+    0,4,2,2,2,1,2,2,2,1,4,4,4,1,4,4,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,7,7,7,7,7,2,2,1,2,2,2,1,2,2,2,1,7,7,2,2,0,
+    0,2,0,0,0,0,0,7,7,7,2,2,2,1,2,2,7,7,0,0,7,7,0,
+    0,7,0,0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,0,0,
+};
+static const uint8_t goat_armour_medium_idle_7_ink[207] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,0,
+    0,0,7,7,7,7,7,7,7,7,0,0,0,0,0,0,7,7,7,4,4,4,0,
+    7,7,4,4,4,1,4,4,4,1,7,7,7,7,7,7,4,1,4,2,2,2,0,
+    0,4,2,2,2,1,2,2,2,1,4,4,4,1,4,4,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,7,7,7,7,7,2,2,1,2,2,2,1,2,2,2,1,7,7,2,2,0,
+    0,2,0,0,0,0,0,7,7,7,2,2,2,1,2,2,7,7,0,0,7,7,0,
+    0,7,0,0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,0,0,
+};
+static const uint8_t goat_armour_medium_idle_8_ink[207] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,0,
+    0,0,7,7,7,7,7,7,7,7,0,0,0,0,0,0,7,7,7,4,4,4,0,
+    7,7,4,4,4,1,4,4,4,1,7,7,7,7,7,7,4,1,4,2,2,2,0,
+    0,4,2,2,2,1,2,2,2,1,4,4,4,1,4,4,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,7,7,7,7,7,2,2,1,2,2,2,1,2,2,2,1,7,7,2,2,0,
+    0,2,0,0,0,0,0,7,7,7,2,2,2,1,2,2,7,7,0,0,7,7,0,
+    0,7,0,0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,0,0,
+};
+static const ArtFrame goat_armour_medium_idle_frames[9] = {
+    {23, 9, 17, 29, -1, -1, goat_armour_medium_idle_0_ink},
+    {23, 9, 17, 29, -1, -1, goat_armour_medium_idle_1_ink},
+    {23, 9, 17, 30, -1, -1, goat_armour_medium_idle_2_ink},
+    {23, 9, 17, 30, -1, -1, goat_armour_medium_idle_3_ink},
+    {23, 9, 17, 30, -1, -1, goat_armour_medium_idle_4_ink},
+    {23, 9, 17, 30, -1, -1, goat_armour_medium_idle_5_ink},
+    {23, 9, 17, 30, -1, -1, goat_armour_medium_idle_6_ink},
+    {23, 9, 17, 30, -1, -1, goat_armour_medium_idle_7_ink},
+    {23, 9, 17, 30, -1, -1, goat_armour_medium_idle_8_ink},
+};
+static const uint8_t goat_armour_medium_walk_0_ink[253] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,
+    7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,7,7,7,7,4,0,
+    0,4,4,4,4,1,4,7,7,7,7,7,7,7,7,7,7,1,4,4,4,2,0,
+    0,2,2,2,2,1,2,4,4,1,4,4,4,1,4,4,4,1,2,2,2,7,0,
+    0,2,7,7,7,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,0,0,
+    0,2,0,0,0,7,2,2,2,1,2,2,2,1,2,2,2,1,2,7,7,0,0,
+    0,7,0,0,0,0,7,2,2,1,2,2,2,1,2,2,2,1,7,0,0,0,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,7,7,2,2,2,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,7,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,7,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t goat_armour_medium_walk_1_ink[276] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,7,7,7,4,0,
+    0,4,4,4,4,1,4,7,7,7,7,7,7,7,7,7,7,7,4,4,4,2,0,
+    0,2,2,2,2,1,2,4,4,1,4,4,4,1,4,4,4,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,7,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,7,0,0,
+    0,0,0,7,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,7,0,0,0,
+    0,0,0,0,7,1,2,7,7,7,7,7,7,7,7,2,2,1,7,0,0,0,0,
+    0,0,0,0,0,7,2,0,0,0,0,0,0,0,0,2,2,7,0,0,0,0,0,
+    0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,2,2,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,
+};
+static const uint8_t goat_armour_medium_walk_2_ink[253] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,0,
+    7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,7,7,7,4,4,0,
+    0,4,4,4,4,1,4,7,7,7,7,7,7,7,7,7,7,1,4,4,2,2,0,
+    0,2,2,2,2,1,2,4,4,1,4,4,4,1,4,4,4,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,7,7,0,
+    0,2,2,7,7,7,7,2,2,1,2,2,2,1,2,2,2,1,2,7,0,0,0,
+    0,7,2,0,0,0,0,2,2,1,2,2,2,1,2,2,2,1,7,0,0,0,0,
+    0,0,7,0,0,0,0,7,7,7,7,7,7,7,2,2,2,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,7,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,0,
+};
+static const uint8_t goat_armour_medium_walk_3_ink[276] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,0,
+    7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,7,7,7,7,4,4,0,
+    0,4,4,4,4,1,4,7,7,7,7,7,7,7,7,7,4,1,4,4,2,2,0,
+    0,2,2,2,2,1,2,4,4,1,4,4,4,1,4,4,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,7,7,0,
+    0,7,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,7,0,0,0,
+    0,0,7,2,2,1,7,2,2,1,2,2,2,1,2,2,2,1,7,0,0,0,0,
+    0,0,0,7,2,1,0,7,7,7,7,7,7,7,2,2,2,7,0,0,0,0,0,
+    0,0,0,0,7,1,0,0,0,0,0,0,0,0,2,2,7,0,0,0,0,0,0,
+    0,0,0,0,0,7,0,0,0,0,0,0,0,0,2,7,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,
+};
+static const ArtFrame goat_armour_medium_walk_frames[4] = {
+    {23, 11, 17, 29, -1, -1, goat_armour_medium_walk_0_ink},
+    {23, 12, 16, 30, -1, -1, goat_armour_medium_walk_1_ink},
+    {23, 11, 16, 30, -1, -1, goat_armour_medium_walk_2_ink},
+    {23, 12, 16, 30, -1, -1, goat_armour_medium_walk_3_ink},
+};
+static const uint8_t goat_armour_medium_run_0_ink[276] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,0,
+    0,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,7,7,7,4,4,4,0,
+    7,4,4,4,4,1,4,4,4,7,7,7,7,7,7,7,4,1,4,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,4,4,4,1,4,4,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,7,0,
+    0,7,7,7,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,7,0,0,
+    0,0,0,0,7,7,7,2,2,1,2,2,2,1,2,2,2,1,2,7,0,0,0,
+    0,0,0,0,0,0,0,7,7,1,2,2,2,7,2,2,2,1,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,7,0,2,2,7,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,7,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t goat_armour_medium_run_1_ink[276] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,0,
+    7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,7,7,7,4,4,4,0,
+    0,4,4,4,4,1,7,7,7,7,7,7,7,7,7,7,4,1,4,2,2,2,0,
+    0,2,2,2,2,1,4,4,4,1,4,4,4,1,4,4,2,1,2,2,2,7,0,
+    0,7,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,7,0,0,
+    0,0,7,7,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,7,0,0,0,
+    0,0,0,0,7,7,2,2,2,1,2,2,2,1,2,2,2,7,7,0,0,0,0,
+    0,0,0,0,0,0,2,2,2,1,2,7,7,7,2,7,7,0,0,0,0,0,0,
+    0,0,0,0,0,0,7,7,2,1,2,0,0,0,7,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,2,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t goat_armour_medium_run_2_ink[207] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,0,
+    7,4,4,4,4,1,7,7,7,0,0,0,0,0,0,0,7,7,7,4,4,4,0,
+    0,2,2,2,2,1,4,4,4,7,7,7,7,7,7,7,4,1,4,2,2,2,0,
+    0,2,7,7,7,1,2,2,2,1,4,4,4,1,4,4,2,1,2,2,7,2,0,
+    0,2,0,0,0,7,2,2,2,1,2,2,2,1,2,2,2,1,2,7,0,7,0,
+    0,7,0,0,0,0,7,2,2,1,2,2,2,1,2,2,2,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,7,7,1,2,2,2,1,2,2,7,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,
+};
+static const uint8_t goat_armour_medium_run_3_ink[230] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,
+    7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,4,0,
+    0,4,4,4,4,7,7,7,7,0,0,0,0,0,0,7,7,7,4,4,4,2,0,
+    0,2,2,2,2,1,4,4,4,7,7,7,7,7,7,4,4,1,2,2,2,2,0,
+    0,7,7,7,2,1,2,2,2,1,4,4,4,1,4,2,2,1,2,2,2,7,0,
+    0,0,0,0,7,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,7,0,0,
+    0,0,0,0,0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,7,0,0,0,
+    0,0,0,0,0,0,0,7,7,1,2,2,2,1,2,7,2,1,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,0,2,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,
+};
+static const ArtFrame goat_armour_medium_run_frames[4] = {
+    {23, 12, 17, 27, -1, -1, goat_armour_medium_run_0_ink},
+    {23, 12, 17, 28, -1, -1, goat_armour_medium_run_1_ink},
+    {23, 9, 18, 27, -1, -1, goat_armour_medium_run_2_ink},
+    {23, 10, 18, 29, -1, -1, goat_armour_medium_run_3_ink},
+};
+static const uint8_t goat_armour_medium_graze_0_ink[184] = {
+    0,0,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    7,7,4,4,4,1,4,4,7,7,0,0,0,0,0,0,0,0,0,0,7,7,7,
+    0,4,2,2,2,1,2,2,4,1,7,7,7,7,7,7,7,7,7,7,4,4,0,
+    0,2,2,2,2,1,2,2,2,1,4,4,4,1,4,4,4,1,4,4,2,2,0,
+    0,2,2,7,7,7,7,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,7,7,0,0,0,0,7,2,1,2,2,2,1,2,2,2,1,2,2,7,7,0,
+    0,0,0,0,0,0,0,0,7,7,2,2,2,1,2,2,7,7,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,0,0,
+};
+static const uint8_t goat_armour_medium_graze_1_ink[184] = {
+    0,0,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    7,7,4,4,4,1,4,4,7,7,0,0,0,0,0,0,0,0,0,0,7,7,7,
+    0,4,2,2,2,1,2,2,4,1,7,7,7,7,7,7,7,7,7,7,4,4,0,
+    0,2,2,2,2,1,2,2,2,1,4,4,4,1,4,4,4,1,4,4,2,2,0,
+    0,2,2,7,7,7,7,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,7,7,0,0,0,0,7,2,1,2,2,2,1,2,2,2,1,2,2,7,7,0,
+    0,0,0,0,0,0,0,0,7,7,2,2,2,1,2,2,7,7,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,0,0,
+};
+static const uint8_t goat_armour_medium_graze_2_ink[184] = {
+    0,0,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    7,7,4,4,4,1,4,4,7,7,0,0,0,0,0,0,0,0,0,0,7,7,7,
+    0,4,2,2,2,1,2,2,4,1,7,7,7,7,7,7,7,7,7,7,4,4,0,
+    0,2,2,2,2,1,2,2,2,1,4,4,4,1,4,4,4,1,4,4,2,2,0,
+    0,2,2,7,7,7,7,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,7,7,0,0,0,0,7,2,1,2,2,2,1,2,2,2,1,2,2,7,7,0,
+    0,0,0,0,0,0,0,0,7,7,2,2,2,1,2,2,7,7,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,0,0,
+};
+static const uint8_t goat_armour_medium_graze_3_ink[184] = {
+    0,0,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    7,7,4,4,4,1,4,4,7,7,0,0,0,0,0,0,0,0,0,0,7,7,7,
+    0,4,2,2,2,1,2,2,4,1,7,7,7,7,7,7,7,7,7,7,4,4,0,
+    0,2,2,2,2,1,2,2,2,1,4,4,4,1,4,4,4,1,4,4,2,2,0,
+    0,2,2,7,7,7,7,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,7,7,0,0,0,0,7,2,1,2,2,2,1,2,2,2,1,2,2,7,7,0,
+    0,0,0,0,0,0,0,0,7,7,2,2,2,1,2,2,7,7,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,0,0,
+};
+static const uint8_t goat_armour_medium_graze_4_ink[184] = {
+    0,0,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    7,7,4,4,4,1,4,4,7,7,0,0,0,0,0,0,0,0,0,0,7,7,7,
+    0,4,2,2,2,1,2,2,4,1,7,7,7,7,7,7,7,7,7,7,4,4,0,
+    0,2,2,2,2,1,2,2,2,1,4,4,4,1,4,4,4,1,4,4,2,2,0,
+    0,2,2,7,7,7,7,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,7,7,0,0,0,0,7,2,1,2,2,2,1,2,2,2,1,2,2,7,7,0,
+    0,0,0,0,0,0,0,0,7,7,2,2,2,1,2,2,7,7,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,0,0,
+};
+static const ArtFrame goat_armour_medium_graze_frames[5] = {
+    {23, 8, 17, 28, -1, -1, goat_armour_medium_graze_0_ink},
+    {23, 8, 17, 28, -1, -1, goat_armour_medium_graze_1_ink},
+    {23, 8, 17, 28, -1, -1, goat_armour_medium_graze_2_ink},
+    {23, 8, 17, 28, -1, -1, goat_armour_medium_graze_3_ink},
+    {23, 8, 17, 28, -1, -1, goat_armour_medium_graze_4_ink},
+};
+static const uint8_t goat_armour_medium_bite_0_ink[207] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,0,
+    0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,7,7,7,7,4,4,4,0,
+    7,4,4,4,4,1,4,4,7,7,7,7,7,7,7,4,4,1,4,2,2,2,0,
+    0,2,2,2,2,1,2,2,4,1,4,4,4,1,4,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,7,7,7,7,7,2,2,1,2,2,2,1,2,2,2,7,2,2,2,2,0,
+    0,7,0,0,0,0,0,7,7,1,2,2,2,1,2,7,7,0,7,7,7,7,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t goat_armour_medium_bite_1_ink[184] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,
+    0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,7,7,7,4,4,4,0,
+    7,4,4,4,4,1,4,4,7,7,7,7,7,7,7,7,4,1,4,2,2,2,0,
+    0,2,2,2,2,1,2,2,4,1,4,4,4,1,4,4,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,7,7,7,7,7,2,2,1,2,2,2,1,2,2,2,7,2,2,2,2,0,
+    0,7,0,0,0,0,0,7,2,1,2,2,2,1,2,2,7,0,7,7,7,7,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,
+};
+static const uint8_t goat_armour_medium_bite_2_ink[184] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,
+    7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,7,7,7,4,4,0,
+    0,4,4,4,4,1,4,4,7,7,7,7,7,7,7,7,7,1,4,4,2,2,0,
+    0,2,2,2,2,1,2,2,4,1,4,4,4,1,4,4,4,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,7,7,7,7,7,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,7,0,0,0,0,0,7,2,1,2,2,2,1,2,2,2,7,7,2,7,7,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,7,7,7,7,7,0,0,7,0,0,0,
+};
+static const uint8_t goat_armour_medium_bite_3_ink[207] = {
+    7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,
+    0,4,4,4,4,1,4,7,7,7,7,7,7,7,7,7,7,1,4,4,4,4,0,
+    0,2,2,2,2,1,2,4,4,1,4,4,4,1,4,4,4,1,2,2,2,2,0,
+    0,7,2,2,7,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,0,7,7,0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,2,2,7,0,
+    0,0,0,0,0,0,0,2,2,1,2,2,2,1,2,2,2,1,2,2,2,0,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,7,7,7,2,2,1,2,2,7,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,1,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,
+};
+static const ArtFrame goat_armour_medium_bite_frames[4] = {
+    {23, 9, 16, 29, -1, -1, goat_armour_medium_bite_0_ink},
+    {23, 8, 16, 28, -1, -1, goat_armour_medium_bite_1_ink},
+    {23, 8, 16, 28, -1, -1, goat_armour_medium_bite_2_ink},
+    {23, 9, 15, 27, -1, -1, goat_armour_medium_bite_3_ink},
+};
+static const uint8_t goat_armour_medium_attack_0_ink[230] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,4,0,
+    7,7,7,7,7,7,7,7,0,0,0,0,0,0,7,7,7,1,4,4,4,2,0,
+    0,4,4,4,4,1,4,4,7,7,7,7,7,7,4,4,4,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,4,1,4,4,4,1,2,2,2,1,2,2,2,2,0,
+    0,7,7,7,7,1,2,2,2,1,2,2,2,1,2,2,2,7,2,2,2,2,0,
+    0,0,0,0,0,7,7,2,2,1,2,2,2,1,2,2,7,0,2,2,2,7,0,
+    0,0,0,0,0,0,0,7,2,1,2,2,2,1,7,7,0,0,2,2,7,0,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,7,7,0,0,0,
+};
+static const uint8_t goat_armour_medium_attack_1_ink[207] = {
+    7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,7,0,0,0,
+    0,4,4,4,7,7,7,0,0,0,0,0,0,7,7,4,4,1,4,4,7,7,7,
+    0,7,2,2,4,1,4,7,7,7,7,7,7,1,4,2,2,1,2,2,4,4,0,
+    0,0,7,7,2,1,2,4,4,1,4,4,4,1,2,2,2,1,2,2,2,2,0,
+    0,0,0,0,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,7,7,7,0,
+    0,0,0,0,7,7,2,2,2,1,2,2,2,1,2,2,2,1,2,0,0,0,0,
+    0,0,0,0,0,0,7,2,2,1,2,2,2,1,2,2,2,1,2,0,0,0,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,7,7,2,7,7,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t goat_armour_medium_attack_2_ink[253] = {
+    7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,2,2,2,2,1,4,4,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,7,2,2,1,2,2,4,7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,7,7,1,2,2,2,1,4,4,7,7,7,7,7,7,7,7,7,7,0,
+    0,0,0,0,0,1,2,2,2,1,2,2,4,1,4,4,4,1,4,4,4,4,7,
+    0,0,0,0,0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,0,0,0,0,0,0,7,2,1,2,2,2,1,2,2,2,1,2,2,2,7,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,2,1,2,2,2,1,2,2,2,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,1,2,2,2,7,7,7,7,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,0,0,0,0,0,0,
+};
+static const uint8_t goat_armour_medium_attack_3_ink[299] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,2,2,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,4,2,2,7,0,
+    0,0,0,0,0,7,7,7,7,7,7,7,7,7,7,7,4,1,2,2,7,0,0,
+    0,0,0,7,7,1,4,4,4,1,4,4,4,1,4,4,2,1,2,7,0,0,0,
+    0,7,7,4,4,1,2,2,2,1,2,2,2,1,2,2,2,1,7,0,0,0,0,
+    0,4,4,2,2,1,2,2,2,1,2,2,2,1,2,2,2,7,0,0,0,0,0,
+    7,2,2,2,2,1,2,2,7,7,7,2,2,1,2,2,7,0,0,0,0,0,0,
+    0,2,2,7,7,7,7,7,0,0,0,7,7,7,7,7,0,0,0,0,0,0,0,
+    0,7,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t goat_armour_medium_attack_4_ink[437] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,2,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,4,2,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,7,1,4,2,7,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,4,1,4,4,4,1,2,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,4,4,2,1,2,2,2,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,1,2,2,2,1,2,2,7,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,7,4,1,2,2,2,1,7,7,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,7,4,2,1,2,2,7,7,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,7,4,2,2,1,2,7,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,7,1,2,2,2,7,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,7,7,1,2,2,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,7,7,0,1,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,7,0,0,1,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,0,0,0,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t goat_armour_medium_attack_5_ink[230] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,4,0,
+    7,7,7,7,7,7,7,0,0,0,0,0,0,0,7,7,7,1,4,4,4,2,0,
+    0,4,4,4,4,1,4,7,7,7,7,7,7,7,4,4,4,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,4,4,1,4,4,4,1,2,2,2,1,2,2,2,7,0,
+    0,7,7,7,7,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,0,0,
+    0,0,0,0,0,7,7,2,2,1,2,2,2,1,2,2,7,7,7,7,7,0,0,
+    0,0,0,0,0,0,0,2,2,1,2,2,2,1,7,7,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t goat_armour_medium_attack_6_ink[207] = {
+    7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,0,0,0,
+    0,4,4,4,4,7,7,7,0,0,0,0,0,0,7,7,7,1,4,4,7,7,7,
+    0,2,2,2,2,1,4,4,7,7,7,7,7,7,4,4,4,1,2,2,4,4,0,
+    0,7,7,7,2,1,2,2,4,1,4,4,4,1,2,2,2,1,2,2,2,2,0,
+    0,0,0,0,7,1,2,2,2,1,2,2,2,1,2,2,2,1,2,7,7,7,0,
+    0,0,0,0,0,7,2,2,2,1,2,2,2,1,2,2,2,1,2,0,0,0,0,
+    0,0,0,0,0,0,7,7,2,1,2,2,2,1,2,2,2,1,2,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,7,1,7,7,2,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,7,0,0,0,0,0,0,
+};
+static const uint8_t goat_armour_medium_attack_7_ink[207] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,4,0,
+    7,7,7,7,7,7,7,0,0,0,0,0,0,0,7,7,7,1,4,4,4,2,0,
+    0,4,4,4,4,1,4,7,7,7,7,7,7,7,4,4,4,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,4,4,1,4,4,4,1,2,2,2,1,2,2,2,7,0,
+    0,7,7,7,7,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,0,0,
+    0,0,0,0,0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,2,2,0,0,
+    0,0,0,0,0,0,0,2,2,1,2,2,2,1,7,7,2,1,2,2,7,0,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,7,7,0,0,7,7,7,7,0,0,0,
+};
+static const ArtFrame goat_armour_medium_attack_frames[8] = {
+    {23, 10, 16, 30, -1, -1, goat_armour_medium_attack_0_ink},
+    {23, 9, 14, 26, -1, -1, goat_armour_medium_attack_1_ink},
+    {23, 11, 17, 26, -1, -1, goat_armour_medium_attack_2_ink},
+    {23, 13, 19, 30, -1, -1, goat_armour_medium_attack_3_ink},
+    {23, 19, 24, 31, -1, -1, goat_armour_medium_attack_4_ink},
+    {23, 10, 15, 30, -1, -1, goat_armour_medium_attack_5_ink},
+    {23, 9, 14, 25, -1, -1, goat_armour_medium_attack_6_ink},
+    {23, 9, 15, 28, -1, -1, goat_armour_medium_attack_7_ink},
+};
+static const uint8_t goat_armour_medium_sleep_0_ink[184] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,7,0,
+    0,0,7,7,7,7,7,7,0,0,0,0,0,0,0,7,7,1,4,4,4,4,7,
+    7,7,4,4,4,1,4,4,7,7,7,7,7,7,7,4,4,1,2,2,2,7,0,
+    0,4,2,2,2,1,2,2,4,1,4,4,4,1,4,2,2,1,2,7,7,0,0,
+    0,7,7,7,7,1,2,2,2,1,2,2,2,1,2,2,2,7,7,0,0,0,0,
+    0,0,0,0,0,7,7,2,2,1,2,2,2,1,2,2,7,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,7,7,1,2,2,2,1,7,7,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,7,7,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t goat_armour_medium_sleep_1_ink[161] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,
+    0,7,7,7,7,7,7,7,7,0,0,0,7,7,7,7,7,1,4,4,4,4,0,
+    7,4,4,4,4,1,4,4,4,7,7,7,4,1,4,4,4,1,2,2,2,2,0,
+    0,7,2,2,2,1,2,2,2,1,4,4,2,1,2,2,2,1,2,7,7,7,0,
+    0,0,7,7,7,1,2,2,2,1,2,2,2,1,2,2,2,7,7,0,0,0,0,
+    0,0,0,0,0,7,7,7,7,1,2,2,2,1,7,7,7,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,7,7,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t goat_armour_medium_sleep_2_ink[161] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,
+    0,7,7,7,7,7,7,7,7,0,0,0,7,7,7,7,7,1,4,4,4,4,0,
+    7,4,4,4,4,1,4,4,4,7,7,7,4,1,4,4,4,1,2,2,2,2,0,
+    0,7,2,2,2,1,2,2,2,1,4,4,2,1,2,2,2,1,2,7,7,7,0,
+    0,0,7,7,7,1,2,2,2,1,2,2,2,1,2,2,2,7,7,0,0,0,0,
+    0,0,0,0,0,7,7,7,7,1,2,2,2,1,7,7,7,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,7,7,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t goat_armour_medium_sleep_3_ink[161] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,
+    0,7,7,7,7,7,7,7,7,0,0,0,7,7,7,7,7,1,4,4,4,4,0,
+    7,4,4,4,4,1,4,4,4,7,7,7,4,1,4,4,4,1,2,2,2,7,0,
+    0,7,2,2,2,1,2,2,2,1,4,4,2,1,2,2,2,1,2,7,7,0,0,
+    0,0,7,7,7,1,2,2,2,1,2,2,2,1,2,2,2,7,7,0,0,0,0,
+    0,0,0,0,0,7,7,7,7,1,2,2,2,1,7,7,7,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,7,7,0,0,0,0,0,0,0,0,0,
+};
+static const ArtFrame goat_armour_medium_sleep_frames[4] = {
+    {23, 8, 10, 16, -1, -1, goat_armour_medium_sleep_0_ink},
+    {23, 7, 10, 15, -1, -1, goat_armour_medium_sleep_1_ink},
+    {23, 7, 10, 15, -1, -1, goat_armour_medium_sleep_2_ink},
+    {23, 7, 10, 15, -1, -1, goat_armour_medium_sleep_3_ink},
+};
+static const ArtClip goat_armour_medium_clips[ACTION_COUNT] = {
+    [ACTION_REST] = {9, goat_armour_medium_idle_frames},
+    [ACTION_WALK] = {4, goat_armour_medium_walk_frames},
+    [ACTION_RUN] = {4, goat_armour_medium_run_frames},
+    [ACTION_GRAZE] = {5, goat_armour_medium_graze_frames},
+    [ACTION_BITE] = {4, goat_armour_medium_bite_frames},
+    [ACTION_ATTACK] = {8, goat_armour_medium_attack_frames},
+    [ACTION_SLEEP] = {4, goat_armour_medium_sleep_frames},
+};
 static const uint8_t goat_weapon_full_idle_0_ink[36] = {
     15,0,0,0,
     15,0,0,0,
@@ -18534,6 +23328,367 @@ static const ArtClip goat_weapon_full_clips[ACTION_COUNT] = {
     [ACTION_BITE] = {4, goat_weapon_full_bite_frames},
     [ACTION_ATTACK] = {8, goat_weapon_full_attack_frames},
     [ACTION_SLEEP] = {4, goat_weapon_full_sleep_frames},
+};
+static const uint8_t goat_weapon_medium_idle_0_ink[18] = {
+    15,0,0,
+    15,0,0,
+    0,14,0,
+    12,13,0,
+    0,11,12,
+    0,11,12,
+};
+static const uint8_t goat_weapon_medium_idle_1_ink[18] = {
+    15,0,0,
+    15,0,0,
+    0,14,0,
+    12,13,0,
+    0,11,12,
+    0,11,12,
+};
+static const uint8_t goat_weapon_medium_idle_2_ink[18] = {
+    15,0,0,
+    15,0,0,
+    0,14,0,
+    12,13,0,
+    0,11,12,
+    0,11,12,
+};
+static const uint8_t goat_weapon_medium_idle_3_ink[18] = {
+    15,0,0,
+    15,0,0,
+    0,14,0,
+    12,13,0,
+    0,11,12,
+    0,11,12,
+};
+static const uint8_t goat_weapon_medium_idle_4_ink[18] = {
+    15,0,0,
+    15,0,0,
+    0,14,0,
+    12,13,0,
+    0,11,12,
+    0,11,12,
+};
+static const uint8_t goat_weapon_medium_idle_5_ink[18] = {
+    15,0,0,
+    15,0,0,
+    0,14,0,
+    12,13,0,
+    0,11,12,
+    0,11,12,
+};
+static const uint8_t goat_weapon_medium_idle_6_ink[18] = {
+    15,0,0,
+    15,0,0,
+    0,14,0,
+    12,13,0,
+    0,11,12,
+    0,11,12,
+};
+static const uint8_t goat_weapon_medium_idle_7_ink[18] = {
+    15,0,0,
+    15,0,0,
+    0,14,0,
+    12,13,0,
+    0,11,12,
+    0,11,12,
+};
+static const uint8_t goat_weapon_medium_idle_8_ink[18] = {
+    15,0,0,
+    15,0,0,
+    0,14,0,
+    12,13,0,
+    0,11,12,
+    0,11,12,
+};
+static const ArtFrame goat_weapon_medium_idle_frames[9] = {
+    {3, 6, -15, 43, -1, -1, goat_weapon_medium_idle_0_ink},
+    {3, 6, -15, 43, -1, -1, goat_weapon_medium_idle_1_ink},
+    {3, 6, -15, 43, -1, -1, goat_weapon_medium_idle_2_ink},
+    {3, 6, -15, 43, -1, -1, goat_weapon_medium_idle_3_ink},
+    {3, 6, -15, 43, -1, -1, goat_weapon_medium_idle_4_ink},
+    {3, 6, -15, 43, -1, -1, goat_weapon_medium_idle_5_ink},
+    {3, 6, -15, 43, -1, -1, goat_weapon_medium_idle_6_ink},
+    {3, 6, -15, 43, -1, -1, goat_weapon_medium_idle_7_ink},
+    {3, 6, -15, 43, -1, -1, goat_weapon_medium_idle_8_ink},
+};
+static const uint8_t goat_weapon_medium_walk_0_ink[18] = {
+    15,0,0,
+    15,0,0,
+    0,14,0,
+    12,13,0,
+    0,11,12,
+    0,11,12,
+};
+static const uint8_t goat_weapon_medium_walk_1_ink[18] = {
+    15,0,0,
+    15,0,0,
+    0,14,0,
+    12,13,0,
+    0,11,12,
+    0,11,12,
+};
+static const uint8_t goat_weapon_medium_walk_2_ink[18] = {
+    15,0,0,
+    15,0,0,
+    0,14,0,
+    12,13,0,
+    0,11,12,
+    0,11,12,
+};
+static const uint8_t goat_weapon_medium_walk_3_ink[18] = {
+    15,0,0,
+    15,0,0,
+    0,14,0,
+    12,13,0,
+    0,11,12,
+    0,11,12,
+};
+static const ArtFrame goat_weapon_medium_walk_frames[4] = {
+    {3, 6, -15, 43, -1, -1, goat_weapon_medium_walk_0_ink},
+    {3, 6, -16, 43, -1, -1, goat_weapon_medium_walk_1_ink},
+    {3, 6, -16, 42, -1, -1, goat_weapon_medium_walk_2_ink},
+    {3, 6, -16, 43, -1, -1, goat_weapon_medium_walk_3_ink},
+};
+static const uint8_t goat_weapon_medium_run_0_ink[18] = {
+    15,0,0,
+    15,0,0,
+    0,14,0,
+    12,13,0,
+    0,11,12,
+    0,11,12,
+};
+static const uint8_t goat_weapon_medium_run_1_ink[18] = {
+    15,0,0,
+    15,0,0,
+    0,14,0,
+    12,13,0,
+    0,11,12,
+    0,11,12,
+};
+static const uint8_t goat_weapon_medium_run_2_ink[18] = {
+    15,0,0,
+    15,0,0,
+    0,14,0,
+    12,13,0,
+    0,11,12,
+    0,11,12,
+};
+static const uint8_t goat_weapon_medium_run_3_ink[18] = {
+    15,0,0,
+    15,0,0,
+    0,14,0,
+    12,13,0,
+    0,11,12,
+    0,11,12,
+};
+static const ArtFrame goat_weapon_medium_run_frames[4] = {
+    {3, 6, -15, 42, -1, -1, goat_weapon_medium_run_0_ink},
+    {3, 6, -15, 41, -1, -1, goat_weapon_medium_run_1_ink},
+    {3, 6, -14, 41, -1, -1, goat_weapon_medium_run_2_ink},
+    {3, 6, -14, 42, -1, -1, goat_weapon_medium_run_3_ink},
+};
+static const uint8_t goat_weapon_medium_graze_0_ink[18] = {
+    15,0,0,
+    15,0,0,
+    0,14,0,
+    12,13,0,
+    0,11,12,
+    0,11,12,
+};
+static const uint8_t goat_weapon_medium_graze_1_ink[18] = {
+    15,0,0,
+    15,0,0,
+    0,14,0,
+    12,13,0,
+    0,11,12,
+    0,11,12,
+};
+static const uint8_t goat_weapon_medium_graze_2_ink[18] = {
+    15,0,0,
+    15,0,0,
+    0,14,0,
+    12,13,0,
+    0,11,12,
+    0,11,12,
+};
+static const uint8_t goat_weapon_medium_graze_3_ink[18] = {
+    15,0,0,
+    15,0,0,
+    0,14,0,
+    12,13,0,
+    0,11,12,
+    0,11,12,
+};
+static const uint8_t goat_weapon_medium_graze_4_ink[18] = {
+    15,0,0,
+    15,0,0,
+    0,14,0,
+    12,13,0,
+    0,11,12,
+    0,11,12,
+};
+static const ArtFrame goat_weapon_medium_graze_frames[5] = {
+    {3, 6, -15, 27, -1, -1, goat_weapon_medium_graze_0_ink},
+    {3, 6, -15, 27, -1, -1, goat_weapon_medium_graze_1_ink},
+    {3, 6, -15, 27, -1, -1, goat_weapon_medium_graze_2_ink},
+    {3, 6, -15, 27, -1, -1, goat_weapon_medium_graze_3_ink},
+    {3, 6, -15, 27, -1, -1, goat_weapon_medium_graze_4_ink},
+};
+static const uint8_t goat_weapon_medium_bite_0_ink[18] = {
+    15,0,0,
+    15,0,0,
+    0,14,0,
+    12,13,0,
+    0,11,12,
+    0,11,12,
+};
+static const uint8_t goat_weapon_medium_bite_1_ink[18] = {
+    15,0,0,
+    15,0,0,
+    0,14,0,
+    12,13,0,
+    0,11,12,
+    0,11,12,
+};
+static const uint8_t goat_weapon_medium_bite_2_ink[25] = {
+    15,0,0,0,0,
+    0,15,0,0,0,
+    0,0,14,0,0,
+    0,0,0,13,0,
+    0,0,12,0,12,
+};
+static const uint8_t goat_weapon_medium_bite_3_ink[25] = {
+    15,0,0,0,0,
+    0,15,0,0,0,
+    0,0,14,0,0,
+    0,0,0,13,0,
+    0,0,12,0,12,
+};
+static const ArtFrame goat_weapon_medium_bite_frames[4] = {
+    {3, 6, -16, 42, -1, -1, goat_weapon_medium_bite_0_ink},
+    {3, 6, -16, 41, -1, -1, goat_weapon_medium_bite_1_ink},
+    {5, 5, -13, 39, -1, -1, goat_weapon_medium_bite_2_ink},
+    {5, 5, -15, 37, -1, -1, goat_weapon_medium_bite_3_ink},
+};
+static const uint8_t goat_weapon_medium_attack_0_ink[18] = {
+    15,0,0,
+    15,0,0,
+    0,14,0,
+    12,13,0,
+    0,11,12,
+    0,11,12,
+};
+static const uint8_t goat_weapon_medium_attack_1_ink[18] = {
+    15,0,0,
+    15,0,0,
+    0,14,0,
+    12,13,0,
+    0,11,12,
+    0,11,12,
+};
+static const uint8_t goat_weapon_medium_attack_2_ink[12] = {
+    0,15,
+    0,15,
+    0,14,
+    12,13,
+    11,12,
+    11,12,
+};
+static const uint8_t goat_weapon_medium_attack_3_ink[25] = {
+    15,0,0,0,0,
+    0,15,0,0,0,
+    0,0,14,0,0,
+    0,0,0,13,0,
+    0,0,12,0,12,
+};
+static const uint8_t goat_weapon_medium_attack_4_ink[25] = {
+    15,0,0,0,0,
+    0,15,0,0,0,
+    0,0,14,0,0,
+    0,0,0,13,0,
+    0,0,12,0,12,
+};
+static const uint8_t goat_weapon_medium_attack_5_ink[18] = {
+    15,0,0,
+    15,0,0,
+    0,14,0,
+    12,13,0,
+    0,11,12,
+    0,11,12,
+};
+static const uint8_t goat_weapon_medium_attack_6_ink[18] = {
+    15,0,0,
+    15,0,0,
+    0,14,0,
+    12,13,0,
+    0,11,12,
+    0,11,12,
+};
+static const uint8_t goat_weapon_medium_attack_7_ink[18] = {
+    15,0,0,
+    15,0,0,
+    0,14,0,
+    12,13,0,
+    0,11,12,
+    0,11,12,
+};
+static const ArtFrame goat_weapon_medium_attack_frames[8] = {
+    {3, 6, -16, 43, -1, -1, goat_weapon_medium_attack_0_ink},
+    {3, 6, -18, 33, -1, -1, goat_weapon_medium_attack_1_ink},
+    {2, 6, -20, 20, -1, -1, goat_weapon_medium_attack_2_ink},
+    {5, 5, -10, 46, -1, -1, goat_weapon_medium_attack_3_ink},
+    {5, 5, -5, 49, -1, -1, goat_weapon_medium_attack_4_ink},
+    {3, 6, -17, 41, -1, -1, goat_weapon_medium_attack_5_ink},
+    {3, 6, -18, 32, -1, -1, goat_weapon_medium_attack_6_ink},
+    {3, 6, -17, 39, -1, -1, goat_weapon_medium_attack_7_ink},
+};
+static const uint8_t goat_weapon_medium_sleep_0_ink[18] = {
+    15,0,0,
+    15,0,0,
+    0,14,0,
+    12,13,0,
+    0,11,12,
+    0,11,12,
+};
+static const uint8_t goat_weapon_medium_sleep_1_ink[18] = {
+    15,0,0,
+    15,0,0,
+    0,14,0,
+    12,13,0,
+    0,11,12,
+    0,11,12,
+};
+static const uint8_t goat_weapon_medium_sleep_2_ink[18] = {
+    15,0,0,
+    15,0,0,
+    0,14,0,
+    12,13,0,
+    0,11,12,
+    0,11,12,
+};
+static const uint8_t goat_weapon_medium_sleep_3_ink[18] = {
+    15,0,0,
+    15,0,0,
+    0,14,0,
+    12,13,0,
+    0,11,12,
+    0,11,12,
+};
+static const ArtFrame goat_weapon_medium_sleep_frames[4] = {
+    {3, 6, -22, 20, -1, -1, goat_weapon_medium_sleep_0_ink},
+    {3, 6, -22, 21, -1, -1, goat_weapon_medium_sleep_1_ink},
+    {3, 6, -22, 21, -1, -1, goat_weapon_medium_sleep_2_ink},
+    {3, 6, -22, 20, -1, -1, goat_weapon_medium_sleep_3_ink},
+};
+static const ArtClip goat_weapon_medium_clips[ACTION_COUNT] = {
+    [ACTION_REST] = {9, goat_weapon_medium_idle_frames},
+    [ACTION_WALK] = {4, goat_weapon_medium_walk_frames},
+    [ACTION_RUN] = {4, goat_weapon_medium_run_frames},
+    [ACTION_GRAZE] = {5, goat_weapon_medium_graze_frames},
+    [ACTION_BITE] = {4, goat_weapon_medium_bite_frames},
+    [ACTION_ATTACK] = {8, goat_weapon_medium_attack_frames},
+    [ACTION_SLEEP] = {4, goat_weapon_medium_sleep_frames},
 };
 static const ArtClip goat_clips[ACTION_COUNT] = {
     [ACTION_REST] = {9, goat_idle_frames},
@@ -20410,6 +25565,420 @@ static const ArtClip hare_armour_full_clips[ACTION_COUNT] = {
     [ACTION_ATTACK] = {7, hare_armour_full_attack_frames},
     [ACTION_SLEEP] = {3, hare_armour_full_sleep_frames},
 };
+static const uint8_t hare_armour_medium_idle_0_ink[70] = {
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,7,7,7,2,2,2,7,7,7,0,0,
+    0,0,0,0,0,0,7,7,7,0,0,0,0,0,
+};
+static const uint8_t hare_armour_medium_idle_1_ink[70] = {
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,7,7,7,2,2,2,7,7,7,0,0,
+    0,0,0,0,0,0,7,7,7,0,0,0,0,0,
+};
+static const uint8_t hare_armour_medium_idle_2_ink[70] = {
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,7,7,7,2,2,2,7,7,7,0,0,
+    0,0,0,0,0,0,7,7,7,0,0,0,0,0,
+};
+static const uint8_t hare_armour_medium_idle_3_ink[70] = {
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,7,7,7,2,2,2,7,7,7,0,0,
+    0,0,0,0,0,0,7,7,7,0,0,0,0,0,
+};
+static const uint8_t hare_armour_medium_idle_4_ink[70] = {
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,7,7,7,2,2,2,7,7,7,0,0,
+    0,0,0,0,0,0,7,7,7,0,0,0,0,0,
+};
+static const uint8_t hare_armour_medium_idle_5_ink[70] = {
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,7,7,7,2,2,2,7,7,7,0,0,
+    0,0,0,0,0,0,7,7,7,0,0,0,0,0,
+};
+static const uint8_t hare_armour_medium_idle_6_ink[70] = {
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,7,7,7,2,2,2,7,7,7,0,0,
+    0,0,0,0,0,0,7,7,7,0,0,0,0,0,
+};
+static const ArtFrame hare_armour_medium_idle_frames[7] = {
+    {14, 5, 10, 20, -1, -1, hare_armour_medium_idle_0_ink},
+    {14, 5, 10, 20, -1, -1, hare_armour_medium_idle_1_ink},
+    {14, 5, 10, 20, -1, -1, hare_armour_medium_idle_2_ink},
+    {14, 5, 10, 20, -1, -1, hare_armour_medium_idle_3_ink},
+    {14, 5, 10, 20, -1, -1, hare_armour_medium_idle_4_ink},
+    {14, 5, 10, 20, -1, -1, hare_armour_medium_idle_5_ink},
+    {14, 5, 10, 20, -1, -1, hare_armour_medium_idle_6_ink},
+};
+static const uint8_t hare_armour_medium_walk_0_ink[98] = {
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,7,7,1,2,2,2,1,2,7,0,0,
+    0,0,0,0,0,7,7,2,2,1,2,0,0,0,
+    0,0,0,0,0,0,0,7,2,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,7,0,0,0,0,0,
+};
+static const uint8_t hare_armour_medium_walk_1_ink[70] = {
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,0,
+    0,7,7,7,7,1,2,2,2,7,7,2,7,0,
+    0,0,0,0,0,7,7,7,7,0,0,7,0,0,
+};
+static const uint8_t hare_armour_medium_walk_2_ink[98] = {
+    0,7,7,7,7,7,7,7,7,7,7,7,7,7,
+    7,4,4,4,4,1,4,4,4,1,4,4,4,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,7,7,7,2,2,2,1,2,2,0,0,
+    0,0,0,0,0,0,7,7,2,1,2,7,0,0,
+    0,0,0,0,0,0,0,0,2,1,7,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,0,0,0,0,
+};
+static const uint8_t hare_armour_medium_walk_3_ink[70] = {
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,0,
+    0,7,2,2,2,1,2,2,2,1,2,2,2,0,
+    0,0,7,7,7,7,2,2,7,7,7,2,7,0,
+    0,0,0,0,0,0,7,7,0,0,0,7,0,0,
+};
+static const ArtFrame hare_armour_medium_walk_frames[4] = {
+    {14, 7, 9, 20, -1, -1, hare_armour_medium_walk_0_ink},
+    {14, 5, 10, 20, -1, -1, hare_armour_medium_walk_1_ink},
+    {14, 7, 10, 20, -1, -1, hare_armour_medium_walk_2_ink},
+    {14, 5, 10, 19, -1, -1, hare_armour_medium_walk_3_ink},
+};
+static const uint8_t hare_armour_medium_run_0_ink[224] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    7,7,7,7,7,7,7,7,7,7,7,7,0,0,
+    0,7,4,4,4,1,4,4,4,1,4,4,0,0,
+    0,0,7,7,2,1,2,2,2,1,2,7,0,0,
+    0,0,0,0,7,7,7,7,7,7,7,0,0,0,
+};
+static const uint8_t hare_armour_medium_run_1_ink[238] = {
+    0,0,0,0,0,0,0,0,0,0,7,7,7,7,
+    0,0,0,0,0,0,0,0,0,7,7,7,7,0,
+    0,0,0,0,0,0,0,0,0,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    7,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,7,7,7,0,0,0,0,0,0,0,0,0,
+    0,7,4,4,4,7,0,0,0,0,0,0,0,0,
+    0,0,7,2,2,1,7,7,7,0,0,0,0,0,
+    0,0,0,7,7,1,4,4,4,0,0,0,0,0,
+    0,0,0,0,0,7,2,2,2,0,0,0,0,0,
+    0,0,0,0,0,0,7,2,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,7,0,0,0,0,0,0,
+};
+static const uint8_t hare_armour_medium_run_2_ink[252] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,7,7,7,7,7,0,0,0,0,0,0,0,
+    0,7,4,4,4,1,4,7,7,0,0,0,0,0,
+    7,4,2,2,2,1,2,4,4,7,7,7,0,0,
+    0,2,2,2,2,1,2,2,2,1,4,4,0,0,
+    0,7,7,2,2,1,2,2,2,1,2,7,0,0,
+    0,0,0,7,2,1,2,7,7,7,7,0,0,0,
+    0,0,0,0,7,7,7,0,0,0,0,0,0,0,
+};
+static const uint8_t hare_armour_medium_run_3_ink[280] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,4,0,0,
+    0,0,0,0,7,7,7,7,7,1,4,7,0,0,
+    7,7,7,7,4,1,4,4,4,1,7,0,0,0,
+    0,4,4,4,2,1,2,2,2,7,0,0,0,0,
+    0,7,7,7,7,7,7,7,7,0,0,0,0,0,
+};
+static const ArtFrame hare_armour_medium_run_frames[4] = {
+    {14, 16, 8, 31, -1, -1, hare_armour_medium_run_0_ink},
+    {14, 17, 11, 28, -1, -1, hare_armour_medium_run_1_ink},
+    {14, 18, 10, 29, -1, -1, hare_armour_medium_run_2_ink},
+    {14, 20, 11, 33, -1, -1, hare_armour_medium_run_3_ink},
+};
+static const uint8_t hare_armour_medium_graze_0_ink[126] = {
+    7,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,7,7,0,0,0,0,0,0,0,0,0,0,
+    0,7,4,4,7,0,0,0,0,0,0,0,0,0,
+    0,0,2,2,4,7,7,7,0,0,0,0,0,0,
+    0,0,7,7,2,1,4,4,7,7,0,0,0,0,
+    0,0,0,0,2,1,2,2,4,1,7,7,7,7,
+    0,0,0,0,7,1,2,2,2,1,4,4,4,0,
+    0,0,0,0,0,7,7,7,2,7,2,2,7,0,
+    0,0,0,0,0,0,0,0,7,0,7,7,0,0,
+};
+static const uint8_t hare_armour_medium_graze_1_ink[126] = {
+    7,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,7,7,0,0,0,0,0,0,0,0,0,0,
+    0,7,4,4,7,0,0,0,0,0,0,0,0,0,
+    0,0,2,2,4,7,7,7,0,0,0,0,0,0,
+    0,0,7,7,2,1,4,4,7,7,0,0,0,0,
+    0,0,0,0,2,1,2,2,4,1,7,7,7,7,
+    0,0,0,0,7,1,2,2,2,1,4,4,4,0,
+    0,0,0,0,0,7,7,7,2,7,2,2,7,0,
+    0,0,0,0,0,0,0,0,7,0,7,7,0,0,
+};
+static const uint8_t hare_armour_medium_graze_2_ink[126] = {
+    7,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,7,7,0,0,0,0,0,0,0,0,0,0,
+    0,7,4,4,7,0,0,0,0,0,0,0,0,0,
+    0,0,2,2,4,7,7,7,0,0,0,0,0,0,
+    0,0,7,7,2,1,4,4,7,7,0,0,0,0,
+    0,0,0,0,2,1,2,2,4,1,7,7,7,7,
+    0,0,0,0,7,1,2,2,2,1,4,4,4,0,
+    0,0,0,0,0,7,7,7,2,7,2,2,7,0,
+    0,0,0,0,0,0,0,0,7,0,7,7,0,0,
+};
+static const uint8_t hare_armour_medium_graze_3_ink[126] = {
+    7,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,7,7,0,0,0,0,0,0,0,0,0,0,
+    0,7,4,4,7,0,0,0,0,0,0,0,0,0,
+    0,0,2,2,4,7,7,0,0,0,0,0,0,0,
+    0,0,7,7,2,1,4,7,7,7,0,0,0,0,
+    0,0,0,0,2,1,2,4,4,1,7,7,7,7,
+    0,0,0,0,7,1,2,2,2,1,4,4,4,0,
+    0,0,0,0,0,7,7,2,2,7,2,2,7,0,
+    0,0,0,0,0,0,0,7,7,0,7,7,0,0,
+};
+static const uint8_t hare_armour_medium_graze_4_ink[126] = {
+    7,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,7,7,0,0,0,0,0,0,0,0,0,0,
+    0,7,4,4,7,0,0,0,0,0,0,0,0,0,
+    0,0,2,2,4,7,7,7,0,0,0,0,0,0,
+    0,0,7,7,2,1,4,4,7,7,0,0,0,0,
+    0,0,0,0,2,1,2,2,4,1,7,7,7,7,
+    0,0,0,0,7,1,2,2,2,1,4,4,4,0,
+    0,0,0,0,0,7,7,7,2,7,2,2,7,0,
+    0,0,0,0,0,0,0,0,7,0,7,7,0,0,
+};
+static const uint8_t hare_armour_medium_graze_5_ink[126] = {
+    7,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,7,7,0,0,0,0,0,0,0,0,0,0,
+    0,7,4,4,7,0,0,0,0,0,0,0,0,0,
+    0,0,2,2,4,7,7,7,0,0,0,0,0,0,
+    0,0,7,7,2,1,4,4,7,7,0,0,0,0,
+    0,0,0,0,2,1,2,2,4,1,7,7,7,7,
+    0,0,0,0,7,1,2,2,2,1,4,4,4,0,
+    0,0,0,0,0,7,7,7,2,7,2,2,7,0,
+    0,0,0,0,0,0,0,0,7,0,7,7,0,0,
+};
+static const uint8_t hare_armour_medium_graze_6_ink[126] = {
+    7,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,7,7,0,0,0,0,0,0,0,0,0,0,
+    0,7,4,4,7,0,0,0,0,0,0,0,0,0,
+    0,0,2,2,4,7,7,7,0,0,0,0,0,0,
+    0,0,7,7,2,1,4,4,7,7,0,0,0,0,
+    0,0,0,0,2,1,2,2,4,1,7,7,7,7,
+    0,0,0,0,7,1,2,2,2,1,4,4,4,0,
+    0,0,0,0,0,7,7,7,2,7,2,2,7,0,
+    0,0,0,0,0,0,0,0,7,0,7,7,0,0,
+};
+static const ArtFrame hare_armour_medium_graze_frames[7] = {
+    {14, 9, 8, 24, -1, -1, hare_armour_medium_graze_0_ink},
+    {14, 9, 8, 24, -1, -1, hare_armour_medium_graze_1_ink},
+    {14, 9, 8, 24, -1, -1, hare_armour_medium_graze_2_ink},
+    {14, 9, 8, 24, -1, -1, hare_armour_medium_graze_3_ink},
+    {14, 9, 8, 24, -1, -1, hare_armour_medium_graze_4_ink},
+    {14, 9, 8, 24, -1, -1, hare_armour_medium_graze_5_ink},
+    {14, 9, 8, 24, -1, -1, hare_armour_medium_graze_6_ink},
+};
+static const uint8_t hare_armour_medium_bite_0_ink[70] = {
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,0,
+    0,7,7,7,2,1,2,2,2,1,2,7,2,0,
+    0,0,0,0,7,7,2,2,7,7,7,0,7,0,
+    0,0,0,0,0,0,7,7,0,0,0,0,0,0,
+};
+static const uint8_t hare_armour_medium_bite_1_ink[84] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    7,7,7,7,7,7,7,7,7,7,7,7,7,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,0,
+    0,7,7,7,2,1,2,2,2,1,2,2,2,0,
+    0,0,0,0,7,7,2,2,7,7,2,2,7,0,
+    0,0,0,0,0,0,7,7,0,0,7,7,0,0,
+};
+static const uint8_t hare_armour_medium_bite_2_ink[84] = {
+    7,0,0,0,0,0,0,0,0,0,0,0,7,7,
+    0,7,7,7,7,7,7,7,7,7,7,7,4,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,2,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,7,7,7,2,2,7,1,2,2,0,0,
+    0,0,0,0,0,0,7,7,0,7,7,7,0,0,
+};
+static const uint8_t hare_armour_medium_bite_3_ink[98] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    7,0,0,0,0,0,0,0,0,0,0,7,7,0,
+    0,7,7,7,7,7,7,7,7,7,7,4,4,0,
+    0,7,4,4,4,1,4,4,4,1,4,2,2,0,
+    0,0,7,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,7,7,7,2,2,7,7,2,7,0,0,
+    0,0,0,0,0,0,7,7,0,0,7,0,0,0,
+};
+static const ArtFrame hare_armour_medium_bite_frames[4] = {
+    {14, 5, 9, 19, -1, -1, hare_armour_medium_bite_0_ink},
+    {14, 6, 7, 20, -1, -1, hare_armour_medium_bite_1_ink},
+    {14, 6, 6, 19, -1, -1, hare_armour_medium_bite_2_ink},
+    {14, 7, 7, 20, -1, -1, hare_armour_medium_bite_3_ink},
+};
+static const uint8_t hare_armour_medium_attack_0_ink[70] = {
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,0,
+    0,7,7,7,2,1,2,2,2,1,2,7,7,0,
+    0,0,0,0,7,7,7,2,7,7,7,0,0,0,
+    0,0,0,0,0,0,0,7,0,0,0,0,0,0,
+};
+static const uint8_t hare_armour_medium_attack_1_ink[84] = {
+    7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,7,7,7,7,7,7,7,7,7,7,7,
+    0,7,7,4,4,1,4,4,4,1,4,4,4,0,
+    0,0,0,7,2,1,2,2,2,1,2,2,2,0,
+    0,0,0,0,7,7,2,2,7,7,7,7,7,0,
+    0,0,0,0,0,0,7,7,0,0,0,0,0,0,
+};
+static const uint8_t hare_armour_medium_attack_2_ink[70] = {
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,0,
+    0,7,7,7,2,1,2,2,2,1,2,2,2,0,
+    0,0,0,0,7,7,2,2,7,7,7,7,7,0,
+    0,0,0,0,0,0,7,7,0,0,0,0,0,0,
+};
+static const uint8_t hare_armour_medium_attack_3_ink[70] = {
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,0,
+    0,7,7,7,2,1,2,2,2,1,2,2,2,0,
+    0,0,0,0,7,7,2,2,7,7,7,7,7,0,
+    0,0,0,0,0,0,7,7,0,0,0,0,0,0,
+};
+static const uint8_t hare_armour_medium_attack_4_ink[84] = {
+    7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,7,7,7,7,7,7,7,7,0,0,7,
+    0,7,7,4,4,1,4,4,4,1,4,7,7,0,
+    0,0,0,7,2,1,2,2,2,1,2,4,4,0,
+    0,0,0,0,7,7,2,2,7,7,2,2,2,0,
+    0,0,0,0,0,0,7,7,0,0,7,7,7,0,
+};
+static const uint8_t hare_armour_medium_attack_5_ink[84] = {
+    7,7,7,7,7,7,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,7,7,7,7,7,7,7,7,
+    0,7,7,7,2,1,4,4,4,1,4,4,4,0,
+    0,0,0,0,7,7,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,0,2,2,7,7,7,7,0,0,
+    0,0,0,0,0,0,7,7,0,0,0,0,0,0,
+};
+static const uint8_t hare_armour_medium_attack_6_ink[84] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,7,7,
+    7,7,7,7,7,7,7,7,7,7,7,7,4,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,7,0,
+    0,7,7,7,2,1,2,2,2,1,2,2,0,0,
+    0,0,0,0,7,7,7,2,7,7,7,7,0,0,
+    0,0,0,0,0,0,0,7,0,0,0,0,0,0,
+};
+static const ArtFrame hare_armour_medium_attack_frames[7] = {
+    {14, 5, 10, 19, -1, -1, hare_armour_medium_attack_0_ink},
+    {14, 6, 9, 19, -1, -1, hare_armour_medium_attack_1_ink},
+    {14, 5, 8, 17, -1, -1, hare_armour_medium_attack_2_ink},
+    {14, 5, 8, 17, -1, -1, hare_armour_medium_attack_3_ink},
+    {14, 6, 8, 18, -1, -1, hare_armour_medium_attack_4_ink},
+    {14, 6, 12, 19, -1, -1, hare_armour_medium_attack_5_ink},
+    {14, 6, 11, 20, -1, -1, hare_armour_medium_attack_6_ink},
+};
+static const uint8_t hare_armour_medium_sleep_0_ink[154] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,7,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    7,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,7,7,0,0,0,0,0,0,0,0,0,
+    0,7,2,4,4,7,7,7,7,7,7,7,0,0,
+    0,0,7,2,2,1,4,4,4,1,4,4,0,0,
+    0,0,0,7,7,1,2,2,2,1,7,7,0,0,
+    0,0,0,0,0,7,2,2,7,7,0,0,0,0,
+    0,0,0,0,0,0,7,7,0,0,0,0,0,0,
+};
+static const uint8_t hare_armour_medium_sleep_1_ink[126] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,7,7,0,0,0,0,0,0,0,0,0,
+    0,7,2,4,4,7,7,7,7,7,7,7,7,0,
+    0,0,7,2,2,1,4,4,4,1,4,4,4,0,
+    0,0,0,7,7,1,2,2,2,1,2,7,7,0,
+    0,0,0,0,0,7,2,2,7,7,7,0,0,0,
+    0,0,0,0,0,0,7,7,0,0,0,0,0,0,
+};
+static const uint8_t hare_armour_medium_sleep_2_ink[98] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,7,7,7,7,7,7,7,7,7,7,7,4,0,
+    7,4,4,4,4,1,4,4,4,1,4,4,7,0,
+    0,7,2,2,2,1,2,2,2,1,2,7,0,0,
+    0,0,7,7,7,7,2,2,7,7,7,0,0,0,
+    0,0,0,0,0,0,7,7,0,0,0,0,0,0,
+};
+static const ArtFrame hare_armour_medium_sleep_frames[3] = {
+    {14, 11, 5, 17, -1, -1, hare_armour_medium_sleep_0_ink},
+    {14, 9, 7, 15, -1, -1, hare_armour_medium_sleep_1_ink},
+    {14, 7, 7, 13, -1, -1, hare_armour_medium_sleep_2_ink},
+};
+static const ArtClip hare_armour_medium_clips[ACTION_COUNT] = {
+    [ACTION_REST] = {7, hare_armour_medium_idle_frames},
+    [ACTION_WALK] = {4, hare_armour_medium_walk_frames},
+    [ACTION_RUN] = {4, hare_armour_medium_run_frames},
+    [ACTION_GRAZE] = {7, hare_armour_medium_graze_frames},
+    [ACTION_BITE] = {4, hare_armour_medium_bite_frames},
+    [ACTION_ATTACK] = {7, hare_armour_medium_attack_frames},
+    [ACTION_SLEEP] = {3, hare_armour_medium_sleep_frames},
+};
 static const uint8_t hare_weapon_full_idle_0_ink[30] = {
     0,0,0,0,0,15,
     0,0,13,0,14,0,
@@ -20720,6 +26289,281 @@ static const ArtClip hare_weapon_full_clips[ACTION_COUNT] = {
     [ACTION_BITE] = {4, hare_weapon_full_bite_frames},
     [ACTION_ATTACK] = {7, hare_weapon_full_attack_frames},
     [ACTION_SLEEP] = {3, hare_weapon_full_sleep_frames},
+};
+static const uint8_t hare_weapon_medium_idle_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hare_weapon_medium_idle_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hare_weapon_medium_idle_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hare_weapon_medium_idle_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hare_weapon_medium_idle_4_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hare_weapon_medium_idle_5_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hare_weapon_medium_idle_6_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame hare_weapon_medium_idle_frames[7] = {
+    {5, 4, -12, 29, -1, -1, hare_weapon_medium_idle_0_ink},
+    {5, 4, -12, 29, -1, -1, hare_weapon_medium_idle_1_ink},
+    {5, 4, -12, 29, -1, -1, hare_weapon_medium_idle_2_ink},
+    {5, 4, -12, 29, -1, -1, hare_weapon_medium_idle_3_ink},
+    {5, 4, -12, 29, -1, -1, hare_weapon_medium_idle_4_ink},
+    {5, 4, -12, 29, -1, -1, hare_weapon_medium_idle_5_ink},
+    {5, 4, -12, 29, -1, -1, hare_weapon_medium_idle_6_ink},
+};
+static const uint8_t hare_weapon_medium_walk_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hare_weapon_medium_walk_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hare_weapon_medium_walk_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hare_weapon_medium_walk_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame hare_weapon_medium_walk_frames[4] = {
+    {5, 4, -13, 28, -1, -1, hare_weapon_medium_walk_0_ink},
+    {5, 4, -12, 29, -1, -1, hare_weapon_medium_walk_1_ink},
+    {5, 4, -12, 28, -1, -1, hare_weapon_medium_walk_2_ink},
+    {5, 4, -12, 28, -1, -1, hare_weapon_medium_walk_3_ink},
+};
+static const uint8_t hare_weapon_medium_run_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hare_weapon_medium_run_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hare_weapon_medium_run_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hare_weapon_medium_run_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame hare_weapon_medium_run_frames[4] = {
+    {5, 4, -14, 27, -1, -1, hare_weapon_medium_run_0_ink},
+    {5, 4, -11, 28, -1, -1, hare_weapon_medium_run_1_ink},
+    {5, 4, -12, 25, -1, -1, hare_weapon_medium_run_2_ink},
+    {5, 4, -11, 29, -1, -1, hare_weapon_medium_run_3_ink},
+};
+static const uint8_t hare_weapon_medium_graze_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hare_weapon_medium_graze_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hare_weapon_medium_graze_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hare_weapon_medium_graze_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hare_weapon_medium_graze_4_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hare_weapon_medium_graze_5_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hare_weapon_medium_graze_6_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame hare_weapon_medium_graze_frames[7] = {
+    {5, 4, -14, 19, -1, -1, hare_weapon_medium_graze_0_ink},
+    {5, 4, -14, 19, -1, -1, hare_weapon_medium_graze_1_ink},
+    {5, 4, -14, 19, -1, -1, hare_weapon_medium_graze_2_ink},
+    {5, 4, -14, 19, -1, -1, hare_weapon_medium_graze_3_ink},
+    {5, 4, -14, 19, -1, -1, hare_weapon_medium_graze_4_ink},
+    {5, 4, -14, 22, -1, -1, hare_weapon_medium_graze_5_ink},
+    {5, 4, -14, 22, -1, -1, hare_weapon_medium_graze_6_ink},
+};
+static const uint8_t hare_weapon_medium_bite_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hare_weapon_medium_bite_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hare_weapon_medium_bite_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hare_weapon_medium_bite_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame hare_weapon_medium_bite_frames[4] = {
+    {5, 4, -13, 27, -1, -1, hare_weapon_medium_bite_0_ink},
+    {5, 4, -15, 25, -1, -1, hare_weapon_medium_bite_1_ink},
+    {5, 4, -16, 24, -1, -1, hare_weapon_medium_bite_2_ink},
+    {5, 4, -15, 25, -1, -1, hare_weapon_medium_bite_3_ink},
+};
+static const uint8_t hare_weapon_medium_attack_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hare_weapon_medium_attack_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hare_weapon_medium_attack_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hare_weapon_medium_attack_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hare_weapon_medium_attack_4_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hare_weapon_medium_attack_5_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hare_weapon_medium_attack_6_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame hare_weapon_medium_attack_frames[7] = {
+    {5, 4, -12, 27, -1, -1, hare_weapon_medium_attack_0_ink},
+    {5, 4, -13, 25, -1, -1, hare_weapon_medium_attack_1_ink},
+    {5, 4, -14, 23, -1, -1, hare_weapon_medium_attack_2_ink},
+    {5, 4, -14, 22, -1, -1, hare_weapon_medium_attack_3_ink},
+    {5, 4, -14, 21, -1, -1, hare_weapon_medium_attack_4_ink},
+    {5, 4, -10, 25, -1, -1, hare_weapon_medium_attack_5_ink},
+    {5, 4, -11, 29, -1, -1, hare_weapon_medium_attack_6_ink},
+};
+static const uint8_t hare_weapon_medium_sleep_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hare_weapon_medium_sleep_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hare_weapon_medium_sleep_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame hare_weapon_medium_sleep_frames[3] = {
+    {5, 4, -17, 13, -1, -1, hare_weapon_medium_sleep_0_ink},
+    {5, 4, -15, 17, -1, -1, hare_weapon_medium_sleep_1_ink},
+    {5, 4, -15, 14, -1, -1, hare_weapon_medium_sleep_2_ink},
+};
+static const ArtClip hare_weapon_medium_clips[ACTION_COUNT] = {
+    [ACTION_REST] = {7, hare_weapon_medium_idle_frames},
+    [ACTION_WALK] = {4, hare_weapon_medium_walk_frames},
+    [ACTION_RUN] = {4, hare_weapon_medium_run_frames},
+    [ACTION_GRAZE] = {7, hare_weapon_medium_graze_frames},
+    [ACTION_BITE] = {4, hare_weapon_medium_bite_frames},
+    [ACTION_ATTACK] = {7, hare_weapon_medium_attack_frames},
+    [ACTION_SLEEP] = {3, hare_weapon_medium_sleep_frames},
 };
 static const ArtClip hare_clips[ACTION_COUNT] = {
     [ACTION_REST] = {7, hare_idle_frames},
@@ -23014,6 +28858,577 @@ static const ArtClip hippo_armour_full_clips[ACTION_COUNT] = {
     [ACTION_ATTACK] = {9, hippo_armour_full_attack_frames},
     [ACTION_SLEEP] = {5, hippo_armour_full_sleep_frames},
 };
+static const uint8_t hippo_armour_medium_idle_0_ink[253] = {
+    0,0,0,0,7,7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,7,7,7,
+    0,0,7,7,4,1,4,4,4,1,4,4,4,1,7,7,7,7,7,7,4,4,0,
+    7,7,4,4,2,1,2,2,2,1,2,2,2,1,4,4,4,1,4,4,2,2,0,
+    0,4,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,7,7,0,
+    0,7,7,2,2,1,7,2,2,1,2,2,2,1,2,2,2,1,7,7,0,0,0,
+    0,0,0,7,7,7,0,7,7,1,2,2,2,1,2,2,7,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,
+};
+static const ArtFrame hippo_armour_medium_idle_frames[1] = {
+    {23, 11, 20, 32, -1, -1, hippo_armour_medium_idle_0_ink},
+};
+static const uint8_t hippo_armour_medium_walk_0_ink[299] = {
+    0,0,0,7,7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,
+    7,7,7,4,4,1,4,4,4,1,4,4,4,7,7,7,7,7,7,7,0,0,0,
+    0,4,4,2,2,1,2,2,2,1,2,2,2,1,4,4,4,1,4,4,7,7,7,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,4,4,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,7,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,7,0,
+    0,0,7,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,7,0,0,
+    0,0,0,7,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,0,0,0,
+    0,0,0,0,7,7,2,2,2,1,2,2,2,1,2,2,2,1,7,7,0,0,0,
+    0,0,0,0,0,0,7,2,2,1,2,2,7,7,2,2,7,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,7,7,7,7,2,0,0,7,7,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t hippo_armour_medium_walk_1_ink[276] = {
+    0,0,0,0,7,7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,
+    0,0,7,7,4,1,4,4,4,1,4,4,4,1,7,7,7,7,7,7,0,0,0,
+    7,7,4,4,2,1,2,2,2,1,2,2,2,1,4,4,4,1,4,4,7,7,7,
+    0,4,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,4,4,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,7,7,7,2,2,2,1,2,2,2,1,2,2,2,1,2,7,2,2,0,
+    0,7,7,0,0,0,7,2,2,1,2,2,2,1,2,2,2,1,7,0,7,7,0,
+    0,0,0,0,0,0,0,2,2,1,2,2,2,1,2,7,7,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,7,7,2,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t hippo_armour_medium_walk_2_ink[276] = {
+    0,0,0,0,7,7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,
+    0,0,7,7,4,1,4,4,4,1,4,4,4,1,7,7,7,7,7,7,0,0,0,
+    7,7,4,4,2,1,2,2,2,1,2,2,2,1,4,4,4,1,4,4,7,7,0,
+    0,4,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,4,4,7,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,7,7,7,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,7,7,0,
+    0,0,0,0,7,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,0,0,0,
+    0,0,0,0,0,7,7,2,2,1,2,2,2,1,2,2,2,1,7,7,0,0,0,
+    0,0,0,0,0,0,0,7,7,1,2,2,7,1,2,2,7,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,0,7,7,7,0,0,0,0,0,0,0,
+};
+static const uint8_t hippo_armour_medium_walk_3_ink[299] = {
+    0,0,0,0,7,7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,
+    0,0,7,7,4,1,4,4,4,1,4,4,4,1,7,7,7,7,7,7,7,7,0,
+    7,7,4,4,2,1,2,2,2,1,2,2,2,1,4,4,4,1,4,4,4,4,7,
+    0,4,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,7,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,7,0,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,7,7,0,0,0,
+    0,0,0,7,7,7,7,2,2,1,2,2,2,1,2,2,7,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,7,2,1,2,2,2,1,2,7,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,7,2,7,7,2,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,0,0,7,0,0,0,0,0,0,0,0,
+};
+static const ArtFrame hippo_armour_medium_walk_frames[4] = {
+    {23, 13, 18, 30, -1, -1, hippo_armour_medium_walk_0_ink},
+    {23, 12, 19, 30, -1, -1, hippo_armour_medium_walk_1_ink},
+    {23, 12, 18, 30, -1, -1, hippo_armour_medium_walk_2_ink},
+    {23, 13, 19, 31, -1, -1, hippo_armour_medium_walk_3_ink},
+};
+static const uint8_t hippo_armour_medium_run_0_ink[322] = {
+    0,0,7,7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    7,7,4,4,4,1,4,4,4,1,4,4,7,7,7,0,0,0,0,0,0,0,0,
+    0,4,2,2,2,1,2,2,2,1,2,2,4,1,4,7,7,7,7,7,7,7,7,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,4,4,1,4,4,4,4,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,0,0,0,0,7,2,2,2,1,2,2,2,1,2,2,2,1,2,2,7,7,0,
+    0,0,0,0,0,0,7,7,2,1,2,2,2,1,2,2,2,1,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,2,2,2,1,2,2,2,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,2,2,1,2,2,2,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,2,1,2,2,7,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,0,0,0,0,0,0,0,
+};
+static const uint8_t hippo_armour_medium_run_1_ink[299] = {
+    0,0,0,0,7,7,7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,
+    0,0,7,7,4,1,4,4,4,1,4,4,4,1,4,7,7,7,7,7,7,7,7,
+    7,7,4,4,2,1,2,2,2,1,2,2,2,1,2,4,4,1,4,4,4,4,0,
+    0,4,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,7,0,
+    0,7,7,7,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,7,0,0,
+    0,0,0,0,7,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,0,0,0,
+    0,0,0,0,0,1,2,2,2,1,2,2,2,1,2,2,2,1,2,7,0,0,0,
+    0,0,0,0,0,7,2,2,2,1,7,7,7,7,2,2,2,1,7,0,0,0,0,
+    0,0,0,0,0,0,7,7,2,1,0,0,0,0,7,2,7,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,7,0,0,0,0,0,0,0,
+};
+static const uint8_t hippo_armour_medium_run_2_ink[322] = {
+    0,0,0,0,0,7,7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,
+    0,0,0,7,7,1,4,4,4,1,4,4,4,1,4,7,7,7,7,7,7,7,7,
+    7,7,7,4,4,1,2,2,2,1,2,2,2,1,2,4,4,1,4,4,4,4,0,
+    0,4,4,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,7,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,7,7,0,
+    0,0,7,7,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,7,0,0,0,
+    0,0,0,0,2,1,2,2,2,1,2,2,2,1,2,2,2,7,7,0,0,0,0,
+    0,0,0,0,7,7,2,2,2,1,2,2,2,1,2,2,2,0,0,0,0,0,0,
+    0,0,0,0,0,0,7,2,2,7,7,2,2,1,2,2,2,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,7,7,0,0,7,2,1,7,2,7,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,7,0,7,0,0,0,0,0,0,0,
+};
+static const uint8_t hippo_armour_medium_run_3_ink[276] = {
+    0,0,0,7,7,7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,7,
+    7,7,7,4,4,1,4,4,4,1,4,4,4,1,7,7,7,7,7,7,7,7,0,
+    0,4,4,2,2,1,2,2,2,1,2,2,2,1,4,4,4,1,4,4,4,4,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,7,0,
+    0,7,7,7,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,7,0,0,
+    0,0,0,0,7,1,2,2,2,1,2,2,2,1,2,2,2,1,2,7,0,0,0,
+    0,0,0,0,0,7,7,2,2,1,2,2,2,1,2,2,2,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,7,7,2,7,7,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,
+};
+static const ArtFrame hippo_armour_medium_run_frames[4] = {
+    {23, 14, 19, 33, -1, -1, hippo_armour_medium_run_0_ink},
+    {23, 13, 19, 33, -1, -1, hippo_armour_medium_run_1_ink},
+    {23, 14, 20, 34, -1, -1, hippo_armour_medium_run_2_ink},
+    {23, 12, 19, 32, -1, -1, hippo_armour_medium_run_3_ink},
+};
+static const uint8_t hippo_armour_medium_graze_0_ink[253] = {
+    0,0,0,0,7,7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,7,7,7,
+    0,0,7,7,4,1,4,4,4,1,4,4,4,1,7,7,7,7,7,7,4,4,0,
+    7,7,4,4,2,1,2,2,2,1,2,2,2,1,4,4,4,1,4,4,2,2,0,
+    0,4,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,7,7,0,
+    0,7,7,2,2,1,7,2,2,1,2,2,2,1,2,2,2,1,7,7,0,0,0,
+    0,0,0,7,7,7,0,7,7,1,2,2,2,1,2,2,7,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,
+};
+static const uint8_t hippo_armour_medium_graze_1_ink[253] = {
+    0,0,0,0,0,7,7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,
+    0,0,0,7,7,1,4,4,4,1,4,4,4,1,4,7,7,7,7,7,7,7,7,
+    0,7,7,4,4,1,2,2,2,1,2,2,2,1,2,4,4,1,4,4,4,4,0,
+    7,4,4,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,7,7,7,0,
+    0,7,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,7,0,0,0,0,
+    0,0,7,7,2,7,2,7,7,7,2,2,2,1,2,2,7,7,0,0,0,0,0,
+    0,0,0,0,7,0,7,0,0,0,7,7,7,7,7,7,0,0,0,0,0,0,0,
+};
+static const uint8_t hippo_armour_medium_graze_2_ink[276] = {
+    0,0,0,7,7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,
+    0,7,7,4,4,1,4,4,4,1,4,4,4,7,0,0,0,0,0,0,0,0,0,
+    7,4,4,2,2,1,2,2,2,1,2,2,2,1,7,7,7,7,7,7,7,7,7,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,4,4,4,1,4,4,4,4,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,7,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,0,7,7,2,7,7,2,2,1,2,2,2,1,2,2,2,1,2,2,2,7,0,
+    0,0,0,0,7,0,0,7,2,1,2,2,2,1,2,2,2,7,7,7,7,0,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,7,7,2,7,7,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t hippo_armour_medium_graze_3_ink[253] = {
+    0,0,0,7,7,7,7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,
+    0,7,7,4,4,1,4,4,4,1,4,4,4,1,4,7,7,0,0,0,0,0,0,
+    7,4,4,2,2,1,2,2,2,1,2,2,2,1,2,4,4,7,0,0,0,0,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,7,7,7,0,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,4,4,4,7,7,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,4,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,7,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,0,7,7,2,7,7,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,0,0,0,7,0,0,7,2,1,2,2,2,1,2,7,7,1,2,2,7,7,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,7,7,7,0,0,7,7,7,0,0,0,
+};
+static const uint8_t hippo_armour_medium_graze_4_ink[253] = {
+    0,0,0,0,7,7,7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,
+    0,0,7,7,4,1,4,4,4,1,4,4,4,1,4,7,7,0,0,0,0,0,0,
+    7,7,4,4,2,1,2,2,2,1,2,2,2,1,2,4,4,7,7,7,0,0,0,
+    0,4,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,4,4,7,7,7,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,4,4,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,7,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,7,7,7,7,0,7,7,2,1,2,2,2,1,2,2,2,1,2,2,2,7,0,
+    0,0,0,0,0,0,0,0,7,7,2,2,2,7,7,7,7,7,7,7,7,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,7,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t hippo_armour_medium_graze_5_ink[253] = {
+    0,0,0,7,7,7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,
+    0,7,7,4,4,1,4,4,4,1,4,4,4,1,7,7,0,0,0,0,0,0,0,
+    7,4,4,2,2,1,2,2,2,1,2,2,2,1,4,4,7,7,7,7,7,0,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,4,1,4,4,4,7,7,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,4,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,7,2,2,7,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,0,7,7,0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,0,0,0,0,0,0,7,7,7,2,2,2,7,7,7,7,7,2,7,7,7,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,7,0,0,0,0,0,7,0,0,0,0,
+};
+static const uint8_t hippo_armour_medium_graze_6_ink[253] = {
+    0,0,0,0,7,7,7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,
+    0,0,7,7,4,1,4,4,4,1,4,4,4,1,4,7,7,7,7,7,7,7,7,
+    7,7,4,4,2,1,2,2,2,1,2,2,2,1,2,4,4,1,4,4,4,4,0,
+    0,4,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,7,0,
+    0,7,7,2,2,1,7,2,2,1,2,2,2,1,2,2,2,1,7,7,7,0,0,
+    0,0,0,7,7,7,0,7,7,1,2,2,2,1,2,2,7,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,
+};
+static const uint8_t hippo_armour_medium_graze_7_ink[253] = {
+    0,0,0,0,7,7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,
+    0,0,7,7,4,1,4,4,4,1,4,4,4,1,7,7,7,7,7,7,7,7,7,
+    7,7,4,4,2,1,2,2,2,1,2,2,2,1,4,4,4,1,4,4,4,4,0,
+    0,4,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,7,0,
+    0,7,7,2,2,1,7,2,2,1,2,2,2,1,2,2,2,1,7,7,7,0,0,
+    0,0,0,7,7,7,0,7,7,1,2,2,2,1,2,2,7,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,
+};
+static const uint8_t hippo_armour_medium_graze_8_ink[253] = {
+    0,0,7,7,7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,
+    7,7,4,4,4,1,4,4,4,1,4,4,4,7,7,7,7,7,7,7,7,7,7,
+    0,4,2,2,2,1,2,2,2,1,2,2,2,1,4,4,4,1,4,4,4,4,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,7,7,2,7,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,7,0,
+    0,0,0,7,0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,2,7,0,0,
+    0,0,0,0,0,0,0,7,2,1,2,2,2,1,2,7,7,7,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t hippo_armour_medium_graze_9_ink[253] = {
+    0,0,0,0,7,7,7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,
+    0,0,7,7,4,1,4,4,4,1,4,4,4,1,4,7,7,7,7,7,7,7,7,
+    7,7,4,4,2,1,2,2,2,1,2,2,2,1,2,4,4,1,4,4,4,4,0,
+    0,4,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,7,0,
+    0,7,7,2,2,1,7,7,2,1,2,2,2,1,2,2,2,1,7,7,7,0,0,
+    0,0,0,7,7,7,0,0,7,1,2,2,2,1,2,2,7,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,
+};
+static const uint8_t hippo_armour_medium_graze_10_ink[253] = {
+    0,0,0,0,7,7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,7,
+    0,0,7,7,4,1,4,4,4,1,4,4,4,1,7,7,7,7,7,7,7,7,0,
+    7,7,4,4,2,1,2,2,2,1,2,2,2,1,4,4,4,1,4,4,4,4,0,
+    0,4,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,7,0,
+    0,7,7,2,2,1,7,2,2,1,2,2,2,1,2,2,2,1,7,7,7,0,0,
+    0,0,0,7,7,7,0,7,7,1,2,2,2,1,2,2,7,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,
+};
+static const ArtFrame hippo_armour_medium_graze_frames[11] = {
+    {23, 11, 20, 32, -1, -1, hippo_armour_medium_graze_0_ink},
+    {23, 11, 21, 32, -1, -1, hippo_armour_medium_graze_1_ink},
+    {23, 12, 19, 32, -1, -1, hippo_armour_medium_graze_2_ink},
+    {23, 11, 19, 31, -1, -1, hippo_armour_medium_graze_3_ink},
+    {23, 11, 19, 30, -1, -1, hippo_armour_medium_graze_4_ink},
+    {23, 11, 18, 31, -1, -1, hippo_armour_medium_graze_5_ink},
+    {23, 11, 19, 32, -1, -1, hippo_armour_medium_graze_6_ink},
+    {23, 11, 20, 30, -1, -1, hippo_armour_medium_graze_7_ink},
+    {23, 11, 18, 31, -1, -1, hippo_armour_medium_graze_8_ink},
+    {23, 11, 19, 31, -1, -1, hippo_armour_medium_graze_9_ink},
+    {23, 11, 20, 32, -1, -1, hippo_armour_medium_graze_10_ink},
+};
+static const uint8_t hippo_armour_medium_bite_0_ink[253] = {
+    0,0,0,0,7,7,7,7,7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,
+    0,0,7,7,4,1,4,4,4,1,4,4,4,1,4,4,4,7,7,7,7,7,7,
+    0,7,4,4,2,1,2,2,2,1,2,2,2,1,2,2,2,1,4,4,4,4,0,
+    7,4,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,7,7,7,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,7,0,0,0,0,
+    0,0,0,7,7,7,7,7,7,7,2,2,2,1,2,7,7,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,7,7,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t hippo_armour_medium_bite_1_ink[276] = {
+    0,0,0,0,0,0,0,0,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,
+    0,0,0,0,0,7,7,7,4,1,4,4,4,1,4,4,7,7,0,0,0,0,0,
+    0,0,0,7,7,1,4,4,2,1,2,2,2,1,2,2,4,1,7,7,7,7,7,
+    0,0,7,4,4,1,2,2,2,1,2,2,2,1,2,2,2,1,4,4,4,4,0,
+    0,7,4,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    7,4,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,7,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,7,7,0,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,7,7,0,0,0,0,
+    0,7,7,7,2,7,7,2,7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,
+    0,0,0,0,7,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t hippo_armour_medium_bite_2_ink[253] = {
+    0,0,0,0,7,7,7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,
+    0,0,7,7,4,1,4,4,4,1,4,4,4,1,4,7,7,0,0,0,0,0,0,
+    7,7,4,4,2,1,2,2,2,1,2,2,2,1,2,4,4,7,7,7,7,7,7,
+    0,4,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,4,4,4,4,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,7,7,7,7,7,7,2,2,1,2,2,2,1,2,2,2,1,2,2,2,7,0,
+    0,0,0,0,0,0,0,7,7,1,2,2,2,1,2,2,7,1,7,7,7,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,7,0,7,0,0,0,0,0,
+};
+static const uint8_t hippo_armour_medium_bite_3_ink[253] = {
+    0,0,0,7,7,7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,
+    0,7,7,4,4,1,4,4,4,1,4,4,4,1,7,7,0,0,0,0,0,0,0,
+    7,4,4,2,2,1,2,2,2,1,2,2,2,1,4,4,7,7,7,7,7,7,7,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,4,1,4,4,4,4,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,7,2,2,7,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,0,7,7,0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,2,2,7,0,
+    0,0,0,0,0,0,0,7,2,1,2,2,2,1,2,2,2,1,2,2,7,0,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,7,7,7,7,7,7,7,7,0,0,0,
+};
+static const ArtFrame hippo_armour_medium_bite_frames[4] = {
+    {23, 11, 21, 30, -1, -1, hippo_armour_medium_bite_0_ink},
+    {23, 12, 22, 31, -1, -1, hippo_armour_medium_bite_1_ink},
+    {23, 11, 19, 30, -1, -1, hippo_armour_medium_bite_2_ink},
+    {23, 11, 18, 30, -1, -1, hippo_armour_medium_bite_3_ink},
+};
+static const uint8_t hippo_armour_medium_attack_0_ink[253] = {
+    0,0,0,7,7,7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,7,
+    0,7,7,4,4,1,4,4,4,1,4,4,4,1,7,7,7,7,7,7,7,7,0,
+    7,4,4,2,2,1,2,2,2,1,2,2,2,1,4,4,4,1,4,4,4,4,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,7,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,7,0,
+    0,0,7,7,7,7,7,2,2,1,2,2,2,1,2,2,2,1,7,2,7,0,0,
+    0,0,0,0,0,0,0,7,2,1,2,2,2,1,2,7,7,7,0,7,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t hippo_armour_medium_attack_1_ink[253] = {
+    0,0,7,7,7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,7,7,
+    7,7,4,4,4,1,4,4,4,1,4,4,4,7,7,7,7,7,7,7,7,4,0,
+    0,4,2,2,2,1,2,2,2,1,2,2,2,1,4,4,4,1,4,4,4,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,7,0,
+    0,0,0,7,2,1,7,2,2,1,2,2,2,1,2,2,2,1,2,2,7,0,0,
+    0,0,0,0,7,7,0,7,7,7,2,2,2,1,2,7,7,1,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,7,7,7,0,0,7,0,0,0,0,0,
+};
+static const uint8_t hippo_armour_medium_attack_2_ink[276] = {
+    0,0,0,0,0,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,7,7,1,4,4,4,1,4,4,4,7,7,7,7,0,0,0,0,0,7,
+    0,7,7,4,4,1,2,2,2,1,2,2,2,1,4,4,4,7,7,7,7,7,0,
+    7,4,4,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,4,4,4,4,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,7,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,7,0,
+    0,0,7,7,2,7,2,7,7,1,2,2,2,1,2,2,7,1,2,2,7,0,0,
+    0,0,0,0,7,0,7,0,0,7,7,7,7,7,7,7,0,1,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,
+};
+static const uint8_t hippo_armour_medium_attack_3_ink[253] = {
+    0,0,0,0,0,7,7,7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,
+    0,0,0,7,7,1,4,4,4,1,4,4,4,1,4,4,7,0,0,0,0,0,7,
+    7,7,7,4,4,1,2,2,2,1,2,2,2,1,2,2,4,7,7,7,7,7,0,
+    0,4,4,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,4,4,4,4,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,7,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,7,0,
+    0,0,7,7,2,7,2,7,7,7,2,2,2,1,2,7,7,1,2,2,7,0,0,
+    0,0,0,0,7,0,7,0,0,0,7,7,7,7,7,0,0,7,7,7,0,0,0,
+};
+static const uint8_t hippo_armour_medium_attack_4_ink[253] = {
+    0,0,0,0,0,0,7,7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,
+    0,0,0,0,7,7,4,4,4,1,4,4,4,1,4,4,7,7,7,0,0,0,0,
+    0,0,7,7,4,1,2,2,2,1,2,2,2,1,2,2,4,1,4,7,7,7,7,
+    0,7,4,4,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,4,4,4,0,
+    7,4,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,7,7,7,7,0,
+    0,7,7,2,2,1,2,7,7,7,2,2,2,1,2,7,7,7,0,0,0,0,0,
+    0,0,0,7,7,7,7,0,0,0,7,7,7,7,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t hippo_armour_medium_attack_5_ink[276] = {
+    0,0,0,0,0,0,0,7,7,7,7,7,7,7,7,7,7,7,0,0,0,0,0,
+    0,0,0,0,7,7,7,4,4,1,4,4,4,1,4,4,4,1,7,7,7,0,0,
+    0,0,0,7,4,1,4,2,2,1,2,2,2,1,2,2,2,1,4,4,4,7,7,
+    0,0,7,4,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,4,0,
+    0,7,4,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    7,4,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,7,7,7,7,7,0,
+    0,2,2,2,2,1,2,7,7,7,7,2,2,7,7,7,7,0,0,0,0,0,0,
+    0,7,7,7,7,7,2,0,0,0,0,7,7,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t hippo_armour_medium_attack_6_ink[253] = {
+    0,0,0,0,0,0,0,7,7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,
+    0,0,0,0,0,7,7,4,4,1,4,4,4,1,4,4,4,7,7,7,7,0,0,
+    0,0,0,0,7,1,4,2,2,1,2,2,2,1,2,2,2,1,4,4,4,7,7,
+    0,0,7,7,4,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,4,0,
+    0,7,4,4,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    7,4,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,7,7,7,0,
+    0,7,7,2,2,7,2,2,2,1,2,2,2,7,7,7,7,7,7,0,0,0,0,
+    0,0,0,7,7,0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t hippo_armour_medium_attack_7_ink[276] = {
+    0,0,0,0,0,7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,
+    0,0,0,7,7,1,4,4,4,1,4,4,4,1,7,7,7,0,0,0,0,0,0,
+    0,7,7,4,4,1,2,2,2,1,2,2,2,1,4,4,4,7,7,7,7,7,7,
+    7,4,4,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,4,4,4,4,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,7,0,
+    0,7,7,7,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,0,0,
+    0,0,0,0,7,7,7,2,7,7,2,2,2,1,2,2,2,1,2,7,7,0,0,
+    0,0,0,0,0,0,0,7,0,0,7,7,7,7,2,2,7,1,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,0,7,0,0,0,0,0,
+};
+static const uint8_t hippo_armour_medium_attack_8_ink[276] = {
+    0,0,0,7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,7,7,
+    7,7,7,4,4,1,4,4,4,1,4,4,7,7,7,7,7,7,7,7,7,4,0,
+    0,4,4,2,2,1,2,2,2,1,2,2,4,1,4,4,4,1,4,4,4,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,7,0,
+    0,7,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,7,0,0,
+    0,0,7,7,2,7,7,2,2,1,2,2,2,1,2,2,2,1,2,7,0,0,0,
+    0,0,0,0,7,0,0,7,2,1,2,2,2,1,2,2,2,1,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,2,1,2,2,7,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,0,0,0,0,0,0,0,
+};
+static const ArtFrame hippo_armour_medium_attack_frames[9] = {
+    {23, 11, 19, 30, -1, -1, hippo_armour_medium_attack_0_ink},
+    {23, 11, 19, 30, -1, -1, hippo_armour_medium_attack_1_ink},
+    {23, 12, 21, 30, -1, -1, hippo_armour_medium_attack_2_ink},
+    {23, 11, 21, 30, -1, -1, hippo_armour_medium_attack_3_ink},
+    {23, 11, 22, 31, -1, -1, hippo_armour_medium_attack_4_ink},
+    {23, 12, 22, 30, -1, -1, hippo_armour_medium_attack_5_ink},
+    {23, 11, 21, 29, -1, -1, hippo_armour_medium_attack_6_ink},
+    {23, 12, 18, 30, -1, -1, hippo_armour_medium_attack_7_ink},
+    {23, 12, 17, 30, -1, -1, hippo_armour_medium_attack_8_ink},
+};
+static const uint8_t hippo_armour_medium_sleep_0_ink[230] = {
+    0,0,0,0,0,7,7,7,7,7,7,7,7,7,7,7,7,7,0,0,0,0,0,
+    0,0,7,7,7,1,4,4,4,1,4,4,4,1,4,4,4,1,7,7,7,7,7,
+    7,7,4,4,4,1,2,2,2,1,2,2,2,1,2,2,2,1,4,4,4,4,0,
+    0,4,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,7,0,
+    0,7,7,7,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,7,0,0,
+    0,0,0,0,7,7,7,2,2,1,2,2,2,1,2,2,7,7,7,7,0,0,0,
+    0,0,0,0,0,0,0,7,7,7,7,2,7,7,7,7,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t hippo_armour_medium_sleep_1_ink[230] = {
+    0,0,0,0,0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,7,7,7,1,4,4,4,1,4,4,7,7,7,7,7,0,0,0,0,0,0,
+    7,4,4,4,4,1,2,2,2,1,2,2,4,1,4,4,4,7,7,7,7,7,7,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,4,4,4,4,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,7,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,0,7,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,7,0,
+    0,0,0,7,7,7,7,2,2,1,2,2,2,1,2,2,2,1,2,7,7,0,0,
+    0,0,0,0,0,0,0,7,7,7,7,2,2,1,2,7,7,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t hippo_armour_medium_sleep_2_ink[230] = {
+    0,0,7,7,7,7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,
+    7,7,4,4,4,1,4,4,4,1,4,4,4,1,7,7,7,7,7,0,0,0,0,
+    0,4,2,2,2,1,2,2,2,1,2,2,2,1,4,4,4,1,4,7,7,7,7,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,4,4,4,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,7,0,
+    0,0,0,0,0,7,7,2,2,1,2,2,2,1,2,2,2,1,7,7,7,0,0,
+    0,0,0,0,0,0,0,7,7,7,7,2,7,7,2,7,7,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,0,0,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t hippo_armour_medium_sleep_3_ink[230] = {
+    0,0,7,7,7,7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,
+    7,7,4,4,4,1,4,4,4,1,4,4,4,1,7,7,7,7,7,0,0,0,0,
+    0,4,2,2,2,1,2,2,2,1,2,2,2,1,4,4,4,1,4,7,7,7,7,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,4,4,4,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,7,0,
+    0,0,0,0,0,7,7,2,2,1,2,2,2,1,2,2,2,1,7,7,7,0,0,
+    0,0,0,0,0,0,0,7,7,7,7,2,7,7,2,7,7,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,0,0,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t hippo_armour_medium_sleep_4_ink[230] = {
+    0,0,7,7,7,7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,
+    7,7,4,4,4,1,4,4,4,1,4,4,4,1,7,7,7,7,7,0,0,0,0,
+    0,4,2,2,2,1,2,2,2,1,2,2,2,1,4,4,4,1,4,7,7,7,7,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,4,4,4,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,7,0,
+    0,0,0,0,0,7,7,2,2,1,2,2,2,1,2,2,2,1,7,7,7,0,0,
+    0,0,0,0,0,0,0,7,7,7,7,2,7,7,2,7,7,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,0,0,7,0,0,0,0,0,0,0,0,
+};
+static const ArtFrame hippo_armour_medium_sleep_frames[5] = {
+    {23, 10, 15, 22, -1, -1, hippo_armour_medium_sleep_0_ink},
+    {23, 10, 15, 22, -1, -1, hippo_armour_medium_sleep_1_ink},
+    {23, 10, 15, 22, -1, -1, hippo_armour_medium_sleep_2_ink},
+    {23, 10, 15, 22, -1, -1, hippo_armour_medium_sleep_3_ink},
+    {23, 10, 15, 22, -1, -1, hippo_armour_medium_sleep_4_ink},
+};
+static const ArtClip hippo_armour_medium_clips[ACTION_COUNT] = {
+    [ACTION_REST] = {1, hippo_armour_medium_idle_frames},
+    [ACTION_WALK] = {4, hippo_armour_medium_walk_frames},
+    [ACTION_RUN] = {4, hippo_armour_medium_run_frames},
+    [ACTION_GRAZE] = {11, hippo_armour_medium_graze_frames},
+    [ACTION_BITE] = {4, hippo_armour_medium_bite_frames},
+    [ACTION_ATTACK] = {9, hippo_armour_medium_attack_frames},
+    [ACTION_SLEEP] = {5, hippo_armour_medium_sleep_frames},
+};
 static const uint8_t hippo_weapon_full_idle_0_ink[30] = {
     0,0,0,0,0,15,
     0,0,13,0,14,0,
@@ -23340,6 +29755,295 @@ static const ArtClip hippo_weapon_full_clips[ACTION_COUNT] = {
     [ACTION_BITE] = {4, hippo_weapon_full_bite_frames},
     [ACTION_ATTACK] = {9, hippo_weapon_full_attack_frames},
     [ACTION_SLEEP] = {5, hippo_weapon_full_sleep_frames},
+};
+static const uint8_t hippo_weapon_medium_idle_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame hippo_weapon_medium_idle_frames[1] = {
+    {5, 4, -19, 37, -1, -1, hippo_weapon_medium_idle_0_ink},
+};
+static const uint8_t hippo_weapon_medium_walk_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hippo_weapon_medium_walk_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hippo_weapon_medium_walk_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hippo_weapon_medium_walk_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame hippo_weapon_medium_walk_frames[4] = {
+    {5, 4, -21, 31, -1, -1, hippo_weapon_medium_walk_0_ink},
+    {5, 4, -20, 31, -1, -1, hippo_weapon_medium_walk_1_ink},
+    {5, 4, -21, 30, -1, -1, hippo_weapon_medium_walk_2_ink},
+    {5, 4, -20, 32, -1, -1, hippo_weapon_medium_walk_3_ink},
+};
+static const uint8_t hippo_weapon_medium_run_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hippo_weapon_medium_run_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hippo_weapon_medium_run_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hippo_weapon_medium_run_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame hippo_weapon_medium_run_frames[4] = {
+    {5, 4, -20, 33, -1, -1, hippo_weapon_medium_run_0_ink},
+    {5, 4, -20, 35, -1, -1, hippo_weapon_medium_run_1_ink},
+    {5, 4, -19, 37, -1, -1, hippo_weapon_medium_run_2_ink},
+    {5, 4, -20, 35, -1, -1, hippo_weapon_medium_run_3_ink},
+};
+static const uint8_t hippo_weapon_medium_graze_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hippo_weapon_medium_graze_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hippo_weapon_medium_graze_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hippo_weapon_medium_graze_3_ink[15] = {
+    0,0,0,0,15,
+    11,12,14,15,0,
+    12,13,0,0,0,
+};
+static const uint8_t hippo_weapon_medium_graze_4_ink[15] = {
+    0,0,0,0,15,
+    11,12,14,15,0,
+    12,13,0,0,0,
+};
+static const uint8_t hippo_weapon_medium_graze_5_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hippo_weapon_medium_graze_6_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hippo_weapon_medium_graze_7_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hippo_weapon_medium_graze_8_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hippo_weapon_medium_graze_9_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hippo_weapon_medium_graze_10_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame hippo_weapon_medium_graze_frames[11] = {
+    {5, 4, -19, 37, -1, -1, hippo_weapon_medium_graze_0_ink},
+    {5, 4, -18, 35, -1, -1, hippo_weapon_medium_graze_1_ink},
+    {5, 4, -21, 30, -1, -1, hippo_weapon_medium_graze_2_ink},
+    {5, 3, -23, 20, -1, -1, hippo_weapon_medium_graze_3_ink},
+    {5, 3, -23, 22, -1, -1, hippo_weapon_medium_graze_4_ink},
+    {5, 4, -22, 27, -1, -1, hippo_weapon_medium_graze_5_ink},
+    {5, 4, -21, 32, -1, -1, hippo_weapon_medium_graze_6_ink},
+    {5, 4, -20, 29, -1, -1, hippo_weapon_medium_graze_7_ink},
+    {5, 4, -22, 28, -1, -1, hippo_weapon_medium_graze_8_ink},
+    {5, 4, -21, 32, -1, -1, hippo_weapon_medium_graze_9_ink},
+    {5, 4, -19, 35, -1, -1, hippo_weapon_medium_graze_10_ink},
+};
+static const uint8_t hippo_weapon_medium_bite_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hippo_weapon_medium_bite_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hippo_weapon_medium_bite_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hippo_weapon_medium_bite_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame hippo_weapon_medium_bite_frames[4] = {
+    {5, 4, -18, 34, -1, -1, hippo_weapon_medium_bite_0_ink},
+    {5, 4, -17, 34, -1, -1, hippo_weapon_medium_bite_1_ink},
+    {5, 4, -20, 30, -1, -1, hippo_weapon_medium_bite_2_ink},
+    {5, 4, -21, 29, -1, -1, hippo_weapon_medium_bite_3_ink},
+};
+static const uint8_t hippo_weapon_medium_attack_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hippo_weapon_medium_attack_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hippo_weapon_medium_attack_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hippo_weapon_medium_attack_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hippo_weapon_medium_attack_4_ink[20] = {
+    0,0,0,15,
+    0,0,15,0,
+    0,0,14,0,
+    12,13,0,0,
+    11,12,0,0,
+};
+static const uint8_t hippo_weapon_medium_attack_5_ink[20] = {
+    0,0,0,15,
+    0,0,15,0,
+    0,0,14,0,
+    12,13,0,0,
+    11,12,0,0,
+};
+static const uint8_t hippo_weapon_medium_attack_6_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hippo_weapon_medium_attack_7_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hippo_weapon_medium_attack_8_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame hippo_weapon_medium_attack_frames[9] = {
+    {5, 4, -20, 33, -1, -1, hippo_weapon_medium_attack_0_ink},
+    {5, 4, -20, 35, -1, -1, hippo_weapon_medium_attack_1_ink},
+    {5, 4, -18, 36, -1, -1, hippo_weapon_medium_attack_2_ink},
+    {5, 4, -18, 37, -1, -1, hippo_weapon_medium_attack_3_ink},
+    {4, 5, -17, 39, -1, -1, hippo_weapon_medium_attack_4_ink},
+    {4, 5, -17, 38, -1, -1, hippo_weapon_medium_attack_5_ink},
+    {5, 4, -18, 34, -1, -1, hippo_weapon_medium_attack_6_ink},
+    {5, 4, -21, 31, -1, -1, hippo_weapon_medium_attack_7_ink},
+    {5, 4, -23, 29, -1, -1, hippo_weapon_medium_attack_8_ink},
+};
+static const uint8_t hippo_weapon_medium_sleep_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hippo_weapon_medium_sleep_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hippo_weapon_medium_sleep_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hippo_weapon_medium_sleep_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t hippo_weapon_medium_sleep_4_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame hippo_weapon_medium_sleep_frames[5] = {
+    {5, 4, -24, 18, -1, -1, hippo_weapon_medium_sleep_0_ink},
+    {5, 4, -24, 17, -1, -1, hippo_weapon_medium_sleep_1_ink},
+    {5, 4, -24, 18, -1, -1, hippo_weapon_medium_sleep_2_ink},
+    {5, 4, -24, 18, -1, -1, hippo_weapon_medium_sleep_3_ink},
+    {5, 4, -24, 18, -1, -1, hippo_weapon_medium_sleep_4_ink},
+};
+static const ArtClip hippo_weapon_medium_clips[ACTION_COUNT] = {
+    [ACTION_REST] = {1, hippo_weapon_medium_idle_frames},
+    [ACTION_WALK] = {4, hippo_weapon_medium_walk_frames},
+    [ACTION_RUN] = {4, hippo_weapon_medium_run_frames},
+    [ACTION_GRAZE] = {11, hippo_weapon_medium_graze_frames},
+    [ACTION_BITE] = {4, hippo_weapon_medium_bite_frames},
+    [ACTION_ATTACK] = {9, hippo_weapon_medium_attack_frames},
+    [ACTION_SLEEP] = {5, hippo_weapon_medium_sleep_frames},
 };
 static const ArtClip hippo_clips[ACTION_COUNT] = {
     [ACTION_REST] = {1, hippo_idle_frames},
@@ -25436,6 +32140,414 @@ static const ArtClip lemur_armour_full_clips[ACTION_COUNT] = {
     [ACTION_ATTACK] = {9, lemur_armour_full_attack_frames},
     [ACTION_SLEEP] = {4, lemur_armour_full_sleep_frames},
 };
+static const uint8_t lemur_armour_medium_idle_0_ink[90] = {
+    0,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,7,7,
+    7,4,4,4,4,1,4,4,4,7,7,7,7,7,7,7,4,0,
+    0,7,2,2,2,1,2,2,2,1,4,4,4,1,4,4,2,0,
+    0,0,7,7,7,7,7,7,7,1,2,2,2,7,7,2,7,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,7,0,0,7,0,0,
+};
+static const uint8_t lemur_armour_medium_idle_1_ink[90] = {
+    0,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,7,7,
+    7,4,4,4,4,1,4,4,4,7,7,7,7,7,7,7,4,0,
+    0,7,2,2,2,1,2,2,2,1,4,4,4,1,4,4,2,0,
+    0,0,7,7,7,7,7,7,7,1,2,2,2,7,7,2,7,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,7,0,0,7,0,0,
+};
+static const uint8_t lemur_armour_medium_idle_2_ink[90] = {
+    0,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,7,7,
+    7,4,4,4,4,1,4,4,4,7,7,7,7,7,7,7,4,0,
+    0,2,2,2,2,1,2,2,2,1,4,4,4,1,4,4,2,0,
+    0,7,7,7,7,7,7,7,2,1,2,2,2,1,7,2,7,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,7,7,0,7,0,0,
+};
+static const uint8_t lemur_armour_medium_idle_3_ink[90] = {
+    0,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,7,7,
+    7,4,4,4,4,1,4,4,4,7,7,7,7,7,7,7,4,0,
+    0,2,2,2,2,1,2,2,2,1,4,4,4,1,4,4,2,0,
+    0,7,7,7,7,7,7,7,2,1,2,2,2,1,7,2,7,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,7,7,0,7,0,0,
+};
+static const uint8_t lemur_armour_medium_idle_4_ink[90] = {
+    0,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,7,7,
+    7,4,4,4,4,1,4,4,4,7,7,7,7,7,7,7,4,0,
+    0,2,2,2,2,1,2,2,2,1,4,4,4,1,4,4,2,0,
+    0,7,7,7,7,7,7,7,2,1,2,2,2,1,7,2,7,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,7,7,0,7,0,0,
+};
+static const uint8_t lemur_armour_medium_idle_5_ink[90] = {
+    0,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,7,7,
+    7,4,4,4,4,1,4,4,4,7,7,7,7,7,7,7,4,0,
+    0,2,2,2,2,1,2,2,2,1,4,4,4,1,4,4,2,0,
+    0,7,7,7,7,7,7,7,2,1,2,2,2,1,7,2,7,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,7,7,0,7,0,0,
+};
+static const uint8_t lemur_armour_medium_idle_6_ink[90] = {
+    0,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,7,7,
+    7,4,4,4,4,1,4,4,4,7,7,7,7,7,7,7,4,0,
+    0,2,2,2,2,1,2,2,2,1,4,4,4,1,4,4,2,0,
+    0,7,7,7,7,7,7,7,2,1,2,2,2,1,7,2,7,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,7,7,0,7,0,0,
+};
+static const uint8_t lemur_armour_medium_idle_7_ink[90] = {
+    0,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,7,7,
+    7,4,4,4,4,1,4,4,4,7,7,7,7,7,7,7,4,0,
+    0,2,2,2,2,1,2,2,2,1,4,4,4,1,4,4,2,0,
+    0,7,7,7,7,7,7,7,2,1,2,2,2,1,7,2,7,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,7,7,0,7,0,0,
+};
+static const ArtFrame lemur_armour_medium_idle_frames[8] = {
+    {18, 5, 9, 18, -1, -1, lemur_armour_medium_idle_0_ink},
+    {18, 5, 9, 18, -1, -1, lemur_armour_medium_idle_1_ink},
+    {18, 5, 9, 19, -1, -1, lemur_armour_medium_idle_2_ink},
+    {18, 5, 9, 19, -1, -1, lemur_armour_medium_idle_3_ink},
+    {18, 5, 9, 19, -1, -1, lemur_armour_medium_idle_4_ink},
+    {18, 5, 9, 19, -1, -1, lemur_armour_medium_idle_5_ink},
+    {18, 5, 9, 19, -1, -1, lemur_armour_medium_idle_6_ink},
+    {18, 5, 9, 19, -1, -1, lemur_armour_medium_idle_7_ink},
+};
+static const uint8_t lemur_armour_medium_walk_0_ink[144] = {
+    0,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    7,4,4,4,4,1,4,7,7,0,0,0,0,0,0,0,7,7,
+    0,7,2,2,2,1,2,4,4,7,7,7,7,7,7,7,4,0,
+    0,0,7,7,7,7,7,2,2,1,4,4,4,1,4,4,7,0,
+    0,0,0,0,0,0,0,7,7,1,2,2,2,1,2,2,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,2,1,2,7,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,2,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,
+};
+static const uint8_t lemur_armour_medium_walk_1_ink[108] = {
+    0,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,7,7,
+    7,4,4,4,4,1,7,7,7,7,7,7,7,7,7,7,4,0,
+    0,2,2,2,2,1,4,4,4,1,4,4,4,1,4,4,2,0,
+    0,7,2,2,2,7,2,2,2,1,2,2,2,7,2,2,7,0,
+    0,0,7,2,2,0,7,7,7,7,7,7,7,0,7,7,0,0,
+    0,0,0,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t lemur_armour_medium_walk_2_ink[144] = {
+    0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,
+    7,4,4,4,4,1,4,4,7,7,0,0,0,0,0,0,7,7,
+    0,2,2,2,2,1,2,2,4,1,7,7,7,7,7,7,4,0,
+    0,7,7,7,7,7,7,7,2,1,4,4,4,1,4,4,7,0,
+    0,0,0,0,0,0,0,0,7,1,2,2,2,1,2,2,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,2,2,1,2,7,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,2,2,1,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,7,7,0,0,0,0,
+};
+static const uint8_t lemur_armour_medium_walk_3_ink[126] = {
+    7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,7,7,7,0,0,0,0,0,0,0,7,7,
+    0,2,2,2,2,1,4,4,4,7,7,0,7,7,7,7,4,0,
+    0,2,7,7,7,7,2,2,2,1,4,7,4,1,4,4,2,0,
+    0,7,0,0,0,0,7,7,7,1,2,4,2,7,2,2,7,0,
+    0,0,0,0,0,0,0,0,0,7,7,2,7,0,7,7,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,
+};
+static const ArtFrame lemur_armour_medium_walk_frames[4] = {
+    {18, 8, 9, 20, -1, -1, lemur_armour_medium_walk_0_ink},
+    {18, 6, 9, 19, -1, -1, lemur_armour_medium_walk_1_ink},
+    {18, 8, 9, 20, -1, -1, lemur_armour_medium_walk_2_ink},
+    {18, 7, 9, 19, -1, -1, lemur_armour_medium_walk_3_ink},
+};
+static const uint8_t lemur_armour_medium_run_0_ink[108] = {
+    0,0,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,
+    7,7,4,4,4,1,4,4,7,7,7,0,0,0,0,0,0,7,
+    0,4,7,7,7,1,2,2,4,1,4,7,7,7,7,7,7,0,
+    0,7,0,0,0,7,7,7,2,1,2,4,4,1,4,4,4,0,
+    0,0,0,0,0,0,0,0,2,1,2,2,2,1,7,7,7,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,
+};
+static const uint8_t lemur_armour_medium_run_1_ink[126] = {
+    7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,7,7,7,0,0,0,0,0,0,0,7,7,
+    0,2,2,2,2,1,4,4,4,7,7,7,7,7,7,7,4,0,
+    0,7,7,7,2,1,2,2,2,1,4,4,4,1,4,4,7,0,
+    0,0,0,0,7,7,7,7,2,1,2,2,2,1,7,7,0,0,
+    0,0,0,0,0,0,0,0,7,1,7,7,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t lemur_armour_medium_run_2_ink[396] = {
+    7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,0,
+    0,0,0,0,0,7,4,4,4,1,4,4,7,7,7,7,7,7,
+    0,0,0,7,7,1,2,2,2,1,2,2,4,1,4,4,4,0,
+    0,0,0,7,4,7,2,2,2,1,2,2,2,1,2,7,7,0,
+    0,0,0,0,7,0,7,2,2,1,2,2,2,1,7,0,0,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,7,7,0,0,0,0,
+};
+static const uint8_t lemur_armour_medium_run_3_ink[180] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,4,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,7,1,2,7,7,0,
+    0,0,0,0,0,0,0,0,0,0,7,4,4,1,7,0,0,0,
+    0,0,0,0,0,0,0,7,7,7,4,2,2,7,0,0,0,0,
+    0,0,0,0,7,7,7,4,4,1,2,7,7,0,0,0,0,0,
+    0,0,7,7,4,1,4,2,2,1,7,0,0,0,0,0,0,0,
+    0,7,4,4,2,1,2,7,7,7,0,0,0,0,0,0,0,0,
+    7,4,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+};
+static const ArtFrame lemur_armour_medium_run_frames[4] = {
+    {18, 6, 7, 18, -1, -1, lemur_armour_medium_run_0_ink},
+    {18, 7, 9, 17, -1, -1, lemur_armour_medium_run_1_ink},
+    {18, 22, 11, 32, -1, -1, lemur_armour_medium_run_2_ink},
+    {18, 10, 9, 19, -1, -1, lemur_armour_medium_run_3_ink},
+};
+static const uint8_t lemur_armour_medium_graze_0_ink[126] = {
+    0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,
+    7,4,4,4,4,1,4,4,7,7,0,0,0,0,0,0,0,0,
+    0,7,7,7,2,1,2,2,4,1,7,7,0,0,0,0,0,0,
+    0,0,0,0,7,7,7,2,2,1,4,4,7,7,7,7,7,7,
+    0,0,0,0,0,0,0,7,2,1,2,2,4,1,4,4,4,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,2,1,7,7,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,7,0,0,0,0,
+};
+static const uint8_t lemur_armour_medium_graze_1_ink[126] = {
+    0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,
+    7,4,4,4,4,1,4,4,7,7,0,0,0,0,0,0,0,0,
+    0,7,2,2,2,1,2,2,4,1,7,7,0,0,0,0,0,0,
+    0,0,7,7,7,7,7,7,2,1,4,4,7,7,7,7,7,7,
+    0,0,0,0,0,0,0,0,2,1,2,2,4,1,4,4,4,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,2,1,7,7,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,7,0,0,0,0,
+};
+static const uint8_t lemur_armour_medium_graze_2_ink[126] = {
+    0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,
+    7,4,4,4,4,1,4,4,7,7,0,0,0,0,0,0,0,0,
+    0,7,2,2,2,1,2,2,4,1,7,7,0,0,0,0,0,0,
+    0,0,7,7,7,7,7,2,2,1,4,4,7,7,7,7,7,7,
+    0,0,0,0,0,0,0,7,2,1,2,2,4,1,4,4,4,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,2,1,7,7,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,7,0,0,0,0,
+};
+static const uint8_t lemur_armour_medium_graze_3_ink[126] = {
+    0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,
+    7,4,4,4,4,1,4,4,7,7,0,0,0,0,0,0,0,0,
+    0,7,7,7,2,1,2,2,4,1,7,7,0,0,0,0,0,0,
+    0,0,0,0,7,7,7,7,2,1,4,4,7,7,7,7,7,7,
+    0,0,0,0,0,0,0,0,2,1,2,2,4,1,4,4,4,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,2,1,7,7,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,7,0,0,0,0,
+};
+static const uint8_t lemur_armour_medium_graze_4_ink[126] = {
+    0,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    7,4,4,4,4,1,4,7,7,7,0,0,0,0,0,0,0,0,
+    0,7,7,7,2,1,2,4,4,1,7,7,0,0,0,0,0,0,
+    0,0,0,0,7,7,7,2,2,1,4,4,7,7,7,7,7,7,
+    0,0,0,0,0,0,0,7,2,1,2,2,4,1,4,4,4,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,2,1,7,7,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,7,0,0,0,0,
+};
+static const uint8_t lemur_armour_medium_graze_5_ink[126] = {
+    0,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,
+    7,4,4,4,4,1,4,4,4,7,7,0,0,0,0,0,0,0,
+    0,7,2,2,2,1,2,2,2,1,4,7,0,0,0,0,0,0,
+    0,0,7,7,7,7,7,7,2,1,2,4,7,7,7,7,7,7,
+    0,0,0,0,0,0,0,0,7,1,2,2,4,1,4,4,4,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,2,1,7,7,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,7,0,0,0,0,
+};
+static const uint8_t lemur_armour_medium_graze_6_ink[108] = {
+    0,7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,
+    7,4,4,4,4,1,4,4,4,1,7,7,0,0,0,0,0,0,
+    0,7,7,7,7,1,2,2,2,1,4,4,7,7,7,7,7,7,
+    0,0,0,0,0,7,7,7,2,1,2,2,4,1,4,4,4,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,2,1,7,7,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,7,0,0,0,0,
+};
+static const ArtFrame lemur_armour_medium_graze_frames[7] = {
+    {18, 7, 9, 20, -1, -1, lemur_armour_medium_graze_0_ink},
+    {18, 7, 9, 20, -1, -1, lemur_armour_medium_graze_1_ink},
+    {18, 7, 9, 20, -1, -1, lemur_armour_medium_graze_2_ink},
+    {18, 7, 9, 20, -1, -1, lemur_armour_medium_graze_3_ink},
+    {18, 7, 9, 20, -1, -1, lemur_armour_medium_graze_4_ink},
+    {18, 7, 9, 20, -1, -1, lemur_armour_medium_graze_5_ink},
+    {18, 6, 9, 20, -1, -1, lemur_armour_medium_graze_6_ink},
+};
+static const uint8_t lemur_armour_medium_bite_0_ink[108] = {
+    7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,7,7,7,
+    0,4,4,4,4,1,7,7,7,7,7,7,7,7,7,4,4,0,
+    0,7,7,7,7,1,4,4,4,1,4,4,4,1,4,2,2,0,
+    0,0,0,0,0,7,2,2,2,1,2,2,2,7,2,2,7,0,
+    0,0,0,0,0,0,7,7,7,7,7,7,7,0,2,7,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,
+};
+static const uint8_t lemur_armour_medium_bite_1_ink[144] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    7,7,7,0,0,0,0,0,0,0,0,0,7,7,7,7,7,0,
+    0,4,4,7,7,7,7,7,7,7,7,7,4,1,4,4,4,0,
+    0,7,7,4,4,1,4,4,4,1,4,4,2,1,2,2,7,0,
+    0,0,0,7,7,7,2,2,2,1,2,2,2,1,2,2,0,0,
+    0,0,0,0,0,0,7,7,7,7,7,2,2,1,2,7,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,2,7,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,
+};
+static const uint8_t lemur_armour_medium_bite_2_ink[126] = {
+    7,7,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,7,
+    0,7,7,7,7,7,7,7,7,7,7,7,7,1,4,4,4,0,
+    0,0,4,4,4,1,4,4,4,1,4,4,4,1,2,2,7,0,
+    0,0,7,7,7,1,2,2,2,1,2,2,2,1,2,2,0,0,
+    0,0,0,0,0,7,7,7,2,1,7,2,2,1,7,7,0,0,
+    0,0,0,0,0,0,0,0,7,7,0,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,
+};
+static const uint8_t lemur_armour_medium_bite_3_ink[108] = {
+    7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,7,7,7,
+    0,4,4,4,7,7,7,7,7,7,7,7,7,7,7,4,4,0,
+    0,7,7,7,4,1,4,4,4,1,4,4,4,1,4,2,2,0,
+    0,0,0,0,7,7,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,0,7,7,7,7,7,7,7,1,2,7,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,0,0,0,
+};
+static const ArtFrame lemur_armour_medium_bite_frames[4] = {
+    {18, 6, 7, 18, -1, -1, lemur_armour_medium_bite_0_ink},
+    {18, 8, 4, 19, -1, -1, lemur_armour_medium_bite_1_ink},
+    {18, 7, 3, 18, -1, -1, lemur_armour_medium_bite_2_ink},
+    {18, 6, 6, 18, -1, -1, lemur_armour_medium_bite_3_ink},
+};
+static const uint8_t lemur_armour_medium_attack_0_ink[90] = {
+    0,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,7,7,
+    7,4,4,4,4,1,4,4,4,7,7,7,7,7,7,7,4,0,
+    0,7,2,2,2,1,2,2,2,1,4,4,4,1,4,4,2,0,
+    0,0,7,7,7,7,7,7,7,1,2,2,2,7,7,7,7,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t lemur_armour_medium_attack_1_ink[90] = {
+    7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,7,7,7,
+    0,4,4,4,4,1,4,4,7,7,7,7,7,7,7,4,4,0,
+    0,7,7,7,7,7,2,2,4,1,4,4,4,1,4,2,2,0,
+    0,0,0,0,0,0,7,7,2,1,2,2,2,7,7,7,7,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t lemur_armour_medium_attack_2_ink[108] = {
+    0,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    7,4,4,4,7,7,7,7,7,7,0,0,0,0,7,7,7,7,
+    0,7,7,7,4,1,4,4,4,1,7,7,7,7,4,4,4,0,
+    0,0,0,0,7,7,2,2,2,1,4,4,4,1,2,2,2,0,
+    0,0,0,0,0,0,7,7,7,1,2,2,2,1,2,7,7,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,
+};
+static const uint8_t lemur_armour_medium_attack_3_ink[108] = {
+    7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,7,7,7,0,0,0,7,7,7,7,7,0,
+    0,7,7,7,7,1,4,4,4,7,7,7,4,1,4,4,4,7,
+    0,0,0,0,0,7,2,2,2,1,4,4,2,1,2,2,2,0,
+    0,0,0,0,0,0,7,7,2,1,2,2,2,1,2,7,7,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,7,7,7,0,0,0,
+};
+static const uint8_t lemur_armour_medium_attack_4_ink[126] = {
+    7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,4,4,4,1,7,7,7,7,7,7,7,7,7,7,7,0,
+    0,0,7,7,7,1,4,4,4,1,4,4,4,1,4,4,4,7,
+    0,0,0,0,0,7,2,2,2,1,2,2,2,1,2,2,2,0,
+    0,0,0,0,0,0,7,7,2,1,7,7,2,1,2,7,7,0,
+    0,0,0,0,0,0,0,0,7,7,0,0,7,7,7,0,0,0,
+};
+static const uint8_t lemur_armour_medium_attack_5_ink[126] = {
+    7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,4,4,4,1,7,7,7,7,7,7,7,7,7,7,7,0,
+    0,0,7,7,7,1,4,4,4,1,4,4,4,1,4,4,4,7,
+    0,0,0,0,0,7,2,2,2,1,2,2,2,1,2,2,2,0,
+    0,0,0,0,0,0,7,7,2,1,7,7,2,1,2,7,7,0,
+    0,0,0,0,0,0,0,0,7,7,0,0,7,7,7,0,0,0,
+};
+static const uint8_t lemur_armour_medium_attack_6_ink[108] = {
+    7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,4,7,7,7,7,7,7,7,7,7,7,7,
+    0,7,7,7,7,1,2,4,4,1,4,4,4,1,4,4,4,0,
+    0,0,0,0,0,7,7,2,2,1,2,2,2,1,2,2,2,0,
+    0,0,0,0,0,0,0,7,2,1,7,7,7,7,7,7,7,0,
+    0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t lemur_armour_medium_attack_7_ink[108] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,7,7,0,
+    0,4,4,4,4,1,4,7,7,7,7,7,7,7,7,4,4,0,
+    0,7,7,7,7,7,2,4,4,1,4,4,4,1,4,2,2,0,
+    0,0,0,0,0,0,7,2,2,1,2,2,2,7,2,7,7,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,7,0,7,0,0,0,
+};
+static const uint8_t lemur_armour_medium_attack_8_ink[126] = {
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,0,
+    0,7,4,4,4,1,4,4,4,1,4,4,4,1,4,4,4,7,
+    0,0,7,7,7,1,2,2,2,1,2,2,2,1,7,7,7,0,
+    0,0,0,0,0,7,7,7,2,1,2,2,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,2,1,2,7,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,2,1,7,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,0,0,
+};
+static const ArtFrame lemur_armour_medium_attack_frames[9] = {
+    {18, 5, 9, 18, -1, -1, lemur_armour_medium_attack_0_ink},
+    {18, 5, 8, 18, -1, -1, lemur_armour_medium_attack_1_ink},
+    {18, 6, 7, 18, -1, -1, lemur_armour_medium_attack_2_ink},
+    {18, 6, 6, 17, -1, -1, lemur_armour_medium_attack_3_ink},
+    {18, 7, 6, 17, -1, -1, lemur_armour_medium_attack_4_ink},
+    {18, 7, 6, 17, -1, -1, lemur_armour_medium_attack_5_ink},
+    {18, 6, 7, 17, -1, -1, lemur_armour_medium_attack_6_ink},
+    {18, 6, 6, 19, -1, -1, lemur_armour_medium_attack_7_ink},
+    {18, 7, -3, 17, -1, -1, lemur_armour_medium_attack_8_ink},
+};
+static const uint8_t lemur_armour_medium_sleep_0_ink[108] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,
+    7,7,7,7,7,7,0,0,0,0,0,0,7,7,7,7,4,0,
+    0,7,4,4,4,1,7,7,0,0,7,7,4,1,4,4,7,0,
+    0,0,7,7,7,7,4,4,7,7,4,4,2,7,7,7,0,0,
+    0,0,0,0,0,0,2,2,4,1,2,2,7,0,0,0,0,0,
+    0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,0,
+};
+static const uint8_t lemur_armour_medium_sleep_1_ink[90] = {
+    7,7,7,7,7,0,0,0,0,0,0,0,0,0,7,7,7,7,
+    0,7,4,4,4,7,7,0,0,0,7,7,7,7,4,4,4,0,
+    0,0,7,7,7,1,4,7,7,7,4,4,4,1,7,7,7,0,
+    0,0,0,0,0,7,2,4,4,1,2,2,7,7,0,0,0,0,
+    0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,0,
+};
+static const uint8_t lemur_armour_medium_sleep_2_ink[90] = {
+    7,7,7,7,7,0,0,0,0,0,0,0,0,0,7,7,7,7,
+    0,7,4,4,4,7,7,0,0,0,7,7,7,7,4,4,4,0,
+    0,0,7,7,7,1,4,7,7,7,4,4,4,1,7,7,7,0,
+    0,0,0,0,0,7,2,4,4,1,2,2,7,7,0,0,0,0,
+    0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,0,
+};
+static const uint8_t lemur_armour_medium_sleep_3_ink[90] = {
+    7,7,7,7,7,0,0,0,0,0,0,0,0,0,7,7,7,7,
+    0,7,4,4,4,7,7,0,0,0,7,7,7,7,4,4,4,0,
+    0,0,7,7,7,1,4,7,7,7,4,4,4,1,7,7,7,0,
+    0,0,0,0,0,7,2,4,4,1,2,2,7,7,0,0,0,0,
+    0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,0,
+};
+static const ArtFrame lemur_armour_medium_sleep_frames[4] = {
+    {18, 6, 2, 11, -1, -1, lemur_armour_medium_sleep_0_ink},
+    {18, 5, 1, 10, -1, -1, lemur_armour_medium_sleep_1_ink},
+    {18, 5, 1, 10, -1, -1, lemur_armour_medium_sleep_2_ink},
+    {18, 5, 1, 10, -1, -1, lemur_armour_medium_sleep_3_ink},
+};
+static const ArtClip lemur_armour_medium_clips[ACTION_COUNT] = {
+    [ACTION_REST] = {8, lemur_armour_medium_idle_frames},
+    [ACTION_WALK] = {4, lemur_armour_medium_walk_frames},
+    [ACTION_RUN] = {4, lemur_armour_medium_run_frames},
+    [ACTION_GRAZE] = {7, lemur_armour_medium_graze_frames},
+    [ACTION_BITE] = {4, lemur_armour_medium_bite_frames},
+    [ACTION_ATTACK] = {9, lemur_armour_medium_attack_frames},
+    [ACTION_SLEEP] = {4, lemur_armour_medium_sleep_frames},
+};
 static const uint8_t lemur_weapon_full_idle_0_ink[30] = {
     0,0,0,0,0,15,
     0,0,13,0,14,0,
@@ -25782,6 +32894,311 @@ static const ArtClip lemur_weapon_full_clips[ACTION_COUNT] = {
     [ACTION_BITE] = {4, lemur_weapon_full_bite_frames},
     [ACTION_ATTACK] = {9, lemur_weapon_full_attack_frames},
     [ACTION_SLEEP] = {4, lemur_weapon_full_sleep_frames},
+};
+static const uint8_t lemur_weapon_medium_idle_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lemur_weapon_medium_idle_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lemur_weapon_medium_idle_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lemur_weapon_medium_idle_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lemur_weapon_medium_idle_4_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lemur_weapon_medium_idle_5_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lemur_weapon_medium_idle_6_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lemur_weapon_medium_idle_7_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame lemur_weapon_medium_idle_frames[8] = {
+    {5, 4, -17, 28, -1, -1, lemur_weapon_medium_idle_0_ink},
+    {5, 4, -17, 28, -1, -1, lemur_weapon_medium_idle_1_ink},
+    {5, 4, -17, 28, -1, -1, lemur_weapon_medium_idle_2_ink},
+    {5, 4, -17, 28, -1, -1, lemur_weapon_medium_idle_3_ink},
+    {5, 4, -17, 28, -1, -1, lemur_weapon_medium_idle_4_ink},
+    {5, 4, -17, 28, -1, -1, lemur_weapon_medium_idle_5_ink},
+    {5, 4, -17, 28, -1, -1, lemur_weapon_medium_idle_6_ink},
+    {5, 4, -17, 28, -1, -1, lemur_weapon_medium_idle_7_ink},
+};
+static const uint8_t lemur_weapon_medium_walk_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lemur_weapon_medium_walk_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lemur_weapon_medium_walk_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lemur_weapon_medium_walk_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame lemur_weapon_medium_walk_frames[4] = {
+    {5, 4, -17, 26, -1, -1, lemur_weapon_medium_walk_0_ink},
+    {5, 4, -17, 26, -1, -1, lemur_weapon_medium_walk_1_ink},
+    {5, 4, -17, 26, -1, -1, lemur_weapon_medium_walk_2_ink},
+    {5, 4, -17, 26, -1, -1, lemur_weapon_medium_walk_3_ink},
+};
+static const uint8_t lemur_weapon_medium_run_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lemur_weapon_medium_run_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lemur_weapon_medium_run_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lemur_weapon_medium_run_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame lemur_weapon_medium_run_frames[4] = {
+    {5, 4, -19, 24, -1, -1, lemur_weapon_medium_run_0_ink},
+    {5, 4, -17, 24, -1, -1, lemur_weapon_medium_run_1_ink},
+    {5, 4, -15, 23, -1, -1, lemur_weapon_medium_run_2_ink},
+    {5, 4, -17, 27, -1, -1, lemur_weapon_medium_run_3_ink},
+};
+static const uint8_t lemur_weapon_medium_graze_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lemur_weapon_medium_graze_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lemur_weapon_medium_graze_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lemur_weapon_medium_graze_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lemur_weapon_medium_graze_4_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lemur_weapon_medium_graze_5_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lemur_weapon_medium_graze_6_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame lemur_weapon_medium_graze_frames[7] = {
+    {5, 4, -18, 15, -1, -1, lemur_weapon_medium_graze_0_ink},
+    {5, 4, -18, 15, -1, -1, lemur_weapon_medium_graze_1_ink},
+    {5, 4, -18, 15, -1, -1, lemur_weapon_medium_graze_2_ink},
+    {5, 4, -18, 15, -1, -1, lemur_weapon_medium_graze_3_ink},
+    {5, 4, -18, 15, -1, -1, lemur_weapon_medium_graze_4_ink},
+    {5, 4, -17, 20, -1, -1, lemur_weapon_medium_graze_5_ink},
+    {5, 4, -17, 21, -1, -1, lemur_weapon_medium_graze_6_ink},
+};
+static const uint8_t lemur_weapon_medium_bite_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lemur_weapon_medium_bite_1_ink[20] = {
+    0,0,0,15,
+    0,0,15,0,
+    0,0,14,0,
+    12,13,0,0,
+    11,12,0,0,
+};
+static const uint8_t lemur_weapon_medium_bite_2_ink[20] = {
+    0,0,0,15,
+    0,0,15,0,
+    0,0,14,0,
+    12,13,0,0,
+    11,12,0,0,
+};
+static const uint8_t lemur_weapon_medium_bite_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame lemur_weapon_medium_bite_frames[4] = {
+    {5, 4, -19, 27, -1, -1, lemur_weapon_medium_bite_0_ink},
+    {4, 5, -21, 27, -1, -1, lemur_weapon_medium_bite_1_ink},
+    {4, 5, -22, 27, -1, -1, lemur_weapon_medium_bite_2_ink},
+    {5, 4, -20, 27, -1, -1, lemur_weapon_medium_bite_3_ink},
+};
+static const uint8_t lemur_weapon_medium_attack_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lemur_weapon_medium_attack_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lemur_weapon_medium_attack_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lemur_weapon_medium_attack_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lemur_weapon_medium_attack_4_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lemur_weapon_medium_attack_5_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lemur_weapon_medium_attack_6_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lemur_weapon_medium_attack_7_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lemur_weapon_medium_attack_8_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame lemur_weapon_medium_attack_frames[9] = {
+    {5, 4, -17, 28, -1, -1, lemur_weapon_medium_attack_0_ink},
+    {5, 4, -18, 26, -1, -1, lemur_weapon_medium_attack_1_ink},
+    {5, 4, -19, 23, -1, -1, lemur_weapon_medium_attack_2_ink},
+    {5, 4, -20, 16, -1, -1, lemur_weapon_medium_attack_3_ink},
+    {5, 4, -20, 15, -1, -1, lemur_weapon_medium_attack_4_ink},
+    {5, 4, -20, 16, -1, -1, lemur_weapon_medium_attack_5_ink},
+    {5, 4, -19, 19, -1, -1, lemur_weapon_medium_attack_6_ink},
+    {5, 4, -20, 25, -1, -1, lemur_weapon_medium_attack_7_ink},
+    {5, 4, -30, 18, -1, -1, lemur_weapon_medium_attack_8_ink},
+};
+static const uint8_t lemur_weapon_medium_sleep_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lemur_weapon_medium_sleep_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lemur_weapon_medium_sleep_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lemur_weapon_medium_sleep_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame lemur_weapon_medium_sleep_frames[4] = {
+    {5, 4, -24, 15, -1, -1, lemur_weapon_medium_sleep_0_ink},
+    {5, 4, -25, 12, -1, -1, lemur_weapon_medium_sleep_1_ink},
+    {5, 4, -25, 12, -1, -1, lemur_weapon_medium_sleep_2_ink},
+    {5, 4, -25, 11, -1, -1, lemur_weapon_medium_sleep_3_ink},
+};
+static const ArtClip lemur_weapon_medium_clips[ACTION_COUNT] = {
+    [ACTION_REST] = {8, lemur_weapon_medium_idle_frames},
+    [ACTION_WALK] = {4, lemur_weapon_medium_walk_frames},
+    [ACTION_RUN] = {4, lemur_weapon_medium_run_frames},
+    [ACTION_GRAZE] = {7, lemur_weapon_medium_graze_frames},
+    [ACTION_BITE] = {4, lemur_weapon_medium_bite_frames},
+    [ACTION_ATTACK] = {9, lemur_weapon_medium_attack_frames},
+    [ACTION_SLEEP] = {4, lemur_weapon_medium_sleep_frames},
 };
 static const ArtClip lemur_clips[ACTION_COUNT] = {
     [ACTION_REST] = {8, lemur_idle_frames},
@@ -27648,6 +35065,443 @@ static const ArtClip lion_armour_full_clips[ACTION_COUNT] = {
     [ACTION_ATTACK] = {9, lion_armour_full_attack_frames},
     [ACTION_SLEEP] = {3, lion_armour_full_sleep_frames},
 };
+static const uint8_t lion_armour_medium_idle_0_ink[112] = {
+    0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,7,
+    0,0,7,7,4,1,4,4,4,1,7,7,7,7,7,0,
+    7,7,4,4,2,1,2,2,2,1,4,4,4,1,4,0,
+    0,4,2,2,2,1,2,2,7,7,2,2,2,7,7,0,
+    0,2,7,2,2,1,7,7,0,0,7,7,7,0,0,0,
+    0,7,0,7,7,1,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t lion_armour_medium_idle_1_ink[112] = {
+    0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,7,
+    0,0,7,7,4,1,4,4,4,1,7,7,7,7,7,0,
+    7,7,4,4,2,1,2,2,2,1,4,4,4,1,4,0,
+    0,4,2,2,2,1,2,2,7,7,2,2,2,7,7,0,
+    0,2,7,2,2,1,7,7,0,0,7,7,7,0,0,0,
+    0,7,0,7,7,1,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t lion_armour_medium_idle_2_ink[112] = {
+    0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,7,
+    0,0,7,7,4,1,4,4,4,1,7,7,7,7,7,0,
+    7,7,4,4,2,1,2,2,2,1,4,4,4,1,4,0,
+    0,4,2,2,2,1,2,2,7,7,2,2,2,7,7,0,
+    0,2,7,2,2,1,7,7,0,0,7,7,7,0,0,0,
+    0,7,0,7,7,1,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t lion_armour_medium_idle_3_ink[112] = {
+    0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,7,
+    0,0,7,7,4,1,4,4,4,1,7,7,7,7,7,0,
+    7,7,4,4,2,1,2,2,2,1,4,4,4,1,4,0,
+    0,4,2,2,2,1,2,2,7,7,2,2,2,7,7,0,
+    0,2,7,2,2,1,7,7,0,0,7,7,7,0,0,0,
+    0,7,0,7,7,1,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t lion_armour_medium_idle_4_ink[112] = {
+    0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,7,
+    0,0,7,7,4,1,4,4,4,1,7,7,7,7,7,0,
+    7,7,4,4,2,1,2,2,2,1,4,4,4,1,4,0,
+    0,4,2,2,2,1,2,2,7,7,2,2,2,7,7,0,
+    0,2,7,2,2,1,7,7,0,0,7,7,7,0,0,0,
+    0,7,0,7,7,1,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t lion_armour_medium_idle_5_ink[112] = {
+    0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,7,
+    0,0,7,7,4,1,4,4,4,1,7,7,7,7,7,0,
+    7,7,4,4,2,1,2,2,2,1,4,4,4,1,4,0,
+    0,4,2,2,2,1,2,2,7,7,2,2,2,7,7,0,
+    0,2,7,2,2,1,7,7,0,0,7,7,7,0,0,0,
+    0,7,0,7,7,1,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t lion_armour_medium_idle_6_ink[112] = {
+    0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,7,
+    0,0,7,7,4,1,4,4,4,1,7,7,7,7,7,0,
+    7,7,4,4,2,1,2,2,2,1,4,4,4,1,4,0,
+    0,4,2,2,2,1,2,2,7,7,2,2,2,7,7,0,
+    0,2,7,2,2,1,7,7,0,0,7,7,7,0,0,0,
+    0,7,0,7,7,1,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t lion_armour_medium_idle_7_ink[112] = {
+    0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,7,
+    0,0,7,7,4,1,4,4,4,1,7,7,7,7,7,0,
+    7,7,4,4,2,1,2,2,2,1,4,4,4,1,4,0,
+    0,4,2,2,2,1,2,2,7,7,2,2,2,7,7,0,
+    0,2,7,2,2,1,7,7,0,0,7,7,7,0,0,0,
+    0,7,0,7,7,1,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t lion_armour_medium_idle_8_ink[112] = {
+    0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,7,
+    0,0,7,7,4,1,4,4,4,1,7,7,7,7,7,0,
+    7,7,4,4,2,1,2,2,2,1,4,4,4,1,4,0,
+    0,4,2,2,2,1,2,2,7,7,2,2,2,7,7,0,
+    0,2,7,2,2,1,7,7,0,0,7,7,7,0,0,0,
+    0,7,0,7,7,1,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,
+};
+static const ArtFrame lion_armour_medium_idle_frames[9] = {
+    {16, 7, 12, 18, -1, -1, lion_armour_medium_idle_0_ink},
+    {16, 7, 12, 18, -1, -1, lion_armour_medium_idle_1_ink},
+    {16, 7, 12, 18, -1, -1, lion_armour_medium_idle_2_ink},
+    {16, 7, 12, 18, -1, -1, lion_armour_medium_idle_3_ink},
+    {16, 7, 12, 18, -1, -1, lion_armour_medium_idle_4_ink},
+    {16, 7, 12, 18, -1, -1, lion_armour_medium_idle_5_ink},
+    {16, 7, 12, 18, -1, -1, lion_armour_medium_idle_6_ink},
+    {16, 7, 12, 18, -1, -1, lion_armour_medium_idle_7_ink},
+    {16, 7, 12, 18, -1, -1, lion_armour_medium_idle_8_ink},
+};
+static const uint8_t lion_armour_medium_walk_0_ink[96] = {
+    0,7,7,7,7,7,7,7,7,7,0,0,0,0,7,7,
+    7,4,4,4,4,1,4,4,4,1,7,7,7,7,4,0,
+    0,2,2,2,2,1,2,2,2,1,4,4,4,1,7,0,
+    0,7,7,7,7,7,7,7,2,7,2,2,2,1,0,0,
+    0,0,0,0,0,0,0,0,7,0,7,2,2,7,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,7,0,0,0,
+};
+static const uint8_t lion_armour_medium_walk_1_ink[96] = {
+    0,0,7,7,7,7,7,7,7,7,0,0,0,0,0,7,
+    0,7,4,4,4,1,4,4,4,1,7,7,7,7,7,0,
+    7,4,7,2,2,1,2,2,2,1,4,4,4,1,4,0,
+    0,7,0,7,2,1,2,2,2,7,2,2,7,7,2,0,
+    0,0,0,0,2,1,2,2,7,0,7,7,0,0,7,0,
+    0,0,0,0,7,7,7,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t lion_armour_medium_walk_2_ink[96] = {
+    0,7,7,7,7,7,7,7,7,0,0,0,0,0,7,7,
+    7,4,4,4,4,1,4,4,4,7,7,7,7,7,4,0,
+    0,7,2,2,2,1,2,2,2,1,4,4,4,1,7,0,
+    0,0,7,2,2,1,7,7,2,1,2,2,2,7,0,0,
+    0,0,0,7,2,1,0,0,7,7,7,7,7,0,0,0,
+    0,0,0,0,7,7,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t lion_armour_medium_walk_3_ink[112] = {
+    0,0,7,7,7,7,7,7,7,7,0,0,0,0,0,7,
+    0,7,4,4,4,1,4,4,4,1,7,7,7,7,7,0,
+    7,4,7,2,2,1,2,2,2,1,4,4,4,1,4,0,
+    0,7,0,2,2,1,2,2,7,7,2,2,7,7,7,0,
+    0,0,0,7,2,1,2,7,0,0,7,7,0,0,0,0,
+    0,0,0,0,7,7,2,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,
+};
+static const ArtFrame lion_armour_medium_walk_frames[4] = {
+    {16, 6, 10, 19, -1, -1, lion_armour_medium_walk_0_ink},
+    {16, 6, 11, 19, -1, -1, lion_armour_medium_walk_1_ink},
+    {16, 6, 10, 19, -1, -1, lion_armour_medium_walk_2_ink},
+    {16, 7, 11, 19, -1, -1, lion_armour_medium_walk_3_ink},
+};
+static const uint8_t lion_armour_medium_run_0_ink[112] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    7,7,7,7,7,7,7,0,0,0,0,0,0,0,7,0,
+    0,7,4,4,4,1,4,7,7,7,7,7,7,7,4,0,
+    0,0,7,7,2,1,2,4,4,1,4,4,4,1,7,0,
+    0,0,0,0,7,7,7,2,2,1,2,2,2,7,0,0,
+    0,0,0,0,0,0,0,7,2,7,7,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,
+};
+static const uint8_t lion_armour_medium_run_1_ink[96] = {
+    7,7,7,7,7,7,7,0,0,0,0,0,0,0,7,7,
+    0,4,4,4,4,1,4,7,7,7,7,7,7,7,4,0,
+    0,7,7,2,2,1,2,4,4,1,4,4,4,1,7,0,
+    0,0,0,7,7,7,7,2,2,1,2,2,2,7,0,0,
+    0,0,0,0,0,0,0,7,2,7,7,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,
+};
+static const uint8_t lion_armour_medium_run_2_ink[96] = {
+    0,0,7,7,7,7,7,0,0,0,0,0,0,0,0,7,
+    7,7,4,4,4,1,4,7,7,7,7,7,7,7,7,0,
+    0,7,7,7,2,1,2,4,4,1,4,4,4,1,4,0,
+    0,0,0,0,7,7,7,2,2,1,2,2,2,1,2,0,
+    0,0,0,0,0,0,0,2,2,1,2,2,2,7,7,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,
+};
+static const uint8_t lion_armour_medium_run_3_ink[96] = {
+    7,7,7,7,7,7,0,0,0,0,0,0,0,0,7,7,
+    0,4,4,4,4,1,7,7,7,7,7,7,7,7,4,0,
+    0,7,2,2,2,1,4,4,4,1,4,4,4,1,7,0,
+    0,0,7,7,7,1,2,2,2,1,2,2,2,1,0,0,
+    0,0,0,0,0,7,7,2,2,7,2,2,7,7,0,0,
+    0,0,0,0,0,0,0,7,7,0,7,7,0,0,0,0,
+};
+static const ArtFrame lion_armour_medium_run_frames[4] = {
+    {16, 7, 9, 22, -1, -1, lion_armour_medium_run_0_ink},
+    {16, 6, 10, 19, -1, -1, lion_armour_medium_run_1_ink},
+    {16, 6, 11, 16, -1, -1, lion_armour_medium_run_2_ink},
+    {16, 6, 10, 18, -1, -1, lion_armour_medium_run_3_ink},
+};
+static const uint8_t lion_armour_medium_graze_0_ink[80] = {
+    0,0,7,7,7,7,7,7,7,7,7,0,0,0,7,7,
+    7,7,4,4,4,1,4,4,4,1,4,7,7,7,4,0,
+    0,4,2,2,2,1,2,2,2,1,2,4,4,1,7,0,
+    0,2,7,2,7,7,7,7,2,7,7,2,2,7,0,0,
+    0,7,0,7,0,0,0,0,7,0,0,7,7,0,0,0,
+};
+static const uint8_t lion_armour_medium_graze_1_ink[80] = {
+    0,0,7,7,7,7,7,7,7,7,7,0,0,0,7,7,
+    7,7,4,4,4,1,4,4,4,1,4,7,7,7,4,0,
+    0,4,2,2,2,1,2,2,2,1,2,4,4,1,7,0,
+    0,2,7,2,7,7,7,7,2,7,2,2,2,7,0,0,
+    0,7,0,7,0,0,0,0,7,0,7,7,7,0,0,0,
+};
+static const uint8_t lion_armour_medium_graze_2_ink[80] = {
+    0,0,7,7,7,7,7,7,7,7,7,0,0,0,7,7,
+    7,7,4,4,4,1,4,4,4,1,4,7,7,7,4,0,
+    0,4,2,2,2,1,2,2,2,1,2,4,4,1,7,0,
+    0,2,7,2,7,7,7,7,2,7,7,2,2,7,0,0,
+    0,7,0,7,0,0,0,0,7,0,0,7,7,0,0,0,
+};
+static const uint8_t lion_armour_medium_graze_3_ink[96] = {
+    0,0,0,7,7,7,7,7,7,7,7,7,0,0,0,7,
+    0,7,7,4,4,1,4,4,4,1,4,4,7,7,7,0,
+    7,4,4,2,2,1,2,2,2,1,2,2,4,1,4,0,
+    0,7,2,2,2,7,7,7,7,7,7,7,2,7,7,0,
+    0,0,7,7,2,0,0,0,0,0,0,0,7,0,0,0,
+    0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t lion_armour_medium_graze_4_ink[80] = {
+    0,0,7,7,7,7,7,7,7,7,7,0,0,0,7,7,
+    7,7,4,4,4,1,4,4,4,1,4,7,7,7,4,0,
+    0,4,2,2,2,1,2,2,2,1,2,4,4,1,7,0,
+    0,2,7,2,7,7,7,7,2,7,7,2,2,7,0,0,
+    0,7,0,7,0,0,0,0,7,0,0,7,7,0,0,0,
+};
+static const uint8_t lion_armour_medium_graze_5_ink[96] = {
+    0,0,0,7,7,7,7,7,7,7,7,7,0,0,0,7,
+    0,7,7,4,4,1,4,4,4,1,4,4,7,7,7,0,
+    7,4,4,2,2,1,2,2,2,1,2,2,4,1,4,0,
+    0,7,2,2,2,7,7,7,7,7,7,7,2,7,7,0,
+    0,0,7,7,2,0,0,0,0,0,0,0,7,0,0,0,
+    0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t lion_armour_medium_graze_6_ink[80] = {
+    0,0,7,7,7,7,7,7,7,7,7,0,0,0,7,7,
+    7,7,4,4,4,1,4,4,4,1,4,7,7,7,4,0,
+    0,4,2,2,2,1,2,2,2,1,2,4,4,1,7,0,
+    0,2,7,2,7,7,7,7,2,7,7,2,2,7,0,0,
+    0,7,0,7,0,0,0,0,7,0,0,7,7,0,0,0,
+};
+static const ArtFrame lion_armour_medium_graze_frames[7] = {
+    {16, 5, 10, 19, -1, -1, lion_armour_medium_graze_0_ink},
+    {16, 5, 9, 19, -1, -1, lion_armour_medium_graze_1_ink},
+    {16, 5, 10, 19, -1, -1, lion_armour_medium_graze_2_ink},
+    {16, 6, 11, 19, -1, -1, lion_armour_medium_graze_3_ink},
+    {16, 5, 10, 19, -1, -1, lion_armour_medium_graze_4_ink},
+    {16, 6, 11, 19, -1, -1, lion_armour_medium_graze_5_ink},
+    {16, 5, 10, 19, -1, -1, lion_armour_medium_graze_6_ink},
+};
+static const uint8_t lion_armour_medium_bite_0_ink[96] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,7,7,7,7,7,7,7,7,7,7,0,0,0,7,0,
+    7,4,4,4,4,1,4,4,4,1,4,7,7,7,4,0,
+    0,2,7,2,2,1,2,2,2,1,2,4,4,1,7,0,
+    0,7,0,7,7,7,7,7,7,7,7,2,7,7,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,
+};
+static const uint8_t lion_armour_medium_bite_1_ink[96] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,7,7,7,7,7,7,7,7,7,7,0,0,0,7,0,
+    7,4,4,4,4,1,4,4,4,1,4,7,7,7,4,0,
+    0,2,2,2,2,1,2,2,2,1,2,4,4,1,7,0,
+    0,7,7,7,7,7,7,7,7,7,7,2,7,7,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,
+};
+static const uint8_t lion_armour_medium_bite_2_ink[96] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,
+    7,7,7,7,7,7,7,7,0,0,0,0,7,1,4,0,
+    0,4,4,4,4,1,4,4,7,7,7,7,4,1,2,0,
+    0,7,7,7,7,1,2,2,4,1,4,4,2,1,7,0,
+    0,0,0,0,0,7,7,7,2,1,2,2,7,7,0,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,0,0,0,0,
+};
+static const uint8_t lion_armour_medium_bite_3_ink[96] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,
+    7,7,7,7,7,7,7,7,7,0,0,0,0,7,4,0,
+    0,4,4,4,4,1,4,4,4,7,7,7,7,1,2,0,
+    0,7,7,2,2,1,2,2,2,1,4,4,4,1,7,0,
+    0,0,0,7,7,7,7,7,7,1,2,2,7,1,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,0,7,0,0,
+};
+static const ArtFrame lion_armour_medium_bite_frames[4] = {
+    {16, 6, 9, 18, -1, -1, lion_armour_medium_bite_0_ink},
+    {16, 6, 9, 18, -1, -1, lion_armour_medium_bite_1_ink},
+    {16, 6, 6, 18, -1, -1, lion_armour_medium_bite_2_ink},
+    {16, 6, 7, 18, -1, -1, lion_armour_medium_bite_3_ink},
+};
+static const uint8_t lion_armour_medium_attack_0_ink[96] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,
+    0,0,7,7,7,7,7,7,7,7,0,0,0,7,4,0,
+    7,7,4,4,4,1,4,4,4,1,7,7,7,1,7,0,
+    0,4,2,2,2,1,2,2,2,1,4,4,4,7,0,0,
+    0,7,7,7,7,7,7,2,2,7,2,2,2,0,0,0,
+    0,0,0,0,0,0,0,7,7,0,7,7,7,0,0,0,
+};
+static const uint8_t lion_armour_medium_attack_1_ink[96] = {
+    0,7,7,7,7,7,7,0,0,0,0,0,0,0,0,7,
+    7,4,4,4,4,1,4,7,7,7,0,0,0,0,7,0,
+    0,7,7,2,2,1,2,4,4,1,7,7,7,7,4,0,
+    0,0,0,7,7,7,2,2,2,1,4,4,4,1,7,0,
+    0,0,0,0,0,0,7,2,2,1,2,2,2,7,0,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,
+};
+static const uint8_t lion_armour_medium_attack_2_ink[112] = {
+    0,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,
+    7,4,4,4,4,1,4,7,7,0,0,0,0,0,0,0,
+    0,7,7,2,2,1,2,4,4,7,7,0,0,0,0,7,
+    0,0,0,7,7,7,7,2,2,1,4,7,7,7,7,0,
+    0,0,0,0,0,0,0,2,2,1,2,4,4,1,4,0,
+    0,0,0,0,0,0,0,7,7,7,7,2,2,1,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,7,7,0,0,
+};
+static const uint8_t lion_armour_medium_attack_3_ink[112] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,7,7,7,7,7,7,7,7,0,0,7,7,0,
+    0,0,7,4,4,1,4,4,4,1,4,7,7,1,4,0,
+    0,7,4,2,2,1,2,2,2,1,2,4,4,7,7,0,
+    7,4,2,2,2,1,2,2,2,7,7,2,7,0,0,0,
+    0,2,2,2,2,7,2,7,7,0,0,7,0,0,0,0,
+    0,7,7,7,7,0,7,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t lion_armour_medium_attack_4_ink[336] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,7,1,2,0,
+    0,0,0,0,0,0,0,0,0,0,7,4,4,1,2,0,
+    0,0,0,0,0,0,0,0,0,7,4,2,2,1,7,0,
+    0,0,0,0,0,0,0,0,0,1,2,2,2,7,0,0,
+    0,0,0,0,0,0,0,0,7,1,2,7,7,0,0,0,
+    0,0,0,0,0,0,0,7,4,1,2,0,0,0,0,0,
+    0,0,0,0,0,0,0,4,2,1,2,0,0,0,0,0,
+    0,0,0,0,0,0,7,2,2,1,7,0,0,0,0,0,
+    0,0,0,0,0,0,4,2,2,7,0,0,0,0,0,0,
+    0,0,0,0,0,0,7,2,7,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,
+    7,7,7,0,7,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t lion_armour_medium_attack_5_ink[256] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,1,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,4,1,7,0,
+    0,0,0,0,0,0,0,0,0,0,7,4,2,1,0,0,
+    0,0,0,0,0,0,0,0,0,7,4,2,2,7,0,0,
+    0,0,0,0,0,0,0,0,7,1,2,2,7,0,0,0,
+    0,0,0,0,0,0,0,0,4,1,2,2,0,0,0,0,
+    0,0,0,0,0,0,0,7,2,1,2,7,0,0,0,0,
+    0,0,0,0,0,0,7,4,2,1,7,0,0,0,0,0,
+    0,0,0,0,0,0,4,2,7,7,0,0,0,0,0,0,
+    0,0,0,0,0,7,2,2,0,0,0,0,0,0,0,0,
+    7,0,0,0,7,1,7,7,0,0,0,0,0,0,0,0,
+    0,0,7,7,4,7,0,0,0,0,0,0,0,0,0,0,
+    0,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t lion_armour_medium_attack_6_ink[304] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,7,7,4,0,
+    0,0,0,0,0,0,0,0,7,7,4,4,4,1,7,0,
+    0,0,0,0,0,0,0,7,4,1,2,2,2,7,0,0,
+    0,0,0,0,0,0,7,4,2,1,2,2,7,0,0,0,
+    0,0,0,0,0,7,4,2,2,1,7,7,0,0,0,0,
+    0,0,0,0,7,1,2,2,2,1,0,0,0,0,0,0,
+    0,0,0,7,4,1,2,2,2,1,0,0,0,0,0,0,
+    0,0,7,4,7,1,2,2,7,7,0,0,0,0,0,0,
+    0,0,7,7,0,1,7,7,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t lion_armour_medium_attack_7_ink[160] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,7,4,0,
+    0,0,0,0,0,0,7,7,7,7,7,7,4,1,7,0,
+    0,0,0,0,7,7,4,4,4,1,4,4,2,7,0,0,
+    0,0,7,7,4,1,2,2,2,1,2,2,7,0,0,0,
+    0,7,4,4,2,1,2,2,2,1,7,7,0,0,0,0,
+    7,7,7,2,2,1,2,2,7,7,0,0,0,0,0,0,
+    0,0,0,2,2,1,2,7,0,0,0,0,0,0,0,0,
+    0,0,0,7,7,7,7,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t lion_armour_medium_attack_8_ink[128] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,
+    0,0,0,0,7,7,7,7,7,7,7,7,7,7,4,0,
+    0,0,7,7,4,1,4,4,4,1,4,4,4,1,7,0,
+    0,7,4,4,2,1,2,2,2,1,2,2,2,7,0,0,
+    7,7,7,2,2,1,2,2,2,7,7,7,7,0,0,0,
+    0,0,0,2,2,1,2,7,7,0,0,0,0,0,0,0,
+    0,0,0,7,7,7,2,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,
+};
+static const ArtFrame lion_armour_medium_attack_frames[9] = {
+    {16, 6, 8, 17, -1, -1, lion_armour_medium_attack_0_ink},
+    {16, 6, 7, 15, -1, -1, lion_armour_medium_attack_1_ink},
+    {16, 7, 8, 14, -1, -1, lion_armour_medium_attack_2_ink},
+    {16, 7, 13, 16, -1, -1, lion_armour_medium_attack_3_ink},
+    {16, 21, 24, 19, -1, -1, lion_armour_medium_attack_4_ink},
+    {16, 16, 19, 17, -1, -1, lion_armour_medium_attack_5_ink},
+    {16, 19, 14, 18, -1, -1, lion_armour_medium_attack_6_ink},
+    {16, 10, 12, 17, -1, -1, lion_armour_medium_attack_7_ink},
+    {16, 8, 11, 15, -1, -1, lion_armour_medium_attack_8_ink},
+};
+static const uint8_t lion_armour_medium_sleep_0_ink[96] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,
+    7,7,7,7,7,7,7,7,7,7,7,7,7,1,4,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,7,7,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,0,0,0,
+    0,0,0,7,7,1,2,2,2,1,7,7,7,0,0,0,
+    0,0,0,0,0,7,7,7,7,7,0,0,0,0,0,0,
+};
+static const uint8_t lion_armour_medium_sleep_1_ink[112] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,0,
+    7,7,7,7,7,7,7,7,7,7,7,7,4,1,4,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,2,7,7,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,7,0,0,0,
+    0,0,0,7,7,1,2,2,2,7,7,7,0,0,0,0,
+    0,0,0,0,0,7,7,7,7,0,0,0,0,0,0,0,
+};
+static const uint8_t lion_armour_medium_sleep_2_ink[112] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,0,
+    7,7,7,7,7,7,7,7,7,7,7,7,4,1,4,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,2,7,7,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,7,0,0,0,
+    0,0,0,7,7,1,2,2,2,7,7,7,0,0,0,0,
+    0,0,0,0,0,7,7,7,7,0,0,0,0,0,0,0,
+};
+static const ArtFrame lion_armour_medium_sleep_frames[3] = {
+    {16, 6, 5, 12, -1, -1, lion_armour_medium_sleep_0_ink},
+    {16, 7, 4, 13, -1, -1, lion_armour_medium_sleep_1_ink},
+    {16, 7, 4, 13, -1, -1, lion_armour_medium_sleep_2_ink},
+};
+static const ArtClip lion_armour_medium_clips[ACTION_COUNT] = {
+    [ACTION_REST] = {9, lion_armour_medium_idle_frames},
+    [ACTION_WALK] = {4, lion_armour_medium_walk_frames},
+    [ACTION_RUN] = {4, lion_armour_medium_run_frames},
+    [ACTION_GRAZE] = {7, lion_armour_medium_graze_frames},
+    [ACTION_BITE] = {4, lion_armour_medium_bite_frames},
+    [ACTION_ATTACK] = {9, lion_armour_medium_attack_frames},
+    [ACTION_SLEEP] = {3, lion_armour_medium_sleep_frames},
+};
 static const uint8_t lion_weapon_full_idle_0_ink[30] = {
     0,0,0,0,0,15,
     0,0,13,0,14,0,
@@ -27992,6 +35846,310 @@ static const ArtClip lion_weapon_full_clips[ACTION_COUNT] = {
     [ACTION_BITE] = {4, lion_weapon_full_bite_frames},
     [ACTION_ATTACK] = {9, lion_weapon_full_attack_frames},
     [ACTION_SLEEP] = {3, lion_weapon_full_sleep_frames},
+};
+static const uint8_t lion_weapon_medium_idle_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lion_weapon_medium_idle_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lion_weapon_medium_idle_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lion_weapon_medium_idle_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lion_weapon_medium_idle_4_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lion_weapon_medium_idle_5_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lion_weapon_medium_idle_6_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lion_weapon_medium_idle_7_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lion_weapon_medium_idle_8_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame lion_weapon_medium_idle_frames[9] = {
+    {5, 4, -17, 32, -1, -1, lion_weapon_medium_idle_0_ink},
+    {5, 4, -17, 32, -1, -1, lion_weapon_medium_idle_1_ink},
+    {5, 4, -17, 32, -1, -1, lion_weapon_medium_idle_2_ink},
+    {5, 4, -17, 32, -1, -1, lion_weapon_medium_idle_3_ink},
+    {5, 4, -17, 32, -1, -1, lion_weapon_medium_idle_4_ink},
+    {5, 4, -17, 32, -1, -1, lion_weapon_medium_idle_5_ink},
+    {5, 4, -17, 32, -1, -1, lion_weapon_medium_idle_6_ink},
+    {5, 4, -17, 32, -1, -1, lion_weapon_medium_idle_7_ink},
+    {5, 4, -17, 32, -1, -1, lion_weapon_medium_idle_8_ink},
+};
+static const uint8_t lion_weapon_medium_walk_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lion_weapon_medium_walk_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lion_weapon_medium_walk_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lion_weapon_medium_walk_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame lion_weapon_medium_walk_frames[4] = {
+    {5, 4, -19, 24, -1, -1, lion_weapon_medium_walk_0_ink},
+    {5, 4, -18, 28, -1, -1, lion_weapon_medium_walk_1_ink},
+    {5, 4, -19, 23, -1, -1, lion_weapon_medium_walk_2_ink},
+    {5, 4, -18, 27, -1, -1, lion_weapon_medium_walk_3_ink},
+};
+static const uint8_t lion_weapon_medium_run_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lion_weapon_medium_run_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lion_weapon_medium_run_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lion_weapon_medium_run_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame lion_weapon_medium_run_frames[4] = {
+    {5, 4, -20, 30, -1, -1, lion_weapon_medium_run_0_ink},
+    {5, 4, -19, 29, -1, -1, lion_weapon_medium_run_1_ink},
+    {5, 4, -18, 20, -1, -1, lion_weapon_medium_run_2_ink},
+    {5, 4, -19, 28, -1, -1, lion_weapon_medium_run_3_ink},
+};
+static const uint8_t lion_weapon_medium_graze_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lion_weapon_medium_graze_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lion_weapon_medium_graze_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lion_weapon_medium_graze_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lion_weapon_medium_graze_4_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lion_weapon_medium_graze_5_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lion_weapon_medium_graze_6_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame lion_weapon_medium_graze_frames[7] = {
+    {5, 4, -19, 26, -1, -1, lion_weapon_medium_graze_0_ink},
+    {5, 4, -20, 25, -1, -1, lion_weapon_medium_graze_1_ink},
+    {5, 4, -19, 25, -1, -1, lion_weapon_medium_graze_2_ink},
+    {5, 4, -18, 26, -1, -1, lion_weapon_medium_graze_3_ink},
+    {5, 4, -19, 24, -1, -1, lion_weapon_medium_graze_4_ink},
+    {5, 4, -18, 27, -1, -1, lion_weapon_medium_graze_5_ink},
+    {5, 4, -19, 21, -1, -1, lion_weapon_medium_graze_6_ink},
+};
+static const uint8_t lion_weapon_medium_bite_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lion_weapon_medium_bite_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lion_weapon_medium_bite_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lion_weapon_medium_bite_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame lion_weapon_medium_bite_frames[4] = {
+    {5, 4, -21, 24, -1, -1, lion_weapon_medium_bite_0_ink},
+    {5, 4, -20, 29, -1, -1, lion_weapon_medium_bite_1_ink},
+    {5, 4, -24, 25, -1, -1, lion_weapon_medium_bite_2_ink},
+    {5, 4, -22, 27, -1, -1, lion_weapon_medium_bite_3_ink},
+};
+static const uint8_t lion_weapon_medium_attack_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lion_weapon_medium_attack_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lion_weapon_medium_attack_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lion_weapon_medium_attack_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lion_weapon_medium_attack_4_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lion_weapon_medium_attack_5_ink[20] = {
+    0,0,0,15,
+    0,0,15,0,
+    0,0,14,0,
+    12,13,0,0,
+    11,12,0,0,
+};
+static const uint8_t lion_weapon_medium_attack_6_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lion_weapon_medium_attack_7_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lion_weapon_medium_attack_8_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame lion_weapon_medium_attack_frames[9] = {
+    {5, 4, -21, 29, -1, -1, lion_weapon_medium_attack_0_ink},
+    {5, 4, -22, 24, -1, -1, lion_weapon_medium_attack_1_ink},
+    {5, 4, -21, 20, -1, -1, lion_weapon_medium_attack_2_ink},
+    {5, 4, -16, 23, -1, -1, lion_weapon_medium_attack_3_ink},
+    {5, 4, -5, 36, -1, -1, lion_weapon_medium_attack_4_ink},
+    {4, 5, -9, 42, -1, -1, lion_weapon_medium_attack_5_ink},
+    {5, 4, -14, 37, -1, -1, lion_weapon_medium_attack_6_ink},
+    {5, 4, -17, 28, -1, -1, lion_weapon_medium_attack_7_ink},
+    {5, 4, -18, 29, -1, -1, lion_weapon_medium_attack_8_ink},
+};
+static const uint8_t lion_weapon_medium_sleep_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lion_weapon_medium_sleep_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t lion_weapon_medium_sleep_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame lion_weapon_medium_sleep_frames[3] = {
+    {5, 4, -24, 17, -1, -1, lion_weapon_medium_sleep_0_ink},
+    {5, 4, -26, 11, -1, -1, lion_weapon_medium_sleep_1_ink},
+    {5, 4, -26, 11, -1, -1, lion_weapon_medium_sleep_2_ink},
+};
+static const ArtClip lion_weapon_medium_clips[ACTION_COUNT] = {
+    [ACTION_REST] = {9, lion_weapon_medium_idle_frames},
+    [ACTION_WALK] = {4, lion_weapon_medium_walk_frames},
+    [ACTION_RUN] = {4, lion_weapon_medium_run_frames},
+    [ACTION_GRAZE] = {7, lion_weapon_medium_graze_frames},
+    [ACTION_BITE] = {4, lion_weapon_medium_bite_frames},
+    [ACTION_ATTACK] = {9, lion_weapon_medium_attack_frames},
+    [ACTION_SLEEP] = {3, lion_weapon_medium_sleep_frames},
 };
 static const ArtClip lion_clips[ACTION_COUNT] = {
     [ACTION_REST] = {9, lion_idle_frames},
@@ -29500,6 +37658,385 @@ static const ArtClip otter_armour_full_clips[ACTION_COUNT] = {
     [ACTION_ATTACK] = {6, otter_armour_full_attack_frames},
     [ACTION_SLEEP] = {5, otter_armour_full_sleep_frames},
 };
+static const uint8_t otter_armour_medium_idle_0_ink[114] = {
+    0,0,0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,7,7,
+    0,7,7,4,4,1,4,4,4,1,7,7,7,7,7,7,7,4,0,
+    7,4,4,2,2,1,2,2,2,1,4,4,4,1,4,4,4,2,0,
+    0,2,2,7,7,7,7,7,2,1,2,2,2,1,2,7,7,7,0,
+    0,7,7,0,0,0,0,0,7,7,2,7,7,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t otter_armour_medium_idle_1_ink[114] = {
+    0,0,0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,7,7,
+    0,7,7,4,4,1,4,4,4,1,7,7,7,7,7,7,7,4,0,
+    7,4,4,2,2,1,2,2,2,1,4,4,4,1,4,4,4,2,0,
+    0,2,2,7,7,7,7,7,2,1,2,2,2,1,2,7,7,7,0,
+    0,7,7,0,0,0,0,0,7,7,2,7,7,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t otter_armour_medium_idle_2_ink[114] = {
+    0,0,0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,7,7,
+    0,7,7,4,4,1,4,4,4,1,7,7,7,7,7,7,7,4,0,
+    7,4,4,2,2,1,2,2,2,1,4,4,4,1,4,4,4,2,0,
+    0,2,2,7,7,7,7,7,2,1,2,2,2,1,2,7,7,7,0,
+    0,7,7,0,0,0,0,0,7,7,2,7,7,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t otter_armour_medium_idle_3_ink[114] = {
+    0,0,0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,7,7,
+    0,7,7,4,4,1,4,4,4,1,7,7,7,7,7,7,7,4,0,
+    7,4,4,2,2,1,2,2,2,1,4,4,4,1,4,4,4,2,0,
+    0,2,2,7,7,7,7,7,2,1,2,2,2,1,2,7,7,7,0,
+    0,7,7,0,0,0,0,0,7,7,2,7,7,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t otter_armour_medium_idle_4_ink[114] = {
+    0,0,0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,7,7,
+    0,7,7,4,4,1,4,4,4,1,7,7,7,7,7,7,7,4,0,
+    7,4,4,2,2,1,2,2,2,1,4,4,4,1,4,4,4,2,0,
+    0,2,2,7,7,7,7,7,2,1,2,2,2,1,2,7,7,7,0,
+    0,7,7,0,0,0,0,0,7,7,2,7,7,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t otter_armour_medium_idle_5_ink[114] = {
+    0,0,0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,7,7,
+    0,7,7,4,4,1,4,4,4,1,7,7,7,7,7,7,7,4,0,
+    7,4,4,2,2,1,2,2,2,1,4,4,4,1,4,4,4,2,0,
+    0,2,2,7,7,7,7,7,2,1,2,2,2,1,2,7,7,7,0,
+    0,7,7,0,0,0,0,0,7,7,2,7,7,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t otter_armour_medium_idle_6_ink[114] = {
+    0,0,0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,7,7,
+    0,7,7,4,4,1,4,4,4,1,7,7,7,7,7,7,7,4,0,
+    7,4,4,2,2,1,2,2,2,1,4,4,4,1,4,4,4,2,0,
+    0,2,2,7,7,7,7,7,2,1,2,2,2,1,2,7,7,7,0,
+    0,7,7,0,0,0,0,0,7,7,2,7,7,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t otter_armour_medium_idle_7_ink[114] = {
+    0,0,0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,7,7,
+    0,7,7,4,4,1,4,4,4,1,7,7,7,7,7,7,7,4,0,
+    7,4,4,2,2,1,2,2,2,1,4,4,4,1,4,4,4,2,0,
+    0,2,2,7,7,7,7,7,2,1,2,2,2,1,2,7,7,7,0,
+    0,7,7,0,0,0,0,0,7,7,2,7,7,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,
+};
+static const ArtFrame otter_armour_medium_idle_frames[8] = {
+    {19, 6, 10, 18, -1, -1, otter_armour_medium_idle_0_ink},
+    {19, 6, 10, 18, -1, -1, otter_armour_medium_idle_1_ink},
+    {19, 6, 10, 18, -1, -1, otter_armour_medium_idle_2_ink},
+    {19, 6, 10, 18, -1, -1, otter_armour_medium_idle_3_ink},
+    {19, 6, 10, 18, -1, -1, otter_armour_medium_idle_4_ink},
+    {19, 6, 10, 18, -1, -1, otter_armour_medium_idle_5_ink},
+    {19, 6, 10, 18, -1, -1, otter_armour_medium_idle_6_ink},
+    {19, 6, 10, 18, -1, -1, otter_armour_medium_idle_7_ink},
+};
+static const uint8_t otter_armour_medium_walk_0_ink[133] = {
+    0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    7,4,4,4,4,1,4,4,7,7,0,0,0,0,0,0,0,7,7,
+    0,7,2,2,2,1,2,2,4,1,7,7,7,7,7,7,7,4,0,
+    0,0,7,7,7,7,2,2,2,1,4,4,4,1,4,4,4,7,0,
+    0,0,0,0,0,0,7,7,2,1,2,2,2,1,2,2,2,0,0,
+    0,0,0,0,0,0,0,0,7,7,2,7,7,1,2,2,7,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,0,0,7,7,7,0,0,0,
+};
+static const uint8_t otter_armour_medium_walk_1_ink[133] = {
+    0,0,0,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    7,7,7,4,4,1,4,4,7,7,7,0,0,0,0,0,0,0,7,
+    0,4,4,2,2,1,2,2,4,1,4,7,7,7,7,7,7,7,0,
+    0,7,7,2,2,1,2,2,2,1,2,4,4,1,4,4,4,4,0,
+    0,0,0,7,2,1,2,7,2,1,2,2,2,1,2,7,2,2,0,
+    0,0,0,0,7,7,2,0,7,7,7,7,7,7,7,0,7,7,0,
+    0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t otter_armour_medium_walk_2_ink[152] = {
+    0,0,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    7,7,4,4,4,1,4,4,7,7,0,0,0,0,0,0,0,7,7,
+    0,4,2,2,2,1,2,2,4,1,7,7,7,7,7,7,7,4,0,
+    0,2,2,7,7,7,7,7,2,1,4,4,4,1,4,4,4,7,0,
+    0,7,7,0,0,0,0,0,2,1,2,2,2,1,2,2,2,0,0,
+    0,0,0,0,0,0,0,0,7,7,2,7,7,1,2,2,7,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,0,0,1,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,
+};
+static const uint8_t otter_armour_medium_walk_3_ink[114] = {
+    0,0,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,4,4,4,1,4,4,7,7,0,0,0,0,0,0,7,7,7,
+    7,4,2,2,2,1,2,2,4,1,7,7,7,7,7,7,4,4,0,
+    0,2,2,2,2,1,2,2,2,1,4,4,4,1,4,4,2,2,0,
+    0,7,7,2,2,7,7,7,2,1,2,2,2,1,2,7,7,7,0,
+    0,0,0,7,7,0,0,0,7,7,7,7,7,7,7,0,0,0,0,
+};
+static const ArtFrame otter_armour_medium_walk_frames[4] = {
+    {19, 7, 9, 19, -1, -1, otter_armour_medium_walk_0_ink},
+    {19, 7, 10, 19, -1, -1, otter_armour_medium_walk_1_ink},
+    {19, 8, 9, 19, -1, -1, otter_armour_medium_walk_2_ink},
+    {19, 6, 10, 18, -1, -1, otter_armour_medium_walk_3_ink},
+};
+static const uint8_t otter_armour_medium_run_0_ink[114] = {
+    7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,7,7,7,7,7,7,7,7,7,7,7,7,7,
+    0,7,7,7,7,1,4,4,4,1,4,4,4,1,4,4,4,4,0,
+    0,0,0,0,0,7,2,2,2,1,2,2,2,1,2,7,7,7,0,
+    0,0,0,0,0,0,7,7,7,1,2,7,7,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t otter_armour_medium_run_1_ink[114] = {
+    7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,7,7,4,1,4,4,7,7,7,7,7,7,7,7,7,7,7,
+    0,0,0,0,7,7,2,2,4,1,4,4,4,1,4,4,4,4,0,
+    0,0,0,0,0,0,7,7,2,1,2,2,2,1,2,7,7,7,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,7,7,7,0,0,0,0,
+};
+static const uint8_t otter_armour_medium_run_2_ink[152] = {
+    0,0,0,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,
+    7,7,7,4,4,1,4,4,4,1,4,7,7,0,0,0,0,0,0,
+    0,7,7,7,7,1,2,2,2,1,2,4,4,7,7,7,7,7,7,
+    0,0,0,0,0,7,7,2,2,1,2,2,2,1,4,4,4,4,0,
+    0,0,0,0,0,0,0,2,2,1,2,2,2,1,2,2,7,7,0,
+    0,0,0,0,0,0,0,2,2,1,2,2,2,1,2,7,0,0,0,
+    0,0,0,0,0,0,0,7,7,1,2,2,7,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,0,0,0,0,0,0,0,
+};
+static const uint8_t otter_armour_medium_run_3_ink[190] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,7,7,4,4,4,7,0,
+    0,0,0,0,0,0,0,0,0,7,7,4,4,1,2,2,2,0,0,
+    0,0,0,0,0,0,0,7,7,1,4,2,2,1,7,7,7,0,0,
+    0,0,0,0,0,7,7,4,4,1,2,7,7,7,0,0,0,0,0,
+    0,0,7,7,7,1,4,2,2,7,7,0,0,0,0,0,0,0,0,
+    0,7,4,4,4,1,2,7,7,0,0,0,0,0,0,0,0,0,0,
+    7,4,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+};
+static const ArtFrame otter_armour_medium_run_frames[4] = {
+    {19, 6, 7, 20, -1, -1, otter_armour_medium_run_0_ink},
+    {19, 6, 10, 20, -1, -1, otter_armour_medium_run_1_ink},
+    {19, 8, 10, 19, -1, -1, otter_armour_medium_run_2_ink},
+    {19, 10, 10, 21, -1, -1, otter_armour_medium_run_3_ink},
+};
+static const uint8_t otter_armour_medium_graze_0_ink[133] = {
+    0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    7,4,4,4,4,1,4,4,7,7,7,7,0,0,0,0,0,0,0,
+    0,7,7,7,2,1,2,2,4,1,4,4,7,7,7,7,0,0,0,
+    0,0,0,0,7,7,7,7,2,1,2,2,4,1,4,4,7,7,7,
+    0,0,0,0,0,0,0,0,2,1,2,7,2,1,2,2,4,4,0,
+    0,0,0,0,0,0,0,0,7,7,7,0,7,7,7,7,2,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,
+};
+static const uint8_t otter_armour_medium_graze_1_ink[133] = {
+    0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    7,4,4,4,4,1,4,4,7,7,7,7,0,0,0,0,0,0,0,
+    0,7,7,7,2,1,2,2,4,1,4,4,7,7,7,7,0,0,0,
+    0,0,0,0,7,7,7,7,2,1,2,2,4,1,4,4,7,7,7,
+    0,0,0,0,0,0,0,0,2,1,2,7,2,1,2,2,4,4,0,
+    0,0,0,0,0,0,0,0,7,7,7,0,7,7,7,7,2,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,
+};
+static const uint8_t otter_armour_medium_graze_2_ink[133] = {
+    0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    7,4,4,4,4,1,4,4,7,7,7,7,0,0,0,0,0,0,0,
+    0,7,7,7,2,1,2,2,4,1,4,4,7,7,7,7,0,0,0,
+    0,0,0,0,7,7,7,7,2,1,2,2,4,1,4,4,7,7,7,
+    0,0,0,0,0,0,0,0,2,1,2,7,2,1,2,2,4,4,0,
+    0,0,0,0,0,0,0,0,7,7,7,0,7,7,7,7,2,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,
+};
+static const uint8_t otter_armour_medium_graze_3_ink[133] = {
+    0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    7,4,4,4,4,1,4,4,7,7,7,7,0,0,0,0,0,0,0,
+    0,7,7,7,2,1,2,2,4,1,4,4,7,7,7,7,0,0,0,
+    0,0,0,0,7,7,7,7,2,1,2,2,4,1,4,4,7,7,7,
+    0,0,0,0,0,0,0,0,2,1,2,7,2,1,2,2,4,4,0,
+    0,0,0,0,0,0,0,0,7,7,7,0,7,7,7,7,2,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,
+};
+static const uint8_t otter_armour_medium_graze_4_ink[133] = {
+    0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    7,4,4,4,4,1,4,4,7,7,7,7,0,0,0,0,0,0,0,
+    0,7,7,7,2,1,2,2,4,1,4,4,7,7,7,7,0,0,0,
+    0,0,0,0,7,7,7,7,2,1,2,2,4,1,4,4,7,7,7,
+    0,0,0,0,0,0,0,0,2,1,2,7,2,1,2,2,4,4,0,
+    0,0,0,0,0,0,0,0,7,7,7,0,7,7,7,7,2,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,
+};
+static const uint8_t otter_armour_medium_graze_5_ink[133] = {
+    0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    7,4,4,4,4,1,4,4,7,7,7,7,0,0,0,0,0,0,0,
+    0,7,7,7,2,1,2,2,4,1,4,4,7,7,7,7,0,0,0,
+    0,0,0,0,7,7,7,7,2,1,2,2,4,1,4,4,7,7,7,
+    0,0,0,0,0,0,0,0,2,1,2,7,2,1,2,2,4,4,0,
+    0,0,0,0,0,0,0,0,7,7,7,0,7,7,7,7,2,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,
+};
+static const uint8_t otter_armour_medium_graze_6_ink[133] = {
+    7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,4,7,7,7,7,0,0,0,0,0,0,0,0,
+    0,7,7,7,2,1,2,4,4,1,4,7,7,7,7,0,0,0,0,
+    0,0,0,0,7,7,7,2,2,1,2,4,4,1,4,7,7,7,7,
+    0,0,0,0,0,0,0,7,2,1,2,2,2,1,2,4,4,4,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,7,7,7,2,2,2,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,0,
+};
+static const ArtFrame otter_armour_medium_graze_frames[7] = {
+    {19, 7, 8, 20, -1, -1, otter_armour_medium_graze_0_ink},
+    {19, 7, 8, 20, -1, -1, otter_armour_medium_graze_1_ink},
+    {19, 7, 8, 20, -1, -1, otter_armour_medium_graze_2_ink},
+    {19, 7, 8, 20, -1, -1, otter_armour_medium_graze_3_ink},
+    {19, 7, 8, 20, -1, -1, otter_armour_medium_graze_4_ink},
+    {19, 7, 8, 20, -1, -1, otter_armour_medium_graze_5_ink},
+    {19, 7, 7, 20, -1, -1, otter_armour_medium_graze_6_ink},
+};
+static const uint8_t otter_armour_medium_bite_0_ink[133] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,7,0,
+    7,7,4,4,4,1,4,7,7,7,7,7,7,7,7,7,7,4,0,
+    0,4,7,7,2,1,2,4,4,1,4,4,4,1,4,4,4,2,0,
+    0,7,0,0,7,7,7,2,2,1,2,2,2,1,2,2,2,7,0,
+    0,0,0,0,0,0,0,7,2,1,2,7,7,7,7,2,2,0,0,
+    0,0,0,0,0,0,0,0,7,7,7,0,0,0,0,7,7,0,0,
+};
+static const uint8_t otter_armour_medium_bite_1_ink[114] = {
+    0,0,0,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,7,
+    7,7,7,4,4,1,4,4,7,7,7,7,7,7,7,7,7,7,0,
+    0,4,4,2,2,1,2,2,4,1,4,4,4,1,4,4,4,4,0,
+    0,7,7,7,7,7,7,7,2,1,2,2,2,1,2,2,2,2,0,
+    0,0,0,0,0,0,0,0,7,1,2,7,7,7,7,7,7,7,0,
+    0,0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t otter_armour_medium_bite_2_ink[114] = {
+    0,0,0,0,0,7,7,7,7,7,0,0,0,0,0,0,0,0,0,
+    0,0,7,7,7,1,4,4,4,1,7,7,7,7,7,7,7,7,7,
+    0,7,4,4,4,1,2,2,2,1,4,4,4,1,4,4,4,4,0,
+    7,4,2,2,2,7,7,7,2,1,2,2,2,1,2,7,7,7,0,
+    0,2,7,7,7,0,0,0,7,7,7,7,7,7,7,0,0,0,0,
+    0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t otter_armour_medium_bite_3_ink[114] = {
+    0,0,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,7,
+    7,7,4,4,4,1,4,7,7,7,7,7,7,7,7,7,7,7,0,
+    0,4,7,7,2,1,2,4,4,1,4,4,4,1,4,4,4,4,0,
+    0,7,0,0,7,7,7,2,2,1,2,2,2,1,2,2,2,2,0,
+    0,0,0,0,0,0,0,7,2,1,2,7,7,7,7,2,2,7,0,
+    0,0,0,0,0,0,0,0,7,7,7,0,0,0,0,7,7,0,0,
+};
+static const ArtFrame otter_armour_medium_bite_frames[4] = {
+    {19, 7, 7, 19, -1, -1, otter_armour_medium_bite_0_ink},
+    {19, 6, 8, 18, -1, -1, otter_armour_medium_bite_1_ink},
+    {19, 6, 10, 18, -1, -1, otter_armour_medium_bite_2_ink},
+    {19, 6, 7, 18, -1, -1, otter_armour_medium_bite_3_ink},
+};
+static const uint8_t otter_armour_medium_attack_0_ink[114] = {
+    0,0,0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,7,7,
+    0,7,7,4,4,1,4,4,4,1,7,7,7,7,7,7,7,4,0,
+    7,4,4,2,2,1,2,2,2,1,4,4,4,1,4,4,4,2,0,
+    0,2,2,7,7,7,7,7,2,1,2,2,2,1,2,7,7,7,0,
+    0,7,7,0,0,0,0,0,7,7,2,7,7,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t otter_armour_medium_attack_1_ink[114] = {
+    0,0,0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,7,7,
+    0,7,7,4,4,1,4,4,4,1,7,7,7,7,7,7,7,4,0,
+    7,4,4,2,2,1,2,2,2,1,4,4,4,1,4,4,4,2,0,
+    0,2,2,7,7,7,7,7,2,1,2,2,2,1,2,7,7,7,0,
+    0,7,7,0,0,0,0,0,7,7,2,7,7,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t otter_armour_medium_attack_2_ink[114] = {
+    0,0,0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,7,7,
+    0,7,7,4,4,1,4,4,4,1,7,7,7,7,7,7,7,4,0,
+    7,4,4,2,2,1,2,2,2,1,4,4,4,1,4,4,4,2,0,
+    0,2,2,7,7,7,7,7,2,1,2,2,2,1,2,7,7,7,0,
+    0,7,7,0,0,0,0,0,7,7,2,7,7,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t otter_armour_medium_attack_3_ink[152] = {
+    7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,2,2,2,1,4,4,7,7,0,0,0,0,7,7,7,0,0,
+    0,0,7,7,7,7,2,2,4,1,7,7,7,7,4,4,4,7,7,
+    0,0,0,0,0,0,2,2,2,1,4,4,4,1,2,2,2,4,0,
+    0,0,0,0,0,0,7,7,2,1,2,2,2,1,2,2,7,2,0,
+    0,0,0,0,0,0,0,0,7,7,2,2,2,1,7,7,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t otter_armour_medium_attack_4_ink[152] = {
+    0,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    7,4,4,4,4,1,4,7,7,0,0,0,0,0,0,0,0,0,0,
+    0,2,2,2,2,1,2,4,4,7,7,0,0,0,0,0,0,0,0,
+    0,2,7,7,7,7,2,2,2,1,4,7,7,7,7,7,7,0,0,
+    0,7,0,0,0,0,7,2,2,1,2,4,4,1,4,4,4,7,7,
+    0,0,0,0,0,0,0,7,7,1,2,2,2,1,2,2,2,4,0,
+    0,0,0,0,0,0,0,0,0,7,7,2,7,1,2,2,7,2,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,0,7,7,7,0,7,0,
+};
+static const uint8_t otter_armour_medium_attack_5_ink[152] = {
+    0,0,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    7,7,4,4,4,1,4,4,7,7,0,0,0,0,0,0,0,0,0,
+    0,4,2,2,2,1,2,2,4,1,7,7,7,7,7,7,7,7,0,
+    0,7,7,7,7,7,7,2,2,1,4,4,4,1,4,4,4,4,7,
+    0,0,0,0,0,0,0,7,2,1,2,2,2,1,2,2,2,2,0,
+    0,0,0,0,0,0,0,0,7,7,2,2,2,1,2,2,2,7,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,2,1,2,7,7,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,0,0,0,0,
+};
+static const ArtFrame otter_armour_medium_attack_frames[6] = {
+    {19, 6, 10, 18, -1, -1, otter_armour_medium_attack_0_ink},
+    {19, 6, 10, 18, -1, -1, otter_armour_medium_attack_1_ink},
+    {19, 6, 10, 18, -1, -1, otter_armour_medium_attack_2_ink},
+    {19, 8, 9, 19, -1, -1, otter_armour_medium_attack_3_ink},
+    {19, 8, 10, 19, -1, -1, otter_armour_medium_attack_4_ink},
+    {19, 8, 9, 19, -1, -1, otter_armour_medium_attack_5_ink},
+};
+static const uint8_t otter_armour_medium_sleep_0_ink[76] = {
+    0,0,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+    0,7,4,4,4,1,4,4,4,1,4,4,4,1,4,4,4,4,0,
+    7,7,7,7,7,1,2,2,2,1,2,2,2,1,7,7,7,7,0,
+    0,0,0,0,0,7,7,7,7,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t otter_armour_medium_sleep_1_ink[76] = {
+    0,0,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+    0,7,4,4,4,1,4,4,4,1,4,4,4,1,4,4,4,4,0,
+    7,7,7,7,7,1,2,2,2,1,2,2,2,1,7,7,7,7,0,
+    0,0,0,0,0,7,7,7,7,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t otter_armour_medium_sleep_2_ink[76] = {
+    0,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+    7,4,4,4,4,1,4,4,4,1,4,4,4,1,4,4,4,4,0,
+    0,7,7,7,7,1,2,2,2,1,2,2,2,1,7,7,7,7,0,
+    0,0,0,0,0,7,7,7,7,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t otter_armour_medium_sleep_3_ink[76] = {
+    0,0,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+    0,7,4,4,4,1,4,4,4,1,4,4,4,1,4,4,4,4,0,
+    7,7,7,7,7,1,2,2,2,1,2,2,2,1,7,7,7,7,0,
+    0,0,0,0,0,7,7,7,7,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t otter_armour_medium_sleep_4_ink[76] = {
+    0,0,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+    0,7,4,4,4,1,4,4,4,1,4,4,4,1,4,4,4,4,0,
+    7,7,7,7,7,1,2,2,2,1,2,2,2,1,7,7,7,7,0,
+    0,0,0,0,0,7,7,7,7,7,7,7,7,7,0,0,0,0,0,
+};
+static const ArtFrame otter_armour_medium_sleep_frames[5] = {
+    {19, 4, 6, 10, -1, -1, otter_armour_medium_sleep_0_ink},
+    {19, 4, 6, 10, -1, -1, otter_armour_medium_sleep_1_ink},
+    {19, 4, 5, 10, -1, -1, otter_armour_medium_sleep_2_ink},
+    {19, 4, 6, 10, -1, -1, otter_armour_medium_sleep_3_ink},
+    {19, 4, 6, 10, -1, -1, otter_armour_medium_sleep_4_ink},
+};
+static const ArtClip otter_armour_medium_clips[ACTION_COUNT] = {
+    [ACTION_REST] = {8, otter_armour_medium_idle_frames},
+    [ACTION_WALK] = {4, otter_armour_medium_walk_frames},
+    [ACTION_RUN] = {4, otter_armour_medium_run_frames},
+    [ACTION_GRAZE] = {7, otter_armour_medium_graze_frames},
+    [ACTION_BITE] = {4, otter_armour_medium_bite_frames},
+    [ACTION_ATTACK] = {6, otter_armour_medium_attack_frames},
+    [ACTION_SLEEP] = {5, otter_armour_medium_sleep_frames},
+};
 static const uint8_t otter_weapon_full_idle_0_ink[30] = {
     0,0,0,0,0,15,
     0,0,13,0,14,0,
@@ -29826,6 +38363,295 @@ static const ArtClip otter_weapon_full_clips[ACTION_COUNT] = {
     [ACTION_BITE] = {4, otter_weapon_full_bite_frames},
     [ACTION_ATTACK] = {6, otter_weapon_full_attack_frames},
     [ACTION_SLEEP] = {5, otter_weapon_full_sleep_frames},
+};
+static const uint8_t otter_weapon_medium_idle_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t otter_weapon_medium_idle_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t otter_weapon_medium_idle_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t otter_weapon_medium_idle_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t otter_weapon_medium_idle_4_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t otter_weapon_medium_idle_5_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t otter_weapon_medium_idle_6_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t otter_weapon_medium_idle_7_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame otter_weapon_medium_idle_frames[8] = {
+    {5, 4, -17, 28, -1, -1, otter_weapon_medium_idle_0_ink},
+    {5, 4, -17, 28, -1, -1, otter_weapon_medium_idle_1_ink},
+    {5, 4, -17, 28, -1, -1, otter_weapon_medium_idle_2_ink},
+    {5, 4, -17, 28, -1, -1, otter_weapon_medium_idle_3_ink},
+    {5, 4, -17, 28, -1, -1, otter_weapon_medium_idle_4_ink},
+    {5, 4, -17, 28, -1, -1, otter_weapon_medium_idle_5_ink},
+    {5, 4, -17, 28, -1, -1, otter_weapon_medium_idle_6_ink},
+    {5, 4, -17, 28, -1, -1, otter_weapon_medium_idle_7_ink},
+};
+static const uint8_t otter_weapon_medium_walk_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t otter_weapon_medium_walk_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t otter_weapon_medium_walk_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t otter_weapon_medium_walk_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame otter_weapon_medium_walk_frames[4] = {
+    {5, 4, -18, 27, -1, -1, otter_weapon_medium_walk_0_ink},
+    {5, 4, -17, 27, -1, -1, otter_weapon_medium_walk_1_ink},
+    {5, 4, -18, 27, -1, -1, otter_weapon_medium_walk_2_ink},
+    {5, 4, -17, 27, -1, -1, otter_weapon_medium_walk_3_ink},
+};
+static const uint8_t otter_weapon_medium_run_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t otter_weapon_medium_run_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t otter_weapon_medium_run_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t otter_weapon_medium_run_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame otter_weapon_medium_run_frames[4] = {
+    {5, 4, -20, 26, -1, -1, otter_weapon_medium_run_0_ink},
+    {5, 4, -17, 27, -1, -1, otter_weapon_medium_run_1_ink},
+    {5, 4, -17, 25, -1, -1, otter_weapon_medium_run_2_ink},
+    {5, 4, -17, 29, -1, -1, otter_weapon_medium_run_3_ink},
+};
+static const uint8_t otter_weapon_medium_graze_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t otter_weapon_medium_graze_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t otter_weapon_medium_graze_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t otter_weapon_medium_graze_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t otter_weapon_medium_graze_4_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t otter_weapon_medium_graze_5_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t otter_weapon_medium_graze_6_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame otter_weapon_medium_graze_frames[7] = {
+    {5, 4, -19, 19, -1, -1, otter_weapon_medium_graze_0_ink},
+    {5, 4, -19, 18, -1, -1, otter_weapon_medium_graze_1_ink},
+    {5, 4, -19, 18, -1, -1, otter_weapon_medium_graze_2_ink},
+    {5, 4, -19, 18, -1, -1, otter_weapon_medium_graze_3_ink},
+    {5, 4, -19, 18, -1, -1, otter_weapon_medium_graze_4_ink},
+    {5, 4, -19, 20, -1, -1, otter_weapon_medium_graze_5_ink},
+    {5, 4, -20, 22, -1, -1, otter_weapon_medium_graze_6_ink},
+};
+static const uint8_t otter_weapon_medium_bite_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t otter_weapon_medium_bite_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t otter_weapon_medium_bite_2_ink[20] = {
+    0,0,0,15,
+    0,0,15,0,
+    0,0,14,0,
+    12,13,0,0,
+    11,12,0,0,
+};
+static const uint8_t otter_weapon_medium_bite_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame otter_weapon_medium_bite_frames[4] = {
+    {5, 4, -20, 27, -1, -1, otter_weapon_medium_bite_0_ink},
+    {5, 4, -19, 25, -1, -1, otter_weapon_medium_bite_1_ink},
+    {4, 5, -17, 25, -1, -1, otter_weapon_medium_bite_2_ink},
+    {5, 4, -20, 23, -1, -1, otter_weapon_medium_bite_3_ink},
+};
+static const uint8_t otter_weapon_medium_attack_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t otter_weapon_medium_attack_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t otter_weapon_medium_attack_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t otter_weapon_medium_attack_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t otter_weapon_medium_attack_4_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t otter_weapon_medium_attack_5_ink[15] = {
+    0,0,0,0,15,
+    11,12,14,15,0,
+    12,13,0,0,0,
+};
+static const ArtFrame otter_weapon_medium_attack_frames[6] = {
+    {5, 4, -17, 28, -1, -1, otter_weapon_medium_attack_0_ink},
+    {5, 4, -17, 28, -1, -1, otter_weapon_medium_attack_1_ink},
+    {5, 4, -17, 27, -1, -1, otter_weapon_medium_attack_2_ink},
+    {5, 4, -18, 16, -1, -1, otter_weapon_medium_attack_3_ink},
+    {5, 4, -17, 15, -1, -1, otter_weapon_medium_attack_4_ink},
+    {5, 3, -20, 12, -1, -1, otter_weapon_medium_attack_5_ink},
+};
+static const uint8_t otter_weapon_medium_sleep_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t otter_weapon_medium_sleep_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t otter_weapon_medium_sleep_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t otter_weapon_medium_sleep_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t otter_weapon_medium_sleep_4_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame otter_weapon_medium_sleep_frames[5] = {
+    {5, 4, -21, 10, -1, -1, otter_weapon_medium_sleep_0_ink},
+    {5, 4, -21, 13, -1, -1, otter_weapon_medium_sleep_1_ink},
+    {5, 4, -22, 13, -1, -1, otter_weapon_medium_sleep_2_ink},
+    {5, 4, -21, 11, -1, -1, otter_weapon_medium_sleep_3_ink},
+    {5, 4, -21, 11, -1, -1, otter_weapon_medium_sleep_4_ink},
+};
+static const ArtClip otter_weapon_medium_clips[ACTION_COUNT] = {
+    [ACTION_REST] = {8, otter_weapon_medium_idle_frames},
+    [ACTION_WALK] = {4, otter_weapon_medium_walk_frames},
+    [ACTION_RUN] = {4, otter_weapon_medium_run_frames},
+    [ACTION_GRAZE] = {7, otter_weapon_medium_graze_frames},
+    [ACTION_BITE] = {4, otter_weapon_medium_bite_frames},
+    [ACTION_ATTACK] = {6, otter_weapon_medium_attack_frames},
+    [ACTION_SLEEP] = {5, otter_weapon_medium_sleep_frames},
 };
 static const ArtClip otter_clips[ACTION_COUNT] = {
     [ACTION_REST] = {8, otter_idle_frames},
@@ -33127,6 +41953,469 @@ static const ArtClip tiger_armour_full_clips[ACTION_COUNT] = {
     [ACTION_ATTACK] = {9, tiger_armour_full_attack_frames},
     [ACTION_SLEEP] = {3, tiger_armour_full_sleep_frames},
 };
+static const uint8_t tiger_armour_medium_idle_0_ink[126] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,7,7,7,7,7,7,7,7,7,0,0,0,0,0,7,7,0,
+    7,4,4,4,4,1,4,4,4,1,7,7,7,7,7,4,4,0,
+    0,2,2,2,2,1,2,2,2,1,4,4,4,1,4,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,7,7,0,
+    0,7,7,2,7,7,7,7,7,7,2,2,7,7,7,0,0,0,
+    0,0,0,7,0,0,0,0,0,0,7,7,0,0,0,0,0,0,
+};
+static const uint8_t tiger_armour_medium_idle_1_ink[144] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,7,7,7,7,7,7,7,7,0,0,0,0,0,7,7,0,
+    7,7,4,4,4,1,4,4,4,1,7,7,7,7,7,4,4,0,
+    0,4,2,2,2,1,2,2,2,1,4,4,4,1,4,2,7,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,7,0,0,
+    0,2,7,2,2,7,7,7,7,7,2,2,7,7,7,0,0,0,
+    0,7,0,7,2,0,0,0,0,0,7,7,0,0,0,0,0,0,
+    0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t tiger_armour_medium_idle_2_ink[126] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,7,7,7,7,7,7,7,7,7,0,0,0,0,0,7,7,0,
+    7,4,4,4,4,1,4,4,4,1,7,7,7,7,7,4,4,0,
+    0,2,2,2,2,1,2,2,2,1,4,4,4,1,4,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,7,7,0,
+    0,7,7,2,7,7,7,7,7,7,2,2,7,7,7,0,0,0,
+    0,0,0,7,0,0,0,0,0,0,7,7,0,0,0,0,0,0,
+};
+static const uint8_t tiger_armour_medium_idle_3_ink[126] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,7,7,7,7,7,7,7,7,7,0,0,0,0,0,7,7,0,
+    7,4,4,4,4,1,4,4,4,1,7,7,7,7,7,4,4,0,
+    0,2,2,2,2,1,2,2,2,1,4,4,4,1,4,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,7,7,0,
+    0,7,7,2,7,7,7,7,7,7,2,2,7,7,7,0,0,0,
+    0,0,0,7,0,0,0,0,0,0,7,7,0,0,0,0,0,0,
+};
+static const uint8_t tiger_armour_medium_idle_4_ink[144] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,7,7,7,7,7,7,7,7,0,0,0,0,0,7,7,0,
+    7,7,4,4,4,1,4,4,4,1,7,7,7,7,7,4,4,0,
+    0,4,2,2,2,1,2,2,2,1,4,4,4,1,4,2,7,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,7,0,0,
+    0,2,7,2,2,7,7,7,7,7,2,2,7,7,7,0,0,0,
+    0,7,0,7,2,0,0,0,0,0,7,7,0,0,0,0,0,0,
+    0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t tiger_armour_medium_idle_5_ink[126] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,7,7,7,7,7,7,7,7,7,0,0,0,0,0,7,7,0,
+    7,4,4,4,4,1,4,4,4,1,7,7,7,7,7,4,4,0,
+    0,2,2,2,2,1,2,2,2,1,4,4,4,1,4,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,7,7,0,
+    0,7,7,2,7,7,7,7,7,7,2,2,7,7,7,0,0,0,
+    0,0,0,7,0,0,0,0,0,0,7,7,0,0,0,0,0,0,
+};
+static const uint8_t tiger_armour_medium_idle_6_ink[126] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,7,7,7,7,7,7,7,7,7,0,0,0,0,0,7,7,0,
+    7,4,4,4,4,1,4,4,4,1,7,7,7,7,7,4,4,0,
+    0,2,2,2,2,1,2,2,2,1,4,4,4,1,4,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,7,7,0,
+    0,7,7,2,7,7,7,7,7,7,2,2,7,7,7,0,0,0,
+    0,0,0,7,0,0,0,0,0,0,7,7,0,0,0,0,0,0,
+};
+static const uint8_t tiger_armour_medium_idle_7_ink[144] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,7,7,7,7,7,7,7,7,0,0,0,0,0,7,7,0,
+    7,7,4,4,4,1,4,4,4,1,7,7,7,7,7,4,4,0,
+    0,4,2,2,2,1,2,2,2,1,4,4,4,1,4,2,7,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,7,0,0,
+    0,2,7,2,2,7,7,7,7,7,2,2,7,7,7,0,0,0,
+    0,7,0,7,2,0,0,0,0,0,7,7,0,0,0,0,0,0,
+    0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t tiger_armour_medium_idle_8_ink[126] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,7,7,7,7,7,7,7,7,7,0,0,0,0,0,7,7,0,
+    7,4,4,4,4,1,4,4,4,1,7,7,7,7,7,4,4,0,
+    0,2,2,2,2,1,2,2,2,1,4,4,4,1,4,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,7,7,0,
+    0,7,7,2,7,7,7,7,7,7,2,2,7,7,7,0,0,0,
+    0,0,0,7,0,0,0,0,0,0,7,7,0,0,0,0,0,0,
+};
+static const ArtFrame tiger_armour_medium_idle_frames[9] = {
+    {18, 7, 10, 21, -1, -1, tiger_armour_medium_idle_0_ink},
+    {18, 8, 11, 21, -1, -1, tiger_armour_medium_idle_1_ink},
+    {18, 7, 10, 21, -1, -1, tiger_armour_medium_idle_2_ink},
+    {18, 7, 10, 21, -1, -1, tiger_armour_medium_idle_3_ink},
+    {18, 8, 11, 21, -1, -1, tiger_armour_medium_idle_4_ink},
+    {18, 7, 10, 21, -1, -1, tiger_armour_medium_idle_5_ink},
+    {18, 7, 10, 21, -1, -1, tiger_armour_medium_idle_6_ink},
+    {18, 8, 11, 21, -1, -1, tiger_armour_medium_idle_7_ink},
+    {18, 7, 10, 21, -1, -1, tiger_armour_medium_idle_8_ink},
+};
+static const uint8_t tiger_armour_medium_walk_0_ink[126] = {
+    7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,7,
+    0,4,4,4,4,1,4,4,4,7,7,7,7,7,7,7,7,0,
+    0,2,2,2,2,1,2,2,2,1,4,4,4,1,4,4,4,0,
+    0,7,2,7,7,7,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,7,0,0,0,7,7,2,1,2,2,2,1,7,7,0,0,
+    0,0,0,0,0,0,0,0,7,1,2,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t tiger_armour_medium_walk_1_ink[126] = {
+    7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,4,4,7,7,7,0,0,0,0,0,0,7,
+    0,2,2,2,2,1,2,2,4,1,4,7,7,7,7,7,7,0,
+    0,7,2,2,2,1,2,2,2,1,2,4,4,1,4,4,4,0,
+    0,0,7,2,2,1,7,7,2,1,7,2,2,1,2,2,7,0,
+    0,0,0,7,7,7,0,0,7,7,0,2,2,1,2,7,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,0,0,0,
+};
+static const uint8_t tiger_armour_medium_walk_2_ink[108] = {
+    0,7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,
+    7,4,4,4,4,1,4,4,4,1,7,7,0,0,0,7,7,7,
+    0,7,2,2,2,1,2,2,2,1,4,4,7,7,7,4,4,0,
+    0,0,7,7,7,7,2,2,2,1,2,2,4,1,4,2,7,0,
+    0,0,0,0,0,0,7,7,7,7,7,2,2,1,2,7,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,0,0,0,
+};
+static const uint8_t tiger_armour_medium_walk_3_ink[108] = {
+    0,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,
+    7,4,4,4,4,1,4,4,4,7,7,7,0,0,0,0,7,7,
+    0,2,2,2,2,1,2,2,2,1,4,4,7,7,7,7,4,0,
+    0,7,2,2,2,1,2,2,2,1,2,2,4,1,4,4,2,0,
+    0,0,7,2,2,1,7,7,7,1,2,2,2,1,7,2,7,0,
+    0,0,0,7,7,7,0,0,0,7,7,7,7,7,0,7,0,0,
+};
+static const ArtFrame tiger_armour_medium_walk_frames[4] = {
+    {18, 7, 9, 19, -1, -1, tiger_armour_medium_walk_0_ink},
+    {18, 7, 9, 19, -1, -1, tiger_armour_medium_walk_1_ink},
+    {18, 6, 9, 19, -1, -1, tiger_armour_medium_walk_2_ink},
+    {18, 6, 9, 19, -1, -1, tiger_armour_medium_walk_3_ink},
+};
+static const uint8_t tiger_armour_medium_run_0_ink[144] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,4,4,7,7,0,0,0,0,0,0,0,0,7,7,7,4,0,
+    0,7,7,4,4,7,7,7,0,0,7,7,7,1,4,4,7,0,
+    0,0,0,7,7,1,4,4,7,7,4,4,4,1,7,7,0,0,
+    0,0,0,0,0,1,2,2,4,1,2,2,2,7,0,0,0,0,
+    0,0,0,0,0,7,7,7,2,1,7,7,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t tiger_armour_medium_run_1_ink[108] = {
+    0,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    7,4,4,4,4,7,7,7,0,0,0,0,0,0,0,7,7,0,
+    0,7,7,7,2,1,4,4,7,7,7,7,7,7,7,4,4,0,
+    0,0,0,0,7,1,2,2,4,1,4,4,4,1,4,2,2,0,
+    0,0,0,0,0,7,7,7,2,1,2,2,2,7,2,7,7,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,7,0,7,0,0,0,
+};
+static const uint8_t tiger_armour_medium_run_2_ink[162] = {
+    7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,4,4,4,4,1,7,7,7,0,0,0,0,0,0,7,7,0,
+    0,7,7,7,2,1,4,4,4,7,0,0,0,7,7,4,4,0,
+    0,0,0,0,7,7,2,2,2,1,7,7,7,1,4,7,7,0,
+    0,0,0,0,0,0,2,2,2,1,4,4,4,1,2,0,0,0,
+    0,0,0,0,0,0,7,7,2,1,2,2,2,1,2,0,0,0,
+    0,0,0,0,0,0,0,0,7,1,2,2,2,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,2,7,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,
+};
+static const uint8_t tiger_armour_medium_run_3_ink[126] = {
+    0,0,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,7,
+    7,7,4,4,4,1,7,7,7,0,0,0,0,0,0,7,7,0,
+    0,4,2,7,7,1,4,4,4,7,7,7,7,7,7,4,4,0,
+    0,7,7,0,0,7,2,2,2,1,4,4,4,1,4,2,7,0,
+    0,0,0,0,0,0,7,7,7,1,2,2,2,1,2,7,0,0,
+    0,0,0,0,0,0,0,0,0,1,2,2,2,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,7,0,0,0,0,0,
+};
+static const ArtFrame tiger_armour_medium_run_frames[4] = {
+    {18, 8, 7, 21, -1, -1, tiger_armour_medium_run_0_ink},
+    {18, 6, 8, 19, -1, -1, tiger_armour_medium_run_1_ink},
+    {18, 9, 9, 16, -1, -1, tiger_armour_medium_run_2_ink},
+    {18, 7, 8, 19, -1, -1, tiger_armour_medium_run_3_ink},
+};
+static const uint8_t tiger_armour_medium_graze_0_ink[108] = {
+    7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,4,4,4,7,7,7,0,0,0,0,0,0,
+    0,7,7,2,2,1,2,2,2,1,4,4,7,7,7,7,7,7,
+    0,0,0,7,7,1,2,2,2,1,2,2,4,1,4,4,4,0,
+    0,0,0,0,0,7,7,7,7,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,7,0,0,
+};
+static const uint8_t tiger_armour_medium_graze_1_ink[108] = {
+    7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,4,4,7,7,7,0,0,0,0,0,0,0,
+    0,7,7,2,2,1,2,2,4,1,4,7,7,7,7,7,7,0,
+    0,0,0,7,7,1,2,2,2,1,2,4,4,1,4,4,4,7,
+    0,0,0,0,0,7,7,7,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,7,7,7,7,0,0,
+};
+static const uint8_t tiger_armour_medium_graze_2_ink[108] = {
+    7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,4,4,4,7,7,7,0,0,0,0,0,0,
+    0,7,7,2,2,1,2,2,2,1,4,4,7,7,7,7,7,7,
+    0,0,0,7,7,1,2,2,2,1,2,2,4,1,4,4,4,0,
+    0,0,0,0,0,7,7,7,7,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,7,0,0,
+};
+static const uint8_t tiger_armour_medium_graze_3_ink[108] = {
+    0,7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,
+    7,4,4,4,4,1,4,4,4,1,7,7,7,0,0,0,0,0,
+    0,7,2,2,2,1,2,2,2,1,4,4,4,7,7,7,7,7,
+    0,0,7,7,7,7,2,2,2,1,2,2,2,1,4,4,4,0,
+    0,0,0,0,0,0,7,7,7,7,2,2,7,1,2,2,7,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,0,7,7,7,0,0,
+};
+static const uint8_t tiger_armour_medium_graze_4_ink[108] = {
+    7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,4,4,4,7,7,7,0,0,0,0,0,0,
+    0,7,7,2,2,1,2,2,2,1,4,4,7,7,7,7,7,7,
+    0,0,0,7,7,1,2,2,2,1,2,2,4,1,4,4,4,0,
+    0,0,0,0,0,7,7,7,7,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,7,0,0,
+};
+static const uint8_t tiger_armour_medium_graze_5_ink[108] = {
+    7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,4,4,4,7,7,7,0,0,0,0,0,0,
+    0,7,7,2,2,1,2,2,2,1,4,4,7,7,7,7,7,7,
+    0,0,0,7,7,1,2,2,2,1,2,2,4,1,4,4,4,0,
+    0,0,0,0,0,7,7,7,7,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,7,0,0,
+};
+static const uint8_t tiger_armour_medium_graze_6_ink[108] = {
+    7,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,4,4,4,7,7,7,0,0,0,0,0,0,
+    0,7,7,2,2,1,2,2,2,1,4,4,7,7,7,7,7,7,
+    0,0,0,7,7,1,2,2,2,1,2,2,4,1,4,4,4,0,
+    0,0,0,0,0,7,7,7,7,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,7,0,0,
+};
+static const ArtFrame tiger_armour_medium_graze_frames[7] = {
+    {18, 6, 8, 20, -1, -1, tiger_armour_medium_graze_0_ink},
+    {18, 6, 7, 20, -1, -1, tiger_armour_medium_graze_1_ink},
+    {18, 6, 8, 20, -1, -1, tiger_armour_medium_graze_2_ink},
+    {18, 6, 9, 20, -1, -1, tiger_armour_medium_graze_3_ink},
+    {18, 6, 8, 20, -1, -1, tiger_armour_medium_graze_4_ink},
+    {18, 6, 8, 20, -1, -1, tiger_armour_medium_graze_5_ink},
+    {18, 6, 8, 20, -1, -1, tiger_armour_medium_graze_6_ink},
+};
+static const uint8_t tiger_armour_medium_bite_0_ink[108] = {
+    0,7,7,7,7,7,7,7,7,7,0,0,0,0,0,7,7,7,
+    7,4,4,4,4,1,4,4,4,1,7,7,7,7,7,4,4,0,
+    0,2,2,2,2,1,2,2,2,1,4,4,4,1,4,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,7,7,0,
+    0,7,7,2,7,7,7,7,7,7,2,2,7,7,7,0,0,0,
+    0,0,0,7,0,0,0,0,0,0,7,7,0,0,0,0,0,0,
+};
+static const uint8_t tiger_armour_medium_bite_1_ink[126] = {
+    0,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    7,4,4,4,7,7,7,7,7,0,0,0,0,0,7,7,7,0,
+    0,2,2,2,4,1,4,4,4,7,7,7,7,7,4,4,4,0,
+    0,2,2,2,2,1,2,2,2,1,4,4,4,1,2,2,2,0,
+    0,7,2,7,2,7,2,2,2,1,2,2,2,1,7,7,7,0,
+    0,0,7,0,7,0,7,7,7,1,2,2,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,0,0,0,0,0,0,
+};
+static const uint8_t tiger_armour_medium_bite_2_ink[162] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,7,7,0,
+    0,4,4,4,4,1,7,7,7,7,7,7,7,7,7,4,4,0,
+    0,7,2,2,2,1,4,4,4,1,4,4,4,1,4,2,2,0,
+    0,0,7,7,7,1,2,2,2,1,2,2,2,1,2,2,2,0,
+    0,0,0,0,0,7,2,2,2,1,2,2,2,1,2,7,7,0,
+    0,0,0,0,0,0,7,7,7,7,7,2,2,1,2,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,2,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,
+};
+static const uint8_t tiger_armour_medium_bite_3_ink[126] = {
+    7,7,7,7,7,7,7,7,7,7,7,0,0,0,0,0,7,7,
+    0,4,4,4,4,1,4,4,4,1,4,7,7,7,7,7,4,0,
+    0,2,2,2,2,1,2,2,2,1,2,4,4,1,4,4,2,0,
+    0,7,7,7,7,1,2,2,2,1,2,2,2,1,2,2,2,0,
+    0,0,0,0,0,7,7,7,7,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,2,1,2,7,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,0,0,0,
+};
+static const ArtFrame tiger_armour_medium_bite_frames[4] = {
+    {18, 6, 10, 19, -1, -1, tiger_armour_medium_bite_0_ink},
+    {18, 7, 9, 20, -1, -1, tiger_armour_medium_bite_1_ink},
+    {18, 9, 4, 20, -1, -1, tiger_armour_medium_bite_2_ink},
+    {18, 7, 5, 19, -1, -1, tiger_armour_medium_bite_3_ink},
+};
+static const uint8_t tiger_armour_medium_attack_0_ink[126] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    7,7,7,7,7,7,7,7,0,0,0,0,0,7,7,7,7,0,
+    0,4,4,4,4,1,4,4,7,7,7,7,7,1,4,4,4,0,
+    0,2,2,2,2,1,2,2,4,1,4,4,4,1,2,2,2,0,
+    0,7,7,7,7,7,2,2,2,1,2,2,2,7,2,2,2,0,
+    0,0,0,0,0,0,7,7,2,1,2,2,7,0,7,7,7,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,0,0,0,0,0,0,
+};
+static const uint8_t tiger_armour_medium_attack_1_ink[144] = {
+    7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,7,7,0,0,0,0,0,0,0,0,0,7,
+    0,7,2,2,2,1,4,4,7,7,7,7,7,7,7,7,7,0,
+    0,0,7,7,7,1,2,2,4,1,4,4,4,1,4,4,4,0,
+    0,0,0,0,0,7,2,2,2,1,2,2,2,1,2,2,2,0,
+    0,0,0,0,0,0,7,7,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,0,0,0,7,7,2,2,7,7,7,7,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,
+};
+static const uint8_t tiger_armour_medium_attack_2_ink[162] = {
+    7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,7,7,7,0,0,0,0,0,0,0,0,0,0,
+    0,2,2,2,2,1,4,4,7,7,7,0,0,0,0,0,0,0,
+    0,7,7,2,2,1,2,2,4,1,4,7,7,7,0,0,0,7,
+    0,0,0,7,7,1,2,2,2,1,2,4,4,1,7,7,7,0,
+    0,0,0,0,0,7,7,2,2,1,2,2,2,1,4,4,4,0,
+    0,0,0,0,0,0,0,7,7,1,2,2,2,1,2,2,2,0,
+    0,0,0,0,0,0,0,0,0,7,7,2,2,7,2,7,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,7,0,7,0,0,0,
+};
+static const uint8_t tiger_armour_medium_attack_3_ink[108] = {
+    0,0,7,7,7,7,7,7,7,7,7,0,0,0,0,0,7,7,
+    7,7,4,4,4,1,4,4,4,1,4,7,7,7,7,7,4,0,
+    0,4,2,2,2,1,2,2,2,1,2,4,4,1,4,4,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,7,7,2,7,7,7,7,7,7,7,2,7,7,7,7,0,0,
+    0,0,0,7,0,0,0,0,0,0,0,7,0,0,0,0,0,0,
+};
+static const uint8_t tiger_armour_medium_attack_4_ink[450] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,2,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,2,2,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,1,2,2,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,4,1,2,2,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,4,2,1,2,2,0,0,
+    0,0,0,0,0,0,0,0,0,0,4,2,2,1,2,7,0,0,
+    0,0,0,0,0,0,0,0,0,7,2,2,2,1,2,0,0,0,
+    0,0,0,0,0,0,0,0,7,1,2,2,2,1,7,0,0,0,
+    0,0,0,0,0,0,0,7,4,1,2,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,7,4,2,1,2,2,2,0,0,0,0,0,
+    0,0,0,0,0,0,4,2,2,1,2,2,7,0,0,0,0,0,
+    0,0,0,0,0,7,2,2,2,1,2,7,0,0,0,0,0,0,
+    0,0,0,0,7,1,2,2,2,1,7,0,0,0,0,0,0,0,
+    0,0,0,0,4,1,2,2,2,7,0,0,0,0,0,0,0,0,
+    0,0,0,0,2,1,7,7,7,0,0,0,0,0,0,0,0,0,
+    7,0,0,0,7,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t tiger_armour_medium_attack_5_ink[396] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,2,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,2,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,1,2,7,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,4,1,2,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,4,2,1,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,4,2,2,1,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,2,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,1,2,2,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,7,4,1,2,2,0,0,0,0,0,0,
+    7,7,0,0,0,0,0,4,2,1,2,2,0,0,0,0,0,0,
+    0,7,0,0,0,0,0,2,2,1,7,7,0,0,0,0,0,0,
+    0,0,0,0,0,0,7,2,2,1,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,4,2,7,7,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,2,7,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,7,2,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,7,1,7,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,7,7,4,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t tiger_armour_medium_attack_6_ink[234] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,7,7,4,4,7,0,
+    0,0,0,0,0,0,0,0,0,7,7,4,4,1,2,2,0,0,
+    0,0,0,0,0,0,0,7,7,1,4,2,2,1,7,7,0,0,
+    0,0,0,0,0,7,7,4,4,1,2,2,2,7,0,0,0,0,
+    0,0,0,0,7,1,4,2,2,1,2,7,7,0,0,0,0,0,
+    0,0,0,7,4,1,2,2,2,1,2,0,0,0,0,0,0,0,
+    0,0,7,4,2,1,2,2,2,7,7,0,0,0,0,0,0,0,
+    0,7,4,2,2,1,2,2,7,0,0,0,0,0,0,0,0,0,
+    7,7,2,2,2,1,2,2,0,0,0,0,0,0,0,0,0,0,
+    0,0,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t tiger_armour_medium_attack_7_ink[180] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,0,
+    0,0,0,0,0,0,7,7,7,7,7,7,7,7,4,4,4,0,
+    0,0,0,7,7,7,4,4,4,1,4,4,4,1,2,7,7,0,
+    0,7,7,4,4,1,2,2,2,1,2,2,2,1,7,0,0,0,
+    7,4,4,2,2,1,2,2,2,1,2,2,7,7,0,0,0,0,
+    0,2,2,2,2,1,2,2,2,7,7,7,0,0,0,0,0,0,
+    0,7,2,2,2,1,7,7,7,0,0,0,0,0,0,0,0,0,
+    0,0,7,7,7,1,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t tiger_armour_medium_attack_8_ink[162] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,0,
+    0,0,0,7,7,7,7,7,7,7,7,7,7,7,7,4,4,0,
+    7,7,7,4,4,1,4,4,4,1,4,4,4,1,4,2,2,0,
+    0,4,4,2,2,1,2,2,2,1,2,2,2,1,2,7,7,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,7,7,7,0,0,0,
+    0,7,2,2,2,1,7,7,7,7,7,7,0,0,0,0,0,0,
+    0,0,7,7,7,1,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,
+};
+static const ArtFrame tiger_armour_medium_attack_frames[9] = {
+    {18, 7, 6, 18, -1, -1, tiger_armour_medium_attack_0_ink},
+    {18, 8, 5, 16, -1, -1, tiger_armour_medium_attack_1_ink},
+    {18, 9, 6, 16, -1, -1, tiger_armour_medium_attack_2_ink},
+    {18, 6, 11, 16, -1, -1, tiger_armour_medium_attack_3_ink},
+    {18, 25, 21, 26, -1, -1, tiger_armour_medium_attack_4_ink},
+    {18, 22, 18, 24, -1, -1, tiger_armour_medium_attack_5_ink},
+    {18, 13, 12, 22, -1, -1, tiger_armour_medium_attack_6_ink},
+    {18, 10, 10, 19, -1, -1, tiger_armour_medium_attack_7_ink},
+    {18, 9, 9, 18, -1, -1, tiger_armour_medium_attack_8_ink},
+};
+static const uint8_t tiger_armour_medium_sleep_0_ink[108] = {
+    0,0,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    7,7,4,4,4,1,7,7,7,7,7,7,7,7,7,7,7,7,
+    0,4,2,2,2,1,4,4,4,1,4,4,4,1,4,4,4,0,
+    0,7,7,7,7,1,2,2,2,1,2,2,2,1,2,7,7,0,
+    0,0,0,0,0,7,2,2,2,1,2,2,7,7,7,0,0,0,
+    0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,0,
+};
+static const uint8_t tiger_armour_medium_sleep_1_ink[108] = {
+    0,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    7,4,4,4,4,7,7,7,7,7,7,7,7,7,7,7,7,7,
+    0,7,2,2,2,1,4,4,4,1,4,4,4,1,4,4,4,0,
+    0,0,7,7,7,1,2,2,2,1,2,2,2,1,2,7,7,0,
+    0,0,0,0,0,7,2,2,2,1,2,2,7,7,7,0,0,0,
+    0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,0,
+};
+static const uint8_t tiger_armour_medium_sleep_2_ink[108] = {
+    0,0,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,
+    7,7,4,4,4,1,7,7,7,7,7,7,7,7,7,7,7,7,
+    0,4,2,2,2,1,4,4,4,1,4,4,4,1,4,4,4,0,
+    0,7,7,7,7,1,2,2,2,1,2,2,2,1,2,7,7,0,
+    0,0,0,0,0,7,2,2,2,1,2,2,7,7,7,0,0,0,
+    0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,0,
+};
+static const ArtFrame tiger_armour_medium_sleep_frames[3] = {
+    {18, 6, 2, 12, -1, -1, tiger_armour_medium_sleep_0_ink},
+    {18, 6, 1, 12, -1, -1, tiger_armour_medium_sleep_1_ink},
+    {18, 6, 2, 12, -1, -1, tiger_armour_medium_sleep_2_ink},
+};
+static const ArtClip tiger_armour_medium_clips[ACTION_COUNT] = {
+    [ACTION_REST] = {9, tiger_armour_medium_idle_frames},
+    [ACTION_WALK] = {4, tiger_armour_medium_walk_frames},
+    [ACTION_RUN] = {4, tiger_armour_medium_run_frames},
+    [ACTION_GRAZE] = {7, tiger_armour_medium_graze_frames},
+    [ACTION_BITE] = {4, tiger_armour_medium_bite_frames},
+    [ACTION_ATTACK] = {9, tiger_armour_medium_attack_frames},
+    [ACTION_SLEEP] = {3, tiger_armour_medium_sleep_frames},
+};
 static const uint8_t tiger_weapon_full_idle_0_ink[30] = {
     0,0,0,0,0,15,
     0,0,13,0,14,0,
@@ -33471,6 +42760,310 @@ static const ArtClip tiger_weapon_full_clips[ACTION_COUNT] = {
     [ACTION_BITE] = {4, tiger_weapon_full_bite_frames},
     [ACTION_ATTACK] = {9, tiger_weapon_full_attack_frames},
     [ACTION_SLEEP] = {3, tiger_weapon_full_sleep_frames},
+};
+static const uint8_t tiger_weapon_medium_idle_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t tiger_weapon_medium_idle_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t tiger_weapon_medium_idle_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t tiger_weapon_medium_idle_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t tiger_weapon_medium_idle_4_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t tiger_weapon_medium_idle_5_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t tiger_weapon_medium_idle_6_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t tiger_weapon_medium_idle_7_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t tiger_weapon_medium_idle_8_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame tiger_weapon_medium_idle_frames[9] = {
+    {5, 4, -17, 30, -1, -1, tiger_weapon_medium_idle_0_ink},
+    {5, 4, -16, 30, -1, -1, tiger_weapon_medium_idle_1_ink},
+    {5, 4, -17, 30, -1, -1, tiger_weapon_medium_idle_2_ink},
+    {5, 4, -17, 30, -1, -1, tiger_weapon_medium_idle_3_ink},
+    {5, 4, -16, 30, -1, -1, tiger_weapon_medium_idle_4_ink},
+    {5, 4, -17, 30, -1, -1, tiger_weapon_medium_idle_5_ink},
+    {5, 4, -17, 30, -1, -1, tiger_weapon_medium_idle_6_ink},
+    {5, 4, -16, 30, -1, -1, tiger_weapon_medium_idle_7_ink},
+    {5, 4, -17, 30, -1, -1, tiger_weapon_medium_idle_8_ink},
+};
+static const uint8_t tiger_weapon_medium_walk_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t tiger_weapon_medium_walk_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t tiger_weapon_medium_walk_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t tiger_weapon_medium_walk_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame tiger_weapon_medium_walk_frames[4] = {
+    {5, 4, -18, 25, -1, -1, tiger_weapon_medium_walk_0_ink},
+    {5, 4, -18, 24, -1, -1, tiger_weapon_medium_walk_1_ink},
+    {5, 4, -18, 23, -1, -1, tiger_weapon_medium_walk_2_ink},
+    {5, 4, -18, 25, -1, -1, tiger_weapon_medium_walk_3_ink},
+};
+static const uint8_t tiger_weapon_medium_run_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t tiger_weapon_medium_run_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t tiger_weapon_medium_run_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t tiger_weapon_medium_run_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame tiger_weapon_medium_run_frames[4] = {
+    {5, 4, -20, 28, -1, -1, tiger_weapon_medium_run_0_ink},
+    {5, 4, -19, 26, -1, -1, tiger_weapon_medium_run_1_ink},
+    {5, 4, -18, 22, -1, -1, tiger_weapon_medium_run_2_ink},
+    {5, 4, -19, 25, -1, -1, tiger_weapon_medium_run_3_ink},
+};
+static const uint8_t tiger_weapon_medium_graze_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t tiger_weapon_medium_graze_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t tiger_weapon_medium_graze_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t tiger_weapon_medium_graze_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t tiger_weapon_medium_graze_4_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t tiger_weapon_medium_graze_5_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t tiger_weapon_medium_graze_6_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame tiger_weapon_medium_graze_frames[7] = {
+    {5, 4, -19, 22, -1, -1, tiger_weapon_medium_graze_0_ink},
+    {5, 4, -21, 24, -1, -1, tiger_weapon_medium_graze_1_ink},
+    {5, 4, -19, 21, -1, -1, tiger_weapon_medium_graze_2_ink},
+    {5, 4, -18, 23, -1, -1, tiger_weapon_medium_graze_3_ink},
+    {5, 4, -19, 24, -1, -1, tiger_weapon_medium_graze_4_ink},
+    {5, 4, -19, 23, -1, -1, tiger_weapon_medium_graze_5_ink},
+    {5, 4, -19, 21, -1, -1, tiger_weapon_medium_graze_6_ink},
+};
+static const uint8_t tiger_weapon_medium_bite_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t tiger_weapon_medium_bite_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t tiger_weapon_medium_bite_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t tiger_weapon_medium_bite_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame tiger_weapon_medium_bite_frames[4] = {
+    {5, 4, -17, 29, -1, -1, tiger_weapon_medium_bite_0_ink},
+    {5, 4, -18, 28, -1, -1, tiger_weapon_medium_bite_1_ink},
+    {5, 4, -23, 25, -1, -1, tiger_weapon_medium_bite_2_ink},
+    {5, 4, -22, 26, -1, -1, tiger_weapon_medium_bite_3_ink},
+};
+static const uint8_t tiger_weapon_medium_attack_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t tiger_weapon_medium_attack_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t tiger_weapon_medium_attack_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t tiger_weapon_medium_attack_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t tiger_weapon_medium_attack_4_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t tiger_weapon_medium_attack_5_ink[20] = {
+    0,0,0,15,
+    0,0,15,0,
+    0,0,14,0,
+    12,13,0,0,
+    11,12,0,0,
+};
+static const uint8_t tiger_weapon_medium_attack_6_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t tiger_weapon_medium_attack_7_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t tiger_weapon_medium_attack_8_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame tiger_weapon_medium_attack_frames[9] = {
+    {5, 4, -21, 26, -1, -1, tiger_weapon_medium_attack_0_ink},
+    {5, 4, -22, 21, -1, -1, tiger_weapon_medium_attack_1_ink},
+    {5, 4, -21, 18, -1, -1, tiger_weapon_medium_attack_2_ink},
+    {5, 4, -16, 25, -1, -1, tiger_weapon_medium_attack_3_ink},
+    {5, 4, -6, 37, -1, -1, tiger_weapon_medium_attack_4_ink},
+    {4, 5, -8, 41, -1, -1, tiger_weapon_medium_attack_5_ink},
+    {5, 4, -15, 35, -1, -1, tiger_weapon_medium_attack_6_ink},
+    {5, 4, -17, 29, -1, -1, tiger_weapon_medium_attack_7_ink},
+    {5, 4, -18, 27, -1, -1, tiger_weapon_medium_attack_8_ink},
+};
+static const uint8_t tiger_weapon_medium_sleep_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t tiger_weapon_medium_sleep_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t tiger_weapon_medium_sleep_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame tiger_weapon_medium_sleep_frames[3] = {
+    {5, 4, -25, 17, -1, -1, tiger_weapon_medium_sleep_0_ink},
+    {5, 4, -26, 15, -1, -1, tiger_weapon_medium_sleep_1_ink},
+    {5, 4, -25, 16, -1, -1, tiger_weapon_medium_sleep_2_ink},
+};
+static const ArtClip tiger_weapon_medium_clips[ACTION_COUNT] = {
+    [ACTION_REST] = {9, tiger_weapon_medium_idle_frames},
+    [ACTION_WALK] = {4, tiger_weapon_medium_walk_frames},
+    [ACTION_RUN] = {4, tiger_weapon_medium_run_frames},
+    [ACTION_GRAZE] = {7, tiger_weapon_medium_graze_frames},
+    [ACTION_BITE] = {4, tiger_weapon_medium_bite_frames},
+    [ACTION_ATTACK] = {9, tiger_weapon_medium_attack_frames},
+    [ACTION_SLEEP] = {3, tiger_weapon_medium_sleep_frames},
 };
 static const ArtClip tiger_clips[ACTION_COUNT] = {
     [ACTION_REST] = {9, tiger_idle_frames},
@@ -35414,6 +45007,517 @@ static const ArtClip wolf_armour_full_clips[ACTION_COUNT] = {
     [ACTION_ATTACK] = {9, wolf_armour_full_attack_frames},
     [ACTION_SLEEP] = {4, wolf_armour_full_sleep_frames},
 };
+static const uint8_t wolf_armour_medium_idle_0_ink[180] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,2,0,
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7,4,2,2,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,1,2,7,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,7,0,7,0,
+    0,7,7,7,7,7,7,7,2,1,2,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t wolf_armour_medium_idle_1_ink[180] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,2,0,
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7,4,2,2,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,1,2,7,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,7,0,7,0,
+    0,7,7,7,7,7,7,7,2,1,2,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t wolf_armour_medium_idle_2_ink[180] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,2,0,
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7,4,2,2,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,1,2,7,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,7,0,7,0,
+    0,7,7,7,7,7,7,7,2,1,2,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t wolf_armour_medium_idle_3_ink[180] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,2,0,
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7,4,2,2,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,1,2,7,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,7,0,7,0,
+    0,7,7,7,7,7,7,7,2,1,2,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t wolf_armour_medium_idle_4_ink[180] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,2,0,
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7,4,2,2,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,1,2,7,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,7,0,7,0,
+    0,7,7,7,7,7,7,7,2,1,2,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t wolf_armour_medium_idle_5_ink[180] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,2,0,
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7,4,2,2,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,1,2,7,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,7,0,7,0,
+    0,7,7,7,7,7,7,7,2,1,2,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t wolf_armour_medium_idle_6_ink[180] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,2,0,
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7,4,2,2,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,1,2,7,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,7,0,7,0,
+    0,7,7,7,7,7,7,7,2,1,2,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t wolf_armour_medium_idle_7_ink[180] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,2,0,
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7,4,2,2,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,1,2,7,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,7,0,7,0,
+    0,7,7,7,7,7,7,7,2,1,2,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,7,0,0,0,0,0,
+};
+static const ArtFrame wolf_armour_medium_idle_frames[8] = {
+    {18, 10, 9, 27, -1, -1, wolf_armour_medium_idle_0_ink},
+    {18, 10, 9, 27, -1, -1, wolf_armour_medium_idle_1_ink},
+    {18, 10, 9, 27, -1, -1, wolf_armour_medium_idle_2_ink},
+    {18, 10, 9, 27, -1, -1, wolf_armour_medium_idle_3_ink},
+    {18, 10, 9, 27, -1, -1, wolf_armour_medium_idle_4_ink},
+    {18, 10, 9, 27, -1, -1, wolf_armour_medium_idle_5_ink},
+    {18, 10, 9, 27, -1, -1, wolf_armour_medium_idle_6_ink},
+    {18, 10, 9, 27, -1, -1, wolf_armour_medium_idle_7_ink},
+};
+static const uint8_t wolf_armour_medium_walk_0_ink[252] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,2,2,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,1,2,2,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,4,1,2,7,0,0,
+    7,7,7,7,7,7,7,7,7,7,7,4,2,1,7,0,0,0,
+    0,4,4,4,4,1,4,4,4,1,4,2,2,7,0,0,0,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,7,0,0,0,0,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,0,0,0,0,0,0,
+    0,0,0,0,0,7,2,2,2,1,2,7,0,0,0,0,0,0,
+    0,0,0,0,0,0,2,2,7,7,7,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,2,2,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,7,7,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t wolf_armour_medium_walk_1_ink[162] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,7,4,4,2,0,
+    7,7,7,7,7,7,7,7,7,7,7,7,4,1,2,2,2,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,2,1,2,2,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,2,2,2,7,7,2,2,2,1,2,2,2,1,2,7,0,0,
+    0,7,2,2,0,0,7,7,7,7,7,7,7,7,7,0,0,0,
+    0,0,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t wolf_armour_medium_walk_2_ink[216] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,4,2,0,
+    7,7,7,7,7,7,7,7,7,7,7,7,7,1,2,2,7,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,1,2,7,0,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,7,0,0,0,
+    0,0,0,7,7,7,2,2,2,1,2,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,7,2,2,1,2,2,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,2,2,1,7,7,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,2,2,1,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,7,7,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t wolf_armour_medium_walk_3_ink[216] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,4,2,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,7,1,2,2,2,0,
+    7,7,7,7,7,7,7,7,7,7,7,4,4,1,2,2,7,0,
+    0,4,4,4,4,1,4,4,4,1,4,2,2,1,2,2,0,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,7,7,0,0,
+    0,2,2,7,7,7,2,7,2,1,2,2,7,7,0,0,0,0,
+    0,7,7,0,0,0,7,0,7,7,2,7,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,
+};
+static const ArtFrame wolf_armour_medium_walk_frames[4] = {
+    {18, 14, 7, 29, -1, -1, wolf_armour_medium_walk_0_ink},
+    {18, 9, 8, 25, -1, -1, wolf_armour_medium_walk_1_ink},
+    {18, 12, 8, 26, -1, -1, wolf_armour_medium_walk_2_ink},
+    {18, 12, 7, 27, -1, -1, wolf_armour_medium_walk_3_ink},
+};
+static const uint8_t wolf_armour_medium_run_0_ink[198] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,4,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,1,4,2,2,0,
+    7,7,7,7,7,7,7,7,7,7,7,7,4,1,2,7,7,0,
+    0,7,4,4,4,1,4,4,4,1,4,4,2,1,7,0,0,0,
+    0,0,7,7,2,1,2,2,2,1,2,2,2,7,0,0,0,0,
+    0,0,0,0,7,1,2,2,2,1,2,2,7,0,0,0,0,0,
+    0,0,0,0,0,7,2,2,2,7,7,7,0,0,0,0,0,0,
+    0,0,0,0,0,0,7,2,2,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t wolf_armour_medium_run_1_ink[180] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,4,2,0,
+    7,7,7,7,7,7,7,7,7,7,7,7,7,1,4,2,7,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,1,2,7,0,0,
+    0,7,7,7,7,1,2,2,2,1,2,2,2,7,7,0,0,0,
+    0,0,0,0,0,7,7,2,2,1,2,2,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,2,2,1,2,7,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,2,2,1,7,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,7,7,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t wolf_armour_medium_run_2_ink[180] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,4,2,0,
+    7,7,7,7,7,7,7,7,7,7,7,7,7,1,4,2,7,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,1,2,7,0,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,7,0,0,0,
+    0,7,2,2,7,7,7,7,2,1,2,2,7,7,0,0,0,0,
+    0,0,7,2,0,0,0,0,7,7,7,7,0,0,0,0,0,0,
+    0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t wolf_armour_medium_run_3_ink[162] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,4,2,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,1,4,2,7,0,
+    7,7,7,7,7,7,7,7,7,7,7,7,4,1,2,7,0,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,2,1,2,0,0,0,
+    0,7,7,7,2,1,2,2,2,1,2,2,2,7,7,0,0,0,
+    0,0,0,0,7,7,2,2,2,1,2,2,7,0,0,0,0,0,
+    0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,0,
+};
+static const ArtFrame wolf_armour_medium_run_frames[4] = {
+    {18, 11, 7, 24, -1, -1, wolf_armour_medium_run_0_ink},
+    {18, 10, 7, 23, -1, -1, wolf_armour_medium_run_1_ink},
+    {18, 10, 6, 23, -1, -1, wolf_armour_medium_run_2_ink},
+    {18, 9, 7, 24, -1, -1, wolf_armour_medium_run_3_ink},
+};
+static const uint8_t wolf_armour_medium_graze_0_ink[162] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,4,4,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,7,1,4,2,2,0,
+    7,7,7,7,7,7,7,7,7,7,4,4,4,1,2,2,2,0,
+    0,4,4,4,4,1,4,4,4,1,2,2,2,1,2,2,2,0,
+    0,7,7,7,2,1,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,7,7,2,2,2,1,7,7,7,1,2,7,0,0,
+    0,0,0,0,0,0,7,7,7,7,0,0,0,7,7,0,0,0,
+};
+static const uint8_t wolf_armour_medium_graze_1_ink[180] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,4,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,4,1,4,2,2,0,
+    7,7,7,7,7,7,7,7,7,7,7,4,2,1,2,2,2,0,
+    0,4,4,4,4,1,4,4,4,1,4,2,2,1,2,2,7,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,2,0,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,1,2,7,0,0,
+    0,0,0,0,0,7,7,7,7,7,7,2,2,1,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,2,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,
+};
+static const uint8_t wolf_armour_medium_graze_2_ink[162] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,0,0,0,
+    7,7,0,0,0,0,0,0,0,0,7,7,7,1,4,7,7,7,
+    0,4,7,7,7,7,7,7,7,7,4,4,4,1,2,4,4,0,
+    0,7,4,4,4,1,4,4,4,1,2,2,2,1,2,2,2,0,
+    0,0,7,2,2,1,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,1,2,2,0,0,
+    0,0,0,0,0,7,7,7,7,1,2,2,2,1,7,7,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,2,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,
+};
+static const uint8_t wolf_armour_medium_graze_3_ink[144] = {
+    7,7,0,0,0,0,0,0,0,0,0,0,0,7,7,0,0,0,
+    0,4,7,7,7,7,7,7,7,7,7,7,7,1,4,7,7,7,
+    0,7,4,4,4,1,4,4,4,1,4,4,4,1,2,4,4,0,
+    0,0,7,2,2,1,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,1,2,7,0,0,
+    0,0,0,0,0,7,7,7,2,1,2,2,2,1,7,0,0,0,
+    0,0,0,0,0,0,0,0,7,1,2,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t wolf_armour_medium_graze_4_ink[126] = {
+    7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,7,7,7,
+    0,4,4,4,4,7,7,7,7,7,7,7,7,7,7,4,4,0,
+    0,7,7,2,2,1,4,4,4,1,4,4,4,1,4,2,2,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,1,2,2,2,0,
+    0,0,0,0,0,7,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,0,7,7,7,7,7,7,2,1,2,7,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,0,0,0,
+};
+static const uint8_t wolf_armour_medium_graze_5_ink[126] = {
+    7,7,7,7,7,7,0,0,0,0,0,0,0,0,7,7,7,7,
+    0,4,4,4,4,1,7,7,7,7,7,7,7,7,4,4,4,0,
+    0,7,7,7,2,1,4,4,4,1,4,4,4,1,2,2,2,0,
+    0,0,0,0,7,7,2,2,2,1,2,2,2,1,2,2,2,0,
+    0,0,0,0,0,0,7,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,7,1,7,7,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,
+};
+static const ArtFrame wolf_armour_medium_graze_frames[6] = {
+    {18, 9, 6, 26, -1, -1, wolf_armour_medium_graze_0_ink},
+    {18, 10, 4, 25, -1, -1, wolf_armour_medium_graze_1_ink},
+    {18, 9, 4, 23, -1, -1, wolf_armour_medium_graze_2_ink},
+    {18, 8, 4, 21, -1, -1, wolf_armour_medium_graze_3_ink},
+    {18, 7, 7, 22, -1, -1, wolf_armour_medium_graze_4_ink},
+    {18, 7, 7, 22, -1, -1, wolf_armour_medium_graze_5_ink},
+};
+static const uint8_t wolf_armour_medium_bite_0_ink[216] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,4,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,1,4,2,2,0,
+    7,7,7,7,7,7,7,7,7,7,7,7,4,1,2,2,2,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,2,1,2,2,2,0,
+    0,7,7,7,2,1,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,7,7,2,2,2,1,2,2,2,1,2,7,0,0,
+    0,0,0,0,0,0,7,7,7,7,7,7,2,1,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,2,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,
+};
+static const uint8_t wolf_armour_medium_bite_1_ink[198] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,4,1,4,4,2,0,
+    0,0,0,0,0,0,0,0,0,7,4,4,2,1,2,2,7,0,
+    7,7,7,7,7,7,7,7,7,1,2,2,2,1,2,7,0,0,
+    0,4,4,4,4,1,4,4,4,1,2,2,2,1,7,0,0,0,
+    0,7,7,7,2,1,2,2,2,1,2,2,2,1,0,0,0,0,
+    0,0,0,0,7,7,2,2,2,1,2,2,2,1,0,0,0,0,
+    0,0,0,0,0,0,7,7,7,1,2,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,1,2,2,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,0,0,0,0,0,0,
+};
+static const uint8_t wolf_armour_medium_bite_2_ink[180] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,7,7,4,4,7,7,
+    0,0,0,0,0,0,0,0,0,0,0,7,4,1,2,2,4,0,
+    7,7,7,7,7,7,7,7,7,7,7,4,2,1,2,2,2,0,
+    0,4,4,4,4,1,4,4,4,1,4,2,2,1,2,7,7,0,
+    0,7,7,7,2,1,2,2,2,1,2,2,2,1,2,0,0,0,
+    0,0,0,0,7,7,2,2,2,1,2,2,2,1,7,0,0,0,
+    0,0,0,0,0,0,7,7,7,1,2,2,2,1,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,1,2,2,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,0,0,0,0,0,0,
+};
+static const uint8_t wolf_armour_medium_bite_3_ink[162] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,0,0,
+    7,0,0,0,0,0,0,0,0,0,0,0,0,7,4,4,7,7,
+    0,7,7,7,0,0,0,0,0,7,7,7,7,1,2,2,4,0,
+    0,4,4,4,7,7,7,7,7,1,4,4,4,1,2,2,2,0,
+    0,7,7,7,4,1,4,4,4,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,7,1,2,2,2,1,2,2,2,1,2,7,0,0,
+    0,0,0,0,0,7,7,7,2,7,7,2,2,1,7,0,0,0,
+    0,0,0,0,0,0,0,0,7,0,0,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,
+};
+static const ArtFrame wolf_armour_medium_bite_frames[4] = {
+    {18, 12, 5, 27, -1, -1, wolf_armour_medium_bite_0_ink},
+    {18, 11, 2, 25, -1, -1, wolf_armour_medium_bite_1_ink},
+    {18, 10, 3, 24, -1, -1, wolf_armour_medium_bite_2_ink},
+    {18, 9, 5, 23, -1, -1, wolf_armour_medium_bite_3_ink},
+};
+static const uint8_t wolf_armour_medium_attack_0_ink[180] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4,2,0,
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7,4,2,2,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,1,2,7,7,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,7,0,0,0,
+    0,7,7,7,7,7,7,7,2,1,2,2,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,0,0,0,0,0,0,
+};
+static const uint8_t wolf_armour_medium_attack_1_ink[216] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,7,7,4,4,2,0,
+    7,7,7,7,7,7,7,7,7,7,7,4,4,1,2,2,2,0,
+    0,4,4,4,4,1,4,4,4,1,4,2,2,1,2,2,2,0,
+    0,7,7,7,2,1,2,2,2,1,2,2,2,1,2,2,7,0,
+    0,0,0,0,7,7,2,2,2,1,2,2,2,1,2,7,0,0,
+    0,0,0,0,0,0,7,7,7,7,7,2,2,1,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,2,2,1,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,7,7,0,0,0,0,
+};
+static const uint8_t wolf_armour_medium_attack_2_ink[216] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,7,4,0,
+    0,0,0,0,0,0,0,0,0,0,7,4,4,1,4,4,2,0,
+    7,7,7,7,7,7,7,7,7,7,4,2,2,1,2,2,7,0,
+    0,4,4,4,4,1,4,4,4,1,2,2,2,1,2,2,0,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,2,0,0,
+    0,0,0,7,7,7,2,2,2,1,2,2,2,1,2,7,0,0,
+    0,0,0,0,0,0,7,7,2,1,2,2,2,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,2,1,2,7,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,1,7,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t wolf_armour_medium_attack_3_ink[162] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,
+    7,7,7,7,7,7,7,7,7,7,7,7,4,1,4,4,4,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,2,1,2,2,7,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,7,7,0,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,1,0,0,0,0,
+    0,0,0,0,0,7,2,2,2,1,2,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,7,2,2,1,2,2,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,7,2,1,7,7,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t wolf_armour_medium_attack_4_ink[162] = {
+    7,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,0,0,
+    0,7,7,7,7,7,7,7,7,7,7,7,7,1,4,4,7,7,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,1,2,2,4,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,7,7,7,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,1,0,0,0,0,
+    0,0,0,0,0,7,2,2,2,1,2,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,7,2,2,1,2,2,2,0,0,0,0,0,
+    0,0,0,0,0,0,0,7,2,1,7,7,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t wolf_armour_medium_attack_5_ink[162] = {
+    7,7,0,0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,
+    0,4,7,7,7,7,7,7,7,7,7,7,4,1,4,4,4,0,
+    0,7,4,4,4,1,4,4,4,1,4,4,2,1,2,2,7,0,
+    0,0,7,2,2,1,2,2,2,1,2,2,2,1,7,7,0,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,1,0,0,0,0,
+    0,0,0,0,0,7,2,2,2,1,2,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,7,2,2,1,2,2,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,7,2,1,7,7,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t wolf_armour_medium_attack_6_ink[162] = {
+    7,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,
+    0,7,7,7,7,7,7,7,7,7,7,7,4,1,4,4,4,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,2,1,2,2,7,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,7,7,0,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,1,0,0,0,0,
+    0,0,0,0,0,7,2,2,2,1,2,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,7,2,2,1,2,2,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,7,2,1,7,7,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t wolf_armour_medium_attack_7_ink[162] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,0,
+    7,7,7,7,7,7,7,7,7,7,7,7,7,1,4,4,4,7,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,1,2,2,7,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,7,7,0,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,1,0,0,0,0,
+    0,0,0,0,0,7,2,2,2,1,2,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,7,2,2,1,2,2,2,0,0,0,0,0,
+    0,0,0,0,0,0,0,7,2,1,7,7,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t wolf_armour_medium_attack_8_ink[162] = {
+    7,7,0,0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,
+    0,4,7,7,7,7,7,7,7,7,7,7,4,1,4,4,4,0,
+    0,7,4,4,4,1,4,4,4,1,4,4,2,1,2,2,7,0,
+    0,0,7,2,2,1,2,2,2,1,2,2,2,1,7,7,0,0,
+    0,0,0,7,7,1,2,2,2,1,2,2,2,1,0,0,0,0,
+    0,0,0,0,0,7,2,2,2,1,2,2,2,7,0,0,0,0,
+    0,0,0,0,0,0,7,2,2,1,2,2,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,7,2,1,7,7,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,0,0,
+};
+static const ArtFrame wolf_armour_medium_attack_frames[9] = {
+    {18, 10, 9, 27, -1, -1, wolf_armour_medium_attack_0_ink},
+    {18, 12, 5, 27, -1, -1, wolf_armour_medium_attack_1_ink},
+    {18, 12, 3, 24, -1, -1, wolf_armour_medium_attack_2_ink},
+    {18, 9, 1, 20, -1, -1, wolf_armour_medium_attack_3_ink},
+    {18, 9, 1, 20, -1, -1, wolf_armour_medium_attack_4_ink},
+    {18, 9, 1, 20, -1, -1, wolf_armour_medium_attack_5_ink},
+    {18, 9, 1, 20, -1, -1, wolf_armour_medium_attack_6_ink},
+    {18, 9, 1, 20, -1, -1, wolf_armour_medium_attack_7_ink},
+    {18, 9, 1, 20, -1, -1, wolf_armour_medium_attack_8_ink},
+};
+static const uint8_t wolf_armour_medium_sleep_0_ink[108] = {
+    0,0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,
+    7,7,7,7,7,7,7,7,7,7,4,4,4,1,4,4,7,7,
+    0,4,4,4,4,1,4,4,4,1,2,2,2,1,2,2,4,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,7,7,7,7,0,
+    0,0,0,7,7,7,2,2,2,1,7,7,7,0,0,0,0,0,
+    0,0,0,0,0,0,7,7,7,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t wolf_armour_medium_sleep_1_ink[108] = {
+    0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,
+    7,7,7,7,7,7,7,7,7,1,4,4,4,1,4,7,7,7,
+    0,4,4,4,4,1,4,4,4,1,2,2,2,1,2,4,4,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,7,7,7,7,0,
+    0,0,0,7,7,7,2,2,2,7,7,7,7,0,0,0,0,0,
+    0,0,0,0,0,0,7,7,7,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t wolf_armour_medium_sleep_2_ink[108] = {
+    0,0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,
+    7,7,7,7,7,7,7,7,7,7,4,4,4,1,4,4,7,7,
+    0,4,4,4,4,1,4,4,4,1,2,2,2,1,2,2,4,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,7,7,7,7,0,
+    0,0,0,7,7,7,2,2,2,1,7,7,7,0,0,0,0,0,
+    0,0,0,0,0,0,7,7,7,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t wolf_armour_medium_sleep_3_ink[108] = {
+    0,0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,
+    7,7,7,7,7,7,7,7,7,7,4,4,4,1,4,4,7,7,
+    0,4,4,4,4,1,4,4,4,1,2,2,2,1,2,2,4,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,7,7,7,7,0,
+    0,0,0,7,7,7,2,2,2,1,7,7,7,0,0,0,0,0,
+    0,0,0,0,0,0,7,7,7,7,0,0,0,0,0,0,0,0,
+};
+static const ArtFrame wolf_armour_medium_sleep_frames[4] = {
+    {18, 6, 1, 13, -1, -1, wolf_armour_medium_sleep_0_ink},
+    {18, 6, -1, 13, -1, -1, wolf_armour_medium_sleep_1_ink},
+    {18, 6, -1, 13, -1, -1, wolf_armour_medium_sleep_2_ink},
+    {18, 6, -1, 13, -1, -1, wolf_armour_medium_sleep_3_ink},
+};
+static const ArtClip wolf_armour_medium_clips[ACTION_COUNT] = {
+    [ACTION_REST] = {8, wolf_armour_medium_idle_frames},
+    [ACTION_WALK] = {4, wolf_armour_medium_walk_frames},
+    [ACTION_RUN] = {4, wolf_armour_medium_run_frames},
+    [ACTION_GRAZE] = {6, wolf_armour_medium_graze_frames},
+    [ACTION_BITE] = {4, wolf_armour_medium_bite_frames},
+    [ACTION_ATTACK] = {9, wolf_armour_medium_attack_frames},
+    [ACTION_SLEEP] = {4, wolf_armour_medium_sleep_frames},
+};
 static const uint8_t wolf_weapon_full_idle_0_ink[30] = {
     0,0,0,0,0,15,
     0,0,13,0,14,0,
@@ -35748,6 +45852,302 @@ static const ArtClip wolf_weapon_full_clips[ACTION_COUNT] = {
     [ACTION_BITE] = {4, wolf_weapon_full_bite_frames},
     [ACTION_ATTACK] = {9, wolf_weapon_full_attack_frames},
     [ACTION_SLEEP] = {4, wolf_weapon_full_sleep_frames},
+};
+static const uint8_t wolf_weapon_medium_idle_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t wolf_weapon_medium_idle_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t wolf_weapon_medium_idle_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t wolf_weapon_medium_idle_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t wolf_weapon_medium_idle_4_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t wolf_weapon_medium_idle_5_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t wolf_weapon_medium_idle_6_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t wolf_weapon_medium_idle_7_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame wolf_weapon_medium_idle_frames[8] = {
+    {5, 4, -17, 32, -1, -1, wolf_weapon_medium_idle_0_ink},
+    {5, 4, -17, 32, -1, -1, wolf_weapon_medium_idle_1_ink},
+    {5, 4, -17, 32, -1, -1, wolf_weapon_medium_idle_2_ink},
+    {5, 4, -17, 32, -1, -1, wolf_weapon_medium_idle_3_ink},
+    {5, 4, -17, 32, -1, -1, wolf_weapon_medium_idle_4_ink},
+    {5, 4, -17, 32, -1, -1, wolf_weapon_medium_idle_5_ink},
+    {5, 4, -17, 32, -1, -1, wolf_weapon_medium_idle_6_ink},
+    {5, 4, -17, 32, -1, -1, wolf_weapon_medium_idle_7_ink},
+};
+static const uint8_t wolf_weapon_medium_walk_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t wolf_weapon_medium_walk_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t wolf_weapon_medium_walk_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t wolf_weapon_medium_walk_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame wolf_weapon_medium_walk_frames[4] = {
+    {5, 4, -19, 29, -1, -1, wolf_weapon_medium_walk_0_ink},
+    {5, 4, -18, 30, -1, -1, wolf_weapon_medium_walk_1_ink},
+    {5, 4, -18, 29, -1, -1, wolf_weapon_medium_walk_2_ink},
+    {5, 4, -19, 29, -1, -1, wolf_weapon_medium_walk_3_ink},
+};
+static const uint8_t wolf_weapon_medium_run_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t wolf_weapon_medium_run_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t wolf_weapon_medium_run_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t wolf_weapon_medium_run_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame wolf_weapon_medium_run_frames[4] = {
+    {5, 4, -19, 29, -1, -1, wolf_weapon_medium_run_0_ink},
+    {5, 4, -19, 27, -1, -1, wolf_weapon_medium_run_1_ink},
+    {5, 4, -20, 26, -1, -1, wolf_weapon_medium_run_2_ink},
+    {5, 4, -19, 28, -1, -1, wolf_weapon_medium_run_3_ink},
+};
+static const uint8_t wolf_weapon_medium_graze_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t wolf_weapon_medium_graze_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t wolf_weapon_medium_graze_2_ink[15] = {
+    0,0,0,0,15,
+    11,12,14,15,0,
+    12,13,0,0,0,
+};
+static const uint8_t wolf_weapon_medium_graze_3_ink[15] = {
+    0,0,0,0,15,
+    11,12,14,15,0,
+    12,13,0,0,0,
+};
+static const uint8_t wolf_weapon_medium_graze_4_ink[20] = {
+    0,0,0,15,
+    0,0,15,0,
+    0,0,14,0,
+    12,13,0,0,
+    11,12,0,0,
+};
+static const uint8_t wolf_weapon_medium_graze_5_ink[15] = {
+    0,0,0,0,15,
+    11,12,14,15,0,
+    12,13,0,0,0,
+};
+static const ArtFrame wolf_weapon_medium_graze_frames[6] = {
+    {5, 4, -21, 29, -1, -1, wolf_weapon_medium_graze_0_ink},
+    {5, 4, -23, 26, -1, -1, wolf_weapon_medium_graze_1_ink},
+    {5, 3, -25, 16, -1, -1, wolf_weapon_medium_graze_2_ink},
+    {5, 3, -25, 9, -1, -1, wolf_weapon_medium_graze_3_ink},
+    {4, 5, -18, 24, -1, -1, wolf_weapon_medium_graze_4_ink},
+    {5, 3, -21, 25, -1, -1, wolf_weapon_medium_graze_5_ink},
+};
+static const uint8_t wolf_weapon_medium_bite_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t wolf_weapon_medium_bite_1_ink[20] = {
+    0,0,0,15,
+    0,0,15,0,
+    0,0,14,0,
+    12,13,0,0,
+    11,12,0,0,
+};
+static const uint8_t wolf_weapon_medium_bite_2_ink[20] = {
+    0,0,0,15,
+    0,0,15,0,
+    0,0,14,0,
+    12,13,0,0,
+    11,12,0,0,
+};
+static const uint8_t wolf_weapon_medium_bite_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame wolf_weapon_medium_bite_frames[4] = {
+    {5, 4, -21, 31, -1, -1, wolf_weapon_medium_bite_0_ink},
+    {4, 5, -23, 31, -1, -1, wolf_weapon_medium_bite_1_ink},
+    {4, 5, -22, 29, -1, -1, wolf_weapon_medium_bite_2_ink},
+    {5, 4, -21, 26, -1, -1, wolf_weapon_medium_bite_3_ink},
+};
+static const uint8_t wolf_weapon_medium_attack_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t wolf_weapon_medium_attack_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t wolf_weapon_medium_attack_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t wolf_weapon_medium_attack_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t wolf_weapon_medium_attack_4_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t wolf_weapon_medium_attack_5_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t wolf_weapon_medium_attack_6_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t wolf_weapon_medium_attack_7_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t wolf_weapon_medium_attack_8_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame wolf_weapon_medium_attack_frames[9] = {
+    {5, 4, -17, 32, -1, -1, wolf_weapon_medium_attack_0_ink},
+    {5, 4, -21, 30, -1, -1, wolf_weapon_medium_attack_1_ink},
+    {5, 4, -23, 26, -1, -1, wolf_weapon_medium_attack_2_ink},
+    {5, 4, -25, 20, -1, -1, wolf_weapon_medium_attack_3_ink},
+    {5, 4, -25, 23, -1, -1, wolf_weapon_medium_attack_4_ink},
+    {5, 4, -25, 24, -1, -1, wolf_weapon_medium_attack_5_ink},
+    {5, 4, -25, 20, -1, -1, wolf_weapon_medium_attack_6_ink},
+    {5, 4, -25, 23, -1, -1, wolf_weapon_medium_attack_7_ink},
+    {5, 4, -25, 20, -1, -1, wolf_weapon_medium_attack_8_ink},
+};
+static const uint8_t wolf_weapon_medium_sleep_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t wolf_weapon_medium_sleep_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t wolf_weapon_medium_sleep_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t wolf_weapon_medium_sleep_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame wolf_weapon_medium_sleep_frames[4] = {
+    {5, 4, -26, 13, -1, -1, wolf_weapon_medium_sleep_0_ink},
+    {5, 4, -27, 13, -1, -1, wolf_weapon_medium_sleep_1_ink},
+    {5, 4, -27, 12, -1, -1, wolf_weapon_medium_sleep_2_ink},
+    {5, 4, -27, 11, -1, -1, wolf_weapon_medium_sleep_3_ink},
+};
+static const ArtClip wolf_weapon_medium_clips[ACTION_COUNT] = {
+    [ACTION_REST] = {8, wolf_weapon_medium_idle_frames},
+    [ACTION_WALK] = {4, wolf_weapon_medium_walk_frames},
+    [ACTION_RUN] = {4, wolf_weapon_medium_run_frames},
+    [ACTION_GRAZE] = {6, wolf_weapon_medium_graze_frames},
+    [ACTION_BITE] = {4, wolf_weapon_medium_bite_frames},
+    [ACTION_ATTACK] = {9, wolf_weapon_medium_attack_frames},
+    [ACTION_SLEEP] = {4, wolf_weapon_medium_sleep_frames},
 };
 static const ArtClip wolf_clips[ACTION_COUNT] = {
     [ACTION_REST] = {8, wolf_idle_frames},
@@ -38008,6 +48408,429 @@ static const ArtClip zebra_armour_full_clips[ACTION_COUNT] = {
     [ACTION_ATTACK] = {8, zebra_armour_full_attack_frames},
     [ACTION_SLEEP] = {3, zebra_armour_full_sleep_frames},
 };
+static const uint8_t zebra_armour_medium_idle_0_ink[140] = {
+    0,0,0,0,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,7,
+    0,7,7,7,4,1,4,4,4,7,7,7,7,7,7,7,7,7,7,0,
+    7,4,4,4,2,1,2,2,2,1,4,4,4,1,4,4,4,1,4,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,0,
+    0,2,7,2,7,7,7,7,2,1,2,2,2,1,2,2,2,7,7,0,
+    0,7,0,7,0,0,0,0,7,7,2,2,7,7,7,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t zebra_armour_medium_idle_1_ink[140] = {
+    0,0,0,0,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,7,
+    0,7,7,7,4,1,4,4,4,7,7,7,7,7,7,7,7,7,7,0,
+    7,4,4,4,2,1,2,2,2,1,4,4,4,1,4,4,4,1,4,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,0,
+    0,2,7,2,7,7,7,7,2,1,2,2,2,1,2,2,2,7,7,0,
+    0,7,0,7,0,0,0,0,7,7,2,2,7,7,7,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t zebra_armour_medium_idle_2_ink[140] = {
+    0,0,0,0,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,7,
+    0,7,7,7,4,1,4,4,4,7,7,7,7,7,7,7,7,7,7,0,
+    7,4,4,4,2,1,2,2,2,1,4,4,4,1,4,4,4,1,4,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,0,
+    0,2,7,2,7,7,7,7,2,1,2,2,2,1,2,2,2,7,7,0,
+    0,7,0,7,0,0,0,0,7,7,2,2,7,7,7,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t zebra_armour_medium_idle_3_ink[140] = {
+    0,0,0,0,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,7,
+    0,7,7,7,4,1,4,4,4,7,7,7,7,7,7,7,7,7,7,0,
+    7,4,4,4,2,1,2,2,2,1,4,4,4,1,4,4,4,1,4,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,0,
+    0,2,7,2,7,7,7,7,2,1,2,2,2,1,2,2,2,7,7,0,
+    0,7,0,7,0,0,0,0,7,7,2,2,7,7,7,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t zebra_armour_medium_idle_4_ink[140] = {
+    0,0,0,0,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,7,
+    0,7,7,7,4,1,4,4,4,7,7,7,7,7,7,7,7,7,7,0,
+    7,4,4,4,2,1,2,2,2,1,4,4,4,1,4,4,4,1,4,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,0,
+    0,2,7,2,7,7,7,7,2,1,2,2,2,1,2,2,2,7,7,0,
+    0,7,0,7,0,0,0,0,7,7,2,2,7,7,7,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t zebra_armour_medium_idle_5_ink[140] = {
+    0,0,0,0,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,7,
+    0,7,7,7,4,1,4,4,4,7,7,7,7,7,7,7,7,7,7,0,
+    7,4,4,4,2,1,2,2,2,1,4,4,4,1,4,4,4,1,4,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,0,
+    0,2,7,2,7,7,7,7,2,1,2,2,2,1,2,2,2,7,7,0,
+    0,7,0,7,0,0,0,0,7,7,2,2,7,7,7,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t zebra_armour_medium_idle_6_ink[140] = {
+    0,0,0,0,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,7,
+    0,7,7,7,4,1,4,4,4,7,7,7,7,7,7,7,7,7,7,0,
+    7,4,4,4,2,1,2,2,2,1,4,4,4,1,4,4,4,1,4,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,0,
+    0,2,7,2,7,7,7,7,2,1,2,2,2,1,2,2,2,7,7,0,
+    0,7,0,7,0,0,0,0,7,7,2,2,7,7,7,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t zebra_armour_medium_idle_7_ink[140] = {
+    0,0,0,0,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,7,
+    0,7,7,7,4,1,4,4,4,7,7,7,7,7,7,7,7,7,7,0,
+    7,4,4,4,2,1,2,2,2,1,4,4,4,1,4,4,4,1,4,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,0,
+    0,2,7,2,7,7,7,7,2,1,2,2,2,1,2,2,2,7,7,0,
+    0,7,0,7,0,0,0,0,7,7,2,2,7,7,7,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t zebra_armour_medium_idle_8_ink[140] = {
+    0,0,0,0,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,7,
+    0,7,7,7,4,1,4,4,4,7,7,7,7,7,7,7,7,7,7,0,
+    7,4,4,4,2,1,2,2,2,1,4,4,4,1,4,4,4,1,4,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,0,
+    0,2,7,2,7,7,7,7,2,1,2,2,2,1,2,2,2,7,7,0,
+    0,7,0,7,0,0,0,0,7,7,2,2,7,7,7,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,0,0,
+};
+static const ArtFrame zebra_armour_medium_idle_frames[9] = {
+    {20, 7, 17, 24, -1, -1, zebra_armour_medium_idle_0_ink},
+    {20, 7, 17, 24, -1, -1, zebra_armour_medium_idle_1_ink},
+    {20, 7, 18, 24, -1, -1, zebra_armour_medium_idle_2_ink},
+    {20, 7, 17, 24, -1, -1, zebra_armour_medium_idle_3_ink},
+    {20, 7, 17, 24, -1, -1, zebra_armour_medium_idle_4_ink},
+    {20, 7, 18, 24, -1, -1, zebra_armour_medium_idle_5_ink},
+    {20, 7, 17, 24, -1, -1, zebra_armour_medium_idle_6_ink},
+    {20, 7, 17, 24, -1, -1, zebra_armour_medium_idle_7_ink},
+    {20, 7, 18, 24, -1, -1, zebra_armour_medium_idle_8_ink},
+};
+static const uint8_t zebra_armour_medium_walk_0_ink[180] = {
+    0,0,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,7,
+    7,7,4,4,4,1,4,4,7,7,7,7,7,7,7,7,7,7,7,0,
+    0,4,2,2,2,1,2,2,4,1,4,4,4,1,4,4,4,1,4,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,0,
+    0,2,2,7,7,7,7,2,2,1,2,2,2,1,2,2,2,1,7,0,
+    0,7,7,0,0,0,0,7,2,1,2,2,2,1,2,2,2,7,0,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,7,7,2,2,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,
+};
+static const uint8_t zebra_armour_medium_walk_1_ink[180] = {
+    0,0,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,7,7,
+    7,7,4,4,4,1,4,4,7,7,7,7,7,7,7,7,7,7,4,0,
+    0,4,2,2,2,1,2,2,4,1,4,4,4,1,4,4,4,1,2,0,
+    0,2,7,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,0,
+    0,7,0,7,2,1,2,2,2,1,2,2,2,1,2,2,2,1,7,0,
+    0,0,0,0,7,1,2,2,2,1,2,2,2,1,2,7,2,1,0,0,
+    0,0,0,0,0,7,2,2,7,7,7,7,7,7,7,0,2,7,0,0,
+    0,0,0,0,0,0,7,2,0,0,0,0,0,0,0,0,7,0,0,0,
+    0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t zebra_armour_medium_walk_2_ink[200] = {
+    0,0,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,7,7,
+    7,7,4,4,4,1,4,7,7,7,7,7,7,7,7,7,7,7,4,0,
+    0,4,2,2,2,1,2,4,4,1,4,4,4,1,4,4,4,1,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,7,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,0,0,
+    0,7,2,2,7,7,7,2,2,1,2,2,2,1,2,2,2,7,0,0,
+    0,0,7,7,0,0,0,7,7,7,7,7,7,1,2,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,1,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,
+};
+static const uint8_t zebra_armour_medium_walk_3_ink[200] = {
+    0,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,7,7,
+    7,4,4,4,4,1,4,7,7,7,7,7,7,7,7,7,7,7,4,0,
+    0,2,2,2,2,1,2,4,4,1,4,4,4,1,4,4,4,1,2,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,0,
+    0,0,0,7,2,1,2,2,2,1,2,2,2,1,2,2,2,1,7,0,
+    0,0,0,0,7,1,2,2,2,1,2,2,2,1,2,2,2,7,0,0,
+    0,0,0,0,0,7,2,2,2,7,7,7,7,7,2,2,7,0,0,0,
+    0,0,0,0,0,0,7,2,2,0,0,0,0,0,2,7,0,0,0,0,
+    0,0,0,0,0,0,0,2,2,0,0,0,0,0,7,0,0,0,0,0,
+    0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,0,0,0,0,0,
+};
+static const ArtFrame zebra_armour_medium_walk_frames[4] = {
+    {20, 9, 18, 26, -1, -1, zebra_armour_medium_walk_0_ink},
+    {20, 9, 18, 26, -1, -1, zebra_armour_medium_walk_1_ink},
+    {20, 10, 17, 27, -1, -1, zebra_armour_medium_walk_2_ink},
+    {20, 10, 18, 26, -1, -1, zebra_armour_medium_walk_3_ink},
+};
+static const uint8_t zebra_armour_medium_run_0_ink[160] = {
+    0,0,0,0,0,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,
+    0,0,7,7,7,1,4,4,4,1,7,7,7,7,7,7,7,7,7,7,
+    0,7,4,4,4,1,2,2,2,1,4,4,4,1,4,4,4,1,4,0,
+    7,4,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,7,2,0,
+    0,7,7,7,2,7,2,2,2,1,2,2,2,1,2,2,7,0,7,0,
+    0,0,0,0,7,0,7,7,7,7,2,2,2,1,7,7,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,7,7,0,0,0,0,0,0,
+};
+static const uint8_t zebra_armour_medium_run_1_ink[160] = {
+    0,0,0,0,0,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,
+    0,0,7,7,7,1,4,4,4,1,7,7,7,7,7,7,7,7,7,7,
+    0,7,4,4,4,1,2,2,2,1,4,4,4,1,4,4,4,1,4,0,
+    7,4,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,0,
+    0,7,7,2,2,1,2,2,2,1,2,2,2,1,2,2,2,7,7,0,
+    0,0,0,7,7,7,7,2,2,1,2,2,2,1,2,2,2,0,0,0,
+    0,0,0,0,0,0,0,7,7,7,2,2,2,1,2,2,2,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,7,0,0,0,
+};
+static const uint8_t zebra_armour_medium_run_2_ink[140] = {
+    0,0,0,0,0,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,7,7,7,1,4,4,4,7,7,7,7,7,7,7,7,7,7,7,
+    0,7,4,4,4,1,2,2,2,1,4,4,4,1,4,4,4,1,4,0,
+    7,4,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,0,
+    0,7,7,7,7,7,7,7,2,1,2,2,2,1,2,2,2,7,7,0,
+    0,0,0,0,0,0,0,0,7,1,2,2,2,1,2,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t zebra_armour_medium_run_3_ink[140] = {
+    0,0,0,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,7,
+    7,7,7,4,4,1,4,4,7,7,7,7,7,7,7,7,7,7,7,0,
+    0,4,4,2,2,1,2,2,4,1,4,4,4,1,4,4,4,1,4,0,
+    0,7,2,7,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,0,
+    0,0,7,0,7,7,7,7,2,1,2,2,2,1,2,2,2,1,7,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,7,7,7,2,2,7,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,0,0,0,
+};
+static const ArtFrame zebra_armour_medium_run_frames[4] = {
+    {20, 8, 19, 24, -1, -1, zebra_armour_medium_run_0_ink},
+    {20, 8, 19, 23, -1, -1, zebra_armour_medium_run_1_ink},
+    {20, 7, 19, 23, -1, -1, zebra_armour_medium_run_2_ink},
+    {20, 7, 19, 24, -1, -1, zebra_armour_medium_run_3_ink},
+};
+static const uint8_t zebra_armour_medium_graze_0_ink[160] = {
+    0,0,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    7,7,4,4,4,1,7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,2,2,2,1,4,4,4,7,7,7,7,7,7,7,7,7,7,7,
+    0,2,2,2,2,1,2,2,2,1,4,4,4,1,4,4,4,1,4,0,
+    0,7,7,7,7,7,2,2,2,1,2,2,2,1,2,2,2,1,2,0,
+    0,0,0,0,0,0,7,2,2,1,2,2,2,1,2,2,2,7,7,0,
+    0,0,0,0,0,0,0,7,7,1,2,2,2,1,2,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t zebra_armour_medium_graze_1_ink[160] = {
+    0,0,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    7,7,4,4,4,1,7,7,7,0,0,0,0,0,0,0,0,0,0,7,
+    0,4,2,2,2,1,4,4,4,7,7,7,7,7,7,7,7,7,7,0,
+    0,2,7,2,2,1,2,2,2,1,4,4,4,1,4,4,4,1,4,0,
+    0,7,0,7,7,7,2,2,2,1,2,2,2,1,2,2,2,1,2,0,
+    0,0,0,0,0,0,7,2,2,1,2,2,2,1,2,2,2,7,7,0,
+    0,0,0,0,0,0,0,7,7,1,2,2,2,1,2,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t zebra_armour_medium_graze_2_ink[160] = {
+    0,0,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    7,7,4,4,4,1,7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,2,2,2,1,4,4,4,7,7,7,7,7,7,7,7,7,7,7,
+    0,2,7,2,2,1,2,2,2,1,4,4,4,1,4,4,4,1,4,0,
+    0,7,0,7,7,7,2,2,2,1,2,2,2,1,2,2,2,1,2,0,
+    0,0,0,0,0,0,7,2,2,1,2,2,2,1,2,2,2,7,7,0,
+    0,0,0,0,0,0,0,7,7,1,2,2,2,1,2,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t zebra_armour_medium_graze_3_ink[160] = {
+    0,0,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    7,7,4,4,4,1,7,7,7,0,0,0,0,0,0,0,0,0,0,7,
+    0,4,2,2,2,1,4,4,4,7,7,7,7,7,7,7,7,7,7,0,
+    0,2,7,2,2,1,2,2,2,1,4,4,4,1,4,4,4,1,4,0,
+    0,7,0,7,7,7,2,2,2,1,2,2,2,1,2,2,2,1,2,0,
+    0,0,0,0,0,0,7,2,2,1,2,2,2,1,2,2,2,7,7,0,
+    0,0,0,0,0,0,0,7,7,1,2,2,2,1,2,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t zebra_armour_medium_graze_4_ink[160] = {
+    0,0,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    7,7,4,4,4,1,7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,2,2,2,1,4,4,4,7,7,7,7,7,7,7,7,7,7,7,
+    0,2,2,2,2,1,2,2,2,1,4,4,4,1,4,4,4,1,4,0,
+    0,7,7,7,7,7,2,2,2,1,2,2,2,1,2,2,2,1,2,0,
+    0,0,0,0,0,0,7,2,2,1,2,2,2,1,2,2,2,7,7,0,
+    0,0,0,0,0,0,0,7,7,1,2,2,2,1,2,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,
+};
+static const ArtFrame zebra_armour_medium_graze_frames[5] = {
+    {20, 8, 15, 25, -1, -1, zebra_armour_medium_graze_0_ink},
+    {20, 8, 15, 25, -1, -1, zebra_armour_medium_graze_1_ink},
+    {20, 8, 15, 25, -1, -1, zebra_armour_medium_graze_2_ink},
+    {20, 8, 15, 25, -1, -1, zebra_armour_medium_graze_3_ink},
+    {20, 8, 15, 25, -1, -1, zebra_armour_medium_graze_4_ink},
+};
+static const uint8_t zebra_armour_medium_bite_0_ink[140] = {
+    7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,
+    0,4,4,4,4,7,7,7,7,7,7,7,7,7,7,7,7,1,4,0,
+    0,2,2,2,2,1,4,4,4,1,4,4,4,1,4,4,4,1,2,0,
+    0,7,7,7,7,1,2,2,2,1,2,2,2,1,2,2,2,1,2,0,
+    0,0,0,0,0,1,2,2,2,1,2,2,2,1,2,2,2,1,2,0,
+    0,0,0,0,0,7,7,7,2,1,2,2,2,1,7,7,7,7,7,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,0,
+};
+static const uint8_t zebra_armour_medium_bite_1_ink[140] = {
+    7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,7,7,
+    0,4,4,4,4,1,7,0,7,7,7,7,7,7,7,7,7,7,4,0,
+    0,7,2,2,2,1,4,7,4,1,4,4,4,1,4,4,4,1,2,0,
+    0,0,7,7,7,1,2,4,2,1,2,2,2,1,2,2,2,1,2,0,
+    0,0,0,0,0,7,2,2,2,1,2,2,2,1,2,2,7,1,2,0,
+    0,0,0,0,0,0,7,2,2,1,2,2,7,7,7,7,0,1,7,0,
+    0,0,0,0,0,0,0,7,7,7,7,7,0,0,0,0,0,7,0,0,
+};
+static const uint8_t zebra_armour_medium_bite_2_ink[140] = {
+    7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,4,4,4,4,7,7,7,7,7,7,7,7,7,7,7,7,7,7,0,
+    0,2,2,2,2,1,4,4,4,1,4,4,4,1,4,4,4,1,4,0,
+    0,7,7,7,7,1,2,2,2,1,2,2,2,1,2,2,2,1,2,0,
+    0,0,0,0,0,1,2,2,2,1,2,2,2,1,2,2,2,1,2,0,
+    0,0,0,0,0,7,7,7,2,1,2,2,2,1,7,7,7,7,7,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,0,
+};
+static const uint8_t zebra_armour_medium_bite_3_ink[140] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,4,0,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,1,4,4,4,1,2,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,0,
+    0,7,7,7,7,1,2,2,2,1,2,2,2,1,2,2,2,1,7,0,
+    0,0,0,0,0,7,7,7,2,1,2,2,2,1,7,7,7,7,0,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,0,
+};
+static const ArtFrame zebra_armour_medium_bite_frames[4] = {
+    {20, 7, 14, 24, -1, -1, zebra_armour_medium_bite_0_ink},
+    {20, 7, 13, 24, -1, -1, zebra_armour_medium_bite_1_ink},
+    {20, 7, 14, 24, -1, -1, zebra_armour_medium_bite_2_ink},
+    {20, 7, 15, 24, -1, -1, zebra_armour_medium_bite_3_ink},
+};
+static const uint8_t zebra_armour_medium_attack_0_ink[140] = {
+    0,0,0,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,7,
+    7,7,7,4,4,1,4,4,7,7,7,7,7,7,7,7,7,7,7,0,
+    0,4,4,2,2,1,2,2,4,1,4,4,4,1,4,4,4,1,4,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,0,
+    0,7,7,7,7,7,7,7,2,1,2,2,2,1,2,2,2,7,7,0,
+    0,0,0,0,0,0,0,0,7,7,2,2,7,1,7,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,0,7,0,0,0,0,0,0,
+};
+static const uint8_t zebra_armour_medium_attack_1_ink[160] = {
+    0,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    7,4,4,4,4,1,7,7,7,7,7,0,0,0,0,0,0,0,0,0,
+    0,2,2,2,2,1,4,4,4,1,4,7,7,7,7,7,7,7,7,7,
+    0,7,7,7,7,1,2,2,2,1,2,4,4,1,4,4,4,1,4,0,
+    0,0,0,0,0,7,2,2,2,1,2,2,2,1,2,2,2,1,2,0,
+    0,0,0,0,0,0,7,7,2,1,2,2,2,1,2,2,2,1,2,0,
+    0,0,0,0,0,0,0,0,7,7,7,2,7,7,2,2,7,7,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,0,0,7,7,0,0,0,0,
+};
+static const uint8_t zebra_armour_medium_attack_2_ink[180] = {
+    0,0,0,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,7,4,4,1,4,4,4,7,7,0,0,0,0,0,0,0,0,0,
+    7,4,4,2,2,1,2,2,2,1,4,7,7,0,0,0,0,0,0,0,
+    0,7,2,7,7,1,2,2,2,1,2,4,4,7,7,7,7,0,0,0,
+    0,0,7,0,0,7,2,2,2,1,2,2,2,1,4,4,4,7,7,7,
+    0,0,0,0,0,0,7,7,7,1,2,2,2,1,2,2,2,1,4,0,
+    0,0,0,0,0,0,0,0,0,7,7,2,2,1,2,2,2,1,2,0,
+    0,0,0,0,0,0,0,0,0,0,0,7,7,1,7,7,7,7,7,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,
+};
+static const uint8_t zebra_armour_medium_attack_3_ink[200] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,0,
+    0,0,0,0,0,7,7,7,7,7,7,7,7,7,7,7,7,1,4,0,
+    0,0,0,7,7,1,4,4,4,1,4,4,4,1,4,4,4,1,7,0,
+    0,0,7,4,4,1,2,2,2,1,2,2,2,1,2,2,2,7,0,0,
+    0,7,4,2,2,1,2,2,2,1,2,2,2,1,2,7,7,0,0,0,
+    7,4,2,2,2,1,2,2,2,7,7,7,7,7,7,0,0,0,0,0,
+    0,2,2,2,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    0,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t zebra_armour_medium_attack_4_ink[380] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,
+    0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,1,4,0,
+    0,0,0,0,0,0,0,0,0,0,7,4,4,1,4,4,4,1,7,0,
+    0,0,0,0,0,0,0,0,0,7,4,2,2,1,2,2,2,7,0,0,
+    0,0,0,0,0,0,0,0,7,1,2,2,2,1,2,2,7,0,0,0,
+    0,0,0,0,0,0,0,7,4,1,2,2,2,1,7,7,0,0,0,0,
+    0,0,0,0,0,0,7,4,2,1,2,2,7,7,0,0,0,0,0,0,
+    0,0,0,0,0,0,4,2,2,1,2,7,0,0,0,0,0,0,0,0,
+    0,0,0,0,7,7,7,2,2,1,7,0,0,0,0,0,0,0,0,0,
+    0,0,0,7,4,7,0,2,2,1,0,0,0,0,0,0,0,0,0,0,
+    0,0,7,4,7,0,0,2,2,1,0,0,0,0,0,0,0,0,0,0,
+    0,0,4,7,0,0,0,2,2,7,0,0,0,0,0,0,0,0,0,0,
+    0,0,7,0,0,0,0,7,7,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+};
+static const uint8_t zebra_armour_medium_attack_5_ink[140] = {
+    0,0,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,7,
+    7,7,4,4,4,1,4,7,7,7,7,7,7,7,7,7,7,7,7,0,
+    0,4,2,2,2,1,2,4,4,1,4,4,4,1,4,4,4,1,4,0,
+    0,2,7,2,7,1,2,2,2,1,2,2,2,1,2,2,2,1,2,0,
+    0,7,0,7,0,7,7,2,2,1,2,2,2,1,2,2,2,7,7,0,
+    0,0,0,0,0,0,0,7,2,1,2,2,2,1,7,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,7,7,7,7,7,7,0,0,0,0,0,0,
+};
+static const uint8_t zebra_armour_medium_attack_6_ink[160] = {
+    7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,4,4,4,4,1,7,7,7,7,0,0,0,0,0,0,0,0,0,0,
+    0,7,2,2,2,1,4,4,4,1,7,7,7,7,7,7,7,7,7,7,
+    0,0,7,7,2,1,2,2,2,1,4,4,4,1,4,4,4,1,4,0,
+    0,0,0,0,7,7,2,2,2,1,2,2,2,1,2,2,2,1,2,0,
+    0,0,0,0,0,0,7,7,2,1,2,2,2,1,2,2,2,1,2,0,
+    0,0,0,0,0,0,0,0,7,7,2,2,7,7,7,7,7,7,7,0,
+    0,0,0,0,0,0,0,0,0,0,7,7,0,0,0,0,0,0,0,0,
+};
+static const uint8_t zebra_armour_medium_attack_7_ink[140] = {
+    0,0,0,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,7,
+    7,7,7,4,4,1,4,4,7,7,7,7,7,7,7,7,7,7,7,0,
+    0,4,4,2,2,1,2,2,4,1,4,4,4,1,4,4,4,1,4,0,
+    0,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,0,
+    0,7,7,7,7,7,7,7,2,1,2,2,2,1,2,2,2,7,7,0,
+    0,0,0,0,0,0,0,0,7,1,2,2,7,1,7,7,7,0,0,0,
+    0,0,0,0,0,0,0,0,0,7,7,7,0,7,0,0,0,0,0,0,
+};
+static const ArtFrame zebra_armour_medium_attack_frames[8] = {
+    {20, 7, 17, 24, -1, -1, zebra_armour_medium_attack_0_ink},
+    {20, 8, 15, 24, -1, -1, zebra_armour_medium_attack_1_ink},
+    {20, 9, 18, 22, -1, -1, zebra_armour_medium_attack_2_ink},
+    {20, 10, 20, 26, -1, -1, zebra_armour_medium_attack_3_ink},
+    {20, 19, 25, 25, -1, -1, zebra_armour_medium_attack_4_ink},
+    {20, 7, 16, 24, -1, -1, zebra_armour_medium_attack_5_ink},
+    {20, 8, 15, 23, -1, -1, zebra_armour_medium_attack_6_ink},
+    {20, 7, 17, 24, -1, -1, zebra_armour_medium_attack_7_ink},
+};
+static const uint8_t zebra_armour_medium_sleep_0_ink[100] = {
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,1,4,4,4,1,4,0,
+    0,7,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,7,0,
+    0,0,7,7,7,1,2,2,2,1,2,2,2,1,2,7,7,7,0,0,
+    0,0,0,0,0,7,7,7,7,7,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t zebra_armour_medium_sleep_1_ink[100] = {
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,1,4,4,4,1,4,0,
+    0,7,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,7,0,
+    0,0,7,7,7,1,2,2,2,1,2,2,2,1,2,7,7,7,0,0,
+    0,0,0,0,0,7,7,7,7,7,7,7,7,7,7,0,0,0,0,0,
+};
+static const uint8_t zebra_armour_medium_sleep_2_ink[100] = {
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+    0,4,4,4,4,1,4,4,4,1,4,4,4,1,4,4,4,1,4,0,
+    0,7,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,7,0,
+    0,0,7,7,7,1,2,2,2,1,2,2,2,1,2,7,7,7,0,0,
+    0,0,0,0,0,7,7,7,7,7,7,7,7,7,7,0,0,0,0,0,
+};
+static const ArtFrame zebra_armour_medium_sleep_frames[3] = {
+    {20, 5, 10, 14, -1, -1, zebra_armour_medium_sleep_0_ink},
+    {20, 5, 10, 14, -1, -1, zebra_armour_medium_sleep_1_ink},
+    {20, 5, 10, 14, -1, -1, zebra_armour_medium_sleep_2_ink},
+};
+static const ArtClip zebra_armour_medium_clips[ACTION_COUNT] = {
+    [ACTION_REST] = {9, zebra_armour_medium_idle_frames},
+    [ACTION_WALK] = {4, zebra_armour_medium_walk_frames},
+    [ACTION_RUN] = {4, zebra_armour_medium_run_frames},
+    [ACTION_GRAZE] = {5, zebra_armour_medium_graze_frames},
+    [ACTION_BITE] = {4, zebra_armour_medium_bite_frames},
+    [ACTION_ATTACK] = {8, zebra_armour_medium_attack_frames},
+    [ACTION_SLEEP] = {3, zebra_armour_medium_sleep_frames},
+};
 static const uint8_t zebra_weapon_full_idle_0_ink[30] = {
     0,0,0,0,0,15,
     0,0,13,0,14,0,
@@ -38331,6 +49154,290 @@ static const ArtClip zebra_weapon_full_clips[ACTION_COUNT] = {
     [ACTION_ATTACK] = {8, zebra_weapon_full_attack_frames},
     [ACTION_SLEEP] = {3, zebra_weapon_full_sleep_frames},
 };
+static const uint8_t zebra_weapon_medium_idle_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t zebra_weapon_medium_idle_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t zebra_weapon_medium_idle_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t zebra_weapon_medium_idle_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t zebra_weapon_medium_idle_4_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t zebra_weapon_medium_idle_5_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t zebra_weapon_medium_idle_6_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t zebra_weapon_medium_idle_7_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t zebra_weapon_medium_idle_8_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame zebra_weapon_medium_idle_frames[9] = {
+    {5, 4, -19, 35, -1, -1, zebra_weapon_medium_idle_0_ink},
+    {5, 4, -19, 35, -1, -1, zebra_weapon_medium_idle_1_ink},
+    {5, 4, -18, 35, -1, -1, zebra_weapon_medium_idle_2_ink},
+    {5, 4, -19, 35, -1, -1, zebra_weapon_medium_idle_3_ink},
+    {5, 4, -19, 35, -1, -1, zebra_weapon_medium_idle_4_ink},
+    {5, 4, -18, 35, -1, -1, zebra_weapon_medium_idle_5_ink},
+    {5, 4, -19, 35, -1, -1, zebra_weapon_medium_idle_6_ink},
+    {5, 4, -19, 35, -1, -1, zebra_weapon_medium_idle_7_ink},
+    {5, 4, -18, 35, -1, -1, zebra_weapon_medium_idle_8_ink},
+};
+static const uint8_t zebra_weapon_medium_walk_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t zebra_weapon_medium_walk_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t zebra_weapon_medium_walk_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t zebra_weapon_medium_walk_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame zebra_weapon_medium_walk_frames[4] = {
+    {5, 4, -18, 35, -1, -1, zebra_weapon_medium_walk_0_ink},
+    {5, 4, -18, 36, -1, -1, zebra_weapon_medium_walk_1_ink},
+    {5, 4, -19, 35, -1, -1, zebra_weapon_medium_walk_2_ink},
+    {5, 4, -18, 36, -1, -1, zebra_weapon_medium_walk_3_ink},
+};
+static const uint8_t zebra_weapon_medium_run_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t zebra_weapon_medium_run_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t zebra_weapon_medium_run_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t zebra_weapon_medium_run_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame zebra_weapon_medium_run_frames[4] = {
+    {5, 4, -17, 35, -1, -1, zebra_weapon_medium_run_0_ink},
+    {5, 4, -17, 34, -1, -1, zebra_weapon_medium_run_1_ink},
+    {5, 4, -17, 34, -1, -1, zebra_weapon_medium_run_2_ink},
+    {5, 4, -17, 34, -1, -1, zebra_weapon_medium_run_3_ink},
+};
+static const uint8_t zebra_weapon_medium_graze_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t zebra_weapon_medium_graze_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t zebra_weapon_medium_graze_2_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t zebra_weapon_medium_graze_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t zebra_weapon_medium_graze_4_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame zebra_weapon_medium_graze_frames[5] = {
+    {5, 4, -21, 34, -1, -1, zebra_weapon_medium_graze_0_ink},
+    {5, 4, -21, 34, -1, -1, zebra_weapon_medium_graze_1_ink},
+    {5, 4, -21, 34, -1, -1, zebra_weapon_medium_graze_2_ink},
+    {5, 4, -21, 34, -1, -1, zebra_weapon_medium_graze_3_ink},
+    {5, 4, -21, 34, -1, -1, zebra_weapon_medium_graze_4_ink},
+};
+static const uint8_t zebra_weapon_medium_bite_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t zebra_weapon_medium_bite_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t zebra_weapon_medium_bite_2_ink[20] = {
+    0,0,0,15,
+    0,0,15,0,
+    0,0,14,0,
+    12,13,0,0,
+    11,12,0,0,
+};
+static const uint8_t zebra_weapon_medium_bite_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame zebra_weapon_medium_bite_frames[4] = {
+    {5, 4, -22, 35, -1, -1, zebra_weapon_medium_bite_0_ink},
+    {5, 4, -23, 33, -1, -1, zebra_weapon_medium_bite_1_ink},
+    {4, 5, -21, 37, -1, -1, zebra_weapon_medium_bite_2_ink},
+    {5, 4, -20, 34, -1, -1, zebra_weapon_medium_bite_3_ink},
+};
+static const uint8_t zebra_weapon_medium_attack_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t zebra_weapon_medium_attack_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t zebra_weapon_medium_attack_2_ink[15] = {
+    0,0,0,0,15,
+    11,12,14,15,0,
+    12,13,0,0,0,
+};
+static const uint8_t zebra_weapon_medium_attack_3_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t zebra_weapon_medium_attack_4_ink[20] = {
+    0,0,0,15,
+    0,0,15,0,
+    0,0,14,0,
+    12,13,0,0,
+    11,12,0,0,
+};
+static const uint8_t zebra_weapon_medium_attack_5_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t zebra_weapon_medium_attack_6_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t zebra_weapon_medium_attack_7_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const ArtFrame zebra_weapon_medium_attack_frames[8] = {
+    {5, 4, -19, 35, -1, -1, zebra_weapon_medium_attack_0_ink},
+    {5, 4, -22, 29, -1, -1, zebra_weapon_medium_attack_1_ink},
+    {5, 3, -22, 14, -1, -1, zebra_weapon_medium_attack_2_ink},
+    {5, 4, -15, 43, -1, -1, zebra_weapon_medium_attack_3_ink},
+    {4, 5, -10, 49, -1, -1, zebra_weapon_medium_attack_4_ink},
+    {5, 4, -20, 34, -1, -1, zebra_weapon_medium_attack_5_ink},
+    {5, 4, -22, 26, -1, -1, zebra_weapon_medium_attack_6_ink},
+    {5, 4, -19, 34, -1, -1, zebra_weapon_medium_attack_7_ink},
+};
+static const uint8_t zebra_weapon_medium_sleep_0_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t zebra_weapon_medium_sleep_1_ink[20] = {
+    0,0,0,0,15,
+    0,12,0,15,0,
+    11,0,14,0,0,
+    0,12,0,0,0,
+};
+static const uint8_t zebra_weapon_medium_sleep_2_ink[20] = {
+    0,0,0,15,
+    0,0,15,0,
+    0,0,14,0,
+    12,13,0,0,
+    11,12,0,0,
+};
+static const ArtFrame zebra_weapon_medium_sleep_frames[3] = {
+    {5, 4, -25, 16, -1, -1, zebra_weapon_medium_sleep_0_ink},
+    {5, 4, -25, 14, -1, -1, zebra_weapon_medium_sleep_1_ink},
+    {4, 5, -25, 13, -1, -1, zebra_weapon_medium_sleep_2_ink},
+};
+static const ArtClip zebra_weapon_medium_clips[ACTION_COUNT] = {
+    [ACTION_REST] = {9, zebra_weapon_medium_idle_frames},
+    [ACTION_WALK] = {4, zebra_weapon_medium_walk_frames},
+    [ACTION_RUN] = {4, zebra_weapon_medium_run_frames},
+    [ACTION_GRAZE] = {5, zebra_weapon_medium_graze_frames},
+    [ACTION_BITE] = {4, zebra_weapon_medium_bite_frames},
+    [ACTION_ATTACK] = {8, zebra_weapon_medium_attack_frames},
+    [ACTION_SLEEP] = {3, zebra_weapon_medium_sleep_frames},
+};
 static const ArtClip zebra_clips[ACTION_COUNT] = {
     [ACTION_REST] = {9, zebra_idle_frames},
     [ACTION_WALK] = {4, zebra_walk_frames},
@@ -38342,22 +49449,22 @@ static const ArtClip zebra_clips[ACTION_COUNT] = {
 };
 
 const ArtSet ART_SETS[] = {
-    {SPECIES_ARMADILLO, ART_COVERS_ARMOUR, 55, 27, armadillo_clips, {{NULL, NULL}, {NULL, NULL}, {NULL, armadillo_weapon_full_clips}}},
-    {SPECIES_BEAVER, ART_COVERS_SWIM, 48, 30, beaver_clips, {{NULL, beaver_armour_full_clips}, {NULL, NULL}, {NULL, beaver_weapon_full_clips}}},
-    {SPECIES_DEER, 0, 46, 41, deer_clips, {{NULL, deer_armour_full_clips}, {NULL, NULL}, {NULL, deer_weapon_full_clips}}},
+    {SPECIES_ARMADILLO, ART_COVERS_ARMOUR, 55, 27, armadillo_clips, {{NULL, NULL}, {NULL, NULL}, {armadillo_weapon_medium_clips, armadillo_weapon_full_clips}}},
+    {SPECIES_BEAVER, ART_COVERS_SWIM, 48, 30, beaver_clips, {{beaver_armour_medium_clips, beaver_armour_full_clips}, {NULL, NULL}, {beaver_weapon_medium_clips, beaver_weapon_full_clips}}},
+    {SPECIES_DEER, 0, 46, 41, deer_clips, {{deer_armour_medium_clips, deer_armour_full_clips}, {NULL, NULL}, {deer_weapon_medium_clips, deer_weapon_full_clips}}},
     {SPECIES_ELEPHANT, ART_COVERS_ARMOUR | ART_COVERS_WEAPON, 61, 41, elephant_clips, {{NULL, NULL}, {NULL, NULL}, {NULL, NULL}}},
-    {SPECIES_FENNEC, 0, 52, 40, fennec_clips, {{NULL, fennec_armour_full_clips}, {NULL, NULL}, {NULL, fennec_weapon_full_clips}}},
-    {SPECIES_FOX, 0, 48, 36, fox_clips, {{NULL, fox_armour_full_clips}, {NULL, NULL}, {NULL, fox_weapon_full_clips}}},
-    {SPECIES_GAZELLE, 0, 48, 41, gazelle_clips, {{NULL, gazelle_armour_full_clips}, {NULL, NULL}, {NULL, gazelle_weapon_full_clips}}},
-    {SPECIES_GOAT, 0, 49, 41, goat_clips, {{NULL, goat_armour_full_clips}, {NULL, NULL}, {NULL, goat_weapon_full_clips}}},
-    {SPECIES_HARE, 0, 37, 37, hare_clips, {{NULL, hare_armour_full_clips}, {NULL, NULL}, {NULL, hare_weapon_full_clips}}},
-    {SPECIES_HIPPO, ART_COVERS_SWIM, 58, 40, hippo_clips, {{NULL, hippo_armour_full_clips}, {NULL, NULL}, {NULL, hippo_weapon_full_clips}}},
-    {SPECIES_LEMUR, 0, 45, 35, lemur_clips, {{NULL, lemur_armour_full_clips}, {NULL, NULL}, {NULL, lemur_weapon_full_clips}}},
-    {SPECIES_LION, 0, 45, 31, lion_clips, {{NULL, lion_armour_full_clips}, {NULL, NULL}, {NULL, lion_weapon_full_clips}}},
-    {SPECIES_OTTER, ART_COVERS_SWIM, 48, 26, otter_clips, {{NULL, otter_armour_full_clips}, {NULL, NULL}, {NULL, otter_weapon_full_clips}}},
+    {SPECIES_FENNEC, 0, 52, 40, fennec_clips, {{fennec_armour_medium_clips, fennec_armour_full_clips}, {NULL, NULL}, {fennec_weapon_medium_clips, fennec_weapon_full_clips}}},
+    {SPECIES_FOX, 0, 48, 36, fox_clips, {{fox_armour_medium_clips, fox_armour_full_clips}, {NULL, NULL}, {fox_weapon_medium_clips, fox_weapon_full_clips}}},
+    {SPECIES_GAZELLE, 0, 48, 41, gazelle_clips, {{gazelle_armour_medium_clips, gazelle_armour_full_clips}, {NULL, NULL}, {gazelle_weapon_medium_clips, gazelle_weapon_full_clips}}},
+    {SPECIES_GOAT, 0, 49, 41, goat_clips, {{goat_armour_medium_clips, goat_armour_full_clips}, {NULL, NULL}, {goat_weapon_medium_clips, goat_weapon_full_clips}}},
+    {SPECIES_HARE, 0, 37, 37, hare_clips, {{hare_armour_medium_clips, hare_armour_full_clips}, {NULL, NULL}, {hare_weapon_medium_clips, hare_weapon_full_clips}}},
+    {SPECIES_HIPPO, ART_COVERS_SWIM, 58, 40, hippo_clips, {{hippo_armour_medium_clips, hippo_armour_full_clips}, {NULL, NULL}, {hippo_weapon_medium_clips, hippo_weapon_full_clips}}},
+    {SPECIES_LEMUR, 0, 45, 35, lemur_clips, {{lemur_armour_medium_clips, lemur_armour_full_clips}, {NULL, NULL}, {lemur_weapon_medium_clips, lemur_weapon_full_clips}}},
+    {SPECIES_LION, 0, 45, 31, lion_clips, {{lion_armour_medium_clips, lion_armour_full_clips}, {NULL, NULL}, {lion_weapon_medium_clips, lion_weapon_full_clips}}},
+    {SPECIES_OTTER, ART_COVERS_SWIM, 48, 26, otter_clips, {{otter_armour_medium_clips, otter_armour_full_clips}, {NULL, NULL}, {otter_weapon_medium_clips, otter_weapon_full_clips}}},
     {SPECIES_RHINO, ART_COVERS_ARMOUR | ART_COVERS_WEAPON, 54, 40, rhino_clips, {{NULL, NULL}, {NULL, NULL}, {NULL, NULL}}},
-    {SPECIES_TIGER, 0, 48, 31, tiger_clips, {{NULL, tiger_armour_full_clips}, {NULL, NULL}, {NULL, tiger_weapon_full_clips}}},
-    {SPECIES_WOLF, 0, 48, 35, wolf_clips, {{NULL, wolf_armour_full_clips}, {NULL, NULL}, {NULL, wolf_weapon_full_clips}}},
-    {SPECIES_ZEBRA, 0, 53, 41, zebra_clips, {{NULL, zebra_armour_full_clips}, {NULL, NULL}, {NULL, zebra_weapon_full_clips}}},
+    {SPECIES_TIGER, 0, 48, 31, tiger_clips, {{tiger_armour_medium_clips, tiger_armour_full_clips}, {NULL, NULL}, {tiger_weapon_medium_clips, tiger_weapon_full_clips}}},
+    {SPECIES_WOLF, 0, 48, 35, wolf_clips, {{wolf_armour_medium_clips, wolf_armour_full_clips}, {NULL, NULL}, {wolf_weapon_medium_clips, wolf_weapon_full_clips}}},
+    {SPECIES_ZEBRA, 0, 53, 41, zebra_clips, {{zebra_armour_medium_clips, zebra_armour_full_clips}, {NULL, NULL}, {zebra_weapon_medium_clips, zebra_weapon_full_clips}}},
 };
 const int ART_SET_COUNT = (int)(sizeof ART_SETS / sizeof ART_SETS[0]);
