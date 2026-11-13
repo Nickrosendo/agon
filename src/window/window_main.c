@@ -20,6 +20,7 @@
 #include "inspect.h"
 #include "lab.h"
 #include "lifepage.h"
+#include "lookahead.h"
 #include "notices.h"
 #include "options.h"
 #include "palette.h"
@@ -47,6 +48,10 @@
 #define NOTICE_LIST_ROWS 9
 /* How many screen pixels an arrow key pans by. */
 #define ARROW_PAN 48
+/* How long the look-ahead camera waits, with nobody followed and no key or
+ * mouse touched, before it picks someone: a player who let go or panned is
+ * looking at something, and the camera should not pull them away at once. */
+#define LOOK_IDLE_FRAMES (10 * FRAMES_PER_SECOND)
 
 static const char WINDOW_USAGE[] =
     "usage: agon-window [options]\n"
@@ -83,6 +88,9 @@ static const char WINDOW_USAGE[] =
     "      graze, bite, sleep), and p puts every painted part (plates, a\n"
     "      horn, a fin) on its species.\n"
     "      a switches the animals between their drawn frames and the skeleton.\n"
+    "      f switches the camera that looks a season ahead and, when nobody is\n"
+    "      followed for 10 seconds or the one followed dies, follows whoever\n"
+    "      has the most coming (on in Documentary, off in Sandbox).\n"
     "      m switches between Documentary (watching) and Sandbox. In Sandbox,\n"
     "      g gives the followed creature a trait (1 to 7 pick it, , and . set\n"
     "      its value, Enter gives), w starts a weather event for a season and\n"
@@ -138,6 +146,14 @@ typedef struct {
      * split, and a second x keeps the world shown. */
     Branches branches;
     bool keep_asked;
+    /* The look-ahead camera (lookahead.h): a copy a season ahead, and whether
+     * the camera may pick who to follow. On by default in Documentary, off in
+     * Sandbox; f switches it. idle_frames counts frames with no key or mouse;
+     * look_now asks for a pick at once (the followed creature died). */
+    Lookahead look;
+    bool look_on;
+    bool look_now;
+    int idle_frames;
 } App;
 
 static void apply_window_size(App *a, int w, int h)
@@ -243,6 +259,9 @@ static void new_world(App *a)
     /* r replaces the world on screen; its other branch goes with it. */
     branch_free(&a->branches);
     a->keep_asked = false;
+    /* The copy was of the old world; the new one gets picked for at once. */
+    lookahead_free(&a->look);
+    a->idle_frames = LOOK_IDLE_FRAMES;
     app_prelude_start(&a->prelude, &a->sim, a->prelude_years);
     if (a->opt->frames > 0) {
         app_prelude_finish(&a->prelude, &a->sim); /* as at the start */
@@ -397,8 +416,13 @@ static void handle_key(App *a, int key)
     if (key != 'q') {
         char line[256] = "";
         const Creature *followed = inspect_creature(&a->inspect, &a->sim);
+        bool was_sandbox = a->sandbox.on;
         if (sandbox_key(&a->sandbox, &a->sim, key, followed, platform_now_ms(),
                         line, sizeof(line)) == SANDBOX_TAKEN) {
+            /* A new mode brings its own camera: on in Documentary. */
+            if (a->sandbox.on != was_sandbox) {
+                a->look_on = !a->sandbox.on;
+            }
             if (line[0] != '\0') {
                 say(a, line, 2 * NOTICE_FRAMES);
             }
@@ -491,6 +515,12 @@ static void handle_key(App *a, int key)
             a->lab_parts = !a->lab_parts;
         }
         break;
+    case 'f':
+    case 'F':
+        a->look_on = !a->look_on;
+        say(a, a->look_on ? "camera on: it picks who to follow when you let go"
+                          : "camera off: follow by hand", NOTICE_FRAMES);
+        break;
     case 'a':
     case 'A':
         /* The drawn frames (art.h) on or off: the pictures kept are
@@ -524,6 +554,11 @@ static void handle_key(App *a, int key)
 static void handle_event(App *a, const Event *e)
 {
     a->redraw = true;
+    /* Only the player's own doing counts; a resize or a quit does not. */
+    if (e->kind == EV_KEY || e->kind == EV_DOWN || e->kind == EV_WHEEL ||
+        (e->kind == EV_MOVE && a->pressed)) {
+        a->idle_frames = 0;
+    }
     switch (e->kind) {
     case EV_QUIT:
         a->running = false;
@@ -618,9 +653,9 @@ static void draw_help(App *a)
     const char *help =
         PLATFORM_IS_PAGE
             ? " space pause | +/- speed | [ ] zoom | click follow | Esc let go"
-              " | l life story | j jump | e notices | b lab | r new world"
+              " | l life story | j jump | e notices | f camera | b lab | r new world"
             : " space pause | +/- speed | [ ] zoom | click follow | Esc let go"
-              " | l life story | j jump | e notices | b lab | r new world | s save | q quit";
+              " | l life story | j jump | e notices | f camera | b lab | r new world | s save | q quit";
     /* Sandbox has four keys more, so it drops the ones --help still lists. */
     if (a->sandbox.on) {
         help = " space pause | +/- speed | [ ] zoom | click follow | l story";
@@ -787,6 +822,7 @@ static const Creature *update_following(App *a, float fraction)
         inspect_stop(&a->inspect);
         snprintf(a->notice, sizeof(a->notice), "the creature you followed died");
         a->notice_frames = NOTICE_FRAMES;
+        a->look_now = true;
     }
     return followed;
 }
@@ -817,6 +853,60 @@ static void update_notices(App *a)
     }
     say(a, line, RARE_NOTICE_FRAMES);
     a->redraw = true;
+}
+
+/* Whether the look-ahead camera has work this frame. Not while the world is
+ * split (it would be a third world), nor while the ancestors evolve or a skip
+ * runs: those move the world too fast to follow, and the copy is made again
+ * afterwards, which is quicker than running it after them. */
+static bool look_wanted(const App *a)
+{
+    return a->look_on && !a->branches.split && !a->prelude.active &&
+           !sandbox_skipping(&a->sandbox) && !sim_is_over(&a->sim);
+}
+
+/* Nothing on screen the player is reading that a new pick would change. */
+static bool look_may_pick(const App *a)
+{
+    return !a->paused && !a->page.open && !a->lab_open && !a->notices_open &&
+           a->sandbox.menu == SANDBOX_MENU_NONE && !a->inspect.following &&
+           (a->look_now || a->idle_frames >= LOOK_IDLE_FRAMES);
+}
+
+/* Keeps the copy a season ahead and, when the camera may, follows the best
+ * coming life. The copy only reads a->sim, so the world shown is the same with
+ * the camera on or off. */
+static void update_look(App *a)
+{
+    if (!look_wanted(a)) {
+        /* Its memory back: a whole second world is not small. */
+        lookahead_free(&a->look);
+        a->look_now = false;
+        return;
+    }
+    char err[160];
+    if (a->opt->frames > 0) {
+        /* Tests and screenshots: to the end, so each run is the same. */
+        lookahead_sync_all(&a->look, &a->sim);
+    } else if (!lookahead_sync(&a->look, &a->sim, platform_now_ms,
+                               APP_PRELUDE_FRAME_MS / 2, err, sizeof(err))) {
+        a->look_on = false;
+        say(a, "camera off: no memory for its copy of the world", NOTICE_FRAMES);
+        return;
+    }
+    if (!look_may_pick(a)) {
+        return;
+    }
+    char why[LOOKAHEAD_WHY];
+    uint32_t id = lookahead_pick(&a->look, &a->sim, why, sizeof(why));
+    if (id == LOOKAHEAD_NOBODY) {
+        return; /* not ready yet: look_now stays, and a later frame picks */
+    }
+    a->look_now = false;
+    inspect_follow(&a->inspect, &a->sim, life_find_slot(&a->sim, id));
+    char line[LOOKAHEAD_WHY + 32];
+    snprintf(line, sizeof(line), "camera: %s (f: camera off)", why);
+    say(a, line, 3 * NOTICE_FRAMES);
 }
 
 /* The e list, newest first, numbered for the keys that follow. */
@@ -986,6 +1076,13 @@ static void app_frame(void *arg)
         branch_catch_up(&a->branches, &a->sim, platform_now_ms,
                         APP_PRELUDE_FRAME_MS / 2);
     }
+    update_look(a);
+    /* Counted up to the wait and no further: an int that kept growing would
+     * pass INT_MAX after about two years of frames, and signed overflow is
+     * undefined behaviour, not a wrap round. */
+    if (a->idle_frames < LOOK_IDLE_FRAMES) {
+        a->idle_frames++;
+    }
     family_update(&a->families, &a->sim);
     update_notices(a);
     /* The bodies' motion is worked out on the body clock as it was before
@@ -1118,6 +1215,12 @@ int main(int argc, char **argv)
     app.opt = &opt;
     app.paused = opt.paused;
     app.sandbox.on = opt.sandbox;
+    /* --frames runs make pictures for tests, which a camera choosing whom to
+     * follow would change; f still turns it on there. */
+    app.look_on = !opt.sandbox && opt.frames == 0;
+    /* Counted as idle from the start: the first pick comes as soon as the
+     * copy has run its season ahead. */
+    app.idle_frames = LOOK_IDLE_FRAMES;
     uint64_t seed = opt.seed_given ? opt.seed : seed_from_clock();
     int world_w = opt.size_given ? opt.width : DEFAULT_WORLD_W;
     int world_h = opt.size_given ? opt.height : DEFAULT_WORLD_H;
@@ -1127,6 +1230,9 @@ int main(int argc, char **argv)
         return EXIT_FAILED;
     }
     rng_seed(&app.seed_source, app.sim.seed);
+    /* A season ahead. The cast: ticks_per_year is an int, the lead a tick
+     * count (uint64_t); settings keep it positive, so nothing is lost. */
+    lookahead_init(&app.look, (uint64_t)(app.sim.set.ticks_per_year / 4));
     /* With --frames (tests and screenshots) the prelude runs whole before the
      * first frame, and only when --ancestors asks for it: a picture must come
      * out the same every time, which a prelude cut by a clock would not. */
@@ -1165,6 +1271,7 @@ int main(int argc, char **argv)
     scene_free(&app.scene);
     sandbox_free(&app.sandbox);
     branch_free(&app.branches);
+    lookahead_free(&app.look);
     sim_free(&app.sim);
     return result;
 }
