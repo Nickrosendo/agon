@@ -634,8 +634,10 @@ enum {
     CHRONICLE_BYTES = CHRONICLE_NOTABLE * NOTABLE_BYTES,
     /* After the chronicle, in a world no one has touched and no check has
      * run in: an empty action log (its count), and a tactic watch with every
-     * row unused (a byte each), then seen, the best lifts and the lone share. */
-    TAIL_BYTES = CHRONICLE_BYTES + 4 + TACTIC_FAMILIES + 2 + 4 * TACTIC_COUNT + 4,
+     * row unused (a byte each), then seen, the best lifts and the lone share;
+     * then the weather, kind and end. */
+    TAIL_BYTES = CHRONICLE_BYTES + 4 + TACTIC_FAMILIES + 2 + 4 * TACTIC_COUNT + 4 +
+                 1 + 8,
 };
 
 typedef struct {

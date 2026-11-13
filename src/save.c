@@ -39,13 +39,14 @@
  *   for a used row its hunters byte, u32 lineage, i32 members, the counts in
  *   FAMILY_COUNTS' order, TACTIC_COUNT streak bytes, u16 confirmed, u16 told
  *   and TACTIC_COUNT lifts; then u16 seen, TACTIC_COUNT best lifts and the
- *   lone share. The watch's index is built again on reading, not saved.
+ *   lone share. The watch's index is built again on reading, not saved;
+ *   then the weather: u8 kind, u64 until.
  *
  * Change anything here and SAVE_VERSION goes up by one.
  */
 #define SAVE_MAGIC "AGONSAVE"
 #define SAVE_MAGIC_LEN 8
-#define SAVE_VERSION 29u
+#define SAVE_VERSION 30u
 
 /* No value in a healthy world comes near this. Bounding them keeps sums
  * from reaching infinity, and float-to-int conversions defined. */
@@ -486,6 +487,8 @@ static void put_everything(Writer *w, const Sim *s)
     put_chronicle(w, &s->chronicle);
     put_actions(w, &s->actions);
     put_tactics(w, &s->tactics);
+    put_bytes(w, &s->weather.kind, 1);
+    put_u64(w, s->weather.until);
 }
 
 /*
@@ -1131,6 +1134,11 @@ static void get_body(Reader *r, Sim *s, uint64_t seed, uint64_t tick,
     /* Entries before the file's tick have happened already. */
     actions_seek(&s->actions, s->tick);
     get_tactics(r, &s->tactics);
+    s->weather.kind = get_byte(r);
+    s->weather.until = get_u64(r);
+    if (r->problem == NULL && s->weather.kind >= WEATHER_COUNT) {
+        fail(r, "the weather in the file is impossible");
+    }
     /* Only now is the population known. */
     if (s->records.ended_at != 0 && s->pool.count != 0) {
         fail(r, "the records in the file say a living world has ended");

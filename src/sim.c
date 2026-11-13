@@ -276,6 +276,7 @@ bool sim_reseed(Sim *s, uint64_t seed)
     chronicle_clear(&s->chronicle);
     tactics_clear(&s->tactics);
     actions_clear(&s->actions); /* a new world, so nothing done to it yet */
+    s->weather = (Weather){0};
     /* The brain's random numbers start over too, so a reseeded Sim and a
      * fresh one make the same decisions. */
     brain_close(&s->brain);
@@ -704,6 +705,17 @@ void sim_step(Sim *s)
     s->pool.tactics = s->set.tactics ? &s->tactics : NULL;
     /* The player's actions for this tick, before anything moves. */
     actions_apply_due(s);
+    /* A weather event runs this tick on its own copy of the settings, and the
+     * player's settings are put back at the end, so a save or the panel never
+     * sees the pushed numbers. With no event, nothing is copied. */
+    bool weather_on = weather_active(&s->weather, s->tick);
+    Settings base;
+    if (weather_on) {
+        base = s->set;
+        s->set = weather_settings(&base, &s->weather, s->tick);
+    } else if (s->weather.kind != WEATHER_NONE) {
+        s->weather = (Weather){0}; /* it ended: forget it */
+    }
     climate_step(&s->world, &s->set, s->tick);
     flora_step(&s->world, &s->rng, &s->set,
                years_season_of(s->tick, s->set.ticks_per_year));
@@ -724,6 +736,9 @@ void sim_step(Sim *s)
     }
     if (sample_due && s->set.tactics) {
         tactics_check(&s->tactics, &s->world, &s->pool, recorder(s), &s->set);
+    }
+    if (weather_on) {
+        s->set = base;
     }
 }
 
@@ -836,6 +851,12 @@ uint64_t sim_checksum(const Sim *s)
                  sizeof(s->records.largest_size));
     hash = fnv1a(hash, &s->records.ended_at, sizeof(s->records.ended_at));
     hash = fnv1a(hash, s->rng.s, sizeof(s->rng.s));
+    /* Only while there is an event: a world that never had weather keeps the
+     * fingerprint it had before weather existed, and pinned values stay. */
+    if (s->weather.kind != WEATHER_NONE) {
+        hash = fnv1a(hash, &s->weather.kind, sizeof(s->weather.kind));
+        hash = fnv1a(hash, &s->weather.until, sizeof(s->weather.until));
+    }
     hash = fnv1a(hash, w->terrain, n * sizeof(uint8_t));
     hash = fnv1a(hash, w->fertility, n * sizeof(float));
     hash = fnv1a(hash, w->veg, n * sizeof(uint8_t));

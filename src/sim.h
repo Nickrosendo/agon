@@ -16,6 +16,7 @@
 #include "settings.h"
 #include "stats.h"
 #include "tactics.h"
+#include "weather.h"
 #include "world.h"
 
 /* One creature's place in the shuffled order of a tick: its slot and the
@@ -81,6 +82,9 @@ typedef struct Sim {
      * not fingerprinted, because what an action changed is in the state itself,
      * and a world built without a log must have the same fingerprint. */
     ActionLog actions;
+    /* The weather event under way, if any (weather.h). Saved and fingerprinted:
+     * it changes what happens. */
+    Weather weather;
 } Sim;
 
 /*

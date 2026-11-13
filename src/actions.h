@@ -79,6 +79,11 @@ enum { ACTIONS_GIVABLE_COUNT = 7 };
  * creature with that id, or no memory. */
 bool actions_give_trait(struct Sim *s, uint32_t creature, int gene, float value);
 
+/* Records a weather event (a WEATHER_ kind from weather.h, not WEATHER_NONE)
+ * to start at the next tick and last one season, replacing any under way.
+ * False for another kind or no memory. */
+bool actions_weather(struct Sim *s, int kind);
+
 /* Applies every entry due at s->tick, in the order they were added. An entry
  * whose creature has died (or never lived) does nothing; it stays in the log,
  * so a replay meets it and does nothing too. Called first thing by sim_step. */

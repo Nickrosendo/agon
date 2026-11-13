@@ -116,6 +116,26 @@ bool actions_give_trait(Sim *s, uint32_t creature, int gene, float value)
     return actions_add(&s->actions, a);
 }
 
+bool actions_weather(Sim *s, int kind)
+{
+    if (kind <= WEATHER_NONE || kind >= WEATHER_COUNT) {
+        return false;
+    }
+    PlayerAction a = {.tick = s->tick, .kind = ACTION_WEATHER,
+                      .weather = (uint8_t)kind};
+    return actions_add(&s->actions, a);
+}
+
+/* One season from now, replacing any event under way. */
+static void apply_weather(Sim *s, const PlayerAction *a)
+{
+    if (a->weather <= WEATHER_NONE || a->weather >= WEATHER_COUNT) {
+        return;
+    }
+    uint64_t season = (uint64_t)s->set.ticks_per_year / 4u;
+    s->weather = (Weather){.kind = a->weather, .until = s->tick + season};
+}
+
 void actions_apply_due(Sim *s)
 {
     ActionLog *log = &s->actions;
@@ -125,6 +145,8 @@ void actions_apply_due(Sim *s)
          * skipped rather than applied late. */
         if (a->tick == s->tick && a->kind == ACTION_TRAIT) {
             apply_trait(s, a);
+        } else if (a->tick == s->tick && a->kind == ACTION_WEATHER) {
+            apply_weather(s, a);
         }
         log->next++;
     }
