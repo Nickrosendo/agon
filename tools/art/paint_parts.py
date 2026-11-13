@@ -32,7 +32,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.join(HERE, "pixellab")
 PARTS = ("armour", "weapon", "swim")
 SIZES = ("full", "medium")
-ROOM = 8  # pixels kept free above and in front of the body for the part
+ROOM = 8  # pixels kept free above the body for the part (a horn, a fin)
 
 
 def used_frames(species):
