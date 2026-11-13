@@ -51,19 +51,38 @@ bool lookahead_sync(Lookahead *l, const Sim *shown, uint64_t (*now_ms)(void),
 /* The same with no clock, to the end: for tests and runs that must not
  * depend on time. */
 void lookahead_sync_all(Lookahead *l, const Sim *shown);
+/* Why a pick was made: the biggest part of its coming season. */
+typedef enum {
+    LOOK_QUIET,
+    LOOK_MOVE,
+    LOOK_YOUNG,
+    LOOK_FIGHT,
+    LOOK_GIANT,
+    LOOK_OLDEST,
+    LOOK_LARGEST,
+    LOOK_FIRST_KILL,
+    LOOK_MORE_KILLS,
+    LOOK_HUNTER_KILL,
+    LOOK_REASON_COUNT
+} LookReason;
+
+/* The phrase for a reason, such as "first kill soon". */
+const char *lookahead_reason_text(int reason);
 /* What a life's coming season is worth watching, from its tally and age now
  * and later: kills and fights above slow things like growing (lookahead.c has
- * the weights). *why is set to a constant phrase for the biggest part, such
- * as "first kill soon". */
+ * the weights). tired: reasons shown lately, bit r for reason r; those parts
+ * count less, so the camera does not show the same kind of thing every time.
+ * *why is set to the biggest part's LookReason. */
 float lookahead_score(const LifeTally *now, uint32_t age_now,
                       const LifeTally *later, uint32_t age_later,
-                      const char **why);
+                      unsigned tired, int *why);
 /* The living creature on screen with the best coming season (a life that
- * ends within it counts half), and in why a
+ * ends within it counts half), its LookReason in *reason, and in why a
  * line such as "Varo, a young hunter: first kill soon". LOOKAHEAD_NOBODY
- * (and an empty why) when the copy is not ready or nobody is alive. */
-uint32_t lookahead_pick(const Lookahead *l, const Sim *shown, char *why,
-                        size_t len);
+ * (and an empty why) when the copy is not ready or nobody is alive. tired as
+ * for lookahead_score: the window passes the reasons of its last picks. */
+uint32_t lookahead_pick(const Lookahead *l, const Sim *shown, unsigned tired,
+                        int *reason, char *why, size_t len);
 /* Frees the copy; safe to call twice. The lead is kept. */
 void lookahead_free(Lookahead *l);
 

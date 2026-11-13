@@ -13,22 +13,26 @@
 
 #include "sim.h"
 
-/* One row of the population chart: the numbers at the start of a year. */
+/* One column's worth of the population chart: the numbers at the start of a
+ * season. */
 typedef struct {
+    uint64_t tick;
     int population, plant_eaters, meat_eaters, planted;
-} YearCount;
+} SkipSample;
 
-/* Room for each line of the summary; SKIP_LINES lines at most. */
-enum { SKIP_COLS = 80, SKIP_LINES = 16 };
+/* Room for each line of the summary, in bytes; SKIP_LINES lines at most.
+ * Bytes, not columns: a chart block is 3 bytes of UTF-8 and one column on
+ * screen. SKIP_CHART_COLS: the widest chart, in columns. */
+enum { SKIP_COLS = 160, SKIP_LINES = 16, SKIP_CHART_COLS = 40 };
 
 typedef struct {
     bool active;    /* still running */
     bool cancelled; /* stopped before its end */
     uint64_t from, until;
-    /* years[0] is the start, then one row per year boundary passed. On the
-     * heap, room for years_cap rows, owned by the Skip. */
-    YearCount *years;
-    int n_years, years_cap;
+    /* samples[0] is the start, then one per season boundary passed. On the
+     * heap, room for samples_cap of them, owned by the Skip. */
+    SkipSample *samples;
+    int n_samples, samples_cap;
     /* The world as it was at the start, for the summary to compare with. */
     int start_lineages;
     uint32_t start_giants;
@@ -50,7 +54,8 @@ void skip_cancel(Skip *k);
  * how long the skip has been running, for the estimate. */
 void skip_progress_text(const Skip *k, const Sim *s, uint64_t elapsed_ms,
                         char *out, size_t size);
-/* Fills the "while you were away" lines and returns how many. */
+/* Fills the "while you were away" lines, a chart of creatures, plant-eaters
+ * and meat-eaters among them, and returns how many. */
 int skip_summary_lines(const Skip *k, const Sim *s,
                        char lines[][SKIP_COLS], int max);
 /* Frees the chart. The Skip can be started again afterwards. */

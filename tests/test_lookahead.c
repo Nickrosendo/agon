@@ -37,7 +37,8 @@ static void test_watching_is_free(void)
     char why[LOOKAHEAD_WHY];
     for (int t = 0; t < 200; t++) {
         lookahead_sync_all(&l, &watched);
-        (void)lookahead_pick(&l, &watched, why, sizeof(why));
+        int reason;
+        (void)lookahead_pick(&l, &watched, 0, &reason, why, sizeof(why));
         sim_step(&watched);
         sim_step(&plain);
     }
@@ -83,9 +84,11 @@ static void test_pick_is_alive(void)
     Lookahead l;
     lookahead_init(&l, LEAD);
     char why[LOOKAHEAD_WHY];
-    CHECK(lookahead_pick(&l, &s, why, sizeof(why)) == LOOKAHEAD_NOBODY);
+    int reason;
+    CHECK(lookahead_pick(&l, &s, 0, &reason, why, sizeof(why)) ==
+          LOOKAHEAD_NOBODY);
     lookahead_sync_all(&l, &s);
-    uint32_t id = lookahead_pick(&l, &s, why, sizeof(why));
+    uint32_t id = lookahead_pick(&l, &s, 0, &reason, why, sizeof(why));
     CHECK(id != LOOKAHEAD_NOBODY);
     CHECK(life_find_slot(&s, id) >= 0);
     CHECK(strlen(why) > 0);
@@ -131,16 +134,23 @@ static void test_score_order(void)
     giant.flags = TALLY_GIANT;
     hunter.kills = 1;
     hunter.hunter_kills = 1;
-    const char *why = NULL;
-    float s_none = lookahead_score(&now, 100, &now, 250, &why);
-    float s_child = lookahead_score(&now, 100, &child, 250, &why);
-    CHECK(strstr(why, "young") != NULL);
-    float s_kill = lookahead_score(&now, 100, &kill, 250, &why);
-    CHECK(strstr(why, "first kill") != NULL);
-    float s_giant = lookahead_score(&now, 100, &giant, 250, &why);
-    CHECK(strstr(why, "giant") != NULL);
-    float s_hunter = lookahead_score(&now, 100, &hunter, 250, &why);
-    CHECK(strstr(why, "hunter") != NULL);
+    int why = -1;
+    float s_none = lookahead_score(&now, 100, &now, 250, 0, &why);
+    CHECK(why == LOOK_QUIET);
+    float s_child = lookahead_score(&now, 100, &child, 250, 0, &why);
+    CHECK(strstr(lookahead_reason_text(why), "young") != NULL);
+    float s_kill = lookahead_score(&now, 100, &kill, 250, 0, &why);
+    CHECK(strstr(lookahead_reason_text(why), "first kill") != NULL);
+    float s_giant = lookahead_score(&now, 100, &giant, 250, 0, &why);
+    CHECK(strstr(lookahead_reason_text(why), "giant") != NULL);
+    float s_hunter = lookahead_score(&now, 100, &hunter, 250, 0, &why);
+    CHECK(strstr(lookahead_reason_text(why), "hunter") != NULL);
+    /* Tired of hunter kills, the same season counts less and is still
+     * named for its biggest part. */
+    float s_tired = lookahead_score(&now, 100, &hunter, 250,
+                                    1u << LOOK_HUNTER_KILL, &why);
+    CHECK(s_tired < s_hunter);
+    CHECK(why == LOOK_FIRST_KILL);
     CHECK(s_none < s_child);
     CHECK(s_child < s_giant);
     CHECK(s_giant < s_kill);
@@ -148,8 +158,8 @@ static void test_score_order(void)
     /* A second kill is no first: the line says so. */
     LifeTally one_kill = kill, two_kills = kill;
     two_kills.kills = 2;
-    (void)lookahead_score(&one_kill, 100, &two_kills, 250, &why);
-    CHECK(strstr(why, "more kills") != NULL);
+    (void)lookahead_score(&one_kill, 100, &two_kills, 250, 0, &why);
+    CHECK(why == LOOK_MORE_KILLS);
 }
 
 /* A new world (another seed) or one put back in time is not the copy's past:

@@ -5,33 +5,44 @@
 
 #include "actions.h"
 #include "tactics.h"
+#include "years.h" /* years_season_of */
 
-static bool add_year(Skip *k, const Sim *s)
+/* What the world counts now: the chart's numbers for one moment. */
+static SkipSample sample_now(const Sim *s)
 {
-    if (k->n_years == k->years_cap) {
-        int bigger = k->years_cap == 0 ? 32 : k->years_cap * 2;
-        YearCount *grown = realloc(k->years, (size_t)bigger * sizeof(*grown));
-        if (grown == NULL) {
-            return false; /* the chart misses a row; the skip goes on */
-        }
-        k->years = grown;
-        k->years_cap = bigger;
-    }
     /* The latest sample (stats.h), at most stats_every ticks old. */
     const Stats *st = &s->stats;
-    k->years[k->n_years] = (YearCount){
+    return (SkipSample){
+        .tick = s->tick,
         .population = s->pool.count,
         .plant_eaters = st->by_level[BAND_PLANT],
         .meat_eaters = st->by_level[BAND_MEAT] + st->by_level[BAND_TOP],
         .planted = st->planted,
     };
-    k->n_years++;
+}
+
+static bool add_sample(Skip *k, const Sim *s)
+{
+    if (k->n_samples == k->samples_cap) {
+        int bigger = k->samples_cap == 0 ? 32 : k->samples_cap * 2;
+        /* realloc into a new pointer: on failure it returns NULL and leaves
+         * the old block where it was, still ours to use and free. */
+        SkipSample *grown =
+            realloc(k->samples, (size_t)bigger * sizeof(*grown));
+        if (grown == NULL) {
+            return false; /* the chart misses a column; the skip goes on */
+        }
+        k->samples = grown;
+        k->samples_cap = bigger;
+    }
+    k->samples[k->n_samples] = sample_now(s);
+    k->n_samples++;
     return true;
 }
 
 void skip_free(Skip *k)
 {
-    free(k->years);
+    free(k->samples);
     *k = (Skip){0};
 }
 
@@ -46,7 +57,7 @@ bool skip_start(Skip *k, const Sim *s, int years)
     k->start_lineages = s->stats.lineages;
     k->start_giants = s->chronicle.giants;
     k->start_tactics = s->tactics.seen;
-    if (!add_year(k, s)) {
+    if (!add_sample(k, s)) {
         return false;
     }
     k->active = true;
@@ -55,9 +66,10 @@ bool skip_start(Skip *k, const Sim *s, int years)
 
 static void skip_tick(Skip *k, Sim *s)
 {
+    int season = years_season_of(s->tick, s->set.ticks_per_year);
     sim_step(s);
-    if (s->tick % (uint64_t)s->set.ticks_per_year == 0) {
-        add_year(k, s);
+    if (years_season_of(s->tick, s->set.ticks_per_year) != season) {
+        add_sample(k, s);
     }
     if (s->tick >= k->until || sim_is_over(s)) {
         k->active = false;
@@ -127,6 +139,124 @@ void skip_progress_text(const Skip *k, const Sim *s, uint64_t elapsed_ms,
     }
 }
 
+/* The chart's blocks: U+2581 (lowest) to U+2588 (full), three bytes of
+ * UTF-8 each, E2 96 81 to E2 96 88; the same ones as the panel's graphs. */
+#define BLOCK_BYTES 3
+#define BLOCK_LOWEST 0x81
+
+enum { CHART_POPULATION, CHART_PLANT, CHART_MEAT, CHART_COUNT };
+
+static int sample_value(const SkipSample *x, int which)
+{
+    switch (which) {
+    case CHART_PLANT: return x->plant_eaters;
+    case CHART_MEAT: return x->meat_eaters;
+    default: return x->population;
+    }
+}
+
+/* Sample i of the chart: the Skip's own samples, then the world now as one
+ * more when it is past the last of them (a stopped skip, or a world that
+ * died between seasons), so a chart ends where the world is. */
+static int sample_at(const Skip *k, const SkipSample *now, int i, int which)
+{
+    return sample_value(i < k->n_samples ? &k->samples[i] : now, which);
+}
+
+/* Column c of cols, as the average of the n samples that fall in it. With
+ * fewer samples than columns, each sample is one column (cols was cut to
+ * n). */
+static int column_value(const Skip *k, const SkipSample *now, int n, int c,
+                        int cols, int which)
+{
+    /* Multiply before dividing: integer division drops the remainder, so
+     * c / cols * n would be 0 for every c below cols. */
+    int start = c * n / cols;
+    int end = (c + 1) * n / cols;
+    if (end <= start) {
+        end = start + 1;
+    }
+    long long sum = 0;
+    for (int i = start; i < end; i++) {
+        sum += sample_at(k, now, i, which);
+    }
+    return (int)(sum / (end - start));
+}
+
+/* One chart line: a label, a block per column, and the line's lowest and
+ * highest numbers. The blocks run from the lowest (the shortest block) to the
+ * highest (the full one), not from zero: a count that moves between 1,700
+ * and 3,400 would otherwise fill the top half of every block and look flat.
+ * A count of 0 is a space, so a group dying out shows as a gap. */
+static void chart_line(const Skip *k, const SkipSample *now, int n,
+                       int which, char *out, size_t size)
+{
+    static const char *const LABELS[CHART_COUNT] = {
+        "creatures    ", "plant-eaters ", "meat-eaters  "};
+    int cols = n < SKIP_CHART_COLS ? n : SKIP_CHART_COLS;
+    int value[SKIP_CHART_COLS];
+    int low = 0, top = 0;
+    for (int c = 0; c < cols; c++) {
+        value[c] = column_value(k, now, n, c, cols, which);
+        if (c == 0 || value[c] < low) {
+            low = value[c];
+        }
+        top = value[c] > top ? value[c] : top;
+    }
+    int range = top - low;
+    int o = snprintf(out, size, "%s", LABELS[which]);
+    for (int c = 0; c < cols; c++) {
+        /* Room for a whole character and the final '\0', or stop: never
+         * write half of one. o is an int and size a size_t, so o is
+         * converted before comparing; o is never negative here. */
+        if ((size_t)o + BLOCK_BYTES + 1 >= size) {
+            break;
+        }
+        if (value[c] <= 0) {
+            out[o++] = ' ';
+            continue;
+        }
+        /* 0..7, rounded; a line that never changed sits in the middle. The
+         * range is checked first: dividing an int by 0 is undefined
+         * behaviour in C, not an error or Infinity as in TypeScript. */
+        int height = range == 0 ? 3 : ((value[c] - low) * 7 + range / 2) / range;
+        out[o++] = '\xE2';
+        out[o++] = '\x96';
+        /* char may be signed: build the byte as an int, then convert. */
+        out[o++] = (char)(BLOCK_LOWEST + height);
+    }
+    out[o] = '\0';
+    if ((size_t)o + 1 < size) {
+        snprintf(out + o, size - (size_t)o, " %d to %d", low, top);
+    }
+}
+
+/* The chart: a heading saying how long a column is, then a line for each
+ * count. Returns how many lines it took (0 without room or samples). */
+static int chart_lines(const Skip *k, const Sim *s, char lines[][SKIP_COLS],
+                       int max)
+{
+    if (max < 1 + CHART_COUNT || k->n_samples < 1) {
+        return 0;
+    }
+    SkipSample now = sample_now(s);
+    bool now_is_new = now.tick != k->samples[k->n_samples - 1].tick;
+    int n = k->n_samples + (now_is_new ? 1 : 0);
+    int cols = n < SKIP_CHART_COLS ? n : SKIP_CHART_COLS;
+    /* Seasons a column covers, in tenths, rounded; 4 seasons a year. */
+    int tenths = (n * 10 + cols / 2) / cols;
+    if (tenths <= 10) {
+        snprintf(lines[0], SKIP_COLS, "Each column a season:");
+    } else {
+        snprintf(lines[0], SKIP_COLS, "Each column about %.1f years:",
+                 (double)tenths / 40.0);
+    }
+    for (int which = 0; which < CHART_COUNT; which++) {
+        chart_line(k, &now, n, which, lines[1 + which], SKIP_COLS);
+    }
+    return 1 + CHART_COUNT;
+}
+
 int skip_summary_lines(const Skip *k, const Sim *s, char lines[][SKIP_COLS],
                        int max)
 {
@@ -143,16 +273,17 @@ int skip_summary_lines(const Skip *k, const Sim *s, char lines[][SKIP_COLS],
                  years_done == 1 ? "year" : "years", year_of(s->tick, s) + 1);
     }
     int most = s->pool.count;
-    for (int i = 0; i < k->n_years; i++) {
-        if (k->years[i].population > most) {
-            most = k->years[i].population;
+    for (int i = 0; i < k->n_samples; i++) {
+        if (k->samples[i].population > most) {
+            most = k->samples[i].population;
         }
     }
-    if (n < max && k->n_years > 0) {
+    if (n < max && k->n_samples > 0) {
         snprintf(lines[n++], SKIP_COLS,
-                 "Creatures: %d then, %d now; at most %d at a year's start.",
-                 k->years[0].population, s->pool.count, most);
+                 "Creatures: %d then, %d now; at most %d at a season's start.",
+                 k->samples[0].population, s->pool.count, most);
     }
+    n += chart_lines(k, s, lines + n, max - n);
     if (n < max && sim_is_over(s)) {
         snprintf(lines[n++], SKIP_COLS, "The last creature died in year %d.",
                  year_of(s->records.ended_at, s) + 1);

@@ -82,7 +82,7 @@ static const char WINDOW_USAGE[] =
     "  --sandbox         start in Sandbox mode, with the tools (the m key switches)\n"
     "  --keys TEXT       with --frames: press these keys, one a frame, in the\n"
     "                    last frames (\"l\" shows the life story page, \"b\" the\n"
-    "                    species lab)\n"
+    "                    species lab, \"~\" presses nothing for a frame)\n"
     "  -h, --help        this text\n"
     "  --version         the version\n"
     "keys: space pause, +/- speed, r new seed, s save, q quit, arrows move,\n"
@@ -168,6 +168,9 @@ typedef struct {
     Lookahead look;
     bool look_on;
     bool look_now;
+    /* The camera's last two reasons (LookReason), newest first, so its next
+     * pick leans to something else. 0 is LOOK_QUIET, a fine start. */
+    int look_last[2];
     int idle_frames;
 } App;
 
@@ -310,6 +313,16 @@ static void restart_with_setup(App *a)
         2 * NOTICE_FRAMES);
 }
 
+/* Where a copied world code is also printed: in a terminal, except in the
+ * browser (no terminal) and on Windows (its clipboard keeps the text after
+ * agon closes, and the window program may have no terminal). A plain 0 or 1,
+ * so it works both in #if and as a value in C. */
+#if defined(__EMSCRIPTEN__) || defined(_WIN32)
+#define CODE_IN_TERMINAL 0
+#else
+#define CODE_IN_TERMINAL 1
+#endif
+
 /* c: the world shown, as a code on the clipboard. */
 static void copy_code(App *a)
 {
@@ -318,14 +331,27 @@ static void copy_code(App *a)
         say(a, "no memory left to make the world code", NOTICE_FRAMES);
         return;
     }
+#if CODE_IN_TERMINAL
+    /* Also in the terminal agon was started from. On Linux with X11 the
+     * clipboard is not a store: the program that copied keeps the text and
+     * hands it over when another one pastes, so without a clipboard manager
+     * the code is gone once agon closes. The printed line stays. fflush:
+     * stdout into a pipe or file is written in blocks, and this line should
+     * be there at once. */
+    printf("world code: %s\n", text);
+    fflush(stdout);
+#endif
     if (platform_clipboard_set(text)) {
         char line[96];
-        snprintf(line, sizeof(line), "world code copied (%zu characters): o "
-                                     "opens it, here or on another agon",
-                 strlen(text));
+        snprintf(line, sizeof(line), "world code copied (%zu characters%s): o "
+                                     "opens it",
+                 strlen(text), CODE_IN_TERMINAL ? "; also in the terminal" : "");
         say(a, line, 2 * NOTICE_FRAMES);
     } else {
-        say(a, "could not put the world code on the clipboard", NOTICE_FRAMES);
+        say(a, CODE_IN_TERMINAL ? "could not use the clipboard: the world code "
+                                  "is in the terminal"
+                                : "could not put the world code on the clipboard",
+            NOTICE_FRAMES);
     }
     free(text);
 }
@@ -962,6 +988,20 @@ static void draw_page(App *a)
     }
 }
 
+/* Columns a line of UTF-8 takes on screen: one per character. A character's
+ * first byte is never 10xxxxxx; the bytes that follow it always are, so
+ * counting the others counts characters. */
+static int text_columns(const char *text)
+{
+    int count = 0;
+    for (const unsigned char *b = (const unsigned char *)text; *b != 0; b++) {
+        if ((*b & 0xC0) != 0x80) {
+            count++;
+        }
+    }
+    return count;
+}
+
 /* The open Sandbox menu, a skip's progress or its summary, in a box at the
  * top left of the world. */
 static void draw_sandbox(App *a)
@@ -975,7 +1015,7 @@ static void draw_sandbox(App *a)
     const Layout *l = &a->layout;
     int cols = 0;
     for (int r = 0; r < n; r++) {
-        int len = (int)strlen(lines[r]);
+        int len = text_columns(lines[r]);
         cols = len > cols ? len : cols;
     }
     int w = (cols + 2) * FONT_W, h = (n + 1) * FONT_H;
@@ -988,7 +1028,11 @@ static void draw_sandbox(App *a)
                            PALETTE_TEXT_BACKGROUND.b));
     cells_canvas_set(&a->canvas, x + FONT_W, y + FONT_H / 2);
     for (int r = 0; r < n; r++) {
-        render_text(0, r, lines[r], w / FONT_W - 1);
+        if (text_columns(lines[r]) == (int)strlen(lines[r])) {
+            render_text(0, r, lines[r], w / FONT_W - 1);
+        } else if (text_columns(lines[r]) <= w / FONT_W - 1) {
+            render_utf8(0, r, lines[r]); /* the skip summary's chart */
+        }
     }
 }
 
@@ -1088,10 +1132,15 @@ static void update_look(App *a)
         return;
     }
     char why[LOOKAHEAD_WHY];
-    uint32_t id = lookahead_pick(&a->look, &a->sim, why, sizeof(why));
+    unsigned tired = (1u << a->look_last[0]) | (1u << a->look_last[1]);
+    int reason;
+    uint32_t id =
+        lookahead_pick(&a->look, &a->sim, tired, &reason, why, sizeof(why));
     if (id == LOOKAHEAD_NOBODY) {
         return; /* not ready yet: look_now stays, and a later frame picks */
     }
+    a->look_last[1] = a->look_last[0];
+    a->look_last[0] = reason;
     a->look_now = false;
     inspect_follow(&a->inspect, &a->sim, life_find_slot(&a->sim, id));
     char line[LOOKAHEAD_WHY + 32];
@@ -1196,7 +1245,9 @@ static bool frame_needs_drawing(App *a)
 }
 
 /* --keys: in the last strlen(keys) frames of --frames, one key a frame, so the
- * frame the screenshot keeps comes after the last of them. */
+ * frame the screenshot keeps comes after the last of them. A ~ presses
+ * nothing: frames of waiting, say for a skip to end. The Escape character
+ * (27, $'\e' in a shell) is the Escape key, which is KEY_ESCAPE here. */
 static void pretend_keys(App *a)
 {
     const char *keys = a->opt->keys;
@@ -1206,8 +1257,8 @@ static void pretend_keys(App *a)
     /* strlen gives a size_t; the cast is safe for any text a shell passes. */
     long len = (long)strlen(keys);
     long k = a->frames_done - (a->opt->frames - 1 - len);
-    if (k >= 0 && k < len) {
-        handle_key(a, keys[k]);
+    if (k >= 0 && k < len && keys[k] != '~') {
+        handle_key(a, keys[k] == 27 ? KEY_ESCAPE : keys[k]);
         a->redraw = true;
     }
 }
