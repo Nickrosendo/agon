@@ -24,6 +24,7 @@
 #include "panel.h" /* panel_format_count */
 #include "platform.h"
 #include "rng.h"
+#include "sandbox.h"
 #include "save.h"
 #include "scene.h"
 #include "settings.h"
@@ -59,6 +60,7 @@ static const char WINDOW_USAGE[] =
     "  --paused          start paused, as if space were pressed first\n"
     "  --no-art          start with the animals drawn from the skeleton, not their\n"
     "                    drawn frames (the a key switches)\n"
+    "  --sandbox         start in Sandbox mode, with the tools (the m key switches)\n"
     "  --keys TEXT       with --frames: press these keys, one a frame, in the\n"
     "                    last frames (\"l\" shows the life story page, \"b\" the\n"
     "                    species lab)\n"
@@ -74,6 +76,10 @@ static const char WINDOW_USAGE[] =
     "      graze, bite, sleep), and p puts every painted part (plates, a\n"
     "      horn, a fin) on its species.\n"
     "      a switches the animals between their drawn frames and the skeleton.\n"
+    "      m switches between Documentary (watching) and Sandbox. In Sandbox,\n"
+    "      g gives the followed creature a trait (1 to 7 pick it, , and . set\n"
+    "      its value, Enter gives), w starts a weather event for a season and\n"
+    "      k skips 1, 5 or 20 years ahead (Esc stops), then says what happened.\n"
     "mouse: wheel zooms, dragging moves, clicking a creature follows it,\n"
     "       clicking bare ground lets go. On the panel, clicking \"top hunter\",\n"
     "       \"oldest\" or the largest family's body follows that creature.\n";
@@ -112,6 +118,9 @@ typedef struct {
      * many years each new world gets. */
     Prelude prelude;
     int prelude_years;
+    /* The mode, Documentary or Sandbox, and the Sandbox menus (sandbox.h).
+     * The screen's, not the world's: never saved. */
+    Sandbox sandbox;
 } App;
 
 static void apply_window_size(App *a, int w, int h)
@@ -195,6 +204,9 @@ static void new_world(App *a)
     announce_reset(&a->announce);
     family_reset(&a->families);
     a->ticks_due = 0;
+    /* A menu or a summary was about the old world. */
+    a->sandbox.menu = SANDBOX_MENU_NONE;
+    skip_free(&a->sandbox.skip);
     app_prelude_start(&a->prelude, &a->sim, a->prelude_years);
     if (a->opt->frames > 0) {
         app_prelude_finish(&a->prelude, &a->sim); /* as at the start */
@@ -245,6 +257,20 @@ static void handle_key(App *a, int key)
         a->notice[0] = '\0';
         a->redraw = true;
         return;
+    }
+    /* The mode and the Sandbox tools first: an open menu takes the number
+     * keys, which the lab would otherwise read. q always reaches the switch. */
+    if (key != 'q') {
+        char line[256] = "";
+        const Creature *followed = inspect_creature(&a->inspect, &a->sim);
+        if (sandbox_key(&a->sandbox, &a->sim, key, followed, platform_now_ms(),
+                        line, sizeof(line)) == SANDBOX_TAKEN) {
+            if (line[0] != '\0') {
+                say(a, line, 2 * NOTICE_FRAMES);
+            }
+            a->redraw = true;
+            return;
+        }
     }
     switch (key) {
     case 'q':
@@ -400,11 +426,17 @@ static void draw_title(App *a, const Creature *followed)
         snprintf(who, sizeof(who), " | following %s #%u", name,
                  (unsigned)followed->id);
     }
-    char text[400];
+    char weather[32] = "";
+    if (weather_active(&a->sim.weather, a->sim.tick)) {
+        snprintf(weather, sizeof(weather), " | %s",
+                 weather_name(a->sim.weather.kind));
+    }
+    char text[440];
     snprintf(text, sizeof(text),
-             " agon | seed 0x%" PRIx64 " | year %s, %s | creatures %d | %d/s%s%s%s%s",
-             a->sim.seed, year,
-             years_season(a->sim.tick, a->sim.set.ticks_per_year), a->sim.pool.count, APP_SPEEDS[a->speed],
+             " agon %s | seed 0x%" PRIx64 " | year %s, %s%s | creatures %d | %d/s%s%s%s%s",
+             a->sandbox.on ? "Sandbox" : "Documentary", a->sim.seed, year,
+             years_season(a->sim.tick, a->sim.set.ticks_per_year), weather,
+             a->sim.pool.count, APP_SPEEDS[a->speed],
              sim_is_over(&a->sim) ? " | game over" : a->paused ? " | paused" : "",
              who,
              a->notice[0] != '\0' ? " | " : "", a->notice);
@@ -422,7 +454,14 @@ static void draw_help(App *a)
               " | l life story | j jump | b lab | r new world"
             : " space pause | +/- speed | [ ] zoom | click follow | Esc let go"
               " | l life story | j jump | b lab | r new world | s save | q quit";
-    render_text(0, 0, help, a->canvas.w / FONT_W + 1);
+    /* Sandbox has four keys more, so it drops the ones --help still lists. */
+    if (a->sandbox.on) {
+        help = " space pause | +/- speed | [ ] zoom | click follow | l story";
+    }
+    char text[300];
+    /* sandbox_help starts with a space and the mode's name: "| Sandbox | ...". */
+    snprintf(text, sizeof(text), "%s |%s", help, sandbox_help(&a->sandbox));
+    render_text(0, 0, text, a->canvas.w / FONT_W + 1);
 }
 
 /* The enlarged body, with a caption above it. */
@@ -531,6 +570,36 @@ static void draw_page(App *a)
     }
 }
 
+/* The open Sandbox menu, a skip's progress or its summary, in a box at the
+ * top left of the world. */
+static void draw_sandbox(App *a)
+{
+    static char lines[SKIP_LINES][SKIP_COLS]; /* static: off the small web stack */
+    int n = sandbox_menu_lines(&a->sandbox, &a->sim, platform_now_ms(), lines,
+                               SKIP_LINES);
+    if (n == 0) {
+        return;
+    }
+    const Layout *l = &a->layout;
+    int cols = 0;
+    for (int r = 0; r < n; r++) {
+        int len = (int)strlen(lines[r]);
+        cols = len > cols ? len : cols;
+    }
+    int w = (cols + 2) * FONT_W, h = (n + 1) * FONT_H;
+    if (w > l->view_w) {
+        w = l->view_w;
+    }
+    int x = l->view_x + FONT_W, y = l->view_y + FONT_H / 2;
+    canvas_rect(&a->canvas, x, y, w, h,
+                canvas_rgb(PALETTE_TEXT_BACKGROUND.r, PALETTE_TEXT_BACKGROUND.g,
+                           PALETTE_TEXT_BACKGROUND.b));
+    cells_canvas_set(&a->canvas, x + FONT_W, y + FONT_H / 2);
+    for (int r = 0; r < n; r++) {
+        render_text(0, r, lines[r], w / FONT_W - 1);
+    }
+}
+
 /* Too small for anything else: a minimised window lands here too. */
 static void draw_too_small(App *a)
 {
@@ -582,6 +651,7 @@ static void draw_frame(App *a, float fraction)
     if (a->page.open) {
         draw_page(a);
     }
+    draw_sandbox(a);
     /* After the world: a body near the edge may have been drawn over these. */
     draw_title(a, followed);
     draw_help(a);
@@ -665,6 +735,12 @@ static void app_frame(void *arg)
         } else {
             a->notice[0] = '\0';
         }
+        a->redraw = true;
+    } else if (sandbox_skipping(&a->sandbox)) {
+        /* A skip runs like the prelude, a slice a frame, paused or not. */
+        sandbox_skip_step(&a->sandbox, &a->sim, platform_now_ms,
+                          APP_PRELUDE_FRAME_MS);
+        a->ticks_due = 0;
         a->redraw = true;
     } else if (!a->paused && !sim_is_over(&a->sim)) {
         a->ticks_due += APP_SPEEDS[a->speed];
@@ -814,6 +890,7 @@ int main(int argc, char **argv)
     static App app;
     app.opt = &opt;
     app.paused = opt.paused;
+    app.sandbox.on = opt.sandbox;
     uint64_t seed = opt.seed_given ? opt.seed : seed_from_clock();
     int world_w = opt.size_given ? opt.width : DEFAULT_WORLD_W;
     int world_h = opt.size_given ? opt.height : DEFAULT_WORLD_H;
@@ -859,6 +936,7 @@ int main(int argc, char **argv)
     canvas_free(&app.canvas);
     family_free(&app.families);
     scene_free(&app.scene);
+    sandbox_free(&app.sandbox);
     sim_free(&app.sim);
     return result;
 }

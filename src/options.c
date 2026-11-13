@@ -130,6 +130,7 @@ enum {
     OPT_KEYS,
     OPT_PAUSED,
     OPT_NO_ART,
+    OPT_SANDBOX,
     OPT_ANCESTORS
 };
 
@@ -156,6 +157,7 @@ static const struct option LONG_OPTIONS[] = {
     {"keys", required_argument, NULL, OPT_KEYS},
     {"paused", no_argument, NULL, OPT_PAUSED},
     {"no-art", no_argument, NULL, OPT_NO_ART},
+    {"sandbox", no_argument, NULL, OPT_SANDBOX},
     {"ancestors", required_argument, NULL, OPT_ANCESTORS},
     {NULL, 0, NULL, 0},
 };
@@ -186,6 +188,9 @@ static bool take_value(int opt, const char *value, Options *o, char *err,
         return true;
     case OPT_NO_ART:
         o->no_art = true;
+        return true;
+    case OPT_SANDBOX:
+        o->sandbox = true;
         return true;
     case OPT_KEYS:
         o->keys = value;

@@ -43,6 +43,7 @@ typedef struct {
     const char *zoom_name;   /* --zoom: the starting zoom step's name */
     bool paused;             /* --paused: start as if space were pressed */
     bool no_art;             /* --no-art: start with the drawn frames off (a key) */
+    bool sandbox;            /* --sandbox: the window starts in Sandbox mode (m) */
     /* --keys: keys pressed one a frame during the last frames of --frames, so
      * a test or a screenshot can open the L page. Points into argv. */
     const char *keys;

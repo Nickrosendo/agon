@@ -92,6 +92,20 @@ static void apply_trait(Sim *s, const PlayerAction *a)
     pool_forget_kinship(&s->pool);
 }
 
+const char *actions_gene_name(int gene)
+{
+    switch (gene) {
+    case GENE_SIZE: return "size";
+    case GENE_ARMOUR: return "armour";
+    case GENE_WEAPON: return "horn";
+    case GENE_SWIM: return "swimming";
+    case GENE_LEGS: return "long legs";
+    case GENE_NIGHT_EYES: return "night eyes";
+    case GENE_LEARN: return "learning";
+    default: return "?";
+    }
+}
+
 static bool givable(int gene)
 {
     for (int i = 0; i < ACTIONS_GIVABLE_COUNT; i++) {

@@ -73,6 +73,10 @@ void actions_seek(ActionLog *log, uint64_t tick);
 extern const int ACTIONS_GIVABLE[];
 enum { ACTIONS_GIVABLE_COUNT = 7 };
 
+/* The word for a givable gene, for menus and summaries: "size", "armour",
+ * "horn", "swimming", "long legs", "night eyes", "learning"; "?" for another. */
+const char *actions_gene_name(int gene);
+
 /* Records "give creature this gene at value", to happen at the start of the
  * next tick the Sim runs (s->tick, which has not run yet). False, and nothing
  * recorded, for a gene not in ACTIONS_GIVABLE, a value outside 0..1, no living
