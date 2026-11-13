@@ -632,6 +632,10 @@ enum {
      * id, lineage, age, score, a tally, and a ring of NOTABLE_EVENTS. */
     NOTABLE_BYTES = 2 + 4 * 4 + TALLY_BYTES + 4 + NOTABLE_EVENTS * EVENT_BYTES,
     CHRONICLE_BYTES = CHRONICLE_NOTABLE * NOTABLE_BYTES,
+    /* After the chronicle, in a world no one has touched and no check has
+     * run in: an empty action log (its count), and a tactic watch with every
+     * row unused (a byte each), then seen, the best lifts and the lone share. */
+    TAIL_BYTES = CHRONICLE_BYTES + 4 + TACTIC_FAMILIES + 2 + 4 * TACTIC_COUNT + 4,
 };
 
 typedef struct {
@@ -700,7 +704,7 @@ static Tiny tiny_save(void)
     /* free_head, next_id, births_refused, deaths by cause */
     t.living = t.pool + 12 + 4 * DEATH_COUNT;
     t.free_slot = t.living + SLOT_LIVING_BYTES;
-    CHECK(t.size == t.free_slot + OFF_SIZE_FREE_SLOT + CHRONICLE_BYTES);
+    CHECK(t.size == t.free_slot + OFF_SIZE_FREE_SLOT + TAIL_BYTES);
     return t;
 }
 
@@ -1042,7 +1046,7 @@ static void test_refuses_two_on_one_cell(void)
     if (bytes == NULL) {
         return;
     }
-    size_t second = size - CHRONICLE_BYTES - SLOT_LIVING_BYTES;
+    size_t second = size - TAIL_BYTES - SLOT_LIVING_BYTES;
     size_t first = second - SLOT_LIVING_BYTES;
     memcpy(bytes + second + AT_X, bytes + first + AT_X, 8); /* x and y */
     CHECK(load_fails(bytes, size, "cannot"));
@@ -1102,6 +1106,75 @@ static void test_damaged_bytes_never_crash(void)
     free(bytes);
 }
 
+/* A copy made in memory, stepped on, stays the same world as the original:
+ * the fingerprint, the life stories, and the tactics the watch has seen. */
+static void test_copy_steps_alike(void)
+{
+    Settings set = settings_default();
+    set.tactics = 1;
+    Sim a;
+    CHECK(sim_init(&a, &set, 3, 64, 32));
+    for (int i = 0; i < 600; i++) {
+        sim_step(&a);
+    }
+    Sim b;
+    char err[256] = "";
+    CHECK(sim_copy(&b, &a, err, sizeof(err)));
+    CHECK(sim_checksum(&b) == sim_checksum(&a));
+    for (int i = 0; i < 600; i++) {
+        sim_step(&a);
+        sim_step(&b);
+    }
+    CHECK(sim_checksum(&b) == sim_checksum(&a));
+    CHECK(sim_story_checksum(&b) == sim_story_checksum(&a));
+    CHECK(b.tactics.seen == a.tactics.seen);
+    CHECK(memcmp(b.tactics.best_lift, a.tactics.best_lift,
+                 sizeof(a.tactics.best_lift)) == 0);
+    /* At least one family was followed, so the rows were really carried. */
+    int used = 0;
+    for (int i = 0; i < TACTIC_FAMILIES; i++) {
+        used += a.tactics.rows[i].used;
+        CHECK(b.tactics.rows[i].used == a.tactics.rows[i].used);
+        /* A row given up keeps its old lineage in a, and the copy's is 0: only a
+         * row in use means anything. */
+        CHECK(!a.tactics.rows[i].used ||
+              b.tactics.rows[i].lineage == a.tactics.rows[i].lineage);
+    }
+    CHECK(used > 0);
+    sim_free(&a);
+    sim_free(&b);
+}
+
+/* The bytes in memory are the bytes of the file, exactly. */
+static void test_memory_equals_file(void)
+{
+    Settings set = settings_default();
+    Sim a;
+    CHECK(sim_init(&a, &set, 4, 32, 16));
+    for (int i = 0; i < 100; i++) {
+        sim_step(&a);
+    }
+    char err[256] = "";
+    CHECK(save_write(&a, SAVE_FILE, err, sizeof(err)));
+    unsigned char *mem = NULL;
+    size_t mem_len = 0;
+    CHECK(save_to_memory(&a, &mem, &mem_len, err, sizeof(err)));
+    size_t file_len = 0;
+    unsigned char *file = read_whole(SAVE_FILE, &file_len);
+    CHECK(file != NULL && mem != NULL);
+    if (file != NULL && mem != NULL) {
+        CHECK(file_len == mem_len);
+        CHECK(file_len == mem_len && memcmp(file, mem, mem_len) == 0);
+        /* One byte short is refused, with nothing left to free. */
+        Sim b;
+        CHECK(!save_from_memory(&b, mem, mem_len - 1, err, sizeof(err)));
+        CHECK(strstr(err, "cut short") != NULL);
+    }
+    free(file);
+    free(mem);
+    sim_free(&a);
+}
+
 int main(void)
 {
     test_round_trip_and_continue();
@@ -1130,6 +1203,8 @@ int main(void)
     test_refuses_broken_free_list();
     test_refuses_two_on_one_cell();
     test_damaged_bytes_never_crash();
+    test_copy_steps_alike();
+    test_memory_equals_file();
     remove(SAVE_FILE);
     remove(BROKEN_FILE);
     TEST_SUMMARY();

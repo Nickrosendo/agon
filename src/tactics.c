@@ -89,7 +89,7 @@ static void index_add(TacticWatch *t, int row)
 
 /* After rows are freed: an open-addressing table cannot simply forget one entry
  * (the walk to an entry after it would stop early), so it is built again. */
-static void index_rebuild(TacticWatch *t)
+void tactics_rebuild_index(TacticWatch *t)
 {
     for (int i = 0; i < TACTIC_INDEX; i++) {
         t->index[i] = -1;
@@ -765,7 +765,7 @@ void tactics_check(TacticWatch *t, const World *w, Pool *p,
             t->rows[i].used = false;
         }
     }
-    index_rebuild(t);
+    tactics_rebuild_index(t);
     for (int i = 0; i < p->capacity; i++) {
         const Creature *c = &p->items[i];
         if (!c->alive || find_row(t, c->lineage) != NULL) {

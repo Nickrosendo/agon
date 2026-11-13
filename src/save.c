@@ -2,8 +2,10 @@
 
 #include <errno.h>
 #include <math.h>   /* isfinite */
+#include <stddef.h> /* offsetof */
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h> /* realloc, free */
 #include <string.h> /* memcpy, memcmp, memset, strlen, strerror */
 
 #ifdef _WIN32
@@ -30,13 +32,20 @@
  *   float largest size, u64 ended_at;
  *   i32 free_head, u32 next_id, u32 births_refused, u32 deaths per cause;
  *   then every creature slot, a living one ending with its life story;
- *   then the chronicle's CHRONICLE_NOTABLE entries.
+ *   then the chronicle's CHRONICLE_NOTABLE entries;
+ *   then the player's actions: u32 count, then for each u64 tick, u8 kind,
+ *   u8 gene, u8 weather, u32 creature, float value;
+ *   then the tactic watch: for each of TACTIC_FAMILIES rows a used byte, and
+ *   for a used row its hunters byte, u32 lineage, i32 members, the counts in
+ *   FAMILY_COUNTS' order, TACTIC_COUNT streak bytes, u16 confirmed, u16 told
+ *   and TACTIC_COUNT lifts; then u16 seen, TACTIC_COUNT best lifts and the
+ *   lone share. The watch's index is built again on reading, not saved.
  *
  * Change anything here and SAVE_VERSION goes up by one.
  */
 #define SAVE_MAGIC "AGONSAVE"
 #define SAVE_MAGIC_LEN 8
-#define SAVE_VERSION 26u
+#define SAVE_VERSION 28u
 
 /* No value in a healthy world comes near this. Bounding them keeps sums
  * from reaching infinity, and float-to-int conversions defined. */
@@ -54,16 +63,50 @@
  * Nothing is lost, as a failed write leaves nothing to rescue anyway.
  */
 typedef struct {
+    /* Where the bytes go: the file f, or, when f is NULL, a block of memory
+     * on the heap, buf, with len bytes used of cap. One Writer for both, so a
+     * copy in memory can never quietly differ from a file. */
     FILE *f;
+    unsigned char *buf;
+    size_t len, cap;
     bool ok;
 } Writer;
 
+/* Makes room for n more bytes in w->buf; false when memory runs out. */
+static bool grow(Writer *w, size_t n)
+{
+    if (w->cap - w->len >= n) {
+        return true; /* written as a subtraction: len + n could wrap round */
+    }
+    size_t bigger = w->cap == 0 ? 65536 : w->cap;
+    while (bigger - w->len < n) {
+        bigger *= 2;
+    }
+    unsigned char *grown = realloc(w->buf, bigger);
+    if (grown == NULL) {
+        return false; /* w->buf still holds the old block; the caller frees it */
+    }
+    w->buf = grown;
+    w->cap = bigger;
+    return true;
+}
+
 static void put_bytes(Writer *w, const void *bytes, size_t n)
 {
-    /* fwrite returns how many items it wrote: anything short is a failure. */
-    if (w->ok && fwrite(bytes, 1, n, w->f) != n) {
-        w->ok = false;
+    if (!w->ok) {
+        return;
     }
+    if (w->f != NULL) {
+        /* fwrite returns how many items it wrote: anything short is a failure. */
+        w->ok = fwrite(bytes, 1, n, w->f) == n;
+        return;
+    }
+    if (!grow(w, n)) {
+        w->ok = false;
+        return;
+    }
+    memcpy(w->buf + w->len, bytes, n);
+    w->len += n;
 }
 
 /*
@@ -326,6 +369,99 @@ static void put_pool(Writer *w, const Pool *p)
     }
 }
 
+static void put_actions(Writer *w, const ActionLog *log)
+{
+    put_u32(w, (uint32_t)log->count);
+    for (int i = 0; i < log->count; i++) {
+        const PlayerAction *a = &log->items[i];
+        put_u64(w, a->tick);
+        put_bytes(w, &a->kind, 1);
+        put_bytes(w, &a->gene, 1);
+        put_bytes(w, &a->weather, 1);
+        put_u32(w, a->creature);
+        put_float(w, a->value);
+    }
+}
+
+/*
+ * A family's counts, by where each sits inside a TacticFamily. offsetof(type,
+ * field) is how many bytes into the struct the field starts; with it one loop
+ * reads or writes all 35 floats, in this fixed order, instead of 35 lines each
+ * way that could drift apart. Adding a count means adding it here as well.
+ */
+static const size_t FAMILY_COUNTS[] = {
+    offsetof(TacticFamily, member_ticks),
+    offsetof(TacticFamily, kills),
+    offsetof(TacticFamily, kills_dark),
+    offsetof(TacticFamily, kills_pack),
+    offsetof(TacticFamily, kills_lone),
+    offsetof(TacticFamily, attacks_on),
+    offsetof(TacticFamily, deaths),
+    offsetof(TacticFamily, deaths_dark),
+    offsetof(TacticFamily, defended),
+    offsetof(TacticFamily, shield_toughest),
+    offsetof(TacticFamily, shield_expected),
+    offsetof(TacticFamily, shield_hits),
+    offsetof(TacticFamily, seen_decisions),
+    offsetof(TacticFamily, seen_calls),
+    offsetof(TacticFamily, quiet_decisions),
+    offsetof(TacticFamily, quiet_calls),
+    offsetof(TacticFamily, heard_decisions),
+    offsetof(TacticFamily, heard_moves),
+    offsetof(TacticFamily, unheard_decisions),
+    offsetof(TacticFamily, unheard_moves),
+    offsetof(TacticFamily, dark_decisions),
+    offsetof(TacticFamily, dark_kin),
+    offsetof(TacticFamily, light_decisions),
+    offsetof(TacticFamily, light_kin),
+    offsetof(TacticFamily, dark_bites),
+    offsetof(TacticFamily, light_bites),
+    offsetof(TacticFamily, winter_decisions),
+    offsetof(TacticFamily, winter_kin),
+    offsetof(TacticFamily, summer_decisions),
+    offsetof(TacticFamily, summer_kin),
+    offsetof(TacticFamily, bite_decisions),
+    offsetof(TacticFamily, bite_kin),
+    offsetof(TacticFamily, other_decisions),
+    offsetof(TacticFamily, other_kin),
+    offsetof(TacticFamily, young),
+};
+enum { FAMILY_COUNT_N = sizeof(FAMILY_COUNTS) / sizeof(FAMILY_COUNTS[0]) };
+
+/* The float at offset bytes into a family. A char pointer moves one byte at a
+ * time, so adding the offset to it lands on the field; the result is then a
+ * float again, which is the type really stored there. */
+static float *family_count(TacticFamily *f, size_t offset)
+{
+    return (float *)((char *)f + offset);
+}
+
+static void put_tactics(Writer *w, const TacticWatch *t)
+{
+    for (int i = 0; i < TACTIC_FAMILIES; i++) {
+        TacticFamily f = t->rows[i]; /* a copy, for family_count's pointer */
+        unsigned char used = f.used ? 1 : 0;
+        put_bytes(w, &used, 1);
+        if (!f.used) {
+            continue;
+        }
+        unsigned char hunters = f.hunters ? 1 : 0;
+        put_bytes(w, &hunters, 1);
+        put_u32(w, f.lineage);
+        put_i32(w, f.members);
+        for (int k = 0; k < FAMILY_COUNT_N; k++) {
+            put_float(w, *family_count(&f, FAMILY_COUNTS[k]));
+        }
+        put_bytes(w, f.streak, TACTIC_COUNT);
+        put_u16(w, f.confirmed);
+        put_u16(w, f.told);
+        put_floats(w, f.lift, TACTIC_COUNT);
+    }
+    put_u16(w, t->seen);
+    put_floats(w, t->best_lift, TACTIC_COUNT);
+    put_float(w, t->lone_share);
+}
+
 static void put_everything(Writer *w, const Sim *s)
 {
     put_bytes(w, SAVE_MAGIC, SAVE_MAGIC_LEN);
@@ -348,6 +484,8 @@ static void put_everything(Writer *w, const Sim *s)
     put_records(w, &s->records);
     put_pool(w, &s->pool);
     put_chronicle(w, &s->chronicle);
+    put_actions(w, &s->actions);
+    put_tactics(w, &s->tactics);
 }
 
 /*
@@ -386,7 +524,8 @@ bool save_write(const Sim *s, const char *path, char *err, size_t errlen)
     }
     /* "wb": the b means bytes as they are. It changes nothing on Linux,
      * and on Windows stops newlines being translated. */
-    Writer w = {fopen(tmp, "wb"), true};
+    /* Named fields: a list by position would now put true into buf. */
+    Writer w = {.f = fopen(tmp, "wb"), .ok = true};
     if (w.f == NULL) {
         snprintf(err, errlen, "cannot write %s: %s", tmp, strerror(errno));
         return false;
@@ -419,7 +558,11 @@ bool save_write(const Sim *s, const char *path, char *err, size_t errlen)
  * safe.
  */
 typedef struct {
+    /* Where the bytes come from: the file f, or, when f is NULL, len bytes at
+     * buf, of which at have been read. */
     FILE *f;
+    const unsigned char *buf;
+    size_t len, at;
     const char *problem; /* NULL while all is well */
     /* Room for the one message that has numbers in it. problem may point here:
      * this lives as long as the Reader does, which is long enough. */
@@ -435,7 +578,19 @@ static void fail(Reader *r, const char *problem)
 
 static void get_bytes(Reader *r, void *bytes, size_t n)
 {
-    if (r->problem != NULL || fread(bytes, 1, n, r->f) != n) {
+    bool got;
+    if (r->problem != NULL) {
+        got = false;
+    } else if (r->f != NULL) {
+        got = fread(bytes, 1, n, r->f) == n;
+    } else {
+        got = r->len - r->at >= n; /* a subtraction, so it cannot wrap round */
+        if (got) {
+            memcpy(bytes, r->buf + r->at, n);
+            r->at += n;
+        }
+    }
+    if (!got) {
         /* Zeros, not whatever the memory held: the caller may look at the
          * value before it checks for a problem. */
         memset(bytes, 0, n);
@@ -673,6 +828,93 @@ static void get_chronicle(Reader *r, Chronicle *ch)
     }
 }
 
+/* More player actions than anyone makes by hand in a lifetime, and few enough
+ * that a damaged count cannot ask for much memory. */
+#define ACTIONS_MAX (1u << 20)
+
+/* The log, checked entry by entry: a kind or gene out of range would pick
+ * nothing sensible, and ticks out of order would break actions_add's rule. */
+static void get_actions(Reader *r, ActionLog *log)
+{
+    uint32_t count = get_u32(r);
+    if (r->problem == NULL && count > ACTIONS_MAX) {
+        fail(r, "the file has an impossible number of actions");
+        return;
+    }
+    for (uint32_t i = 0; i < count && r->problem == NULL; i++) {
+        PlayerAction a = {0};
+        a.tick = get_u64(r);
+        a.kind = get_byte(r);
+        a.gene = get_byte(r);
+        a.weather = get_byte(r);
+        a.creature = get_u32(r);
+        a.value = get_float(r, 0.0f, 1.0f);
+        if (r->problem != NULL) {
+            return;
+        }
+        if (a.kind >= ACTION_KIND_COUNT || a.gene >= GENE_TRAITS) {
+            fail(r, "an action in the file is impossible");
+            return;
+        }
+        if (!actions_add(log, a)) {
+            /* Either out of order or out of memory; a sound file is neither. */
+            fail(r, "the actions in the file are out of order");
+            return;
+        }
+    }
+}
+
+/* The tactic watch. A family's streaks are capped at TACTIC_HOLD and its bit
+ * sets name only tactics that exist; a lineage in two rows would leave the
+ * index unsure which row is the family's. The counts may be any finite size. */
+static void get_tactics(Reader *r, TacticWatch *t)
+{
+    const unsigned all = (1u << TACTIC_COUNT) - 1u; /* every tactic's bit */
+    for (int i = 0; i < TACTIC_FAMILIES && r->problem == NULL; i++) {
+        TacticFamily *f = &t->rows[i];
+        *f = (TacticFamily){0};
+        unsigned char used = get_byte(r);
+        if (used > 1) {
+            fail(r, "a tactic family in the file is impossible");
+            return;
+        }
+        if (used == 0) {
+            continue;
+        }
+        f->used = true;
+        unsigned char hunters = get_byte(r);
+        f->hunters = hunters == 1;
+        f->lineage = get_u32(r);
+        f->members = get_i32(r);
+        for (int k = 0; k < FAMILY_COUNT_N; k++) {
+            *family_count(f, FAMILY_COUNTS[k]) =
+                get_float(r, -FLOAT_LIMIT, FLOAT_LIMIT);
+        }
+        get_small(r, f->streak, TACTIC_COUNT, TACTIC_HOLD);
+        f->confirmed = get_u16(r);
+        f->told = get_u16(r);
+        get_floats(r, f->lift, TACTIC_COUNT, -FLOAT_LIMIT, FLOAT_LIMIT);
+        if (hunters > 1 || f->members < 0 || (f->confirmed & ~all) != 0 ||
+            (f->told & ~all) != 0) {
+            fail(r, "a tactic family in the file is impossible");
+            return;
+        }
+        for (int j = 0; j < i; j++) {
+            if (t->rows[j].used && t->rows[j].lineage == f->lineage) {
+                fail(r, "two tactic families in the file are one family");
+                return;
+            }
+        }
+    }
+    t->seen = get_u16(r);
+    get_floats(r, t->best_lift, TACTIC_COUNT, -FLOAT_LIMIT, FLOAT_LIMIT);
+    t->lone_share = get_float(r, 0.0f, 1.0f);
+    if (r->problem == NULL && (t->seen & ~all) != 0) {
+        fail(r, "the tactics seen in the file are impossible");
+    }
+    tactics_rebuild_index(t);
+}
+
 /*
  * One living creature. Every check here guards something real: heading
  * indexes STEP_X, x and y become a cell index, and the current action's
@@ -885,15 +1127,65 @@ static void get_body(Reader *r, Sim *s, uint64_t seed, uint64_t tick,
     get_records(r, &s->records, s);
     get_pool(r, &s->pool, &s->world, &s->set);
     get_chronicle(r, &s->chronicle);
+    get_actions(r, &s->actions);
+    /* Entries before the file's tick have happened already. */
+    actions_seek(&s->actions, s->tick);
+    get_tactics(r, &s->tactics);
     /* Only now is the population known. */
     if (s->records.ended_at != 0 && s->pool.count != 0) {
         fail(r, "the records in the file say a living world has ended");
     }
     /* The file must end exactly here. fgetc returns EOF (a negative int,
      * which is why it does not return a char) at the end. */
-    if (r->problem == NULL && fgetc(r->f) != EOF) {
+    bool more = r->f != NULL ? fgetc(r->f) != EOF : r->at < r->len;
+    if (r->problem == NULL && more) {
         fail(r, "the file has extra bytes at its end");
     }
+}
+
+/*
+ * Everything save_read and save_from_memory share: the Reader is open on a
+ * file or on bytes, and name is what the messages call it. On failure *s has
+ * been freed and err says why.
+ */
+static bool read_world(Reader *r, Sim *s, const char *name, char *err,
+                       size_t errlen)
+{
+    int width = 0, height = 0;
+    Settings set = settings_default(); /* every field is overwritten below */
+    uint64_t seed = 0, tick = 0;
+    Rng rng;
+    char problem[256] = "";
+    bool ok = false;
+    if (get_header(r, &width, &height)) {
+        seed = get_u64(r);
+        tick = get_u64(r);
+        for (int i = 0; i < 4; i++) {
+            rng.s[i] = get_u64(r);
+        }
+        ok = get_settings(r, &set, problem, sizeof(problem));
+    }
+    if (ok && !sim_alloc(s, &set, width, height)) {
+        snprintf(err, errlen, "cannot load %s: out of memory", name);
+        return false;
+    }
+    if (ok) {
+        get_body(r, s, seed, tick, &rng);
+        ok = r->problem == NULL;
+        if (ok && !sim_resume(s)) {
+            snprintf(problem, sizeof(problem), "no brain called '%s'",
+                     set.brain_name);
+            ok = false;
+        }
+        if (!ok) {
+            sim_free(s);
+        }
+    }
+    if (!ok) {
+        snprintf(err, errlen, "cannot load %s: %s", name,
+                 r->problem != NULL ? r->problem : problem);
+    }
+    return ok;
 }
 
 bool save_read(Sim *s, const char *path, char *err, size_t errlen)
@@ -904,41 +1196,43 @@ bool save_read(Sim *s, const char *path, char *err, size_t errlen)
         snprintf(err, errlen, "cannot open %s: %s", path, strerror(errno));
         return false;
     }
-    int width = 0, height = 0;
-    Settings set = settings_default(); /* every field is overwritten below */
-    uint64_t seed = 0, tick = 0;
-    Rng rng;
-    char problem[256] = "";
-    bool ok = false;
-    if (get_header(&r, &width, &height)) {
-        seed = get_u64(&r);
-        tick = get_u64(&r);
-        for (int i = 0; i < 4; i++) {
-            rng.s[i] = get_u64(&r);
-        }
-        ok = get_settings(&r, &set, problem, sizeof(problem));
-    }
-    if (ok && !sim_alloc(s, &set, width, height)) {
-        fclose(r.f);
-        snprintf(err, errlen, "cannot load %s: out of memory", path);
+    bool ok = read_world(&r, s, path, err, errlen);
+    fclose(r.f);
+    return ok;
+}
+
+bool save_to_memory(const Sim *s, unsigned char **bytes, size_t *len,
+                    char *err, size_t errlen)
+{
+    Writer w = {.ok = true}; /* f is NULL: the bytes go to w.buf */
+    put_everything(&w, s);
+    if (!w.ok) {
+        free(w.buf); /* free(NULL) is allowed and does nothing */
+        snprintf(err, errlen, "cannot copy the world: out of memory");
         return false;
     }
-    if (ok) {
-        get_body(&r, s, seed, tick, &rng);
-        ok = r.problem == NULL;
-        if (ok && !sim_resume(s)) {
-            snprintf(problem, sizeof(problem), "no brain called '%s'",
-                     set.brain_name);
-            ok = false;
-        }
-        if (!ok) {
-            sim_free(s);
-        }
+    *bytes = w.buf; /* the caller owns the block now */
+    *len = w.len;
+    return true;
+}
+
+bool save_from_memory(Sim *s, const unsigned char *bytes, size_t len,
+                      char *err, size_t errlen)
+{
+    *s = (Sim){0};
+    Reader r = {.buf = bytes, .len = len};
+    return read_world(&r, s, "the copy", err, errlen);
+}
+
+bool sim_copy(Sim *to, const Sim *from, char *err, size_t errlen)
+{
+    unsigned char *bytes = NULL;
+    size_t len = 0;
+    if (!save_to_memory(from, &bytes, &len, err, errlen)) {
+        *to = (Sim){0};
+        return false;
     }
-    fclose(r.f);
-    if (!ok) {
-        snprintf(err, errlen, "cannot load %s: %s", path,
-                 r.problem != NULL ? r.problem : problem);
-    }
+    bool ok = save_from_memory(to, bytes, len, err, errlen);
+    free(bytes);
     return ok;
 }

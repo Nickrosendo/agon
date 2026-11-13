@@ -116,6 +116,9 @@ bool tactics_init(TacticWatch *t);
 /* Forgets every family and what was seen. */
 void tactics_clear(TacticWatch *t);
 void tactics_free(TacticWatch *t);
+/* Builds the index from the rows again: after the rows were read from a save,
+ * since the index only says where each row is and is not saved. */
+void tactics_rebuild_index(TacticWatch *t);
 
 /* A hit a brain chose to make (never the territory drive's), landed by by on
  * target, before the hit joins the target's ring. killed: the hit took the
