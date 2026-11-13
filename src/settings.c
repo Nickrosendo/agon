@@ -6,6 +6,7 @@
 #include <string.h> /* strcmp, strlen, strchr, strerror, memchr */
 
 #include "brain.h"   /* BLIND_ALL */
+#include "genome.h"  /* GENE_TRAITS, for the jump bits' range */
 #include "options.h" /* parse_long */
 #include "years.h"   /* YEARS_MIN_LENGTH */
 
@@ -170,6 +171,9 @@ Settings settings_default(void)
         .birth_per_plant = 0.4f,
         .mutation_rate = 0.05f,
         .mutation_spread = 0.05f,
+        .trait_mutation_scale = 1.0f,
+        .jump_genes = 0,
+        .jump_chance = 0.02f,
         .weight_limit = 4.0f,
         .weight_start_spread = 0.5f,
         .size_min = 0.5f,
@@ -439,6 +443,9 @@ static const SettingInfo TABLE[] = {
                                        "per plant (0: off)"),
     FLOAT_ROW(mutation_rate, 0, 1, "chance each gene changes in a child"),
     FLOAT_ROW(mutation_spread, 0, 1, "size of a change, by the gene's range"),
+    FLOAT_ROW(trait_mutation_scale, 0, 10, "body traits' changes times this"),
+    INT_ROW(jump_genes, 0, (1 << GENE_TRAITS) - 1, "bit i: trait i may jump"),
+    FLOAT_ROW(jump_chance, 0, 1, "chance a trait's change is a jump"),
     FLOAT_ROW(weight_limit, 0, 1000, "largest network weight"),
     FLOAT_ROW(weight_start_spread, 0, 1000, "spread of random weights"),
     FLOAT_ROW(size_min, 0.01, 1000, "smallest body"),

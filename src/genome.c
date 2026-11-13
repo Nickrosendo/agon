@@ -176,6 +176,19 @@ static void genome_mutate(Genome *g, Rng *r, const Settings *s)
         }
         float before = g->g[i];
         float step = rng_normal(r) * s->mutation_spread * gene_range(i, s);
+        if (i < GENE_TRAITS) {
+            step *= s->trait_mutation_scale; /* times 1.0f changes no bit */
+            /* 1u << i: an unsigned one moved up i places, the bit for gene
+             * i. & keeps only the bits set in both, so the result is not 0
+             * exactly when gene i's bit is on. */
+            bool may_jump = ((unsigned)s->jump_genes & (1u << i)) != 0;
+            /* && stops at a false left side, so with the bit off the right
+             * side's draw never happens: defaults draw what they always did. */
+            if (may_jump && rng_unit(r) < s->jump_chance) {
+                g->g[i] = rng_unit(r);
+                continue;
+            }
+        }
         g->g[i] = gene_fix(i, before + step, before, s);
     }
 }

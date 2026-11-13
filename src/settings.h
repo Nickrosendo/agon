@@ -251,6 +251,16 @@ typedef struct {
      * at 0.5 the instinct shows and founders still differ (2026-11-12). */
     float mutation_rate;
     float mutation_spread;
+    /* Sandbox mutation wildness (the player agency design, 6.1). A body
+     * trait's mutation step is also multiplied by trait_mutation_scale; a
+     * network weight's is not, since the player's aim is bodies, not brains.
+     * When bit i of jump_genes is set, a mutation of trait i is, with chance
+     * jump_chance, a jump: the value is drawn fresh over all of 0..1 instead
+     * of stepping. Defaults 1, 0 and 0.02: today's inheritance exactly, with
+     * no extra random draw while jump_genes is 0. */
+    float trait_mutation_scale;
+    int jump_genes;
+    float jump_chance;
     float weight_limit;
     float weight_start_spread;
 

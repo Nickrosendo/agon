@@ -356,8 +356,100 @@ static void test_weight_positions(void)
     CHECK(wrong == 0);
 }
 
+/* Sum over many children of how far the traits and the weights moved from
+ * the parent, with every value mutating. */
+static void mutation_distance(const Settings *set, float *traits, float *weights)
+{
+    Rng r;
+    rng_seed(&r, 11);
+    Genome parent;
+    Settings start = settings_default();
+    genome_random(&parent, &r, &start);
+    for (int i = 0; i < GENE_TRAITS; i++) {
+        parent.g[i] = 0.5f; /* away from the ends, so clamping cuts nothing */
+    }
+    *traits = 0.0f;
+    *weights = 0.0f;
+    for (int k = 0; k < 500; k++) {
+        Genome child;
+        genome_cross(&child, &parent, &parent, &r, set);
+        for (int i = 0; i < GENOME_LEN; i++) {
+            float d = fabsf(child.g[i] - parent.g[i]);
+            if (i < GENE_TRAITS) {
+                *traits += d;
+            } else {
+                *weights += d;
+            }
+        }
+    }
+}
+
+/* The wildness scale widens the body traits' steps and leaves the weights'
+ * steps alone, draw for draw. */
+static void test_scale_widens_traits_only(void)
+{
+    Settings set = settings_default();
+    set.mutation_rate = 1.0f;
+    set.mutation_spread = 0.02f;
+    float traits1, weights1, traits4, weights4;
+    mutation_distance(&set, &traits1, &weights1);
+    set.trait_mutation_scale = 4.0f;
+    mutation_distance(&set, &traits4, &weights4);
+    CHECK(traits4 > 3.0f * traits1);
+    CHECK(weights4 == weights1); /* the same draws, so the very same sum */
+}
+
+/* With jumps on for size and every mutation a jump, a child's size can land
+ * anywhere in 0..1; the other traits still only step. */
+static void test_jump_draws_whole_range(void)
+{
+    Settings set = settings_default();
+    set.mutation_rate = 1.0f;
+    set.mutation_spread = 0.001f;
+    set.jump_genes = 1 << GENE_SIZE;
+    set.jump_chance = 1.0f;
+    Rng r;
+    rng_seed(&r, 12);
+    Genome parent;
+    genome_random(&parent, &r, &set);
+    parent.g[GENE_SIZE] = 0.5f;
+    parent.g[GENE_ARMOUR] = 0.5f;
+    bool low = false, high = false, armour_stepped = true;
+    for (int k = 0; k < 2000; k++) {
+        Genome child;
+        genome_cross(&child, &parent, &parent, &r, &set);
+        low = low || child.g[GENE_SIZE] < 0.1f;
+        high = high || child.g[GENE_SIZE] > 0.9f;
+        armour_stepped =
+            armour_stepped && fabsf(child.g[GENE_ARMOUR] - 0.5f) < 0.01f;
+    }
+    CHECK(low && high);
+    CHECK(armour_stepped);
+}
+
+/* A jump chance with no gene's bit set changes nothing at all. */
+static void test_no_jump_without_bit(void)
+{
+    Settings plain = settings_default();
+    plain.mutation_rate = 0.3f;
+    Settings chance = plain;
+    chance.jump_chance = 1.0f;
+    Rng ra, rb;
+    rng_seed(&ra, 13);
+    rng_seed(&rb, 13);
+    Genome parent, a, b;
+    genome_random(&parent, &ra, &plain);
+    genome_random(&parent, &rb, &plain);
+    genome_cross(&a, &parent, &parent, &ra, &plain);
+    genome_cross(&b, &parent, &parent, &rb, &chance);
+    CHECK(memcmp(&a, &b, sizeof(a)) == 0);
+}
+
 int main(void)
 {
+    test_scale_widens_traits_only();
+    test_jump_draws_whole_range();
+    test_no_jump_without_bit();
     test_random_in_range();
     test_rate_zero_copies_exactly();
     test_rate_one_mutates_within_range();

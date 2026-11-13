@@ -278,6 +278,15 @@ mutation_rate = 0.05
 # size of a change, by the gene's range (0 to 1)
 mutation_spread = 0.05
 
+# body traits' changes times this (0 to 10)
+trait_mutation_scale = 1
+
+# bit i: trait i may jump (0 to 262143)
+jump_genes = 0
+
+# chance a trait's change is a jump (0 to 1)
+jump_chance = 0.02
+
 # largest network weight (0 to 1000)
 weight_limit = 4
 
