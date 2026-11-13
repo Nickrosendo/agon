@@ -61,4 +61,14 @@ void platform_stop(void);
 /* Puts an EV_QUIT in the queue, exactly what the window's X button does. */
 void platform_post_quit(void);
 
+/* Puts text on the system clipboard; false when that failed. In a browser
+ * page the browser may ask the player first, and the answer comes later, so
+ * true there means only "asked". */
+bool platform_clipboard_set(const char *text);
+/* The clipboard's text as a new string the caller frees with free, or NULL
+ * when it holds no text or memory ran out. In a browser page, where a page may
+ * not read the clipboard without asking, the player pastes into a box
+ * instead. */
+char *platform_clipboard_get(void);
+
 #endif

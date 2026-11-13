@@ -1,6 +1,8 @@
 #include "platform.h"
 
-#include <stdio.h> /* snprintf, fprintf */
+#include <stdio.h>  /* snprintf, fprintf */
+#include <stdlib.h> /* malloc */
+#include <string.h> /* memcpy, strlen */
 
 /* Without this, SDL renames main on some systems to wrap its own around it.
  * Must come before the include: it changes what the header says. */
@@ -224,4 +226,60 @@ void platform_run(void (*frame)(void *), void *arg, int frames_per_second)
             count = 0;
         }
     }
+}
+
+#ifdef __EMSCRIPTEN__
+/*
+ * EM_JS writes a C function in JavaScript: Emscripten pastes the body into
+ * the page's script, and C calls it like any other function. A C string is
+ * only an address in the page's memory, so the JavaScript side turns it into
+ * a JavaScript string with UTF8ToString; going the other way, stringToNewUTF8
+ * copies one into memory taken with malloc, which C then frees with free.
+ * EM_JS is a macro that makes a whole function, so no ';' follows it.
+ */
+EM_JS(void, page_copy, (const char *text), {
+    const value = UTF8ToString(text);
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(value).catch(() => window.prompt("Copy this world code:", value));
+    } else {
+        window.prompt("Copy this world code:", value);
+    }
+})
+
+EM_JS(char *, page_paste, (void), {
+    const value = window.prompt("Paste a world code:", "");
+    return value ? stringToNewUTF8(value) : 0;
+})
+#endif
+
+bool platform_clipboard_set(const char *text)
+{
+#ifdef __EMSCRIPTEN__
+    page_copy(text);
+    return true;
+#else
+    return SDL_SetClipboardText(text) == 0;
+#endif
+}
+
+char *platform_clipboard_get(void)
+{
+#ifdef __EMSCRIPTEN__
+    return page_paste();
+#else
+    /* SDL's string must go back with SDL_free, not free: it may come from
+     * another allocator. So it is copied into one of ours, and the rest of
+     * the program only ever sees memory free can take back. */
+    char *sdl = SDL_GetClipboardText();
+    if (sdl == NULL) {
+        return NULL;
+    }
+    size_t n = strlen(sdl);
+    char *copy = n > 0 ? malloc(n + 1) : NULL;
+    if (copy != NULL) {
+        memcpy(copy, sdl, n + 1);
+    }
+    SDL_free(sdl);
+    return copy;
+#endif
 }

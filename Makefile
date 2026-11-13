@@ -29,7 +29,10 @@ endif
 
 ifeq ($(PLATFORM), web)
 # make web sets these; the objects stay apart so build/web holds only the page.
+# The page is the browser demo (AGON_DEMO): Sandbox has the weather only, and
+# the creature pool is smaller, so two worlds fit its fixed memory (window_main.c).
 OUT = build/web-objects
+CFLAGS += -DAGON_DEMO
 endif
 
 ifeq ($(MODE), release)

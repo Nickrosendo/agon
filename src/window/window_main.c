@@ -5,7 +5,8 @@
  */
 #include <inttypes.h> /* PRIx64 */
 #include <stdio.h>    /* snprintf, printf, fputs */
-#include <stdlib.h>   /* abs */
+#include <limits.h>   /* INT_MAX */
+#include <stdlib.h>   /* abs, free */
 #include <string.h>   /* strcmp */
 #include <time.h>     /* time */
 
@@ -28,6 +29,7 @@
 #include "platform.h"
 #include "rng.h"
 #include "sandbox.h"
+#include "worldcode.h"
 #include "save.h"
 #include "scene.h"
 #include "settings.h"
@@ -39,8 +41,16 @@
 #define WINDOW_H 720
 /* A press that moves further than this, in pixels, is a drag, not a click. */
 #define CLICK_SLOP 4
+#ifdef AGON_DEMO
+/* The browser demo's smaller map: its peak population (1,400-2,300 over 15
+ * years, seeds 1-4) stays well inside the demo's pool of 3,000, where the full
+ * map's (3,000-4,400) would not. */
+#define DEFAULT_WORLD_W 192
+#define DEFAULT_WORLD_H 108
+#else
 #define DEFAULT_WORLD_W 256
 #define DEFAULT_WORLD_H 144
+#endif
 #define NOTICE_FRAMES (2 * FRAMES_PER_SECOND)
 /* A notice (notices.h) stays longer, so there is time to press j. */
 #define RARE_NOTICE_FRAMES (10 * FRAMES_PER_SECOND)
@@ -97,6 +107,11 @@ static const char WINDOW_USAGE[] =
     "      k skips 1, 5 or 20 years ahead (Esc stops), then says what happened.\n"
     "      x splits the world in two from now, Tab shows the other branch,\n"
     "      and x twice keeps the one shown. A skip moves both branches.\n"
+    "      u opens a new start: how wildly bodies change from parent to young\n"
+    "      and which traits may jump; Enter starts the world again with them.\n"
+    "      c copies the world's code (seed, settings and everything done to\n"
+    "      it) to the clipboard, in either mode; o opens a code from the\n"
+    "      clipboard and replays it up to where it was copied.\n"
     "mouse: wheel zooms, dragging moves, clicking a creature follows it,\n"
     "       clicking bare ground lets go. On the panel, clicking \"top hunter\",\n"
     "       \"oldest\" or the largest family's body follows that creature.\n";
@@ -182,6 +197,8 @@ static void pan(App *a, int dx, int dy)
 
 static int notice_box(const App *a, int *x, int *y, int *w, int *h);
 static void follow_notice(App *a, const Notice *x);
+/* Declared here, defined further down: the new-world functions use it. */
+static void say(App *a, const char *text, int frames);
 
 static void click(App *a, int x, int y)
 {
@@ -238,13 +255,11 @@ static void click_panel(App *a, int x, int y)
     }
 }
 
-static void new_world(App *a)
+/* Everything on the screen that was about the old world, made fresh for a new
+ * one in a->sim: the drawing, the followed creature, the pages, the menus, the
+ * branch and the look-ahead copy. */
+static void forget_old_world(App *a)
 {
-    if (!sim_reseed(&a->sim, rng_next(&a->seed_source))) {
-        a->failed = true; /* the brain could not be reopened */
-        a->running = false;
-        return;
-    }
     scene_reset(&a->scene);
     inspect_stop(&a->inspect);
     /* Ids start again in a new world: an old id would name a stranger. */
@@ -262,10 +277,152 @@ static void new_world(App *a)
     /* The copy was of the old world; the new one gets picked for at once. */
     lookahead_free(&a->look);
     a->idle_frames = LOOK_IDLE_FRAMES;
+}
+
+/* Builds a->sim again from seed with its own settings, and starts its
+ * ancestors. */
+static void start_world(App *a, uint64_t seed)
+{
+    if (!sim_reseed(&a->sim, seed)) {
+        a->failed = true; /* the brain could not be reopened */
+        a->running = false;
+        return;
+    }
+    forget_old_world(a);
     app_prelude_start(&a->prelude, &a->sim, a->prelude_years);
     if (a->opt->frames > 0) {
         app_prelude_finish(&a->prelude, &a->sim); /* as at the start */
     }
+}
+
+static void new_world(App *a)
+{
+    start_world(a, rng_next(&a->seed_source));
+}
+
+/* The setup screen's Enter: the same seed again, with its settings, so the
+ * new start can be told apart from the old by the settings alone. */
+static void restart_with_setup(App *a)
+{
+    sandbox_setup_apply(&a->sandbox, &a->sim.set);
+    start_world(a, a->sim.seed);
+    say(a, "a new start: the same seed, with the bodies' new rules",
+        2 * NOTICE_FRAMES);
+}
+
+/* c: the world shown, as a code on the clipboard. */
+static void copy_code(App *a)
+{
+    char *text = NULL;
+    if (!worldcode_write(&a->sim, &text)) {
+        say(a, "no memory left to make the world code", NOTICE_FRAMES);
+        return;
+    }
+    if (platform_clipboard_set(text)) {
+        char line[96];
+        snprintf(line, sizeof(line), "world code copied (%zu characters): o "
+                                     "opens it, here or on another agon",
+                 strlen(text));
+        say(a, line, 2 * NOTICE_FRAMES);
+    } else {
+        say(a, "could not put the world code on the clipboard", NOTICE_FRAMES);
+    }
+    free(text);
+}
+
+/*
+ * The browser demo's memory is fixed at 128 MB, and it holds two worlds (the
+ * one shown and the look-ahead copy), the drawing and, while a copy is made,
+ * the copy's bytes. A world's size is mostly its creature pool: every slot is
+ * kept whether a creature is in it or not, about 4.5 kB each, so the pool, not
+ * the map, is what the demo cuts. Measured on a 192 by 108 world after three
+ * years: 15.4 MB a world, 28.9 MB of drawing, about 60 MB in all (8,000 slots
+ * would be 37 MB a world and 106 MB in all). The demo opens a code only up to
+ * these.
+ */
+#ifdef AGON_DEMO
+#define DEMO_POOL_CAPACITY 3000
+#define CODE_MAX_CELLS (DEFAULT_WORLD_W * DEFAULT_WORLD_H)
+#define CODE_MAX_POOL DEMO_POOL_CAPACITY
+#else
+#define CODE_MAX_CELLS (OPTIONS_MAX_SIDE * OPTIONS_MAX_SIDE)
+#define CODE_MAX_POOL INT_MAX
+#endif
+
+/* Reads the clipboard's code into *code; false with a line said on screen. */
+static bool read_clipboard_code(App *a, WorldCode *code)
+{
+    char *text = platform_clipboard_get();
+    if (text == NULL) {
+        say(a, "copy a world code first, then o", NOTICE_FRAMES);
+        return false;
+    }
+    char err[128];
+    bool ok = worldcode_read(text, code, err, sizeof(err));
+    free(text);
+    if (!ok) {
+        say(a, err, 2 * NOTICE_FRAMES);
+        return false;
+    }
+    /* Converted before multiplying, so a 4096 by 4096 code cannot overflow
+     * an int. */
+    if ((long)code->w * (long)code->h > (long)CODE_MAX_CELLS ||
+        code->set.pool_capacity > CODE_MAX_POOL) {
+        say(a, "that world is too big for the browser demo", 2 * NOTICE_FRAMES);
+        worldcode_free(code);
+        return false;
+    }
+    return true;
+}
+
+/*
+ * o: the clipboard's code becomes the world on screen, replayed from its first
+ * tick in slices (the prelude's run) up to where it was copied. The new world
+ * is built aside first, so a code that cannot be built leaves the old one
+ * running. Its size and creature pool may differ from the old one's, so the
+ * drawing and the families, which are sized by them, are made again.
+ */
+static void open_code(App *a)
+{
+    WorldCode code;
+    if (!read_clipboard_code(a, &code)) {
+        return;
+    }
+    Sim fresh;
+    char err[128];
+    bool built = worldcode_start(&fresh, &code, err, sizeof(err));
+    uint64_t until = code.until;
+    worldcode_free(&code);
+    if (!built) {
+        say(a, err, 2 * NOTICE_FRAMES);
+        return;
+    }
+    forget_old_world(a);
+    sim_free(&a->sim);
+    /* A struct assignment copies every field, the pointers included: fresh's
+     * memory now belongs to a->sim, and fresh must not be freed. */
+    a->sim = fresh;
+    bool art = a->scene.sprites.art;
+    scene_free(&a->scene);
+    family_free(&a->families);
+    if (!scene_init(&a->scene, &a->sim) ||
+        !family_init(&a->families, a->sim.pool.capacity)) {
+        platform_error("out of memory");
+        a->failed = true;
+        a->running = false;
+        return;
+    }
+    sprite_cache_set_art(&a->scene.sprites, art);
+    int level = a->camera.level;
+    camera_init(&a->camera, a->sim.world.w, a->sim.world.h, a->layout.view_w,
+                a->layout.view_h);
+    a->camera.level = level;
+    lookahead_init(&a->look, (uint64_t)(a->sim.set.ticks_per_year / 4));
+    app_prelude_replay(&a->prelude, &a->sim, until);
+    if (a->opt->frames > 0) {
+        app_prelude_finish(&a->prelude, &a->sim);
+    }
+    a->redraw = true;
 }
 
 static void say(App *a, const char *text, int frames)
@@ -399,7 +556,20 @@ static void handle_key(App *a, int key)
 {
     /* While the ancestors evolve, any key but q ends that where it got to,
      * and does nothing else: it was pressed to stop the waiting. */
-    if (a->prelude.active && key != 'q') {
+    bool in_setup = a->sandbox.menu == SANDBOX_MENU_SETUP;
+#ifndef AGON_DEMO
+    /* m while the ancestors evolve: Sandbox, and its setup screen, since a new
+     * start is cheapest before anything has been watched. */
+    if (a->prelude.active && !a->prelude.replay && !in_setup &&
+        (key == 'm' || key == 'M')) {
+        a->sandbox.on = true;
+        a->look_on = false;
+        sandbox_open_setup(&a->sandbox, &a->sim.set);
+        a->redraw = true;
+        return;
+    }
+#endif
+    if (a->prelude.active && key != 'q' && !in_setup) {
         app_prelude_stop(&a->prelude);
         a->notice[0] = '\0';
         a->redraw = true;
@@ -417,8 +587,14 @@ static void handle_key(App *a, int key)
         char line[256] = "";
         const Creature *followed = inspect_creature(&a->inspect, &a->sim);
         bool was_sandbox = a->sandbox.on;
-        if (sandbox_key(&a->sandbox, &a->sim, key, followed, platform_now_ms(),
-                        line, sizeof(line)) == SANDBOX_TAKEN) {
+        int took = sandbox_key(&a->sandbox, &a->sim, key, followed,
+                               platform_now_ms(), line, sizeof(line));
+        if (took == SANDBOX_RESTART) {
+            restart_with_setup(a);
+            a->redraw = true;
+            return;
+        }
+        if (took == SANDBOX_TAKEN) {
             /* A new mode brings its own camera: on in Documentary. */
             if (a->sandbox.on != was_sandbox) {
                 a->look_on = !a->sandbox.on;
@@ -435,6 +611,12 @@ static void handle_key(App *a, int key)
         a->keep_asked = false;
     }
     /* Branching is a Sandbox tool; Documentary never changes a world. */
+#ifdef AGON_DEMO
+    if (a->sandbox.on && (key == 'x' || key == 'X' || key == '\t')) {
+        say(a, "not in the browser demo: weather only (w)", NOTICE_FRAMES);
+        return;
+    }
+#endif
     if (a->sandbox.on && (key == 'x' || key == 'X')) {
         branch_key(a);
         a->redraw = true;
@@ -514,6 +696,14 @@ static void handle_key(App *a, int key)
         if (a->lab_open) {
             a->lab_parts = !a->lab_parts;
         }
+        break;
+    case 'c':
+    case 'C':
+        copy_code(a);
+        break;
+    case 'o':
+    case 'O':
+        open_code(a);
         break;
     case 'f':
     case 'F':
@@ -1036,7 +1226,10 @@ static void app_frame(void *arg)
         platform_stop();
         return;
     }
-    if (a->prelude.active) {
+    if (a->prelude.active && a->sandbox.menu == SANDBOX_MENU_SETUP) {
+        /* The setup screen holds the ancestors: Enter starts them again. */
+        a->notice[0] = '\0';
+    } else if (a->prelude.active) {
         /* As many prelude ticks as fit in 28 ms of the frame's 33, so the
          * window and the keys still keep up; pausing does not hold it. */
         app_prelude_step(&a->prelude, &a->sim, platform_now_ms,
@@ -1141,6 +1334,9 @@ static bool read_settings(const Options *o, Settings *settings, char *err,
     if (o->no_floor) {
         settings->min_creatures = 0;
     }
+#ifdef AGON_DEMO
+    settings->pool_capacity = DEMO_POOL_CAPACITY;
+#endif
     return true;
 }
 
@@ -1238,6 +1434,13 @@ int main(int argc, char **argv)
      * out the same every time, which a prelude cut by a clock would not. */
     app.prelude_years = app_prelude_years(&opt, &settings, opt.frames == 0);
     app_prelude_start(&app.prelude, &app.sim, app.prelude_years);
+#ifndef AGON_DEMO
+    /* --sandbox opens on its setup screen: a new world's settings are chosen
+     * before its ancestors run. Not for a loaded world, which has lived. */
+    if (opt.sandbox && opt.load_path == NULL) {
+        sandbox_open_setup(&app.sandbox, &app.sim.set);
+    }
+#endif
     if (opt.frames > 0) {
         app_prelude_finish(&app.prelude, &app.sim);
     }

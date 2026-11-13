@@ -58,6 +58,17 @@ void app_prelude_start(Prelude *p, const Sim *sim, int years)
      * largest int, and signed overflow is undefined behaviour. */
     p->until = (uint64_t)p->years * (uint64_t)sim->set.ticks_per_year;
     p->active = sim->tick < p->until && !sim_is_over(sim);
+    p->replay = false;
+}
+
+void app_prelude_replay(Prelude *p, const Sim *sim, uint64_t until)
+{
+    int per_year = sim->set.ticks_per_year;
+    /* The years shown, rounded up, so a code a few ticks into year 3 says "of 3". */
+    p->years = (int)((until + (uint64_t)per_year - 1) / (uint64_t)per_year);
+    p->until = until;
+    p->active = sim->tick < until && !sim_is_over(sim);
+    p->replay = true;
 }
 
 /* One tick of the prelude, ending it when it is over. */
@@ -98,7 +109,10 @@ void app_prelude_stop(Prelude *p)
 void app_prelude_text(const Prelude *p, const Sim *sim, char *out, size_t size)
 {
     int year = years_whole(sim->tick, sim->set.ticks_per_year) + 1;
-    snprintf(out, size, "evolving ancestors: year %d of %d, any key to stop",
+    snprintf(out, size, p->replay ? "replaying the world code: year %d of %d, "
+                                    "any key to stop there"
+                                  : "evolving ancestors: year %d of %d, "
+                                    "any key to stop",
              year < p->years ? year : p->years, p->years);
 }
 

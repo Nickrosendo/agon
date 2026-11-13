@@ -17,6 +17,25 @@
 /* The three skips offered, in years, on keys 1 to 3. */
 static const int SKIP_YEARS[3] = {1, 5, 20};
 
+/* The setup screen's steps. 1 and 0.02 are the defaults (settings.c), so a
+ * screen opened on a plain world and closed with Enter changes nothing. */
+static const float WILD_STEPS[SANDBOX_WILD_STEPS] = {0.5f, 1.0f, 2.0f, 3.0f,
+                                                     5.0f, 10.0f};
+static const float JUMP_STEPS[SANDBOX_JUMP_STEPS] = {0.01f, 0.02f, 0.05f,
+                                                     0.1f, 0.2f};
+
+/* The browser demo (the player agency design, section 9) keeps weather only:
+ * this says so when a cut tool's key is pressed. #ifdef keeps it out of the
+ * full build, where nothing calls it: a static function never called draws an
+ * "unused function" warning. */
+#ifdef AGON_DEMO
+static int not_in_demo(char *notice, size_t size)
+{
+    snprintf(notice, size, "not in the browser demo: weather only (w)");
+    return SANDBOX_TAKEN;
+}
+#endif
+
 static float clamp01(float v)
 {
     return v < 0.0f ? 0.0f : v > 1.0f ? 1.0f : v;
@@ -107,6 +126,57 @@ static int skip_key(Sandbox *b, Sim *s, int key, uint64_t now_ms,
     return SANDBOX_TAKEN;
 }
 
+/* The step nearest to v in a table of n. */
+static int nearest(const float *steps, int n, float v)
+{
+    int best = 0;
+    for (int i = 1; i < n; i++) {
+        float d = steps[i] - v, best_d = steps[best] - v;
+        if (d * d < best_d * best_d) {
+            best = i;
+        }
+    }
+    return best;
+}
+
+void sandbox_open_setup(Sandbox *b, const Settings *set)
+{
+    b->menu = SANDBOX_MENU_SETUP;
+    b->wild_step = nearest(WILD_STEPS, SANDBOX_WILD_STEPS,
+                           set->trait_mutation_scale);
+    b->jump_step = nearest(JUMP_STEPS, SANDBOX_JUMP_STEPS, set->jump_chance);
+    b->jump_genes = set->jump_genes;
+}
+
+void sandbox_setup_apply(const Sandbox *b, Settings *set)
+{
+    set->trait_mutation_scale = WILD_STEPS[b->wild_step];
+    set->jump_chance = JUMP_STEPS[b->jump_step];
+    set->jump_genes = b->jump_genes;
+}
+
+static int setup_key(Sandbox *b, int key)
+{
+    int d = digit(key, ACTIONS_GIVABLE_COUNT);
+    if (d >= 0) {
+        /* ^ is exclusive or: the bit flips, on to off or off to on. 1 << gene
+         * is a number with only that gene's bit set. */
+        b->jump_genes ^= 1 << ACTIONS_GIVABLE[d];
+    } else if ((key == ',' || key == '<') && b->wild_step > 0) {
+        b->wild_step--;
+    } else if ((key == '.' || key == '>') && b->wild_step < SANDBOX_WILD_STEPS - 1) {
+        b->wild_step++;
+    } else if (key == '-' && b->jump_step > 0) {
+        b->jump_step--;
+    } else if ((key == '+' || key == '=') && b->jump_step < SANDBOX_JUMP_STEPS - 1) {
+        b->jump_step++;
+    } else if (key == KEY_ENTER) {
+        b->menu = SANDBOX_MENU_NONE;
+        return SANDBOX_RESTART;
+    }
+    return SANDBOX_TAKEN;
+}
+
 int sandbox_key(Sandbox *b, Sim *s, int key, const Creature *followed,
                 uint64_t now_ms, char *notice, size_t size)
 {
@@ -130,18 +200,35 @@ int sandbox_key(Sandbox *b, Sim *s, int key, const Creature *followed,
     case SANDBOX_MENU_TRAIT: return trait_key(b, s, key, notice, size);
     case SANDBOX_MENU_WEATHER: return weather_key(b, s, key, notice, size);
     case SANDBOX_MENU_SKIP: return skip_key(b, s, key, now_ms, notice, size);
+    case SANDBOX_MENU_SETUP: return setup_key(b, key);
     default: break;
     }
     if (key == 'm' || key == 'M') {
         b->on = !b->on;
         b->menu = SANDBOX_MENU_NONE;
-        snprintf(notice, size, b->on ? "Sandbox: g give a trait, w weather, x branch, "
-                                       "k skip ahead"
+#ifdef AGON_DEMO
+        snprintf(notice, size, b->on ? "Sandbox: w weather (the browser demo has "
+                                       "only this tool)"
                                      : "Documentary: watching only");
+#else
+        snprintf(notice, size, b->on ? "Sandbox: g give a trait, w weather, x branch, "
+                                       "k skip ahead, u new start"
+                                     : "Documentary: watching only");
+#endif
         return SANDBOX_TAKEN;
     }
     if (!b->on) {
         return SANDBOX_IGNORED;
+    }
+#ifdef AGON_DEMO
+    if (key == 'g' || key == 'G' || key == 'k' || key == 'K' || key == 'u' ||
+        key == 'U') {
+        return not_in_demo(notice, size);
+    }
+#endif
+    if (key == 'u' || key == 'U') {
+        sandbox_open_setup(b, &s->set);
+        return SANDBOX_TAKEN;
     }
     if (key == 'g' || key == 'G') {
         if (followed == NULL) {
@@ -177,6 +264,32 @@ bool sandbox_skip_step(Sandbox *b, Sim *s, uint64_t (*now_ms)(void),
         b->menu = SANDBOX_MENU_SUMMARY;
     }
     return b->skip.active;
+}
+
+static int setup_lines(const Sandbox *b, char lines[][SKIP_COLS], int max)
+{
+    int n = 0;
+    if (max < ACTIONS_GIVABLE_COUNT + 6) {
+        return 0; /* the screen is all or nothing */
+    }
+    snprintf(lines[n++], SKIP_COLS, "A new start: how bodies change from "
+                                    "parent to young");
+    snprintf(lines[n++], SKIP_COLS, " wildness  x%.1f  (, and . change it; "
+                                    "1 is nature's own)",
+             (double)WILD_STEPS[b->wild_step]);
+    snprintf(lines[n++], SKIP_COLS, " jumps     %.0f %% of changes  "
+                                    "(- and + change it)",
+             (double)(JUMP_STEPS[b->jump_step] * 100.0f));
+    snprintf(lines[n++], SKIP_COLS, " traits that may jump to any value:");
+    for (int i = 0; i < ACTIONS_GIVABLE_COUNT; i++) {
+        int gene = ACTIONS_GIVABLE[i];
+        snprintf(lines[n++], SKIP_COLS, "   %d [%c] %s", i + 1,
+                 (b->jump_genes >> gene & 1) ? 'x' : ' ', actions_gene_name(gene));
+    }
+    snprintf(lines[n++], SKIP_COLS, "Enter starts this world again from its "
+                                    "first tick with these;");
+    snprintf(lines[n++], SKIP_COLS, "Esc keeps the world as it is");
+    return n;
 }
 
 int sandbox_menu_lines(const Sandbox *b, const Sim *s, uint64_t now_ms,
@@ -231,6 +344,9 @@ int sandbox_menu_lines(const Sandbox *b, const Sim *s, uint64_t now_ms,
         n = skip_summary_lines(&b->skip, s, lines, max - 1);
         snprintf(lines[n++], SKIP_COLS, "(any key closes)");
         break;
+    case SANDBOX_MENU_SETUP:
+        n = setup_lines(b, lines, max);
+        break;
     default: break;
     }
     return n;
@@ -238,9 +354,14 @@ int sandbox_menu_lines(const Sandbox *b, const Sim *s, uint64_t now_ms,
 
 const char *sandbox_help(const Sandbox *b)
 {
-    return b->on ? " Sandbox | m mode | g give trait | w weather | k skip ahead"
-                   " | x branch | Tab other branch"
-                 : " Documentary | m mode";
+#ifdef AGON_DEMO
+    return b->on ? " Sandbox | m mode | w weather | c copy code | o open code"
+                 : " Documentary | m mode | c copy code | o open code";
+#else
+    return b->on ? " Sandbox | m mode | g trait | w weather | k skip | x branch"
+                   " | Tab | u new start | c/o code"
+                 : " Documentary | m mode | c copy code | o open code";
+#endif
 }
 
 void sandbox_free(Sandbox *b)

@@ -60,6 +60,10 @@ typedef struct {
     bool active;
     int years;
     uint64_t until;
+    /* The same fast run, replaying a world code (worldcode.h) up to the tick
+     * it was copied at, instead of evolving ancestors. Only the line it shows
+     * differs. */
+    bool replay;
 } Prelude;
 
 /* How long of each 33 ms frame the prelude may run, in milliseconds: most of
@@ -72,6 +76,8 @@ typedef struct {
 int app_prelude_years(const Options *o, const Settings *s, bool interactive);
 /* Starts a prelude of years for sim, which must be at tick 0 for it to run. */
 void app_prelude_start(Prelude *p, const Sim *sim, int years);
+/* Starts replaying a world opened from a code, at tick 0, up to until. */
+void app_prelude_replay(Prelude *p, const Sim *sim, uint64_t until);
 /* Runs prelude ticks until budget_ms milliseconds by now_ms have passed, the
  * prelude is over or the world has died. Returns whether it is still on.
  * now_ms is a function, because each program reads its clock its own way. */

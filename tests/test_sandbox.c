@@ -3,6 +3,7 @@
 #include <string.h> /* strstr */
 
 #include "actions.h"
+#include "genome.h"
 #include "platform.h" /* KEY_ESCAPE, only to check sandbox.c's copy of it */
 #include "sandbox.h"
 #include "settings.h"
@@ -128,8 +129,52 @@ static void test_skip_by_keys(void)
     sim_free(&s);
 }
 
+/* The setup screen: opened on a plain world and closed with Enter it changes
+ * nothing; its keys move the wildness, the jump chance and the jumping genes;
+ * Enter asks for a restart and only then are the settings written. */
+static void test_setup_screen(void)
+{
+    Settings set = settings_default();
+    Sim s;
+    CHECK(sim_init(&s, &set, 3, 64, 32));
+    Sandbox b = {.on = true};
+    CHECK(press(&b, &s, 'u', NULL) == SANDBOX_TAKEN);
+    CHECK(b.menu == SANDBOX_MENU_SETUP);
+    char lines[SKIP_LINES][SKIP_COLS];
+    CHECK(sandbox_menu_lines(&b, &s, 0, lines, SKIP_LINES) > 0);
+    CHECK(strstr(lines[1], "x1.0") != NULL);
+    CHECK(press(&b, &s, '\r', NULL) == SANDBOX_RESTART);
+    CHECK(b.menu == SANDBOX_MENU_NONE);
+    Settings after = set;
+    sandbox_setup_apply(&b, &after);
+    CHECK(after.trait_mutation_scale == set.trait_mutation_scale);
+    CHECK(after.jump_chance == set.jump_chance);
+    CHECK(after.jump_genes == set.jump_genes);
+
+    CHECK(press(&b, &s, 'u', NULL) == SANDBOX_TAKEN);
+    CHECK(press(&b, &s, '.', NULL) == SANDBOX_TAKEN); /* wildness x2 */
+    CHECK(press(&b, &s, '+', NULL) == SANDBOX_TAKEN); /* jumps 5 % */
+    CHECK(press(&b, &s, '2', NULL) == SANDBOX_TAKEN); /* armour may jump */
+    CHECK(press(&b, &s, 'm', NULL) == SANDBOX_TAKEN); /* the menu takes m too */
+    CHECK(b.on);
+    CHECK(s.set.trait_mutation_scale == 1.0f); /* nothing written yet */
+    CHECK(press(&b, &s, '\r', NULL) == SANDBOX_RESTART);
+    sandbox_setup_apply(&b, &after);
+    CHECK(after.trait_mutation_scale == 2.0f);
+    CHECK(after.jump_chance == 0.05f);
+    CHECK(after.jump_genes == 1 << GENE_ARMOUR);
+
+    /* Esc leaves the world as it is. */
+    CHECK(press(&b, &s, 'u', NULL) == SANDBOX_TAKEN);
+    CHECK(press(&b, &s, KEY_ESCAPE, NULL) == SANDBOX_TAKEN);
+    CHECK(b.menu == SANDBOX_MENU_NONE);
+    sandbox_free(&b);
+    sim_free(&s);
+}
+
 int main(void)
 {
+    test_setup_screen();
     test_documentary_ignores_tools();
     test_give_by_keys();
     test_weather_by_keys();
