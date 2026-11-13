@@ -508,10 +508,12 @@ static void test_known_world_pixels(void)
          * Re-pinned for the first painted parts (2026-11-13): an otter with
          * plates at the far middle level; written out and looked at (a
          * small wolf's fin, pinned for an hour, was taken out the same day:
-         * swimming bodies keep their own body). */
+         * swimming bodies keep their own body). Re-pinned when the otter's
+         * parts were generated from its frames instead of painted: the same
+         * otter, its shell a darker back; looked at. */
         static const uint64_t EXPECTED[CAMERA_LEVELS] = {
             0xbe5f57fb7c7bdabdu, 0xc46c0cff74609260u,
-            0xe3bdbfe6a3c83f79u, 0x98b4ac2b8979d875u,
+            0x965566356ef634e3u, 0x98b4ac2b8979d875u,
         };
         if (hashes[level] != EXPECTED[level]) {
             printf("level %d: 0x%llxu\n", level,

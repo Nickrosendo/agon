@@ -360,7 +360,7 @@ def place_eye(inks, w, h, offset):
 # of painted by PixelLab: no credits spent. A generated part takes the place
 # of a painted one. AGON_GENERATED_TOO=otter,... adds species for one run,
 # to compare the two ways side by side.
-GENERATED = {"wolf": ("armour", "weapon")}
+GENERATED = {"wolf": ("armour", "weapon"), "otter": ("armour", "weapon")}
 for extra in filter(None, os.environ.get("AGON_GENERATED_TOO", "").split(",")):
     GENERATED[extra] = ("armour", "weapon")
 
