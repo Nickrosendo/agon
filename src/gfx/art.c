@@ -7,7 +7,7 @@
  * picture shrunk to an eighth. */
 #define ART_SAMPLES_MAX 8
 
-static const ArtSet *set_of(int species)
+const ArtSet *art_set(int species)
 {
     for (int i = 0; i < ART_SET_COUNT; i++) {
         if (ART_SETS[i].species == species) {
@@ -17,22 +17,11 @@ static const ArtSet *set_of(int species)
     return NULL;
 }
 
-/* Whether the genes show a part the frames have no place for: plates, a tusk
- * or horn, a fin, unless the frames cover it. Long legs are left out on
- * purpose: they only lengthen the legs the frames already have, and most
- * hunters carry the gene (the lab's hunter has legs 0.5, rounded to 2/3). */
-static bool shows_a_part(const BodyTraits *t, unsigned covers)
-{
-    return (t->armour >= PART_FROM && !(covers & ART_COVERS_ARMOUR)) ||
-           (t->weapon >= PART_FROM && !(covers & ART_COVERS_WEAPON)) ||
-           (t->swim >= PART_FROM && !(covers & ART_COVERS_SWIM));
-}
-
 const ArtClip *art_clip(int species, int action, const BodyTraits *traits)
 {
-    const ArtSet *set = set_of(species);
-    if (set == NULL || action < 0 || action >= ACTION_COUNT ||
-        shows_a_part(traits, set->covers)) {
+    const ArtSet *set = art_set(species);
+    (void)traits;  /* every body uses its species' frames, parts or not */
+    if (set == NULL || action < 0 || action >= ACTION_COUNT) {
         return NULL;
     }
     const ArtClip *clip = &set->clip[action];
@@ -41,7 +30,7 @@ const ArtClip *art_clip(int species, int action, const BodyTraits *traits)
 
 float art_scale_for(int species, int w, int h)
 {
-    const ArtSet *set = set_of(species);
+    const ArtSet *set = art_set(species);
     if (set == NULL || set->stand_w <= 0 || set->stand_h <= 0 || w <= 0 || h <= 0) {
         return 0.0f;
     }

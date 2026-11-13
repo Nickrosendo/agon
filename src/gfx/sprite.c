@@ -369,6 +369,29 @@ static uint8_t radius_byte(float v)
     return (uint8_t)(v >= 255.0f ? 255.0f : v + 0.5f);
 }
 
+/* The art's scale, lowered when its standing pose would be wider or taller
+ * than the largest standing body allowed at this base (SPRITE_MAX_W by
+ * SPRITE_MAX_H at Normal, times the base's factor). Matching areas makes a
+ * long low drawing (the elephant's) wider than its skeleton, so a giant's
+ * frames could pass the cap its skeleton keeps to. */
+static float capped_scale(const SpriteBody *b, float scale)
+{
+    const ArtSet *set = art_set(b->species);
+    int base = b->base < SPRITE_BASES ? b->base : SPRITE_BASE_NORMAL;
+    float max_w = (float)SPRITE_MAX_W * BASE_FACTOR[base];
+    float max_h = (float)SPRITE_MAX_H * BASE_FACTOR[base];
+    if (set == NULL) {
+        return scale;
+    }
+    if ((float)set->stand_w * scale > max_w) {
+        scale = max_w / (float)set->stand_w;
+    }
+    if ((float)set->stand_h * scale > max_h) {
+        scale = max_h / (float)set->stand_h;
+    }
+    return scale;
+}
+
 /* Draws the picture of b, in that frame of that action, into the scratch
  * raster. Nothing is kept yet: keep() does that, once the size is known. */
 static void draw_raster(SpriteCache *c, const SpriteBody *b, int action, int frame,
@@ -391,6 +414,7 @@ static void draw_raster(SpriteCache *c, const SpriteBody *b, int action, int fra
     if (!(scale > 0.0f)) {
         return;  /* nothing standing to measure: the skeleton's picture stays */
     }
+    scale = capped_scale(b, scale);
     /* The middle pixel of the standing body, and its lowest row. */
     float anchor_x = (float)(r->x0 + r->x1 - 1) * 0.5f;
     float anchor_y = (float)(r->y1 - 1);
@@ -498,6 +522,37 @@ static bool on_body(const SpritePicture *p, int x, int y)
            inked(p, x, y + 1);
 }
 
+/* How many pixels of a cut centred on (mid_x, mid_y), length long and
+ * slanting down to the right, land on the body. */
+static int cut_hits(const SpritePicture *p, int mid_x, int mid_y, int length)
+{
+    int hits = 0;
+    for (int d = 0; d < length; d++) {
+        if (on_body(p, mid_x - length / 2 + d, mid_y - length / 2 + d)) {
+            hits++;
+        }
+    }
+    return hits;
+}
+
+/* Writes that cut's body pixels into out from n, no more than max in all;
+ * returns the new count. */
+static int add_cut(const SpritePicture *p, int mid_x, int mid_y, int length,
+                   int16_t out[][2], int n, int max)
+{
+    /* A cut slanting down to the right, one pixel wide. */
+    for (int d = 0; d < length; d++) {
+        int x = mid_x - length / 2 + d, y = mid_y - length / 2 + d;
+        if (n < max && on_body(p, x, y)) {
+            /* The casts: x and y are inside the picture, which is small. */
+            out[n][0] = (int16_t)x;
+            out[n][1] = (int16_t)y;
+            n++;
+        }
+    }
+    return n;
+}
+
 int sprite_scar_pixels(const SpritePicture *p, int count, int16_t out[][2], int max)
 {
     count = count > 3 ? 3 : count;
@@ -510,15 +565,14 @@ int sprite_scar_pixels(const SpritePicture *p, int count, int16_t out[][2], int 
     for (int k = 0; k < count; k++) {
         int mid_x = p->x0 + (int)(SCAR_AT[k][0] * (float)w);
         int mid_y = p->y0 + (int)(SCAR_AT[k][1] * (float)h);
-        /* A cut slanting down to the right, one pixel wide. */
-        for (int d = 0; d < length; d++) {
-            int x = mid_x - length / 2 + d, y = mid_y - length / 2 + d;
-            if (n < max && on_body(p, x, y)) {
-                out[n][0] = (int16_t)x;
-                out[n][1] = (int16_t)y;
-                n++;
-            }
+        /* A cut that misses the body (it falls between a hare's tall ears)
+         * slides down a row at a time until it lands on fur, at most half
+         * the picture's height. */
+        int lowest = mid_y + h / 2;
+        while (mid_y < lowest && cut_hits(p, mid_x, mid_y, length) == 0) {
+            mid_y++;
         }
+        n = add_cut(p, mid_x, mid_y, length, out, n, max);
     }
     return n;
 }

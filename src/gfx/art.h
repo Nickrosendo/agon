@@ -2,9 +2,9 @@
  * art: drawn frames for a species, used in place of the skeleton's body when
  * there are some. The frames come from PixelLab (tools/art/pixellab_to_c.py
  * turns them into art_data.c), already in the engine's inks, so a family's
- * palette recolours them like any drawn body. They are one fixed body: a body
- * whose genes show a part the frames do not have (plates, a horn, a fin)
- * keeps the skeleton's picture. Pure: the same arguments always give
+ * palette recolours them like any drawn body. Every body of a species uses
+ * them, whatever its genes; plates, a horn or a fin the frames do not show
+ * are painted over them as layers. Pure: the same arguments always give
  * the same pixels.
  */
 #ifndef AGON_ART_H
@@ -32,8 +32,8 @@ typedef struct {
 } ArtClip;
 
 /* The parts a species' frames already show, as bits of ArtSet.covers: an
- * otter's frames are a swimmer's body, an armadillo's are all shell. A gene
- * for a covered part does not send the body back to the skeleton. */
+ * otter's frames are a swimmer's body, an armadillo's are all shell. A
+ * covered part gets no layer painted over the frames. */
 enum { ART_COVERS_ARMOUR = 1u << 0, ART_COVERS_WEAPON = 1u << 1,
        ART_COVERS_SWIM = 1u << 2 };
 
@@ -51,10 +51,11 @@ typedef struct {
 extern const ArtSet ART_SETS[];
 extern const int ART_SET_COUNT;
 
-/* The clip for this species and action, or NULL when it has none. A body
- * whose armour, weapon or swim gene is at PART_FROM or above gets NULL too,
- * unless the species' frames cover that part: they would hide its plates,
- * horn or fin. traits are the rounded ones. */
+/* The species' set of frames, or NULL when it has none. */
+const ArtSet *art_set(int species);
+/* The clip for this species and action, or NULL when it has none. traits
+ * (the rounded ones) do not change the answer now: every body is drawn from
+ * its species' frames. They stay in the signature for the parts' layers. */
 const ArtClip *art_clip(int species, int action, const BodyTraits *traits);
 /* How many grid pixels one art pixel becomes so that the art's standing pose
  * covers as much as a standing body of w by h grid pixels: the square root of

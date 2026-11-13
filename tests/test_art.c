@@ -49,28 +49,26 @@ static void test_clips(void)
     CHECK(art_scale_for(SPECIES_WOLF, 0, 20) == 0.0f);
 }
 
-/* Plates, a horn or a fin keep the skeleton's body; long legs do not. */
-static void test_parts_step_aside(void)
+/* Plates, a horn, a fin or long legs keep the species' frames: a part the
+ * frames do not show is painted over them as a layer, never by falling back
+ * to the skeleton's body. */
+static void test_parts_keep_frames(void)
 {
     BodyTraits t = hunter();
     t.armour = 1.0f;
-    CHECK(art_clip(SPECIES_WOLF, ACTION_REST, &t) == NULL);
+    CHECK(art_clip(SPECIES_WOLF, ACTION_REST, &t) != NULL);
     t = hunter();
     t.weapon = 2.0f / 3.0f;
-    CHECK(art_clip(SPECIES_WOLF, ACTION_REST, &t) == NULL);
+    CHECK(art_clip(SPECIES_WOLF, ACTION_REST, &t) != NULL);
     t = hunter();
     t.swim = 1.0f;
-    CHECK(art_clip(SPECIES_WOLF, ACTION_REST, &t) == NULL);
+    CHECK(art_clip(SPECIES_WOLF, ACTION_REST, &t) != NULL);
     t = hunter();
     t.legs = 1.0f;
     CHECK(art_clip(SPECIES_WOLF, ACTION_REST, &t) != NULL);
-    /* A part the frames cover does not: every set's covered genes at 1. */
-    for (int s = 0; s < ART_SET_COUNT; s++) {
-        BodyTraits all = hunter();
-        all.armour = ART_SETS[s].covers & ART_COVERS_ARMOUR ? 1.0f : 0.0f;
-        all.weapon = ART_SETS[s].covers & ART_COVERS_WEAPON ? 1.0f : 0.0f;
-        all.swim = ART_SETS[s].covers & ART_COVERS_SWIM ? 1.0f : 0.0f;
-        CHECK(art_clip(ART_SETS[s].species, ACTION_REST, &all) != NULL);
+    BodyTraits all = all_traits(1.0f);
+    for (int sp = 0; sp < SPECIES_COUNT; sp++) {
+        CHECK(art_clip(sp, ACTION_WALK, &all) != NULL);
     }
 }
 
@@ -202,7 +200,7 @@ static void test_cache_art_switch(void)
 int main(void)
 {
     test_clips();
-    test_parts_step_aside();
+    test_parts_keep_frames();
     test_data_in_range();
     test_raster_scale();
     test_raster_outline_and_pure();

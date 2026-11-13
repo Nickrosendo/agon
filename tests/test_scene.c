@@ -500,10 +500,14 @@ static void test_known_world_pixels(void)
          * starting spread of 0.5: the three wider levels.
          * Re-pinned when the last eleven species' frames were merged in
          * (2026-11-12): animals drawn from frames at the far level; the lab's
-         * pin holds. */
+         * pin holds.
+         * Re-pinned when every body was drawn from its frames, parts or not
+         * (2026-11-12): small animals with a part gene, skeleton bodies
+         * before, are frames now at the two middle levels; both pictures
+         * were written out and compared with the old ones. */
         static const uint64_t EXPECTED[CAMERA_LEVELS] = {
-            0xbe5f57fb7c7bdabdu, 0x657c29a2acd28cf0u,
-            0xdf1e94dd2551b9dfu, 0x98b4ac2b8979d875u,
+            0xbe5f57fb7c7bdabdu, 0xc46c0cff74609260u,
+            0x567085701250f3dbu, 0x98b4ac2b8979d875u,
         };
         if (hashes[level] != EXPECTED[level]) {
             printf("level %d: 0x%llxu\n", level,
