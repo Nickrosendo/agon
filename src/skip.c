@@ -1,15 +1,10 @@
 #include "skip.h"
 
-#include <math.h>   /* fabsf */
 #include <stdio.h>  /* snprintf */
 #include <stdlib.h> /* realloc, free */
 
 #include "actions.h"
 #include "tactics.h"
-
-/* A creature counts as carrying a given trait while its gene is this close
- * to the value given: mutation moves genes a little in every generation. */
-#define CARRIER_TOLERANCE 0.05f
 
 static bool add_year(Skip *k, const Sim *s)
 {
@@ -132,32 +127,6 @@ void skip_progress_text(const Skip *k, const Sim *s, uint64_t elapsed_ms,
     }
 }
 
-/* Living creatures whose gene is within CARRIER_TOLERANCE of value. */
-static int carriers(const Sim *s, int gene, float value)
-{
-    int n = 0;
-    for (int i = 0; i < s->pool.capacity; i++) {
-        const Creature *c = &s->pool.items[i];
-        n += c->alive && fabsf(c->genome.g[gene] - value) < CARRIER_TOLERANCE;
-    }
-    return n;
-}
-
-/* Whether log entry i gives the same gene and value as an earlier entry, so
- * each given trait is told once however many creatures got it. */
-static bool told_before(const ActionLog *log, int i)
-{
-    const PlayerAction *a = &log->items[i];
-    for (int j = 0; j < i; j++) {
-        const PlayerAction *b = &log->items[j];
-        if (b->kind == ACTION_TRAIT && b->gene == a->gene &&
-            b->value == a->value) {
-            return true;
-        }
-    }
-    return false;
-}
-
 int skip_summary_lines(const Skip *k, const Sim *s, char lines[][SKIP_COLS],
                        int max)
 {
@@ -209,10 +178,10 @@ int skip_summary_lines(const Skip *k, const Sim *s, char lines[][SKIP_COLS],
     const ActionLog *log = &s->actions;
     for (int i = 0; i < log->count && n < max; i++) {
         const PlayerAction *a = &log->items[i];
-        if (a->kind != ACTION_TRAIT || told_before(log, i)) {
+        if (a->kind != ACTION_TRAIT || actions_gift_repeats(log, i)) {
             continue;
         }
-        int now = carriers(s, a->gene, a->value);
+        int now = actions_carriers(s, a->gene, a->value);
         if (now == 0) {
             snprintf(lines[n++], SKIP_COLS, "The %s you gave (%.2f) died out.",
                      actions_gene_name(a->gene), (double)a->value);

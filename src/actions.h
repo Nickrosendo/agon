@@ -93,4 +93,15 @@ bool actions_weather(struct Sim *s, int kind);
  * so a replay meets it and does nothing too. Called first thing by sim_step. */
 void actions_apply_due(struct Sim *s);
 
+/* A creature counts as carrying a given trait while its gene is this close
+ * to the value given: mutation moves genes a little in every generation. */
+#define ACTIONS_CARRIER_TOLERANCE 0.05f
+
+/* Living creatures whose gene is within ACTIONS_CARRIER_TOLERANCE of value:
+ * how many carry a given trait now. */
+int actions_carriers(const struct Sim *s, int gene, float value);
+/* Whether log entry i gives the same gene and value as an earlier entry, so
+ * a trait given to several creatures is told of once. */
+bool actions_gift_repeats(const ActionLog *log, int i);
+
 #endif

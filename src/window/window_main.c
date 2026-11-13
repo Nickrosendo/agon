@@ -20,6 +20,7 @@
 #include "inspect.h"
 #include "lab.h"
 #include "lifepage.h"
+#include "notices.h"
 #include "options.h"
 #include "palette.h"
 #include "panel.h" /* panel_format_count */
@@ -40,8 +41,10 @@
 #define DEFAULT_WORLD_W 256
 #define DEFAULT_WORLD_H 144
 #define NOTICE_FRAMES (2 * FRAMES_PER_SECOND)
-/* A giant's announcement stays longer, so there is time to press j. */
-#define GIANT_NOTICE_FRAMES (10 * FRAMES_PER_SECOND)
+/* A notice (notices.h) stays longer, so there is time to press j. */
+#define RARE_NOTICE_FRAMES (10 * FRAMES_PER_SECOND)
+/* How many notices the e list shows, newest first: one per number key. */
+#define NOTICE_LIST_ROWS 9
 /* How many screen pixels an arrow key pans by. */
 #define ARROW_PAN 48
 
@@ -70,8 +73,11 @@ static const char WINDOW_USAGE[] =
     "keys: space pause, +/- speed, r new seed, s save, q quit, arrows move,\n"
     "      [ and ] zoom, Esc lets go of a creature, n new world after game over,\n"
     "      l opens the life story of the followed creature (or of the most\n"
-    "      notable life) and closes it again, j follows the giant last\n"
-    "      announced (or, with the story open, the creature it tells of).\n"
+    "      notable life) and closes it again, j follows who the newest notice\n"
+    "      is about (or, with the story open, the creature it tells of).\n"
+    "      e lists the notices (rare bodies, giants, tactics first seen, big\n"
+    "      families gone, a given trait spreading or gone); 1 to 9 or a\n"
+    "      click on one follows who it is about.\n"
     "      b opens the species lab, every animal side by side, and closes it\n"
     "      again; in it 1 to 6 choose the action shown (walk, run, rest,\n"
     "      graze, bite, sleep), and p puts every painted part (plates, a\n"
@@ -100,7 +106,10 @@ typedef struct {
     bool lab_open;     /* the species lab (b), drawn over the world while open */
     int lab_action;    /* the ACTION_ value it shows */
     bool lab_parts;    /* p: the lab shows every painted part on its species */
-    Announce announce; /* which giants have been announced */
+    /* Rare things as they happen (notices.h): for the world shown, and for
+     * the other branch while split. The screen's, not the world's. */
+    Notices notices, other_notices;
+    bool notices_open; /* the e list, drawn over the world */
     const Options *opt;
     Rng seed_source;
     int speed;
@@ -155,8 +164,23 @@ static void pan(App *a, int dx, int dy)
     camera_pan(&a->camera, dx, dy);
 }
 
+static int notice_box(const App *a, int *x, int *y, int *w, int *h);
+static void follow_notice(App *a, const Notice *x);
+
 static void click(App *a, int x, int y)
 {
+    if (a->notices_open) {
+        int bx, by, bw, bh;
+        int rows = notice_box(a, &bx, &by, &bw, &bh);
+        /* Row r of the list starts below the heading and the top margin. */
+        int r = (y - by - FONT_H / 2) / FONT_H - 1;
+        if (x >= bx && x < bx + bw && y >= by && y < by + bh) {
+            if (r >= 0 && r < rows) {
+                follow_notice(a, notices_get(&a->notices, (uint32_t)r));
+            }
+            return; /* a click on the box never reaches the world behind */
+        }
+    }
     int sx = x - a->layout.view_x;
     int sy = y - a->layout.view_y;
     if (!camera_on_world(&a->camera, sx, sy)) {
@@ -209,7 +233,8 @@ static void new_world(App *a)
     inspect_stop(&a->inspect);
     /* Ids start again in a new world: an old id would name a stranger. */
     life_page_close(&a->page);
-    announce_reset(&a->announce);
+    notices_reset(&a->notices);
+    a->notices_open = false;
     family_reset(&a->families);
     a->ticks_due = 0;
     /* A menu or a summary was about the old world. */
@@ -242,21 +267,65 @@ static void toggle_page(App *a)
     }
 }
 
-/* j: follow the creature the open page tells of, else the giant last announced. */
-static void jump(App *a)
+/* The newest notice that names a creature, or NULL. */
+static const Notice *newest_with_creature(const Notices *n)
 {
-    int slot = -1;
-    if (a->page.open && a->page.alive) {
-        slot = life_find_slot(&a->sim, a->page.id);
-    } else {
-        slot = announce_slot(&a->announce, &a->sim);
+    for (uint32_t back = 0; back < NOTICES_KEPT; back++) {
+        const Notice *x = notices_get(n, back);
+        if (x == NULL || x->creature != NOTICE_NOBODY) {
+            return x;
+        }
     }
+    return NULL;
+}
+
+/* Follows who notice x is about, or says why not. */
+static void follow_notice(App *a, const Notice *x)
+{
+    int slot = x != NULL && x->creature != NOTICE_NOBODY
+                   ? life_find_slot(&a->sim, x->creature) : -1;
     if (slot >= 0) {
         inspect_follow(&a->inspect, &a->sim, slot);
+        a->notices_open = false;
     } else {
-        say(a, a->page.open ? "that creature is dead" : "no living giant announced",
+        say(a, x == NULL ? "no notice there"
+               : x->creature == NOTICE_NOBODY ? "that notice is about nobody to follow"
+                                  : "that creature is dead",
             NOTICE_FRAMES);
     }
+}
+
+/* j: follow the creature the open page tells of, else the newest notice's. */
+static void jump(App *a)
+{
+    if (a->page.open) {
+        int slot = a->page.alive ? life_find_slot(&a->sim, a->page.id) : -1;
+        if (slot >= 0) {
+            inspect_follow(&a->inspect, &a->sim, slot);
+        } else {
+            say(a, "that creature is dead", NOTICE_FRAMES);
+        }
+        return;
+    }
+    follow_notice(a, newest_with_creature(&a->notices));
+}
+
+/* The e list's box: where draw_notices puts it, and where a click finds a row.
+ * Returns the number of rows, 0 when there is nothing to show or no room. */
+static int notice_box(const App *a, int *x, int *y, int *w, int *h)
+{
+    const Layout *l = &a->layout;
+    int rows = (int)(a->notices.total < NOTICE_LIST_ROWS ? a->notices.total
+                                                         : NOTICE_LIST_ROWS);
+    *x = l->view_x + FONT_W;
+    *y = l->view_y + FONT_H / 2;
+    *w = l->view_w - 2 * FONT_W;
+    /* A heading row, the rows, and half a row of margin above and below. */
+    *h = (rows + 2) * FONT_H;
+    if (*w < FONT_W * 20 || *h > l->view_h) {
+        return 0;
+    }
+    return rows;
 }
 
 /* Puts the other branch on screen. What the window remembers about the old
@@ -276,6 +345,12 @@ static void switch_branch(App *a)
     scene_reset(&a->scene);
     family_reset(&a->families);
     life_page_close(&a->page);
+    /* Each branch keeps its own list. A struct assignment copies every byte,
+     * the arrays inside included, and Notices points at nothing, so this is
+     * a whole swap. */
+    Notices shown = a->notices;
+    a->notices = a->other_notices;
+    a->other_notices = shown;
     say(a, a->branches.shown == 0 ? "branch A" : "branch B", NOTICE_FRAMES);
 }
 
@@ -285,6 +360,7 @@ static void branch_key(App *a)
     char err[160];
     if (!a->branches.split) {
         if (branch_make(&a->branches, &a->sim, err, sizeof(err))) {
+            a->other_notices = a->notices; /* the same past on both sides */
             say(a, "split in two: this is A, Tab shows B; "
                    "try something in one", 2 * NOTICE_FRAMES);
         } else {
@@ -307,6 +383,12 @@ static void handle_key(App *a, int key)
     if (a->prelude.active && key != 'q') {
         app_prelude_stop(&a->prelude);
         a->notice[0] = '\0';
+        a->redraw = true;
+        return;
+    }
+    /* The open notice list takes the number keys: each follows a row. */
+    if (a->notices_open && key >= '1' && key <= '9') {
+        follow_notice(a, notices_get(&a->notices, (uint32_t)(key - '1')));
         a->redraw = true;
         return;
     }
@@ -391,6 +473,14 @@ static void handle_key(App *a, int key)
     case 'j':
         jump(a);
         break;
+    case 'e':
+    case 'E':
+        a->notices_open = !a->notices_open;
+        if (a->notices_open && a->notices.total == 0) {
+            a->notices_open = false;
+            say(a, "no notices yet", NOTICE_FRAMES);
+        }
+        break;
     case 'b':
     case 'B':
         a->lab_open = !a->lab_open;
@@ -419,6 +509,8 @@ static void handle_key(App *a, int key)
         /* The pages first, so Esc never lets go of a creature behind them. */
         if (a->lab_open) {
             a->lab_open = false;
+        } else if (a->notices_open) {
+            a->notices_open = false;
         } else if (a->page.open) {
             life_page_close(&a->page);
         } else {
@@ -526,9 +618,9 @@ static void draw_help(App *a)
     const char *help =
         PLATFORM_IS_PAGE
             ? " space pause | +/- speed | [ ] zoom | click follow | Esc let go"
-              " | l life story | j jump | b lab | r new world"
+              " | l life story | j jump | e notices | b lab | r new world"
             : " space pause | +/- speed | [ ] zoom | click follow | Esc let go"
-              " | l life story | j jump | b lab | r new world | s save | q quit";
+              " | l life story | j jump | e notices | b lab | r new world | s save | q quit";
     /* Sandbox has four keys more, so it drops the ones --help still lists. */
     if (a->sandbox.on) {
         help = " space pause | +/- speed | [ ] zoom | click follow | l story";
@@ -699,6 +791,60 @@ static const Creature *update_following(App *a, float fraction)
     return followed;
 }
 
+/* Takes a look for new notices and puts the newest in the title line. While
+ * the ancestors evolve, the list stays empty: its first look after them takes
+ * the world as it is then as known, so their years are not news. */
+static void update_notices(App *a)
+{
+    if (a->prelude.active) {
+        notices_reset(&a->notices);
+        return;
+    }
+    uint32_t before = a->notices.total;
+    notices_check(&a->notices, &a->sim);
+    uint32_t fresh = a->notices.total - before;
+    if (fresh == 0) {
+        return;
+    }
+    char line[NOTICE_TEXT + 48];
+    const Notice *x = notices_newest(&a->notices);
+    if (fresh > 1) {
+        snprintf(line, sizeof(line), "%s (and %u more: e lists)", x->text,
+                 (unsigned)(fresh - 1));
+    } else {
+        snprintf(line, sizeof(line), "%s%s", x->text,
+                 x->creature != NOTICE_NOBODY ? " (j follows)" : "");
+    }
+    say(a, line, RARE_NOTICE_FRAMES);
+    a->redraw = true;
+}
+
+/* The e list, newest first, numbered for the keys that follow. */
+static void draw_notices(App *a)
+{
+    int x, y, w, h;
+    int rows = notice_box(a, &x, &y, &w, &h);
+    if (!a->notices_open || rows == 0) {
+        return;
+    }
+    canvas_rect(&a->canvas, x, y, w, h,
+                canvas_rgb(PALETTE_TEXT_BACKGROUND.r, PALETTE_TEXT_BACKGROUND.g,
+                           PALETTE_TEXT_BACKGROUND.b));
+    int cols = w / FONT_W - 1;
+    cells_canvas_set(&a->canvas, x + FONT_W, y + FONT_H / 2);
+    render_text(0, 0, "Notices, newest first: 1-9 or a click follows, e or Esc closes",
+                cols);
+    for (int r = 0; r < rows; r++) {
+        const Notice *n = notices_get(&a->notices, (uint32_t)r);
+        char line[NOTICE_TEXT + 32];
+        int year = years_whole(n->tick, a->sim.set.ticks_per_year) + 1;
+        snprintf(line, sizeof(line), "%d  y%-4d %s%s", r + 1, year, n->text,
+                 n->creature != NOTICE_NOBODY && life_find_slot(&a->sim, n->creature) < 0
+                     ? " (dead)" : "");
+        render_text(0, r + 1, line, cols);
+    }
+}
+
 static void draw_frame(App *a, float fraction)
 {
     const Creature *followed = update_following(a, fraction);
@@ -727,6 +873,7 @@ static void draw_frame(App *a, float fraction)
         draw_page(a);
     }
     draw_sandbox(a);
+    draw_notices(a);
     /* After the world: a body near the edge may have been drawn over these. */
     draw_title(a, followed);
     draw_help(a);
@@ -840,11 +987,7 @@ static void app_frame(void *arg)
                         APP_PRELUDE_FRAME_MS / 2);
     }
     family_update(&a->families, &a->sim);
-    char giant[200];
-    if (announce_check(&a->announce, &a->sim, giant, sizeof(giant))) {
-        say(a, giant, GIANT_NOTICE_FRAMES);
-        a->redraw = true;
-    }
+    update_notices(a);
     /* The bodies' motion is worked out on the body clock as it was before
      * this frame's step, as it always has been. */
     uint64_t body_before = a->body_ms;

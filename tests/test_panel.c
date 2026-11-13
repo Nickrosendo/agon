@@ -201,7 +201,7 @@ static void test_band_names(void)
     CHECK(strcmp(panel_band_name(PANEL_HUE_BANDS), "?") == 0);
 }
 
-/* ---- the life log, the L page and the announcement ---- */
+/* ---- the life log and the L page ---- */
 
 /* True when one of the n lines contains text. */
 static bool lines_have(char lines[][PANEL_LINE_BYTES], int n, const char *text)
@@ -394,67 +394,6 @@ static void test_l_page_most_notable(void)
     sim_free(&sim);
 }
 
-/* One creature of size 2.5 in a world whose giants start at 2. */
-static int spawn_large(Sim *sim)
-{
-    sim->set.giant_size = 2.0f;
-    int slot = spawn_living(sim);
-    Genome *g = &sim->pool.items[slot].genome;
-    g->g[GENE_SIZE] = 0.5f; /* size 1 at birth, as in the chronicle's tests */
-    sim->pool.items[slot].grown = 1.5f;
-    return slot;
-}
-
-static void test_announce_once(void)
-{
-    Sim sim;
-    make_empty_sim(&sim);
-    Announce an;
-    announce_reset(&an);
-    char text[128];
-    CHECK(!announce_check(&an, &sim, text, sizeof(text)));
-    int slot = spawn_large(&sim);
-    Creature *c = &sim.pool.items[slot];
-    sim_step(&sim);
-    CHECK(announce_check(&an, &sim, text, sizeof(text)));
-    char name[16];
-    name_from_id(c->id, name, sizeof(name));
-    CHECK(strstr(text, name) != NULL);
-    CHECK(strstr(text, "year") != NULL);
-    CHECK(!announce_check(&an, &sim, text, sizeof(text))); /* only once */
-    /* Shrinking below the line and crossing it again is not news. */
-    c->grown = 0.0f;
-    sim_step(&sim);
-    c->grown = 1.5f;
-    sim_step(&sim);
-    sim_step(&sim);
-    CHECK(!announce_check(&an, &sim, text, sizeof(text)));
-    sim_free(&sim);
-}
-
-static void test_announce_jump_follows(void)
-{
-    Sim sim;
-    make_empty_sim(&sim);
-    Announce an;
-    announce_reset(&an);
-    CHECK(announce_slot(&an, &sim) == -1);
-    int slot = spawn_large(&sim);
-    sim_step(&sim);
-    char text[128];
-    CHECK(announce_check(&an, &sim, text, sizeof(text)));
-    CHECK(announce_slot(&an, &sim) == slot);
-    Inspect in = {0};
-    inspect_follow(&in, &sim, announce_slot(&an, &sim));
-    CHECK(inspect_creature(&in, &sim) == &sim.pool.items[slot]);
-    /* Once it has died there is nobody to jump to. */
-    sim.pool.items[slot].energy = 0.0f;
-    sim.pool.items[slot].health = 0.001f;
-    sim_step(&sim);
-    CHECK(announce_slot(&an, &sim) == -1);
-    sim_free(&sim);
-}
-
 int main(void)
 {
     CHECK(brain_register(&BRAIN_SCRIPT));
@@ -473,7 +412,5 @@ int main(void)
     test_l_page_lists_a_whole_life();
     test_l_page_when_followed_creature_dies();
     test_l_page_most_notable();
-    test_announce_once();
-    test_announce_jump_follows();
     TEST_SUMMARY();
 }

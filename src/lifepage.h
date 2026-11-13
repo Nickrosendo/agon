@@ -1,6 +1,6 @@
 /*
- * lifepage: the chronicle page the window opens with L, and the announcement
- * when a creature first grows to giant size. Only state and text here: the
+ * lifepage: the chronicle page the window opens with L. (Giants are told of
+ * by the notices now, notices.h.) Only state and text here: the
  * window draws the lines (window_main.c), and the tests read them.
  *
  * The page names a life by its id, never by a pointer or a slot: a creature's
@@ -56,27 +56,6 @@ void life_page_update(LifePage *p, const Sim *s);
  * says how many earlier ones are left out. Returns how many lines it wrote. */
 int life_page_text(const LifePage *p, int ticks_per_year, int cols,
                    char lines[][LIFE_PAGE_LINE_BYTES], int max_lines);
-
-/* ---- the giant announcement ---- */
-
-typedef struct {
-    uint32_t seen;    /* the chronicle's giants count when last checked */
-    uint32_t id;      /* the giant last announced, for jumping to it */
-    bool has_giant;   /* id means something */
-} Announce;
-
-/* Forgets what was seen, for a new world. */
-void announce_reset(Announce *a);
-/*
- * True once for each creature that grew to giant size since the last call, with
- * its words in out ("a giant: Raikai of the Sodri family, year 52"). When several
- * did between two calls, only the newest is announced. Needs the chronicle
- * setting on: the announcement is the chronicle's LIFE_GIANT event.
- */
-bool announce_check(Announce *a, const Sim *s, char *out, size_t len);
-/* The slot of the giant last announced, or -1 when there is none or it has
- * died. */
-int announce_slot(const Announce *a, const Sim *s);
 
 /* The slot of the living creature with this id, or -1. */
 int life_find_slot(const Sim *s, uint32_t id);

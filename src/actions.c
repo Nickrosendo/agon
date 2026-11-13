@@ -1,5 +1,6 @@
 #include "actions.h"
 
+#include <math.h>   /* fabsf */
 #include <stdlib.h> /* realloc, free */
 
 #include "genome.h"
@@ -164,4 +165,28 @@ void actions_apply_due(Sim *s)
         }
         log->next++;
     }
+}
+
+int actions_carriers(const Sim *s, int gene, float value)
+{
+    int n = 0;
+    for (int i = 0; i < s->pool.capacity; i++) {
+        const Creature *c = &s->pool.items[i];
+        /* A bool used as a number is 0 or 1, so this counts the matches. */
+        n += c->alive && fabsf(c->genome.g[gene] - value) < ACTIONS_CARRIER_TOLERANCE;
+    }
+    return n;
+}
+
+bool actions_gift_repeats(const ActionLog *log, int i)
+{
+    const PlayerAction *a = &log->items[i];
+    for (int j = 0; j < i; j++) {
+        const PlayerAction *b = &log->items[j];
+        if (b->kind == ACTION_TRAIT && b->gene == a->gene &&
+            b->value == a->value) {
+            return true;
+        }
+    }
+    return false;
 }
