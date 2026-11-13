@@ -38,7 +38,10 @@ enum { ART_COVERS_ARMOUR = 1u << 0, ART_COVERS_WEAPON = 1u << 1,
        ART_COVERS_SWIM = 1u << 2 };
 
 /* The parts painted over the frames as layers, in the order they are drawn:
- * a horn goes on last so plates never cover it. */
+ * a horn goes on last so plates never cover it. No swim layer is painted: a
+ * swimming body keeps its species' own body (Nicolas, 2026-11-13), since the
+ * gene only makes shallows cheap and land dear. The slot stays so the order
+ * and the data layout need no change. */
 enum { ART_PART_ARMOUR, ART_PART_SWIM, ART_PART_WEAPON, ART_PART_COUNT };
 /* A part's two sizes: the game shows a part from a rounded gene of 2/3
  * (medium) and draws it bigger at 1 (full). */

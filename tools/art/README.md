@@ -136,7 +136,7 @@ hidden gets an empty one-pixel layer.
 |---|---|---|---|---|
 | otter, armour, full | "add hard grey armour plates over the otter's back and flanks, overlapping bands like an armadillo's shell, from the shoulders to the hips; keep the otter's head, legs, tail, outline and pose exactly as they are; change nothing else" | 1201 | 3 | |
 | otter, weapon, full | "add one curved ivory horn growing up and forward from the otter's forehead, between its eyes and ears, like a small rhino horn; keep the otter's head, body, legs, tail, outline and pose exactly as they are; change nothing else" | 1202 | 3 + 2 | the four walk frames came back recoloured (the walk is a lighter brown than the otter's other clips); repainted with "keep the otter's brown fur colour, …" and seed 1212 |
-| wolf, swim, full | "add a tall fin standing up along the middle of the wolf's back, like a fish's dorsal fin, in the wolf's own grey with a darker edge; keep the wolf's head, body, legs, tail, outline and pose exactly as they are; change nothing else" | 1203 | 5 | |
+| ~~wolf, swim, full~~ | "add a tall fin standing up along the middle of the wolf's back, like a fish's dorsal fin, …" | 1203 | 5 | removed 2026-11-13: a fin promises life in open water, which no creature has; swimming bodies keep their own body, so no swim layers are painted |
 
 ## Adding a species
 

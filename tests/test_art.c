@@ -265,11 +265,15 @@ static void test_art_layers_pick(void)
     armed.armour = 1.0f / 3.0f;
     art_layers(SPECIES_OTTER, ACTION_WALK, &armed, out);
     CHECK(out[ART_PART_ARMOUR] == NULL);
-    /* A finned wolf gets its fin. */
-    BodyTraits finned = all_traits(0.0f);
-    finned.swim = 1.0f;
-    CHECK(art_layers(SPECIES_WOLF, ACTION_RUN, &finned, out) == 1);
-    CHECK(out[ART_PART_SWIM] != NULL);
+    /* A swimming wolf keeps its own body: swim layers are never painted
+     * (Nicolas, 2026-11-13; the gene only changes what steps cost). */
+    BodyTraits swimmer = all_traits(0.0f);
+    swimmer.swim = 1.0f;
+    CHECK(art_layers(SPECIES_WOLF, ACTION_RUN, &swimmer, out) == 0);
+    for (int s = 0; s < ART_SET_COUNT; s++) {
+        CHECK(ART_SETS[s].layer[ART_PART_SWIM][ART_SIZE_MEDIUM] == NULL);
+        CHECK(ART_SETS[s].layer[ART_PART_SWIM][ART_SIZE_FULL] == NULL);
+    }
     CHECK(art_layers(SPECIES_COUNT, ACTION_REST, &all, out) == 0);
 }
 
