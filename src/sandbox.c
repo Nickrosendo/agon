@@ -135,7 +135,7 @@ int sandbox_key(Sandbox *b, Sim *s, int key, const Creature *followed,
     if (key == 'm' || key == 'M') {
         b->on = !b->on;
         b->menu = SANDBOX_MENU_NONE;
-        snprintf(notice, size, b->on ? "Sandbox: g give a trait, w weather, "
+        snprintf(notice, size, b->on ? "Sandbox: g give a trait, w weather, x branch, "
                                        "k skip ahead"
                                      : "Documentary: watching only");
         return SANDBOX_TAKEN;
@@ -239,6 +239,7 @@ int sandbox_menu_lines(const Sandbox *b, const Sim *s, uint64_t now_ms,
 const char *sandbox_help(const Sandbox *b)
 {
     return b->on ? " Sandbox | m mode | g give trait | w weather | k skip ahead"
+                   " | x branch | Tab other branch"
                  : " Documentary | m mode";
 }
 

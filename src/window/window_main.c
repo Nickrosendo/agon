@@ -10,6 +10,7 @@
 #include <time.h>     /* time */
 
 #include "app.h"
+#include "branch.h"
 #include "camera.h"
 #include "canvas.h"
 #include "cells.h"
@@ -80,6 +81,8 @@ static const char WINDOW_USAGE[] =
     "      g gives the followed creature a trait (1 to 7 pick it, , and . set\n"
     "      its value, Enter gives), w starts a weather event for a season and\n"
     "      k skips 1, 5 or 20 years ahead (Esc stops), then says what happened.\n"
+    "      x splits the world in two from now, Tab shows the other branch,\n"
+    "      and x twice keeps the one shown. A skip moves both branches.\n"
     "mouse: wheel zooms, dragging moves, clicking a creature follows it,\n"
     "       clicking bare ground lets go. On the panel, clicking \"top hunter\",\n"
     "       \"oldest\" or the largest family's body follows that creature.\n";
@@ -121,6 +124,11 @@ typedef struct {
     /* The mode, Documentary or Sandbox, and the Sandbox menus (sandbox.h).
      * The screen's, not the world's: never saved. */
     Sandbox sandbox;
+    /* A world split in two (branch.h): a->sim is always the one on screen,
+     * branches.other the one behind it. keep_asked: x was pressed once while
+     * split, and a second x keeps the world shown. */
+    Branches branches;
+    bool keep_asked;
 } App;
 
 static void apply_window_size(App *a, int w, int h)
@@ -207,6 +215,9 @@ static void new_world(App *a)
     /* A menu or a summary was about the old world. */
     a->sandbox.menu = SANDBOX_MENU_NONE;
     skip_free(&a->sandbox.skip);
+    /* r replaces the world on screen; its other branch goes with it. */
+    branch_free(&a->branches);
+    a->keep_asked = false;
     app_prelude_start(&a->prelude, &a->sim, a->prelude_years);
     if (a->opt->frames > 0) {
         app_prelude_finish(&a->prelude, &a->sim); /* as at the start */
@@ -248,6 +259,47 @@ static void jump(App *a)
     }
 }
 
+/* Puts the other branch on screen. What the window remembers about the old
+ * world's bodies and families is about different creatures now, so it starts
+ * again, as for a new world; the camera keeps following the same id, which in
+ * a branch is the same creature, if it is alive on this side too. */
+static void switch_branch(App *a)
+{
+    if (!a->branches.split) {
+        say(a, "one world only: x splits it in two", NOTICE_FRAMES);
+        return;
+    }
+    if (!branch_switch(&a->branches, &a->sim)) {
+        say(a, "the other branch is still catching up", NOTICE_FRAMES);
+        return;
+    }
+    scene_reset(&a->scene);
+    family_reset(&a->families);
+    life_page_close(&a->page);
+    say(a, a->branches.shown == 0 ? "branch A" : "branch B", NOTICE_FRAMES);
+}
+
+/* x: splits the world in two; while split, x twice keeps the one shown. */
+static void branch_key(App *a)
+{
+    char err[160];
+    if (!a->branches.split) {
+        if (branch_make(&a->branches, &a->sim, err, sizeof(err))) {
+            say(a, "split in two: this is A, Tab shows B; "
+                   "try something in one", 2 * NOTICE_FRAMES);
+        } else {
+            say(a, err, NOTICE_FRAMES);
+        }
+    } else if (!a->keep_asked) {
+        a->keep_asked = true;
+        say(a, "x again keeps this branch and drops the other", NOTICE_FRAMES);
+    } else {
+        branch_keep_shown(&a->branches);
+        a->keep_asked = false;
+        say(a, "kept this branch; one world again", NOTICE_FRAMES);
+    }
+}
+
 static void handle_key(App *a, int key)
 {
     /* While the ancestors evolve, any key but q ends that where it got to,
@@ -271,6 +323,21 @@ static void handle_key(App *a, int key)
             a->redraw = true;
             return;
         }
+    }
+    /* Any key but a second x takes back a first x's question. */
+    if (key != 'x' && key != 'X') {
+        a->keep_asked = false;
+    }
+    /* Branching is a Sandbox tool; Documentary never changes a world. */
+    if (a->sandbox.on && (key == 'x' || key == 'X')) {
+        branch_key(a);
+        a->redraw = true;
+        return;
+    }
+    if (a->sandbox.on && key == '\t') {
+        switch_branch(a);
+        a->redraw = true;
+        return;
     }
     switch (key) {
     case 'q':
@@ -431,14 +498,22 @@ static void draw_title(App *a, const Creature *followed)
         snprintf(weather, sizeof(weather), " | %s",
                  weather_name(a->sim.weather.kind));
     }
-    char text[440];
+    char branch[160] = "";
+    if (a->branches.split) {
+        branch[0] = ' ';
+        branch[1] = '|';
+        branch[2] = ' ';
+        /* Written after the three characters: out points into the middle. */
+        branch_status_text(&a->branches, &a->sim, branch + 3, sizeof(branch) - 3);
+    }
+    char text[600];
     snprintf(text, sizeof(text),
-             " agon %s | seed 0x%" PRIx64 " | year %s, %s%s | creatures %d | %d/s%s%s%s%s",
+             " agon %s | seed 0x%" PRIx64 " | year %s, %s%s | creatures %d | %d/s%s%s%s%s%s",
              a->sandbox.on ? "Sandbox" : "Documentary", a->sim.seed, year,
              years_season(a->sim.tick, a->sim.set.ticks_per_year), weather,
              a->sim.pool.count, APP_SPEEDS[a->speed],
              sim_is_over(&a->sim) ? " | game over" : a->paused ? " | paused" : "",
-             who,
+             branch, who,
              a->notice[0] != '\0' ? " | " : "", a->notice);
     cells_canvas_set(&a->canvas, 0, 0);
     render_text(0, 0, text, a->canvas.w / FONT_W + 1);
@@ -738,8 +813,11 @@ static void app_frame(void *arg)
         a->redraw = true;
     } else if (sandbox_skipping(&a->sandbox)) {
         /* A skip runs like the prelude, a slice a frame, paused or not. */
+        /* Split, the other branch gets half the frame (below), so both
+         * move ahead together and the skip covers both. */
         sandbox_skip_step(&a->sandbox, &a->sim, platform_now_ms,
-                          APP_PRELUDE_FRAME_MS);
+                          a->branches.split ? APP_PRELUDE_FRAME_MS / 2
+                                            : APP_PRELUDE_FRAME_MS);
         a->ticks_due = 0;
         a->redraw = true;
     } else if (!a->paused && !sim_is_over(&a->sim)) {
@@ -754,6 +832,12 @@ static void app_frame(void *arg)
             a->ticks_due = 0;  /* nothing is on its way any more */
             a->redraw = true;  /* the frame that shows the screen */
         }
+    }
+    /* The world behind the one on screen keeps level with it: the ticks the
+     * shown world ran this frame, or as many as half a frame allows. */
+    if (!branch_caught_up(&a->branches, &a->sim)) {
+        branch_catch_up(&a->branches, &a->sim, platform_now_ms,
+                        APP_PRELUDE_FRAME_MS / 2);
     }
     family_update(&a->families, &a->sim);
     char giant[200];
@@ -937,6 +1021,7 @@ int main(int argc, char **argv)
     family_free(&app.families);
     scene_free(&app.scene);
     sandbox_free(&app.sandbox);
+    branch_free(&app.branches);
     sim_free(&app.sim);
     return result;
 }
