@@ -19,6 +19,8 @@ import sys
 
 from PIL import Image
 
+import gen_parts
+
 CANVAS = 128  # larger than any PixelLab canvas (68 to 88 so far): only the margin changes
 # skeleton.h's inks
 NONE, DEEP, SHADOW, BASE, LIGHT, HIGH, BELLY, OUTLINE, MOUTH = range(9)
@@ -352,7 +354,15 @@ def place_eye(inks, w, h, offset):
     return ex, ey
 
 
-# ---- Layers: parts PixelLab painted into the frames ----
+# ---- Layers: parts PixelLab painted into the frames, or made from them ----
+
+# Species whose parts are made from their own frames (gen_parts.py) instead
+# of painted by PixelLab: no credits spent. A generated part takes the place
+# of a painted one. AGON_GENERATED_TOO=otter,... adds species for one run,
+# to compare the two ways side by side.
+GENERATED = {"wolf": ("armour", "weapon")}
+for extra in filter(None, os.environ.get("AGON_GENERATED_TOO", "").split(",")):
+    GENERATED[extra] = ("armour", "weapon")
 
 PART_SLOTS = [("armour", "ART_PART_ARMOUR"), ("swim", "ART_PART_SWIM"),
               ("weapon", "ART_PART_WEAPON")]
@@ -437,7 +447,7 @@ def layer_clips(w, root, name, anchor_x, anchor_y, levels):
     for part, _ in PART_SLOTS:
         for size, _ in SIZE_SLOTS:
             top = os.path.join(root, name, "parts", "%s-%s" % (part, size))
-            if not os.path.isdir(top):
+            if not os.path.isdir(top) or part in GENERATED.get(name, ()):
                 continue
             # pass 1: each frame's part pixels, and the part's lightness range
             per_action = []
@@ -481,37 +491,62 @@ def layer_clips(w, root, name, anchor_x, anchor_y, levels):
                               file=sys.stderr)
             lo = min(all_v) if all_v else 0.0
             hi = max(all_v) if all_v else 0.0
-            # pass 2: each frame cut to its own box, the base anchor kept
+            # pass 2: inks, then each frame written cut to its own box
             cname = "%s_%s_%s" % (name, part, size)
+            inked = []
             for (action, clip, frames), level in zip(per_action, levels):
-                rows = []
-                for i, px in enumerate(frames):
-                    if px:
-                        bx0 = min(x for x, _ in px)
-                        by0 = min(y for _, y in px)
-                        fw = max(x for x, _ in px) - bx0 + 1
-                        fh = max(y for _, y in px) - by0 + 1
-                    else:  # the part is hidden in this frame: one empty pixel
-                        bx0, by0, fw, fh = int(anchor_x), anchor_y, 1, 1
-                    inks = [NONE] * (fw * fh)
-                    for (x, y), rgb in px.items():
-                        inks[(y - by0) * fw + (x - bx0)] = part_ink(part, rgb, lo, hi, level)
-                    fname = "%s_%s_%d" % (cname, clip, i)
-                    w("static const uint8_t %s_ink[%d] = {" % (fname, fw * fh))
-                    for row in range(fh):
-                        w("    " + ",".join(str(v) for v in inks[row * fw:(row + 1) * fw]) + ",")
-                    w("};")
-                    rows.append((fname, fw, fh, int(anchor_x - bx0), anchor_y - by0))
-                w("static const ArtFrame %s_%s_frames[%d] = {" % (cname, clip, len(rows)))
-                for fname, fw, fh, ax, ay in rows:
-                    w("    {%d, %d, %d, %d, -1, -1, %s_ink}," % (fw, fh, ax, ay, fname))
-                w("};")
-            w("static const ArtClip %s_clips[ACTION_COUNT] = {" % cname)
-            for action, clip, frames in per_action:
-                w("    [%s] = {%d, %s_%s_frames}," % (action, len(frames), cname, clip))
-            w("};")
+                inked.append((action, clip, [{q: part_ink(part, rgb, lo, hi, level)
+                                              for q, rgb in px.items()} for px in frames]))
+            write_layer(w, cname, inked, anchor_x, anchor_y)
             found[(part, size)] = "%s_clips" % cname
     return found
+
+
+def write_layer(w, cname, actions, anchor_x, anchor_y):
+    """Writes one part's layer clips: actions is [(ACTION_ value, clip name,
+    [{(x, y): ink} per frame, on the canvas])]. Each frame is cut to its own
+    box with the base anchor in its pixels; a frame with no part pixels gets
+    one empty pixel, since every frame needs a size."""
+    for action, clip, frames in actions:
+        rows = []
+        for i, px in enumerate(frames):
+            if px:
+                bx0 = min(x for x, _ in px)
+                by0 = min(y for _, y in px)
+                fw = max(x for x, _ in px) - bx0 + 1
+                fh = max(y for _, y in px) - by0 + 1
+            else:  # the part is hidden in this frame: one empty pixel
+                bx0, by0, fw, fh = int(anchor_x), anchor_y, 1, 1
+            inks = [NONE] * (fw * fh)
+            for (x, y), ink in px.items():
+                inks[(y - by0) * fw + (x - bx0)] = ink
+            fname = "%s_%s_%d" % (cname, clip, i)
+            w("static const uint8_t %s_ink[%d] = {" % (fname, fw * fh))
+            for row in range(fh):
+                w("    " + ",".join(str(v) for v in inks[row * fw:(row + 1) * fw]) + ",")
+            w("};")
+            rows.append((fname, fw, fh, int(anchor_x - bx0), anchor_y - by0))
+        w("static const ArtFrame %s_%s_frames[%d] = {" % (cname, clip, len(rows)))
+        for fname, fw, fh, ax, ay in rows:
+            w("    {%d, %d, %d, %d, -1, -1, %s_ink}," % (fw, fh, ax, ay, fname))
+        w("};")
+    w("static const ArtClip %s_clips[ACTION_COUNT] = {" % cname)
+    for action, clip, frames in actions:
+        w("    [%s] = {%d, %s_%s_frames}," % (action, len(frames), cname, clip))
+    w("};")
+
+
+def generated_parts(inks, fw, fh, bx0, by0, name, eye_offset, stand_angle):
+    """The parts gen_parts.py makes for this frame, {part: {(x, y): ink}} on
+    the canvas (the frame's box starts at bx0, by0)."""
+    out = {}
+    for part in GENERATED.get(name, ()):
+        if part == "armour":
+            px = gen_parts.shell(inks, fw, fh, name)
+        else:
+            px = gen_parts.horn(inks, fw, fh, eye_offset, stand_angle)
+        out[part] = {(x + bx0, y + by0): ink for (x, y), ink in px.items()}
+    return out
 
 
 def layer_table(found):
@@ -567,6 +602,7 @@ def main():
             offset = (eye[0] - nx, eye[1] - ny)
         clips = []
         levels = []
+        made = {part: [] for part in GENERATED.get(name, ())}  # generated layers
         for action, clip in ACTIONS:
             span = FRAMES.get(name, {}).get(clip)
             path = os.path.join(folder, CLIP_FROM.get(name, {}).get(clip, clip))
@@ -604,6 +640,13 @@ def main():
                 inks, plain, ex, ey = placed[i]
                 if not eyes:
                     inks, ex, ey = plain, -1, -1
+                if made:
+                    parts = generated_parts(plain, fw, fh, bx0, by0, name, offset,
+                                            gen_parts.stand_angle(sinks, sw, sh))
+                    for part, px in parts.items():
+                        if i == 0:
+                            made[part].append((action, clip, []))
+                        made[part][-1][2].append(px)
                 fname = "%s_%s_%d" % (name, clip, i)
                 w("static const uint8_t %s_ink[%d] = {" % (fname, fw * fh))
                 for row in range(fh):
@@ -618,6 +661,10 @@ def main():
             w("};")
             clips.append((action, "%s_%s" % (name, clip), len(fnames)))
         found = layer_clips(w, root, name, anchor_x, anchor_y, levels)
+        for part, actions in made.items():
+            cname = "%s_%s_full" % (name, part)
+            write_layer(w, cname, actions, anchor_x, anchor_y)
+            found[(part, "full")] = "%s_clips" % cname
         w("static const ArtClip %s_clips[ACTION_COUNT] = {" % name)
         for c in clips:
             if c[1] is None:
