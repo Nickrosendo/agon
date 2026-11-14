@@ -146,7 +146,9 @@ longer used: since 2026-11-13 every species' parts are generated instead.
 `gen_parts.py` makes each part from the frame's own pixels; the converter
 writes them as ordinary layers for every species (`GENERATED` in
 `pixellab_to_c.py`: a shell unless the frames are the species' armour, a horn
-where `gen_parts.HORN` places one, so not on the rhino or the elephant).
+where `gen_parts.HORN` places one, so not on the rhino, the elephant or the
+deer, whose frames count as their weapon; the deer keeps its `HORN` entry,
+since its head is found from it).
 
 - **The head, in every frame.** The standing frame's head (the pixels within
   6 of a point halfway between the nose tip and the horn's base, each as

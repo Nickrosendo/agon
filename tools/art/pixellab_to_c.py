@@ -47,7 +47,7 @@ SPECIES = {
     "hippo": ("SPECIES_HIPPO", "ART_COVERS_SWIM"),
     "rhino": ("SPECIES_RHINO", "ART_COVERS_ARMOUR | ART_COVERS_WEAPON"),
     "gazelle": ("SPECIES_GAZELLE", "0"),
-    "deer": ("SPECIES_DEER", "0"),
+    "deer": ("SPECIES_DEER", "ART_COVERS_WEAPON"),
     "zebra": ("SPECIES_ZEBRA", "0"),
 }
 # the game's actions and the clip each is cut from

@@ -250,7 +250,11 @@ def find_head(template, inks, w, h):
 # theirs is drawn along their own and longer, so the old one sits inside the
 # new (layers cannot erase). The game's eye is no help here: it is missing
 # for most species. Rhino and elephant are not listed: their frames are
-# their weapon.
+# their weapon. The deer's frames are its weapon too since 2026-11-13 (a
+# straight horn along branched antlers read as a stick laid over them), so
+# pixellab_to_c draws no horn on it; its entry stays because the head is
+# found from the point between the nose and the horn's base, and the shell
+# sits behind the head.
 HORN = {
     "wolf": (-5, -4), "otter": (-5, -3), "fox": (-3, -3), "fennec": (-3, -3),
     "hare": (-4, -3), "lemur": (-3, -4), "lion": (-3, -4), "tiger": (-5, -5),
