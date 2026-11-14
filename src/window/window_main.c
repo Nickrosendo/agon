@@ -1228,7 +1228,10 @@ static void update_look(App *a)
         return;
     }
     char why[LOOKAHEAD_WHY];
-    unsigned tired = (1u << a->look_last[0]) | (1u << a->look_last[1]);
+    /* The kinds of the last two picks, one bit each: the camera turns to
+     * another kind of story when one has something coming. */
+    unsigned tired = (1u << lookahead_kind(a->look_last[0])) |
+                     (1u << lookahead_kind(a->look_last[1]));
     int reason;
     uint32_t id =
         lookahead_pick(&a->look, &a->sim, tired, &reason, why, sizeof(why));

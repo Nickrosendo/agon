@@ -63,24 +63,40 @@ typedef enum {
     LOOK_FIRST_KILL,
     LOOK_MORE_KILLS,
     LOOK_HUNTER_KILL,
+    LOOK_WOUND,    /* a heavy wound coming */
+    LOOK_KIN_LOST, /* family members about to die */
     LOOK_REASON_COUNT
 } LookReason;
 
+/* The kinds of story a reason belongs to. The camera turns from one kind to
+ * another (lookahead_pick), so a run of picks is not all kills. */
+typedef enum {
+    LOOK_KIND_QUIET,
+    LOOK_KIND_HUNT,   /* first kill, more kills, a hunter killed */
+    LOOK_KIND_FIGHT,  /* a fight, a heavy wound */
+    LOOK_KIND_FAMILY, /* young, kin lost */
+    LOOK_KIND_BODY,   /* growing giant, the largest alive */
+    LOOK_KIND_LIFE,   /* the oldest alive, setting out for new land */
+    LOOK_KIND_COUNT
+} LookKind;
+
 /* The phrase for a reason, such as "first kill soon". */
 const char *lookahead_reason_text(int reason);
+/* The LookKind of a LookReason. */
+int lookahead_kind(int reason);
 /* What a life's coming season is worth watching, from its tally and age now
  * and later: kills and fights above slow things like growing (lookahead.c has
- * the weights). tired: reasons shown lately, bit r for reason r; those parts
- * count less, so the camera does not show the same kind of thing every time.
- * *why is set to the biggest part's LookReason. */
+ * the weights). *why is set to the biggest part's LookReason. */
 float lookahead_score(const LifeTally *now, uint32_t age_now,
-                      const LifeTally *later, uint32_t age_later,
-                      unsigned tired, int *why);
+                      const LifeTally *later, uint32_t age_later, int *why);
 /* The living creature on screen with the best coming season (a life that
  * ends within it counts half), its LookReason in *reason, and in why a
  * line such as "Varo, a young hunter: first kill soon". LOOKAHEAD_NOBODY
- * (and an empty why) when the copy is not ready or nobody is alive. tired as
- * for lookahead_score: the window passes the reasons of its last picks. */
+ * (and an empty why) when the copy is not ready or nobody is alive.
+ * tired: the kinds of the last picks, bit k for LookKind k. When the best
+ * season is of a tired kind and another kind's best has something coming
+ * (a score of LOOKAHEAD_OTHER_WORTH or more), that one is picked instead. */
+#define LOOKAHEAD_OTHER_WORTH 2.0f
 uint32_t lookahead_pick(const Lookahead *l, const Sim *shown, unsigned tired,
                         int *reason, char *why, size_t len);
 /* Frees the copy; safe to call twice. The lead is kept. */
