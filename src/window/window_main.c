@@ -400,16 +400,18 @@ static void copy_code(App *a)
         free(text);
         return;
     }
-#if CODE_IN_TERMINAL
     /* Also in the terminal agon was started from. On Linux with X11 the
      * clipboard is not a store: the program that copied keeps the text and
      * hands it over when another one pastes, so without a clipboard manager
-     * the code is gone once agon closes. The printed line stays. fflush:
-     * stdout into a pipe or file is written in blocks, and this line should
-     * be there at once. */
-    printf("world code: %s\n", text);
-    fflush(stdout);
-#endif
+     * the code is gone once agon closes. The printed line stays. And in a
+     * --frames run (a test or a screenshot) on every system, Windows too,
+     * so the window smoke test can read the code back. fflush: stdout into
+     * a pipe or file is written in blocks, and this line should be there at
+     * once. */
+    if (CODE_IN_TERMINAL || a->opt->frames > 0) {
+        printf("world code: %s\n", text);
+        fflush(stdout);
+    }
     if (platform_clipboard_set(text)) {
         char line[96];
         snprintf(line, sizeof(line), "world code copied (%zu characters%s): o "
