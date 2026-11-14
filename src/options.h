@@ -47,6 +47,9 @@ typedef struct {
     /* --code: a world code, or a link holding one, that the window opens at
      * the start instead of a new world. Points into argv. */
     const char *code;
+    /* --playlog: a file the window writes a record of the sitting to on
+     * leaving (playlog.h). Points into argv. */
+    const char *playlog_path;
     /* --keys: keys pressed one a frame during the last frames of --frames, so
      * a test or a screenshot can open the L page. Points into argv. */
     const char *keys;

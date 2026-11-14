@@ -132,6 +132,7 @@ enum {
     OPT_NO_ART,
     OPT_SANDBOX,
     OPT_CODE,
+    OPT_PLAYLOG,
     OPT_ANCESTORS
 };
 
@@ -160,6 +161,7 @@ static const struct option LONG_OPTIONS[] = {
     {"no-art", no_argument, NULL, OPT_NO_ART},
     {"sandbox", no_argument, NULL, OPT_SANDBOX},
     {"code", required_argument, NULL, OPT_CODE},
+    {"playlog", required_argument, NULL, OPT_PLAYLOG},
     {"ancestors", required_argument, NULL, OPT_ANCESTORS},
     {NULL, 0, NULL, 0},
 };
@@ -199,6 +201,9 @@ static bool take_value(int opt, const char *value, Options *o, char *err,
         return true;
     case OPT_CODE:
         o->code = value;
+        return true;
+    case OPT_PLAYLOG:
+        o->playlog_path = value;
         return true;
     case OPT_FRAMES:
         if (!parse_long(value, 1, OPTIONS_MAX_FRAMES, &n)) {

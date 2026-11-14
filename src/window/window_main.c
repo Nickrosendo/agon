@@ -31,6 +31,7 @@
 #include "sandbox.h"
 #include "compare.h"
 #include "keyhelp.h"
+#include "playlog.h"
 #include "worldcode.h"
 #include "save.h"
 #include "scene.h"
@@ -92,6 +93,9 @@ static const char WINDOW_USAGE[] =
     "  --sandbox         start in Sandbox mode, with the tools (the m key switches)\n"
     "  --code TEXT       open this world code (or a link holding one) and replay\n"
     "                    it up to where it was copied, instead of a new world\n"
+    "  --playlog PATH    on leaving, write a record of the sitting there: time in\n"
+    "                    each mode and how often each key was used (for playtests;\n"
+    "                    nothing about the world, and nothing is sent anywhere)\n"
     "  --keys TEXT       with --frames: press these keys, one a frame, in the\n"
     "                    last frames (\"l\" shows the life story page, \"b\" the\n"
     "                    species lab, \"~\" presses nothing for a frame)\n"
@@ -191,6 +195,7 @@ typedef struct {
      * a skip ends while split. was_skipping: a skip was running last frame. */
     bool compare_open;
     bool was_skipping;
+    Playlog playlog; /* counted always, written only with --playlog */
     /* The one-time hints already given this run, as HINT_ bits: each is said
      * once, the first time it would help. */
     unsigned hints;
@@ -227,6 +232,7 @@ static void say(App *a, const char *text, int frames);
 
 static void click(App *a, int x, int y)
 {
+    playlog_click(&a->playlog);
     if (a->notices_open) {
         int bx, by, bw, bh;
         int rows = notice_box(a, &bx, &by, &bw, &bh);
@@ -652,6 +658,7 @@ static void branch_key(App *a)
 
 static void handle_key(App *a, int key)
 {
+    playlog_key(&a->playlog, key);
     /* While the ancestors evolve, any key but q ends that where it got to,
      * and does nothing else: it was pressed to stop the waiting. */
     bool in_setup = a->sandbox.menu == SANDBOX_MENU_SETUP;
@@ -1461,6 +1468,7 @@ static void pretend_keys(App *a)
 static void app_frame(void *arg)
 {
     App *a = arg; /* in C, void * converts to any pointer without a cast */
+    playlog_frame(&a->playlog, platform_now_ms(), a->sandbox.on);
     Event e;
     while (platform_poll(&e)) {
         handle_event(a, &e);
@@ -1633,6 +1641,11 @@ static int app_leave(App *a)
         platform_error(err);
         result = EXIT_FAILED;
     }
+    if (a->opt->playlog_path != NULL &&
+        !playlog_write(&a->playlog, a->opt->playlog_path, err, sizeof(err))) {
+        platform_error(err);
+        result = EXIT_FAILED;
+    }
     if (a->opt->checksum) {
         printf("checksum 0x%016" PRIx64 "\n", sim_checksum(&a->sim));
     }
@@ -1666,6 +1679,10 @@ int main(int argc, char **argv)
     }
     if (PLATFORM_IS_PAGE && (opt.save_path != NULL || opt.load_path != NULL)) {
         platform_error("a browser page has nowhere to save or load from");
+        return EXIT_USAGE;
+    }
+    if (PLATFORM_IS_PAGE && opt.playlog_path != NULL) {
+        platform_error("a browser page has nowhere to write a playlog");
         return EXIT_USAGE;
     }
     if (opt.code != NULL && opt.load_path != NULL) {
@@ -1764,6 +1781,7 @@ int main(int argc, char **argv)
         return EXIT_FAILED;
     }
     app.last_ms = platform_now_ms();
+    playlog_init(&app.playlog);
 
     platform_run(app_frame, &app, opt.frames > 0 ? 0 : FRAMES_PER_SECOND);
 

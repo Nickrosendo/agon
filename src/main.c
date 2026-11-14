@@ -307,9 +307,10 @@ int main(int argc, char **argv)
     }
     /* These only mean something with a window to draw in. */
     if (opt.frames > 0 || opt.screenshot_path != NULL || opt.zoom_name != NULL ||
-        opt.keys != NULL || opt.paused || opt.no_art || opt.code != NULL) {
+        opt.keys != NULL || opt.paused || opt.no_art || opt.code != NULL ||
+        opt.playlog_path != NULL) {
         fprintf(stderr, "agon: --frames, --screenshot, --zoom, --keys, --paused, "
-                        "--no-art and --code are for agon-window\n");
+                        "--no-art, --code and --playlog are for agon-window\n");
         return EXIT_USAGE;
     }
     if (opt.once) {
