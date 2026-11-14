@@ -305,6 +305,7 @@ static void forget_old_world(App *a)
     branch_free(&a->branches);
     a->keep_asked = false;
     a->compare_open = false;
+    sandbox_weather_forget(&a->sandbox);
     /* The copy was of the old world; the new one gets picked for at once. */
     lookahead_free(&a->look);
     a->idle_frames = LOOK_IDLE_FRAMES;
@@ -616,6 +617,8 @@ static void switch_branch(App *a)
     scene_reset(&a->scene);
     family_reset(&a->families);
     life_page_close(&a->page);
+    /* The event watched was the other branch's, from that branch's start. */
+    sandbox_weather_forget(&a->sandbox);
     /* Each branch keeps its own list. A struct assignment copies every byte,
      * the arrays inside included, and Notices points at nothing, so this is
      * a whole swap. */
@@ -1544,6 +1547,11 @@ static void app_frame(void *arg)
     }
     family_update(&a->families, &a->sim);
     update_notices(a);
+    char weather_line[200];
+    if (!a->prelude.active &&
+        sandbox_weather_check(&a->sandbox, &a->sim, weather_line, sizeof(weather_line))) {
+        say(a, weather_line, 3 * NOTICE_FRAMES);
+    }
     /* The bodies' motion is worked out on the body clock as it was before
      * this frame's step, as it always has been. */
     uint64_t body_before = a->body_ms;

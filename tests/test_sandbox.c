@@ -98,6 +98,49 @@ static void test_weather_by_keys(void)
     sim_free(&s);
 }
 
+/* A drought watched from its start is told of when it ends, once; one first
+ * seen half-way through is not. */
+static void test_weather_told_when_over(void)
+{
+    Settings set = settings_default();
+    Sim s;
+    CHECK(sim_init(&s, &set, 2, 64, 32));
+    Sandbox b = {.on = true};
+    char line[200];
+    press(&b, &s, 'w', NULL);
+    press(&b, &s, '1', NULL);
+    sim_step(&s); /* the event starts at the start of this tick */
+    CHECK(!sandbox_weather_check(&b, &s, line, sizeof(line)));
+    CHECK(b.weather.watching);
+    int told = 0;
+    uint64_t season = (uint64_t)set.ticks_per_year / 4u;
+    for (uint64_t t = 0; t < season + 10; t++) {
+        sim_step(&s);
+        if (sandbox_weather_check(&b, &s, line, sizeof(line))) {
+            told++;
+            CHECK(strstr(line, "drought over") != NULL);
+            CHECK(strstr(line, "plant-eaters") != NULL);
+        }
+    }
+    CHECK(told == 1);
+
+    /* Another drought, first looked at half a season in: never told. */
+    sandbox_weather_forget(&b);
+    press(&b, &s, 'w', NULL);
+    press(&b, &s, '1', NULL);
+    for (uint64_t t = 0; t < season / 2; t++) {
+        sim_step(&s);
+    }
+    told = 0;
+    for (uint64_t t = 0; t < season; t++) {
+        sim_step(&s);
+        told += sandbox_weather_check(&b, &s, line, sizeof(line)) ? 1 : 0;
+    }
+    CHECK(told == 0);
+    sandbox_free(&b);
+    sim_free(&s);
+}
+
 /* k 1 skips a year in slices; Esc during a skip stops it and shows the
  * summary; any key closes that. */
 static void test_skip_by_keys(void)
@@ -178,6 +221,7 @@ int main(void)
     test_documentary_ignores_tools();
     test_give_by_keys();
     test_weather_by_keys();
+    test_weather_told_when_over();
     test_skip_by_keys();
     TEST_SUMMARY();
 }

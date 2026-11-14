@@ -36,6 +36,19 @@ enum { SANDBOX_WILD_STEPS = 6, SANDBOX_JUMP_STEPS = 5 };
 /* The step of the trait menu's value: , and . move it by this. */
 #define SANDBOX_VALUE_STEP 0.05f
 
+/* A weather event watched from its start, to say when it ends what changed in
+ * its season (sandbox_weather_check). */
+typedef struct {
+    bool watching;
+    int kind;            /* the event's WEATHER_ kind */
+    uint64_t until;      /* its end, which tells one event from the next */
+    int plant_eaters, meat_eaters, planted; /* at its start */
+} WeatherWatch;
+
+/* How far into an event the watch may first see it and still count from its
+ * start: a frame runs a few ticks, a fast one a few dozen. */
+#define SANDBOX_WEATHER_LATE 60
+
 typedef struct {
     bool on;          /* Sandbox mode; false is Documentary */
     int menu;         /* a SANDBOX_MENU_ value */
@@ -48,6 +61,7 @@ typedef struct {
      * the genes that may jump, as bits of jump_genes (settings.h). */
     int wild_step, jump_step;
     int jump_genes;
+    WeatherWatch weather;
 } Sandbox;
 
 /* Opens the setup screen at the values set has now (the nearest steps). */
@@ -71,6 +85,17 @@ bool sandbox_skipping(const Sandbox *b);
  * open. */
 int sandbox_menu_lines(const Sandbox *b, const Sim *s, uint64_t now_ms,
                        char lines[][SKIP_COLS], int max);
+/*
+ * Called each frame with the world shown. When a weather event has ended
+ * that was watched from its start, writes one line to out ("drought over:
+ * plant-eaters -31 %, ...", each over the event's season) and returns true. An event first
+ * seen later than SANDBOX_WEATHER_LATE ticks after its start (after Tab, a
+ * load or a code) is not told of: its numbers would cover part of a season.
+ */
+bool sandbox_weather_check(Sandbox *b, const Sim *s, char *out, size_t size);
+/* Forgets the event watched: the world on screen is another one now. */
+void sandbox_weather_forget(Sandbox *b);
+
 /* The keys line for the bottom of the window. */
 const char *sandbox_help(const Sandbox *b);
 void sandbox_free(Sandbox *b);

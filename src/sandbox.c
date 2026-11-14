@@ -352,6 +352,83 @@ int sandbox_menu_lines(const Sandbox *b, const Sim *s, uint64_t now_ms,
     return n;
 }
 
+/* "-31 %", "+4 %", "same" or "new": now against then, rounded. */
+static void change_text(int then, int now, char *out, size_t size)
+{
+    if (then <= 0) {
+        snprintf(out, size, "%s", now > 0 ? "new" : "none");
+        return;
+    }
+    /* long long: a count times 100 could pass an int on a very large world. */
+    long long diff = (long long)(now - then) * 100;
+    long long pct = (diff + (diff >= 0 ? then / 2 : -(then / 2))) / then;
+    if (pct == 0) {
+        snprintf(out, size, "same");
+    } else {
+        snprintf(out, size, "%+lld %%", pct);
+    }
+}
+
+bool sandbox_weather_check(Sandbox *b, const Sim *s, char *out, size_t size)
+{
+    WeatherWatch *w = &b->weather;
+    const Stats *st = &s->stats;
+    int meat_now = st->by_level[BAND_MEAT] + st->by_level[BAND_TOP];
+    bool active = weather_active(&s->weather, s->tick);
+    /* An event under way that is not the one watched: start watching, if it
+     * started lately enough to count as its start. */
+    if (active && (!w->watching || w->until != s->weather.until)) {
+        uint64_t season = (uint64_t)s->set.ticks_per_year / 4u;
+        /* until - season is when it started; checked so the subtraction
+         * cannot wrap round below 0. */
+        uint64_t start = s->weather.until > season ? s->weather.until - season : 0;
+        if (s->tick - start <= SANDBOX_WEATHER_LATE) {
+            *w = (WeatherWatch){
+                .watching = true,
+                .kind = s->weather.kind,
+                .until = s->weather.until,
+                .plant_eaters = st->by_level[BAND_PLANT],
+                .meat_eaters = meat_now,
+                .planted = st->planted,
+            };
+        } else {
+            *w = (WeatherWatch){0};
+        }
+        return false;
+    }
+    if (active || !w->watching) {
+        return false;
+    }
+    /* The watched event is over. A world put back in time (a load, a code)
+     * is another story: no line. */
+    bool ended_here = s->tick >= w->until;
+    WeatherWatch was = *w;
+    *w = (WeatherWatch){0};
+    if (!ended_here) {
+        return false;
+    }
+    char plants[16], meat[16], ground[16];
+    change_text(was.plant_eaters, st->by_level[BAND_PLANT], plants, sizeof(plants));
+    change_text(was.meat_eaters, meat_now, meat, sizeof(meat));
+    change_text(was.planted, st->planted, ground, sizeof(ground));
+#ifdef AGON_DEMO
+    const char *more = "";
+#else
+    /* A season changes things with no weather too; a split world shows
+     * what the weather itself did. */
+    const char *more = " (x: split to compare)";
+#endif
+    /* Short: it shares the title line with the world's own numbers. */
+    snprintf(out, size, "%s over: plant-eaters %s, meat-eaters %s, plants %s%s",
+             weather_name(was.kind), plants, meat, ground, more);
+    return true;
+}
+
+void sandbox_weather_forget(Sandbox *b)
+{
+    b->weather = (WeatherWatch){0};
+}
+
 const char *sandbox_help(const Sandbox *b)
 {
 #ifdef AGON_DEMO
