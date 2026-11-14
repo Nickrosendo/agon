@@ -29,6 +29,8 @@
 #include "platform.h"
 #include "rng.h"
 #include "sandbox.h"
+#include "compare.h"
+#include "keyhelp.h"
 #include "worldcode.h"
 #include "save.h"
 #include "scene.h"
@@ -63,6 +65,14 @@
  * looking at something, and the camera should not pull them away at once. */
 #define LOOK_IDLE_FRAMES (10 * FRAMES_PER_SECOND)
 
+/* The first-minute hints, one bit each in App.hints: after the ancestors,
+ * after the first click on a creature, with the first notice. */
+enum {
+    HINT_START = 1u << 0,
+    HINT_FOLLOW = 1u << 1,
+    HINT_NOTICES = 1u << 2,
+};
+
 static const char WINDOW_USAGE[] =
     "usage: agon-window [options]\n"
     "  --seed N          the world's seed\n"
@@ -80,6 +90,8 @@ static const char WINDOW_USAGE[] =
     "  --no-art          start with the animals drawn from the skeleton, not their\n"
     "                    drawn frames (the a key switches)\n"
     "  --sandbox         start in Sandbox mode, with the tools (the m key switches)\n"
+    "  --code TEXT       open this world code (or a link holding one) and replay\n"
+    "                    it up to where it was copied, instead of a new world\n"
     "  --keys TEXT       with --frames: press these keys, one a frame, in the\n"
     "                    last frames (\"l\" shows the life story page, \"b\" the\n"
     "                    species lab, \"~\" presses nothing for a frame)\n"
@@ -107,6 +119,8 @@ static const char WINDOW_USAGE[] =
     "      k skips 1, 5 or 20 years ahead (Esc stops), then says what happened.\n"
     "      x splits the world in two from now, Tab shows the other branch,\n"
     "      and x twice keeps the one shown. A skip moves both branches.\n"
+    "      v compares the two branches side by side (and opens by itself\n"
+    "      when a skip ends while split).\n"
     "      u opens a new start: how wildly bodies change from parent to young\n"
     "      and which traits may jump; Enter starts the world again with them.\n"
     "      c copies the world's code (seed, settings and everything done to\n"
@@ -172,6 +186,14 @@ typedef struct {
      * pick leans to something else. 0 is LOOK_QUIET, a fine start. */
     int look_last[2];
     int idle_frames;
+    bool keys_open; /* the ? page, every key, drawn over the world */
+    /* v: the two branches side by side, while split; it opens by itself when
+     * a skip ends while split. was_skipping: a skip was running last frame. */
+    bool compare_open;
+    bool was_skipping;
+    /* The one-time hints already given this run, as HINT_ bits: each is said
+     * once, the first time it would help. */
+    unsigned hints;
 } App;
 
 static void apply_window_size(App *a, int w, int h)
@@ -226,6 +248,11 @@ static void click(App *a, int x, int y)
     float wx, wy;
     camera_to_world(&a->camera, sx, sy, &wx, &wy);
     scene_click(&a->inspect, &a->sim, wx, wy);
+    if ((a->hints & HINT_FOLLOW) == 0 && inspect_creature(&a->inspect, &a->sim) != NULL) {
+        a->hints |= HINT_FOLLOW;
+        say(a, "following: l tells its life story, Esc lets go, ? lists every key",
+            3 * NOTICE_FRAMES);
+    }
 }
 
 /* A click on the panel: follow who it names. While following, the panel lists that
@@ -277,6 +304,7 @@ static void forget_old_world(App *a)
     /* r replaces the world on screen; its other branch goes with it. */
     branch_free(&a->branches);
     a->keep_asked = false;
+    a->compare_open = false;
     /* The copy was of the old world; the new one gets picked for at once. */
     lookahead_free(&a->look);
     a->idle_frames = LOOK_IDLE_FRAMES;
@@ -323,12 +351,46 @@ static void restart_with_setup(App *a)
 #define CODE_IN_TERMINAL 1
 #endif
 
-/* c: the world shown, as a code on the clipboard. */
+/*
+ * In the browser, c copies a link to this page with the code in it: whoever
+ * opens the link sees the world replayed (web/shell.html hands the code= field
+ * to --code). Returns the link as a new string, or NULL outside a browser or
+ * when memory ran out; then the bare code is copied.
+ */
+static char *page_link(const char *code)
+{
+    char *address = platform_page_address();
+    if (address == NULL) {
+        return NULL;
+    }
+    /* "?" and the field's name, then the code; + 2 for the '?' and the '\0'. */
+    size_t room = strlen(address) + strlen(WORLDCODE_LINK_FIELD) + strlen(code) + 2;
+    char *link = malloc(room);
+    if (link != NULL) {
+        snprintf(link, room, "%s?%s%s", address, WORLDCODE_LINK_FIELD, code);
+    }
+    free(address);
+    return link;
+}
+
+/* c: the world shown, as a code on the clipboard (a link in the browser). */
 static void copy_code(App *a)
 {
     char *text = NULL;
     if (!worldcode_write(&a->sim, &text)) {
         say(a, "no memory left to make the world code", NOTICE_FRAMES);
+        return;
+    }
+    char *link = page_link(text);
+    if (link != NULL) {
+        if (platform_clipboard_set(link)) {
+            say(a, "link to this world copied: whoever opens it sees it replayed",
+                2 * NOTICE_FRAMES);
+        } else {
+            say(a, "could not put the link on the clipboard", NOTICE_FRAMES);
+        }
+        free(link);
+        free(text);
         return;
     }
 #if CODE_IN_TERMINAL
@@ -375,26 +437,18 @@ static void copy_code(App *a)
 #define CODE_MAX_POOL INT_MAX
 #endif
 
-/* Reads the clipboard's code into *code; false with a line said on screen. */
-static bool read_clipboard_code(App *a, WorldCode *code)
+/* Reads text's code, alone or inside a link, into *code; false with one line
+ * in err and nothing to free. */
+static bool read_code(const char *text, WorldCode *code, char *err, size_t len)
 {
-    char *text = platform_clipboard_get();
-    if (text == NULL) {
-        say(a, "copy a world code first, then o", NOTICE_FRAMES);
-        return false;
-    }
-    char err[128];
-    bool ok = worldcode_read(text, code, err, sizeof(err));
-    free(text);
-    if (!ok) {
-        say(a, err, 2 * NOTICE_FRAMES);
+    if (!worldcode_read(text, code, err, len)) {
         return false;
     }
     /* Converted before multiplying, so a 4096 by 4096 code cannot overflow
      * an int. */
     if ((long)code->w * (long)code->h > (long)CODE_MAX_CELLS ||
         code->set.pool_capacity > CODE_MAX_POOL) {
-        say(a, "that world is too big for the browser demo", 2 * NOTICE_FRAMES);
+        snprintf(err, len, "that world is too big for the browser demo");
         worldcode_free(code);
         return false;
     }
@@ -402,26 +456,25 @@ static bool read_clipboard_code(App *a, WorldCode *code)
 }
 
 /*
- * o: the clipboard's code becomes the world on screen, replayed from its first
- * tick in slices (the prelude's run) up to where it was copied. The new world
- * is built aside first, so a code that cannot be built leaves the old one
- * running. Its size and creature pool may differ from the old one's, so the
- * drawing and the families, which are sized by them, are made again.
+ * text's world (a code, or a link holding one) becomes the world on screen,
+ * replayed from its first tick in slices (the prelude's run) up to where it
+ * was copied. The new world is built aside first, so a code that cannot be
+ * built leaves the old one running and says why in err. Its size and creature
+ * pool may differ from the old one's, so the drawing and the families, which
+ * are sized by them, are made again.
  */
-static void open_code(App *a)
+static bool open_code_text(App *a, const char *text, char *err, size_t len)
 {
     WorldCode code;
-    if (!read_clipboard_code(a, &code)) {
-        return;
+    if (!read_code(text, &code, err, len)) {
+        return false;
     }
     Sim fresh;
-    char err[128];
-    bool built = worldcode_start(&fresh, &code, err, sizeof(err));
+    bool built = worldcode_start(&fresh, &code, err, len);
     uint64_t until = code.until;
     worldcode_free(&code);
     if (!built) {
-        say(a, err, 2 * NOTICE_FRAMES);
-        return;
+        return false;
     }
     forget_old_world(a);
     sim_free(&a->sim);
@@ -436,7 +489,7 @@ static void open_code(App *a)
         platform_error("out of memory");
         a->failed = true;
         a->running = false;
-        return;
+        return true; /* the code was fine; the frame loop ends */
     }
     sprite_cache_set_art(&a->scene.sprites, art);
     int level = a->camera.level;
@@ -449,6 +502,22 @@ static void open_code(App *a)
         app_prelude_finish(&a->prelude, &a->sim);
     }
     a->redraw = true;
+    return true;
+}
+
+/* o: the clipboard's code (or a link holding one) becomes the world shown. */
+static void open_code(App *a)
+{
+    char *text = platform_clipboard_get();
+    if (text == NULL) {
+        say(a, "copy a world code first, then o", NOTICE_FRAMES);
+        return;
+    }
+    char err[128];
+    if (!open_code_text(a, text, err, sizeof(err))) {
+        say(a, err, 2 * NOTICE_FRAMES);
+    }
+    free(text);
 }
 
 static void say(App *a, const char *text, int frames)
@@ -638,7 +707,8 @@ static void handle_key(App *a, int key)
     }
     /* Branching is a Sandbox tool; Documentary never changes a world. */
 #ifdef AGON_DEMO
-    if (a->sandbox.on && (key == 'x' || key == 'X' || key == '\t')) {
+    if (a->sandbox.on &&
+        (key == 'x' || key == 'X' || key == '\t' || key == 'v' || key == 'V')) {
         say(a, "not in the browser demo: weather only (w)", NOTICE_FRAMES);
         return;
     }
@@ -650,6 +720,16 @@ static void handle_key(App *a, int key)
     }
     if (a->sandbox.on && key == '\t') {
         switch_branch(a);
+        a->redraw = true;
+        return;
+    }
+    if (a->sandbox.on && (key == 'v' || key == 'V')) {
+        if (a->branches.split) {
+            a->compare_open = !a->compare_open;
+        } else {
+            say(a, "nothing to compare: x splits the world in two first",
+                NOTICE_FRAMES);
+        }
         a->redraw = true;
         return;
     }
@@ -717,6 +797,12 @@ static void handle_key(App *a, int key)
     case 'B':
         a->lab_open = !a->lab_open;
         break;
+    case '/': /* the ? key: SDL gives the key, not the character shift makes */
+    case '?':
+    case 'h':
+    case 'H':
+        a->keys_open = !a->keys_open;
+        break;
     case 'p':
     case 'P':
         if (a->lab_open) {
@@ -753,7 +839,11 @@ static void handle_key(App *a, int key)
         break;
     case KEY_ESCAPE:
         /* The pages first, so Esc never lets go of a creature behind them. */
-        if (a->lab_open) {
+        if (a->keys_open) {
+            a->keys_open = false;
+        } else if (a->compare_open) {
+            a->compare_open = false;
+        } else if (a->lab_open) {
             a->lab_open = false;
         } else if (a->notices_open) {
             a->notices_open = false;
@@ -868,13 +958,13 @@ static void draw_help(App *a)
     /* Adjacent strings are one string, so each of these is one piece of text. */
     const char *help =
         PLATFORM_IS_PAGE
-            ? " space pause | +/- speed | [ ] zoom | click follow | Esc let go"
-              " | l life story | j jump | e notices | f camera | b lab | r new world"
-            : " space pause | +/- speed | [ ] zoom | click follow | Esc let go"
-              " | l life story | j jump | e notices | f camera | b lab | r new world | s save | q quit";
-    /* Sandbox has four keys more, so it drops the ones --help still lists. */
+            ? " ? all keys | space pause | +/- speed | [ ] zoom | click follow"
+              " | l life story | j jump | e notices | f camera | r new world"
+            : " ? all keys | space pause | +/- speed | [ ] zoom | click follow"
+              " | l life story | j jump | e notices | f camera | r new world | q quit";
+    /* Sandbox has more keys; the rest are on the ? page. */
     if (a->sandbox.on) {
-        help = " space pause | +/- speed | [ ] zoom | click follow | l story";
+        help = " ? all keys | space pause | +/- speed | click follow | l story";
     }
     char text[300];
     /* sandbox_help starts with a space and the mode's name: "| Sandbox | ...". */
@@ -1082,9 +1172,15 @@ static void update_notices(App *a)
         snprintf(line, sizeof(line), "%s (and %u more: e lists)", x->text,
                  (unsigned)(fresh - 1));
     } else {
-        snprintf(line, sizeof(line), "%s%s", x->text,
-                 x->creature != NOTICE_NOBODY ? " (j follows)" : "");
+        /* The first notice of the run also tells where the others will be. */
+        bool first = (a->hints & HINT_NOTICES) == 0;
+        snprintf(line, sizeof(line), "%s%s%s", x->text,
+                 x->creature != NOTICE_NOBODY ? " (j follows" : " (",
+                 first ? (x->creature != NOTICE_NOBODY ? "; e lists every notice)"
+                                                       : "e lists every notice)")
+                       : (x->creature != NOTICE_NOBODY ? ")" : "e lists)"));
     }
+    a->hints |= HINT_NOTICES;
     say(a, line, RARE_NOTICE_FRAMES);
     a->redraw = true;
 }
@@ -1174,6 +1270,96 @@ static void draw_notices(App *a)
     }
 }
 
+/* v: the two branches side by side, in a box at the bottom of the view, so
+ * the skip summary at the top stays readable above it. */
+static void draw_compare(App *a)
+{
+    if (!a->compare_open || !a->branches.split) {
+        return;
+    }
+    /* static: about 4 KB, kept off the small web stack. */
+    static char lines[COMPARE_LINES][COMPARE_COLS];
+    char me = a->branches.shown == 0 ? 'A' : 'B';
+    char them = a->branches.shown == 0 ? 'B' : 'A';
+    int n = compare_lines(&a->sim, me, &a->branches.other, them,
+                          a->branches.split_at, lines, COMPARE_LINES);
+    const Layout *l = &a->layout;
+    int cols = 0;
+    for (int r = 0; r < n; r++) {
+        int len = text_columns(lines[r]);
+        cols = len > cols ? len : cols;
+    }
+    /* A last row for the keys. */
+    int w = (cols + 2) * FONT_W, h = (n + 2) * FONT_H;
+    if (n == 0 || h > l->view_h || w > l->view_w - 2 * FONT_W) {
+        return; /* too small to read */
+    }
+    int x = l->view_x + FONT_W, y = l->view_y + l->view_h - h - FONT_H / 2;
+    canvas_rect(&a->canvas, x, y, w, h,
+                canvas_rgb(PALETTE_TEXT_BACKGROUND.r, PALETTE_TEXT_BACKGROUND.g,
+                           PALETTE_TEXT_BACKGROUND.b));
+    cells_canvas_set(&a->canvas, x + FONT_W, y + FONT_H / 2);
+    for (int r = 0; r < n; r++) {
+        if (text_columns(lines[r]) == (int)strlen(lines[r])) {
+            render_text(0, r, lines[r], cols);
+        } else {
+            render_utf8(0, r, lines[r]); /* the charts' blocks */
+        }
+    }
+    render_text(0, n, "  Tab shows the other branch | v or Esc closes", cols);
+}
+
+/* What the ? page lists for the window as it is now. */
+static unsigned key_flags(const App *a)
+{
+    unsigned flags = 0;
+    if (a->sandbox.on) {
+        flags |= KEYHELP_SANDBOX;
+    }
+#ifdef AGON_DEMO
+    flags |= KEYHELP_DEMO;
+#endif
+    if (PLATFORM_IS_PAGE) {
+        flags |= KEYHELP_PAGE;
+    }
+    return flags;
+}
+
+/* The ? page: every key, two columns side by side when the view is wide
+ * enough, else one under the other as far as there is room. */
+static void draw_keys(App *a)
+{
+    if (!a->keys_open) {
+        return;
+    }
+    const Layout *l = &a->layout;
+    int x = l->view_x + FONT_W, y = l->view_y + FONT_H / 2;
+    int w = l->view_w - 2 * FONT_W, h = l->view_h - FONT_H;
+    if (w < FONT_W * 20 || h < FONT_H * 4) {
+        return; /* too small to read; the world shows instead */
+    }
+    canvas_rect(&a->canvas, x, y, w, h,
+                canvas_rgb(PALETTE_TEXT_BACKGROUND.r, PALETTE_TEXT_BACKGROUND.g,
+                           PALETTE_TEXT_BACKGROUND.b));
+    int cols = w / FONT_W - 2;
+    int rows = h / FONT_H - 1;
+    /* A column's width with a gap of 4 after it. */
+    bool side_by_side = cols >= 2 * (KEYHELP_WIDTH + 4);
+    cells_canvas_set(&a->canvas, x + FONT_W, y + FONT_H / 2);
+    render_text(0, 0, "Every key (? or Esc closes this)", cols);
+    int row = 2;
+    for (int column = 0; column < 2; column++) {
+        const char *lines[KEYHELP_MAX_LINES];
+        int n = keyhelp_column(key_flags(a), column, lines, KEYHELP_MAX_LINES);
+        int left = side_by_side ? column * (KEYHELP_WIDTH + 4) : 0;
+        int top = side_by_side ? 2 : row;
+        for (int i = 0; i < n && top + i < rows; i++) {
+            render_text(left, top + i, lines[i], cols - left);
+        }
+        row = top + n + 1; /* one empty row before the second column */
+    }
+}
+
 static void draw_frame(App *a, float fraction)
 {
     const Creature *followed = update_following(a, fraction);
@@ -1203,6 +1389,8 @@ static void draw_frame(App *a, float fraction)
     }
     draw_sandbox(a);
     draw_notices(a);
+    draw_compare(a);
+    draw_keys(a);
     /* After the world: a body near the edge may have been drawn over these. */
     draw_title(a, followed);
     draw_help(a);
@@ -1277,6 +1465,23 @@ static void app_frame(void *arg)
         platform_stop();
         return;
     }
+    if (!a->prelude.active && (a->hints & HINT_START) == 0) {
+        /* The world is open for the first time: one line on where to start.
+         * The camera waits 5 seconds more than it would, so its own line
+         * does not replace this one at once. Apart from the chain below, so
+         * this frame's ticks run as in any other. */
+        a->hints |= HINT_START;
+#ifdef AGON_DEMO
+        const char *tools = "? lists every key; w is the Sandbox's tool";
+#else
+        const char *tools = "? lists every key; g w k x u are the Sandbox tools";
+#endif
+        say(a, a->sandbox.on ? tools
+                             : "? lists every key; m switches to Sandbox, where "
+                               "you change the world",
+            3 * NOTICE_FRAMES);
+        a->idle_frames = LOOK_IDLE_FRAMES - 5 * FRAMES_PER_SECOND;
+    }
     if (a->prelude.active && a->sandbox.menu == SANDBOX_MENU_SETUP) {
         /* The setup screen holds the ancestors: Enter starts them again. */
         a->notice[0] = '\0';
@@ -1320,6 +1525,13 @@ static void app_frame(void *arg)
         branch_catch_up(&a->branches, &a->sim, platform_now_ms,
                         APP_PRELUDE_FRAME_MS / 2);
     }
+    /* A skip that ended this frame while split: the comparison is what the
+     * player skipped for. */
+    bool skipping = sandbox_skipping(&a->sandbox);
+    if (a->was_skipping && !skipping && a->branches.split) {
+        a->compare_open = true;
+    }
+    a->was_skipping = skipping;
     update_look(a);
     /* Counted up to the wait and no further: an int that kept growing would
      * pass INT_MAX after about two years of frames, and signed overflow is
@@ -1445,6 +1657,10 @@ int main(int argc, char **argv)
         platform_error("a browser page has nowhere to save or load from");
         return EXIT_USAGE;
     }
+    if (opt.code != NULL && opt.load_path != NULL) {
+        platform_error("--code and --load each choose the world: give one");
+        return EXIT_USAGE;
+    }
     int zoom = CAMERA_NORMAL;
     if (opt.zoom_name != NULL && !zoom_from_name(opt.zoom_name, &zoom)) {
         platform_error("--zoom needs close, normal, far or world");
@@ -1484,11 +1700,16 @@ int main(int argc, char **argv)
      * first frame, and only when --ancestors asks for it: a picture must come
      * out the same every time, which a prelude cut by a clock would not. */
     app.prelude_years = app_prelude_years(&opt, &settings, opt.frames == 0);
-    app_prelude_start(&app.prelude, &app.sim, app.prelude_years);
+    /* With --code this first world is only a stand-in until the code's world
+     * replaces it below, so its ancestors are not run. */
+    if (opt.code == NULL) {
+        app_prelude_start(&app.prelude, &app.sim, app.prelude_years);
+    }
 #ifndef AGON_DEMO
     /* --sandbox opens on its setup screen: a new world's settings are chosen
-     * before its ancestors run. Not for a loaded world, which has lived. */
-    if (opt.sandbox && opt.load_path == NULL) {
+     * before its ancestors run. Not for a loaded world, which has lived, nor
+     * for a code's, whose settings come with it. */
+    if (opt.sandbox && opt.load_path == NULL && opt.code == NULL) {
         sandbox_open_setup(&app.sandbox, &app.sim.set);
     }
 #endif
@@ -1510,6 +1731,23 @@ int main(int argc, char **argv)
     camera_init(&app.camera, app.sim.world.w, app.sim.world.h,
                 app.layout.view_w, app.layout.view_h);
     app.camera.level = zoom;
+    if (opt.code != NULL && !open_code_text(&app, opt.code, err, sizeof(err))) {
+#ifdef __EMSCRIPTEN__
+        /* A link that will not open should not leave a dead page: the visitor
+         * gets a new world, and the reason goes under it, on the page (the
+         * ancestors' progress line would write over a line said on screen). */
+        char message[200];
+        snprintf(message, sizeof(message), "That link did not open (%s), so this "
+                                           "is a new world.", err);
+        platform_page_note(message);
+        app_prelude_start(&app.prelude, &app.sim, app.prelude_years);
+#else
+        char message[600];
+        snprintf(message, sizeof(message), "--code: %s", err);
+        platform_error(message);
+        return EXIT_USAGE;
+#endif
+    }
     if (!platform_open("agon", WINDOW_W, WINDOW_H, err, sizeof(err))) {
         platform_error(err);
         return EXIT_FAILED;

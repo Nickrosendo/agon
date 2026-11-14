@@ -246,6 +246,16 @@ EM_JS(void, page_copy, (const char *text), {
     }
 })
 
+/* origin is "https://example.org", pathname "/agon/": the address up to its
+ * fields (after '?') and its place on the page (after '#'). */
+EM_JS(char *, page_address, (void), {
+    return stringToNewUTF8(location.origin + location.pathname);
+})
+
+EM_JS(void, page_note, (const char *text), {
+    document.getElementById("note").textContent = UTF8ToString(text);
+})
+
 EM_JS(char *, page_paste, (void), {
     const value = window.prompt("Paste a world code:", "");
     return value ? stringToNewUTF8(value) : 0;
@@ -281,5 +291,23 @@ char *platform_clipboard_get(void)
     }
     SDL_free(sdl);
     return copy;
+#endif
+}
+
+char *platform_page_address(void)
+{
+#ifdef __EMSCRIPTEN__
+    return page_address();
+#else
+    return NULL;
+#endif
+}
+
+void platform_page_note(const char *text)
+{
+#ifdef __EMSCRIPTEN__
+    page_note(text);
+#else
+    (void)text; /* nothing to write it on */
 #endif
 }

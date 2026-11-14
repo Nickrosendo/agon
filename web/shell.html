@@ -17,12 +17,23 @@
 <canvas id="canvas" tabindex="0" oncontextmenu="event.preventDefault()"></canvas>
 <p id="note">agon runs only in this tab: refreshing the page loses the world.</p>
 <script>
-  // The page address chooses the world: ?seed=3. The C program reads it as an
-  // ordinary --seed option, and with none it takes a seed from the clock.
-  var seed = new URLSearchParams(location.search).get("seed");
+  // The page address chooses the world: ?seed=3 a new world from that seed,
+  // ?code=agon1:... a world someone shared (the c key copies such a link),
+  // replayed to where it was copied. The C program reads them as ordinary
+  // --seed and --code options, and with neither it takes a seed from the clock.
+  // A code goes in whole: the C side checks it and says what is wrong with it.
+  var fields = new URLSearchParams(location.search);
+  var seed = fields.get("seed");
+  var code = fields.get("code");
+  var args = [];
+  if (code) {
+    args = ["--code", code];
+  } else if (seed && /^(0x[0-9a-f]+|[0-9]+)$/i.test(seed)) {
+    args = ["--seed", seed];
+  }
   var Module = {
     canvas: document.getElementById("canvas"),
-    arguments: seed && /^(0x[0-9a-f]+|[0-9]+)$/i.test(seed) ? ["--seed", seed] : [],
+    arguments: args,
     onAbort: function (reason) {
       document.getElementById("note").textContent =
         "agon stopped: " + reason + ". Refreshing starts a new world.";

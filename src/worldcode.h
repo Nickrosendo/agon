@@ -34,6 +34,10 @@
  * the rules version: the rules can change while the layout stays. */
 #define WORLDCODE_PREFIX "agon1:"
 
+/* In a link to the browser page, the code is this field of the address:
+ * ".../agon/?code=agon1:...". */
+#define WORLDCODE_LINK_FIELD "code="
+
 /* What a code holds, read back. log owns its memory: worldcode_free. */
 typedef struct {
     Settings set;
@@ -51,7 +55,8 @@ bool worldcode_write(const Sim *s, char **text);
  * sound code from other rules to see it refused. */
 bool worldcode_write_as(const Sim *s, unsigned rules, char **text);
 
-/* Reads a code. Spaces and line breaks anywhere are skipped, since a pasted
+/* Reads a code, alone or inside a link to the browser page (the address's
+ * "code=" field). Spaces and line breaks anywhere are skipped, since a pasted
  * code may have been wrapped. False with one plain line in err, and nothing
  * allocated, for a text that is not a code, a typo, a code cut short, a code
  * from other rules, or values outside what this agon allows. */

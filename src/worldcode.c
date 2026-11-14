@@ -2,7 +2,7 @@
 
 #include <stdio.h>  /* snprintf */
 #include <stdlib.h> /* malloc, realloc, free */
-#include <string.h> /* memcpy, memcmp, strlen, strncmp */
+#include <string.h> /* memcpy, memcmp, strlen, strncmp, strstr, strcspn */
 
 #include "genome.h"  /* GENE_TRAITS */
 #include "options.h" /* OPTIONS_MAX_SIDE, OPTIONS_MAX_TICKS */
@@ -265,19 +265,21 @@ bool worldcode_write_as(const Sim *s, unsigned rules, char **text)
 
 /* ---- reading ---- */
 
-/* Decodes the characters after the prefix into a new block of *n bytes. -1 for
+/* Decodes count characters of text (those after the prefix) into a new block
+ * of *n bytes. -1 for
  * a character not in the alphabet, -2 for no memory, 0 when fine. Blanks are
  * skipped. A last group of one character is impossible (it would hold six bits,
  * less than a byte), so it is left out: the length check then finds the code
  * short. */
-static int from_text(const char *text, unsigned char **bytes, size_t *n)
+static int from_text(const char *text, size_t count, unsigned char **bytes,
+                     size_t *n)
 {
     size_t chars = 0;
-    for (const char *p = text; *p != '\0'; p++) {
-        if (is_blank(*p)) {
+    for (size_t i = 0; i < count; i++) {
+        if (is_blank(text[i])) {
             continue;
         }
-        if (six_bits(*p) < 0) {
+        if (six_bits(text[i]) < 0) {
             return -1;
         }
         chars++;
@@ -291,11 +293,11 @@ static int from_text(const char *text, unsigned char **bytes, size_t *n)
     size_t len = 0;
     uint32_t group = 0;
     int have = 0; /* characters in group */
-    for (const char *p = text; *p != '\0'; p++) {
-        if (is_blank(*p)) {
+    for (size_t i = 0; i < count; i++) {
+        if (is_blank(text[i])) {
             continue;
         }
-        group = group << 6 | (uint32_t)six_bits(*p);
+        group = group << 6 | (uint32_t)six_bits(text[i]);
         have++;
         if (have == 4) {
             out[len++] = (unsigned char)(group >> 16);
@@ -506,21 +508,63 @@ static bool parse(const unsigned char *bytes, size_t n, WorldCode *code,
     return true;
 }
 
+/*
+ * Where a code's characters start in text (just after the prefix), with how
+ * many of them there are in *count; NULL when text holds no code.
+ *
+ * A bare code: blanks first are skipped, and it runs to the end of the text.
+ * A link to the browser page ("https://.../agon/?code=agon1:..."): the code
+ * follows "code=" and runs up to the next '&' (the link's next field) or '#'
+ * (a place on the page), so the rest of the address is not read as a typo.
+ * Some programs write the ':' in an address as "%3A", the percent form of its
+ * character number (0x3A); that prefix counts too.
+ */
+static const char *find_code(const char *text, size_t *count)
+{
+    size_t prefix = strlen(WORLDCODE_PREFIX);
+    const char *bare = text;
+    while (is_blank(*bare)) {
+        bare++;
+    }
+    if (strncmp(bare, WORLDCODE_PREFIX, prefix) == 0) {
+        *count = strlen(bare + prefix);
+        return bare + prefix;
+    }
+    const char *field = strstr(text, WORLDCODE_LINK_FIELD);
+    if (field == NULL) {
+        return NULL;
+    }
+    const char *at = field + strlen(WORLDCODE_LINK_FIELD);
+    const char *start = NULL;
+    if (strncmp(at, WORLDCODE_PREFIX, prefix) == 0) {
+        start = at + prefix;
+    } else if (strncmp(at, WORLDCODE_PREFIX, prefix - 1) == 0 &&
+               at[prefix - 1] == '%' && at[prefix] == '3' &&
+               (at[prefix + 1] == 'A' || at[prefix + 1] == 'a')) {
+        /* prefix - 1: every character but the ':', which is the 3 after */
+        start = at + prefix + 2;
+    } else {
+        return NULL;
+    }
+    /* strcspn: how many characters from start before the first of "&#" (or
+     * the end, '\0'). */
+    *count = strcspn(start, "&#");
+    return start;
+}
+
 bool worldcode_read(const char *text, WorldCode *code, char *err, size_t len)
 {
     *code = (WorldCode){0};
-    while (is_blank(*text)) {
-        text++;
-    }
-    size_t prefix = strlen(WORLDCODE_PREFIX);
-    if (strncmp(text, WORLDCODE_PREFIX, prefix) != 0) {
+    size_t count = 0;
+    const char *start = find_code(text, &count);
+    if (start == NULL) {
         snprintf(err, len, "that is not an agon world code (it starts with "
                            "%s)", WORLDCODE_PREFIX);
         return false;
     }
     unsigned char *bytes = NULL;
     size_t n = 0;
-    int got = from_text(text + prefix, &bytes, &n);
+    int got = from_text(start, count, &bytes, &n);
     if (got == -1) {
         snprintf(err, len, "the world code has a typo in it");
         return false;

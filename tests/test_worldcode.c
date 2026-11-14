@@ -229,6 +229,46 @@ static void test_blanks_skipped(void)
     sim_free(&s);
 }
 
+/* A link to the browser page opens the same world: the code is read from the
+ * address's code= field, up to the next field or the '#', and a ':' written
+ * as %3A still counts. Text around a link that holds no code is refused. */
+static void test_link_opens(void)
+{
+    Sim s;
+    played_world(&s);
+    char *text = NULL;
+    CHECK(worldcode_write(&s, &text));
+    const char *body = text + strlen(WORLDCODE_PREFIX);
+    size_t room = strlen(text) + 128;
+    char *link = malloc(room);
+    CHECK(link != NULL);
+
+    /* Three ways a link may come: with fields after the code and a place on
+     * the page, with the code last, and with the ':' in percent form. */
+    const char *forms[3][2] = {
+        {"see https://example.org/agon/?seed=3&code=agon1:", "&x=1#top now"},
+        {"https://example.org/agon/?code=agon1:", ""},
+        {"https://example.org/agon/?code=agon1%3a", "\n"},
+    };
+    for (int k = 0; k < 3; k++) {
+        snprintf(link, room, "%s%s%s", forms[k][0], body, forms[k][1]);
+        Sim again;
+        CHECK(replay(link, &again));
+        CHECK(sim_checksum(&again) == sim_checksum(&s));
+        sim_free(&again);
+    }
+    refused("https://example.org/agon/?seed=3", "not an agon world code");
+    refused("https://example.org/agon/?code=hello", "not an agon world code");
+    /* A link cut inside the code is a cut code, not a typo. */
+    snprintf(link, room, "https://example.org/agon/?code=%s", text);
+    link[strlen(link) - 10] = '\0';
+    refused(link, "cut short");
+
+    free(link);
+    free(text);
+    sim_free(&s);
+}
+
 int main(void)
 {
     test_round_trip();
@@ -236,5 +276,6 @@ int main(void)
     test_plain_world_is_short();
     test_bad_codes_refused();
     test_blanks_skipped();
+    test_link_opens();
     TEST_SUMMARY();
 }

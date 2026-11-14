@@ -131,5 +131,24 @@ fi
 [ -n "$paused" ] && [ "$paused" = "$zero" ] ||
     fail "--paused did not stay at tick 0: '$paused' against '$zero'"
 
+# 10. A world code opens the same world: c prints the code after a year of
+# ancestors (paused, so the world stays at that tick), and --code, given the
+# code alone or inside a link to the browser page, replays it to the same
+# fingerprint. A text that is not a code, and --code with --load, are refused.
+copied=$("$OUT/agon-window" --seed 5 --size 64x32 --ancestors 1 --paused \
+    --frames 3 --keys c --checksum) || fail "the run that copies a code failed"
+code=$(echo "$copied" | sed -n 's/^world code: //p')
+want=$(echo "$copied" | grep '^checksum')
+[ -n "$code" ] || fail "c printed no world code"
+for given in "$code" "https://example.org/agon/?seed=9&code=$code#top"; do
+    got=$("$OUT/agon-window" --code "$given" --paused --frames 3 --checksum)
+    [ -n "$want" ] && [ "$got" = "$want" ] ||
+        fail "--code opened another world: '$got' against '$want'"
+done
+"$OUT/agon-window" --code hello --frames 1 >/dev/null 2>&1
+[ $? -eq 2 ] || fail "a --code that is not a code was not refused"
+"$OUT/agon-window" --code "$code" --load "$TMP/w.save" --frames 1 >/dev/null 2>&1
+[ $? -eq 2 ] || fail "--code with --load was not refused"
+
 [ $failed -eq 0 ] && echo "window_smoke: all passed"
 exit $failed

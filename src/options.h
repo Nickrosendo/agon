@@ -44,6 +44,9 @@ typedef struct {
     bool paused;             /* --paused: start as if space were pressed */
     bool no_art;             /* --no-art: start with the drawn frames off (a key) */
     bool sandbox;            /* --sandbox: the window starts in Sandbox mode (m) */
+    /* --code: a world code, or a link holding one, that the window opens at
+     * the start instead of a new world. Points into argv. */
+    const char *code;
     /* --keys: keys pressed one a frame during the last frames of --frames, so
      * a test or a screenshot can open the L page. Points into argv. */
     const char *keys;

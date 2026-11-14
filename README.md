@@ -126,8 +126,12 @@ python3 -m http.server -d build/web 8000   # then open http://localhost:8000
 ```
 
 The page needs a web server: browsers refuse to load its code from a plain file.
-Add `?seed=3` to the address for a particular world. There is no saving here, so
-refreshing loses the world, and a hidden tab runs slowly and does not catch up.
+Add `?seed=3` to the address for a particular world. The `c` key copies a link to
+the world on screen: whoever opens it sees the same world replayed up to where it
+was copied, with everything done to it (the link carries a world code in its
+`?code=` field). On the desktop, `agon-window --code` opens a code or such a link.
+There is no saving here, so refreshing loses the world, and a hidden tab runs
+slowly and does not catch up.
 
 ## Keys
 

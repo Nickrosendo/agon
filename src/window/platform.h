@@ -70,5 +70,12 @@ bool platform_clipboard_set(const char *text);
  * not read the clipboard without asking, the player pastes into a box
  * instead. */
 char *platform_clipboard_get(void);
+/* In a browser page, the page's own address without its fields or '#' part
+ * ("https://example.org/agon/"), as a new string the caller frees with free.
+ * NULL outside a browser, or when memory ran out. */
+char *platform_page_address(void);
+/* In a browser page, replaces the line of text under the world (the page's
+ * "note") with text; does nothing outside a browser. */
+void platform_page_note(const char *text);
 
 #endif

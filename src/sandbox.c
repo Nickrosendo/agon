@@ -359,7 +359,7 @@ const char *sandbox_help(const Sandbox *b)
                  : " Documentary | m mode | c copy code | o open code";
 #else
     return b->on ? " Sandbox | m mode | g trait | w weather | k skip | x branch"
-                   " | Tab | u new start | c/o code"
+                   " | Tab | v compare | u new start | c/o code"
                  : " Documentary | m mode | c copy code | o open code";
 #endif
 }
